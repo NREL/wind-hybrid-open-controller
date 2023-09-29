@@ -21,7 +21,7 @@ WHOC controllers will also call on design tools such as
 
 ## Code development
 To contribute to WHOC, please consider forking the main github repository,
-with the [main repo](github.com/NREL/wind-hybrid-open-controller) as an 
+with the [main repo](https://github.com/NREL/wind-hybrid-open-controller) as an 
 upstream remote. To submit a new feature or bug fix, create a new branch 
 in your fork and submit a pull request back to the `develop` branch in the 
 main repo. The pull request will be reviewed by other WHOC developers and 
