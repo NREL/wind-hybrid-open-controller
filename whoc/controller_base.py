@@ -43,10 +43,15 @@ class ControllerBase():
         # This function likely overridden by the child class.
         # Make this an abstract method?
 
-        # Something very minimal here. As an example, set the nacelle offset
-        # as the negative of the turbine heading?
-        west_offset = convert_absolute_nacelle_heading_to_offset(270,
-            self.measurements_dict["NacelleHeading"])
+        # Something very minimal here, based on ROSCO example 17.
+        #west_offset = convert_absolute_nacelle_heading_to_offset(270,
+        #    self.measurements_dict["NacelleHeading"])
+
+        current_time = self.measurements_dict['Time']
+        if current_time <= 10.0:
+            yaw_setpoint = 0.0
+        else:
+            yaw_setpoint = 20.0
 
         self.offsets_to_send = {
             "turbine_ID":0, # TODO: hardcoded! Replace
