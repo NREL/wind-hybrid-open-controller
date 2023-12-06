@@ -1,9 +1,11 @@
 import zmq
 
+from server_base import ServerBase
+
 # Code copied from ROSCO; consider just importing and using that code 
 # directly??
 
-class WHOC_zmq_server():
+class WHOC_zmq_server(ServerBase):
     def __init__(self, network_address="tcp://*:5555", identifier="0",
                  timeout=600.0, verbose=False):
         """Python implementation of the ZeroMQ server side for the ROSCO
@@ -24,6 +26,8 @@ class WHOC_zmq_server():
                 the ZeroMQ server before timing out. Defaults to 600.0.
             verbose (bool, optional): Print to console. Defaults to False.
         """
+        super().__init__()
+
         self.network_address = network_address
         self.identifier = identifier
         self.timeout = timeout

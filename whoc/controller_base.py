@@ -1,7 +1,4 @@
 from abc import abstractmethod
-import multiprocessing as mp
-from servers.zmq_server import WHOC_zmq_server
-from servers.python_server import WHOC_python_server
 
 from utilities import convert_absolute_nacelle_heading_to_offset
 
@@ -10,6 +7,8 @@ class ControllerBase():
     def __init__(self,
         use_zmq_interface=False,
         use_helics_interface=False,
+        use_direct_hercules_connection=False,
+        hercules_dict = None,
         timeout=100.0,
         verbose=True
         ):
@@ -24,13 +23,19 @@ class ControllerBase():
             #self._s = whoc_helics_federate()
         
         elif use_zmq_interface:
+            from servers.zmq_server import WHOC_zmq_server
 
             # TODO: set up HELICS server
             # Set up connections with each turbine
             self._s = WHOC_zmq_server(network_address="tcp://*:5555",
                 timeout=timeout, verbose=True)
 
+        elif use_direct_hercules_connection:
+            from servers.direct_hercules_connection import WHOC_AD_yaw_connection
+            self._s = WHOC_AD_yaw_connection(hercules_dict)
+
         else:
+            from servers.python_server import WHOC_python_server
             self._s = WHOC_python_server()
 
         # Initialize setpoints to send
@@ -49,15 +54,17 @@ class ControllerBase():
 
         return self.setpoints_dict # or main_dict, or what?
 
-    def step(self, dict=None):
+    def step(self, hercules_dict=None):
 
-        self.receive_measurements(dict)
+        # If not running with direct hercules integration, 
+        # hercules_dict may simply be None throughout this method.
+        self.receive_measurements(hercules_dict)
 
         self.compute_setpoints()
 
-        self.send_setpoints()
+        hercules_dict = self.send_setpoints(hercules_dict)
 
-        return 
+        return hercules_dict # May simply be None.
     
     @abstractmethod
     def compute_setpoints(self):

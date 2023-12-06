@@ -1,5 +1,8 @@
 
-class WHOC_python_server():
+from whoc.servers.server_base import ServerBase
+
+
+class WHOC_python_server(ServerBase):
 
     def __init__():
 
