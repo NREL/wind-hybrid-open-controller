@@ -131,3 +131,5 @@ class whoc_zmq_server():
 
         if self.verbose:
             print("[%s] Setpoints sent successfully." % self.identifier)
+
+        return None

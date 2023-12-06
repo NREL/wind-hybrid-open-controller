@@ -1,12 +1,13 @@
 import multiprocessing as mp
 from zmq_server import whoc_zmq_server
+from python_server import WHOC_python_server
 
 from utilities import convert_absolute_nacelle_heading_to_offset
 
 class ControllerBase():
 
     def __init__(self,
-        use_zmq_interface=True,
+        use_zmq_interface=False,
         use_helics_interface=False,
         timeout=100.0,
         verbose=True
@@ -29,11 +30,14 @@ class ControllerBase():
                 timeout=timeout, verbose=True)
 
         else:
+            self.s = whoc_python_server()
+
+            # Use direct python interface (for Hercules implementaiton)
             raise ValueError(
                 "Must selecte either Zero-MQ or HELICS interface."
             )
 
-    def receive_turbine_outputs(self):
+    def receive_measurements(self):
         # May need to eventually loop here, depending on server set up.
         self.measurements_dict = self.s.get_measurements()
 
