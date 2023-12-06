@@ -1,0 +1,18 @@
+# Gitignore file
+*.pyc
+*.log
+*.egg-info
+data.db
+*.python-version
+*.DS_Store
+slices
+
+# macOS files
+.DS_Store
+
+# ide settings and files
+.idea
+.vscode
+
+
+
