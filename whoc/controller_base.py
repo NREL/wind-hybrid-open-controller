@@ -64,15 +64,3 @@ class ControllerBase():
         # Control algorithms should be implemented in the compute_setpoints
         # method of the child class.
         pass
-
-    # def run(self):
-
-    #     connect_zmq = True
-    #     while connect_zmq:
-    #         self.receive_turbine_outputs()
-    #         self.generate_turbine_references()
-    #         self.send_turbine_references()
-
-    #         if self.measurements_dict['iStatus'] == -1:
-    #             connect_zmq = False
-    #             self.s._disconnect()
