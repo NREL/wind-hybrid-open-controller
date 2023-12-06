@@ -3,7 +3,7 @@ import zmq
 # Code copied from ROSCO; consider just importing and using that code 
 # directly??
 
-class whoc_zmq_server():
+class WHOC_zmq_server():
     def __init__(self, network_address="tcp://*:5555", identifier="0",
                  timeout=600.0, verbose=False):
         """Python implementation of the ZeroMQ server side for the ROSCO
@@ -53,7 +53,7 @@ class whoc_zmq_server():
         context = zmq.Context()
         context.term()
 
-    def get_measurements(self):
+    def get_measurements(self, _):
         '''
         Receive measurements from ROSCO .dll
         '''
@@ -101,6 +101,21 @@ class whoc_zmq_server():
             print('[%s] Measurements received:' % self.identifier, measurements)
 
         return measurements
+
+    def check_setpoints(self, setpoints_dict):
+         
+        available_setpoints = [
+            "turbine_ID",
+            "genTorque",
+            "nacelleHeading",
+            "bladePitch",
+        ]
+        
+        for k in setpoints_dict.keys():
+            if k not in available_setpoints:
+                raise ValueError(
+                    "Setpoint "+k+" is not available in this configuration"
+                )
 
     def send_setpoints(self, turbine_ID=0, genTorque=0.0, nacelleHeading=0.0,
                        bladePitch=[0.0, 0.0, 0.0]):

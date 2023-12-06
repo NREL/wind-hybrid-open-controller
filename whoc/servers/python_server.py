@@ -12,9 +12,9 @@ class WHOC_python_server():
 
         return measurements
 
-    def send_setpoints(dict):
+    def send_setpoints(self, dict):
 
-        # Not sure if anything needs to be done here
+        # Not sure if anything needs to be done here. Can possibly return None.
         setpoints = dict
 
         return dict

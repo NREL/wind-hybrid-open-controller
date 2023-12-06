@@ -1,6 +1,7 @@
+from abc import abstractmethod
 import multiprocessing as mp
-from zmq_server import whoc_zmq_server
-from python_server import WHOC_python_server
+from servers.zmq_server import WHOC_zmq_server
+from servers.python_server import WHOC_python_server
 
 from utilities import convert_absolute_nacelle_heading_to_offset
 
@@ -20,71 +21,58 @@ class ControllerBase():
 
             # TODO: eventually, this would set up a federate (with same 
             # public methods as the whoc_zmq_server
-            #self.s = whoc_helics_federate()
+            #self._s = whoc_helics_federate()
         
         elif use_zmq_interface:
 
             # TODO: set up HELICS server
             # Set up connections with each turbine
-            self.s = whoc_zmq_server(network_address="tcp://*:5555",
+            self._s = WHOC_zmq_server(network_address="tcp://*:5555",
                 timeout=timeout, verbose=True)
 
         else:
-            self.s = whoc_python_server()
+            self._s = WHOC_python_server()
 
-            # Use direct python interface (for Hercules implementaiton)
-            raise ValueError(
-                "Must selecte either Zero-MQ or HELICS interface."
-            )
+        # Initialize setpoints to send
+        self.setpoints_dict = None
 
-    def receive_measurements(self):
+    def receive_measurements(self, dict=None):
         # May need to eventually loop here, depending on server set up.
-        self.measurements_dict = self.s.get_measurements()
+        self.measurements_dict = self._s.get_measurements(dict)
 
         return None
 
-    def generate_turbine_references(self):
-        # This function likely overridden by the child class.
-        # Make this an abstract method?
+    def send_setpoints(self):
 
-        # Something very minimal here, based on ROSCO example 17.
-        #west_offset = convert_absolute_nacelle_heading_to_offset(270,
-        #    self.measurements_dict["NacelleHeading"])
+        self._s.check_setpoints(self.setpoints_dict)
+        self._s.send_setpoints(**self.setpoints_dict)
 
-        current_time = self.measurements_dict['Time']
-        if current_time <= 10.0:
-            yaw_setpoint = 0.0
-        else:
-            yaw_setpoint = 20.0
+        return self.setpoints_dict # or main_dict, or what?
 
-        self.offsets_to_send = {
-            "turbine_ID":0, # TODO: hardcoded! Replace
-            "genTorque":0.0,
-            "nacelleHeading":west_offset,
-            "bladePitch":[0.0, 0.0, 0.0]
-        }
+    def step(self, dict=None):
 
-        return None
+        self.receive_measurements(dict)
 
-    def send_turbine_references(self):
-        # May need to eventually loop here, depending on server set up.
-        self.s.send_setpoints(
-            turbine_ID=self.offsets_to_send["turbine_ID"],
-            genTorque=self.offsets_to_send["genTorque"],
-            nacelleHeading=self.offsets_to_send["nacelleHeading"],
-            bladePitch=self.offsets_to_send["bladePitch"]
-        )
+        self.compute_setpoints()
 
-        return None
+        self.send_setpoints()
 
-    def run(self):
+        return 
+    
+    @abstractmethod
+    def compute_setpoints(self):
+        # Control algorithms should be implemented in the compute_setpoints
+        # method of the child class.
+        pass
 
-        connect_zmq = True
-        while connect_zmq:
-            self.receive_turbine_outputs()
-            self.generate_turbine_references()
-            self.send_turbine_references()
+    # def run(self):
 
-            if self.measurements_dict['iStatus'] == -1:
-                connect_zmq = False
-                self.s._disconnect()
+    #     connect_zmq = True
+    #     while connect_zmq:
+    #         self.receive_turbine_outputs()
+    #         self.generate_turbine_references()
+    #         self.send_turbine_references()
+
+    #         if self.measurements_dict['iStatus'] == -1:
+    #             connect_zmq = False
+    #             self.s._disconnect()
