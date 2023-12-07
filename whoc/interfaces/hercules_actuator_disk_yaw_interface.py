@@ -1,6 +1,6 @@
 # How will we handle other things here? May need to have a wind farm
 # version, an electrolyzer version, etc...
-from interface_base import InterfaceBase
+from whoc.interfaces.interface_base import InterfaceBase
 
 
 class WHOC_AD_yaw_connection(InterfaceBase):

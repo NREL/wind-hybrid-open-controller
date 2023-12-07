@@ -1,6 +1,6 @@
 import zmq
 
-from interface_base import InterfaceBase
+from whoc.interfaces.interface_base import InterfaceBase
 
 # Code copied from ROSCO; consider just importing and using that code 
 # directly??

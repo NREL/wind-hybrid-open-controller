@@ -1,6 +1,5 @@
 from abc import abstractmethod
 
-from utilities import convert_absolute_nacelle_heading_to_offset
 
 class ControllerBase():
 

@@ -1,13 +1,10 @@
-import multiprocessing as mp
-
-from utilities import convert_absolute_nacelle_heading_to_offset
-from controller_base import ControllerBase
+from whoc.controller_base import ControllerBase
 
 class WakeSteeringADStandin(ControllerBase):
 
     def __init__(self, interface, input_dict):
 
-        super.__init__(interface, hercules_dict=input_dict)
+        super().__init__(interface, hercules_dict=input_dict)
 
         self.dt = input_dict["dt"] # Won't be needed here, but generally good to have
         self.n_turbines = input_dict["controller"]["num_turbines"]
