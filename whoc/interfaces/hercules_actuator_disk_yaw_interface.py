@@ -1,9 +1,9 @@
 # How will we handle other things here? May need to have a wind farm
 # version, an electrolyzer version, etc...
-from whoc.servers.server_base import ServerBase
+from interface_base import InterfaceBase
 
 
-class WHOC_AD_yaw_connection(ServerBase):
+class WHOC_AD_yaw_connection(InterfaceBase):
 
     def __init__(self, input_dict):
 

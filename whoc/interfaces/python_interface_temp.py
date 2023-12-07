@@ -1,8 +1,8 @@
 
-from whoc.servers.server_base import ServerBase
+from interface_base import InterfaceBase
 
 
-class WHOC_python_server(ServerBase):
+class WHOC_python_server(InterfaceBase):
 
     def __init__():
 

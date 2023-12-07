@@ -1,6 +1,6 @@
 from abc import abstractmethod
 
-class ServerBase():
+class InterfaceBase():
 
     @abstractmethod
     def get_measurements(self):
