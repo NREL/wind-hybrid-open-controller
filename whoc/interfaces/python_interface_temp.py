@@ -1,5 +1,5 @@
 
-from interface_base import InterfaceBase
+from whoc.interfaces.interface_base import InterfaceBase
 
 
 class WHOC_python_server(InterfaceBase):

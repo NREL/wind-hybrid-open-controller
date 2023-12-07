@@ -32,8 +32,10 @@ class WHOC_AD_yaw_connection(InterfaceBase):
                            ["amr_wind"]\
                            [self.wf_name]\
                            ["turbine_powers"]
+        time = input_dict["time"]
 
         measurements = {
+            "time":time,
             "wind_directions":wind_directions,
             "wind_speeds":wind_speeds,
             "turbine_powers":powers

@@ -46,12 +46,12 @@ class ControllerBase():
 
         return None
 
-    def send_setpoints(self):
+    def send_setpoints(self, dict=None):
 
         self._s.check_setpoints(self.setpoints_dict)
-        self._s.send_setpoints(**self.setpoints_dict)
+        dict = self._s.send_setpoints(dict, **self.setpoints_dict)
 
-        return self.setpoints_dict # or main_dict, or what?
+        return dict # or main_dict, or what?
 
     def step(self, hercules_dict=None):
 

@@ -33,7 +33,7 @@ class WakeSteeringADStandin(ControllerBase):
     def generate_turbine_references(self):
         # Based on an early implementation for Hercules
 
-        current_time = self.measurements_dict['Time']
+        current_time = self.measurements_dict["time"]
         if current_time <= 10.0:
             yaw_setpoint = 0.0
         else:
