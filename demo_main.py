@@ -62,4 +62,19 @@ for i in range(wind_dir.shape[0]):
     )
 
 yaw_angles = np.array(yaw_angles)
-print(yaw_angles)
+fig, ax = plt.subplots(2,1,sharex=True, sharey=True)
+for i in range(2):
+    ax[i].plot(range(wind_dir.shape[0]), wind_dir[:,i], color="C0", label="wd")
+    ax[i].plot(
+        range(wind_dir.shape[0]),
+        yaw_angles[:,i],
+        color="black",
+        label="yaw stpt"
+    )
+    ax[i].set_ylabel("Direction, T{0} [deg]".format(i))
+    ax[i].grid()
+ax[1].set_xlabel("Time")
+ax[1].set_xlim([0, wind_dir.shape[0]])
+ax[0].legend()
+
+plt.show()

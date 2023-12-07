@@ -35,12 +35,12 @@ class WakeSteeringADStandin(ControllerBase):
 
         current_time = self.measurements_dict["time"]
         if current_time <= 10.0:
-            yaw_setpoint = 0.0
+            yaw_setpoint = [270.0]*self.n_turbines
         else:
-            yaw_setpoint = 20.0
+            yaw_setpoint = self.measurements_dict["wind_directions"]
 
         self.setpoints_dict = {
-            "yaw_angles": [yaw_setpoint]*self.n_turbines
+            "yaw_angles": yaw_setpoint
         }
 
         return None
