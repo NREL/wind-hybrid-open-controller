@@ -5,38 +5,38 @@ from utilities import convert_absolute_nacelle_heading_to_offset
 class ControllerBase():
 
     def __init__(self,
-        use_zmq_interface=False,
-        use_helics_interface=False,
-        use_direct_hercules_connection=False,
-        hercules_dict = None,
+        interface,
+        hercules_dict=None,
         timeout=100.0,
         verbose=True
         ):
 
-        if use_helics_interface:
-            raise NotImplementedError(
-                "HELICS interface has not yet been implemented."
-            )
+        self._s = interface
 
-            # TODO: eventually, this would set up a federate (with same 
-            # public methods as the whoc_zmq_server
-            #self._s = whoc_helics_federate()
+        # if use_helics_interface:
+        #     raise NotImplementedError(
+        #         "HELICS interface has not yet been implemented."
+        #     )
+
+        #     # TODO: eventually, this would set up a federate (with same 
+        #     # public methods as the whoc_zmq_server
+        #     #self._s = whoc_helics_federate()
         
-        elif use_zmq_interface:
-            from servers.zmq_server import WHOC_zmq_server
+        # elif use_zmq_interface:
+        #     from servers.zmq_server import WHOC_zmq_server
 
-            # TODO: set up HELICS server
-            # Set up connections with each turbine
-            self._s = WHOC_zmq_server(network_address="tcp://*:5555",
-                timeout=timeout, verbose=True)
+        #     # TODO: set up HELICS server
+        #     # Set up connections with each turbine
+        #     self._s = WHOC_zmq_server(network_address="tcp://*:5555",
+        #         timeout=timeout, verbose=True)
 
-        elif use_direct_hercules_connection:
-            from servers.direct_hercules_connection import WHOC_AD_yaw_connection
-            self._s = WHOC_AD_yaw_connection(hercules_dict)
+        # elif use_direct_hercules_connection:
+        #     from servers.direct_hercules_connection import WHOC_AD_yaw_connection
+        #     self._s = WHOC_AD_yaw_connection(hercules_dict)
 
-        else:
-            from servers.python_server import WHOC_python_server
-            self._s = WHOC_python_server()
+        # else:
+        #     from servers.python_server import WHOC_python_server
+        #     self._s = WHOC_python_server()
 
         # Initialize setpoints to send
         self.setpoints_dict = None
