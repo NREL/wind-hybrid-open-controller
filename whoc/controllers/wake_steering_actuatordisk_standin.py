@@ -5,9 +5,9 @@ from controller_base import ControllerBase
 
 class WakeSteeringADStandin(ControllerBase):
 
-    def __init__(self, input_dict):
+    def __init__(self, interface, input_dict):
 
-        super.__init__(hercules_dict=input_dict)
+        super.__init__(interface, hercules_dict=input_dict)
 
         self.dt = input_dict["dt"] # Won't be needed here, but generally good to have
         self.n_turbines = input_dict["controller"]["num_turbines"]

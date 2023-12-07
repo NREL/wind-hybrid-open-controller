@@ -5,10 +5,10 @@ from controller_base import ControllerBase
 
 class WakeSteeringROSCOStandin(ControllerBase):
 
-    def __init__(self):
+    def __init__(self, interface):
 
         super.__init__(
-            use_zmq_interface=True,
+            interface,
             timeout=100.0,
             verbose=True
         )
