@@ -3,7 +3,7 @@
 from whoc.interfaces.interface_base import InterfaceBase
 
 
-class WHOC_AD_yaw_connection(InterfaceBase):
+class HerculesADYawInterface(InterfaceBase):
 
     def __init__(self, input_dict):
 
