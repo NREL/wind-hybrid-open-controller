@@ -24,10 +24,10 @@ class WHOC_AD_yaw_connection(InterfaceBase):
                                     ["amr_wind"]\
                                     [self.wf_name]\
                                     ["turbine_wind_directions"]
-        wind_speeds = input_dict["hercules_comms"]\
-                                ["amr_wind"]\
-                                [self.wf_name]\
-                                ["turbine_wind_speeds"]
+        # wind_speeds = input_dict["hercules_comms"]\
+        #                         ["amr_wind"]\
+        #                         [self.wf_name]\
+        #                         ["turbine_wind_speeds"]
         powers = input_dict["hercules_comms"]\
                            ["amr_wind"]\
                            [self.wf_name]\
@@ -37,7 +37,7 @@ class WHOC_AD_yaw_connection(InterfaceBase):
         measurements = {
             "time":time,
             "wind_directions":wind_directions,
-            "wind_speeds":wind_speeds,
+            #"wind_speeds":wind_speeds,
             "turbine_powers":powers
         }
 

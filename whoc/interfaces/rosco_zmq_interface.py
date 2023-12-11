@@ -5,7 +5,7 @@ from whoc.interfaces.interface_base import InterfaceBase
 # Code copied from ROSCO; consider just importing and using that code 
 # directly??
 
-class WHOC_zmq_server(InterfaceBase):
+class ROSCO_ZMQInterface(InterfaceBase):
     def __init__(self, network_address="tcp://*:5555", identifier="0",
                  timeout=600.0, verbose=False):
         """Python implementation of the ZeroMQ server side for the ROSCO
