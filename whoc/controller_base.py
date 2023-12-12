@@ -5,8 +5,6 @@ class ControllerBase():
 
     def __init__(self,
         interface,
-        hercules_dict=None,
-        timeout=100.0,
         verbose=True
         ):
 
@@ -39,6 +37,7 @@ class ControllerBase():
 
         # Initialize setpoints to send
         self.setpoints_dict = None
+        self.verbose = verbose
 
     def receive_measurements(self, dict=None):
         # May need to eventually loop here, depending on server set up.
