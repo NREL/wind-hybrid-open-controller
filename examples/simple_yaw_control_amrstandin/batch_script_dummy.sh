@@ -4,8 +4,10 @@
 # A lot of modules and conda stuff
 conda activate hercules
 
+export HELICS_PORT=32000
+
 # Set up the helics broker
-helics_broker -t zmq  -f 2 --loglevel="debug" & 
+helics_broker -t zmq  -f 2 --loglevel="debug" --local_port=$HELICS_PORT & 
 
 # Need to set this to your emu_python folder
 # cd /home/pfleming/emu_python/emu_python
