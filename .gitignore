@@ -7,6 +7,12 @@ data.db
 *.DS_Store
 slices
 
+# Data files
+*.csv
+*.log
+examples/*/logdummy
+examples/*/loghercules
+
 # macOS files
 .DS_Store
 

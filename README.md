@@ -28,3 +28,14 @@ main repo. The pull request will be reviewed by other WHOC developers and
 merged (using "squash and merge") into the `develop` branch. Periodically, 
 the `develop` branch will be merged into the `main` branch and a version 
 number will be assigned.
+
+Unless an existing controller or interface exist to suit your needs, most 
+users will need to generate:
+- A new interface class inheriting from `InterfaceBase`
+- A new controller class, implementing the desired control algorithm and 
+inheriting from `ControllerBase`
+
+Additionally, if you'd like to contribute to this base repository, please 
+include in your pull request:
+- Unit tests for the implemented controller
+- Possibly unit tests for the implemented interface, if needed
