@@ -2,7 +2,7 @@ from abc import abstractmethod
 
 
 class ControllerBase:
-    def __init__(self, interface, hercules_dict=None, timeout=100.0, verbose=True):
+    def __init__(self, interface, verbose=True):
         self._s = interface
         self.verbose = verbose
 
