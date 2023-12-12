@@ -9,6 +9,7 @@ class ControllerBase():
         ):
 
         self._s = interface
+        self.verbose = verbose
 
         # if use_helics_interface:
         #     raise NotImplementedError(
@@ -37,7 +38,6 @@ class ControllerBase():
 
         # Initialize setpoints to send
         self.setpoints_dict = None
-        self.verbose = verbose
 
     def receive_measurements(self, dict=None):
         # May need to eventually loop here, depending on server set up.
