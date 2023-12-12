@@ -1,0 +1,173 @@
+#¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
+#            SIMULATION STOP            #
+#.......................................#
+time.stop_time               =   10800.0     # Max (simulated) time to evolve
+time.max_step                =   -1          # Max number of time steps
+
+#¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
+#         TIME STEP COMPUTATION         #
+#.......................................#
+time.fixed_dt         =   0.5               # Use this constant dt if > 0
+time.cfl              =   0.95               # CFL factor
+
+#¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
+#            INPUT AND OUTPUT           #
+#.......................................#
+time.plot_interval            =  3600        # Steps between plot files
+time.checkpoint_interval      =  3600        # Steps between checkpoint files
+io.restart_file = "/projects/ssc/amr_precursors/b_abl_neutral_lowTI_redo/chk14400"
+
+#¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
+#               PHYSICS                 #
+#.......................................#
+incflo.gravity          =   0.  0. -9.81     # Gravitational force (3D)
+incflo.density             = 1.0             # Reference density 
+
+incflo.use_godunov = 1
+incflo.godunov_type = weno_z
+incflo.diffusion_type = 1
+transport.viscosity = 1.0e-5
+transport.laminar_prandtl = 0.7
+transport.turbulent_prandtl = 0.3333
+turbulence.model = OneEqKsgsM84
+
+incflo.physics = ABL Actuator
+ICNS.source_terms = BoussinesqBuoyancy CoriolisForcing ABLMeanBoussinesq ActuatorForcing
+TKE.source_terms = KsgsM84Src
+BoussinesqBuoyancy.reference_temperature = 300.0
+CoriolisForcing.latitude = 41.3
+ABLForcing.abl_forcing_height = 90
+incflo.velocity = 6.928203230275509 4.0 0.0
+
+
+# Atmospheric boundary layer
+ABL.temperature_heights = 0.0 700.0 800.0 1280.0
+ABL.temperature_values = 300.0 300.0 308.0 309.44
+ABL.reference_temperature = 300.0
+ABL.kappa = .40
+ABL.surface_roughness_z0 = 1.0E-4
+ABL.Uperiods                                = 25.0
+ABL.Vperiods                                = 25.0
+ABL.cutoff_height                           = 50.0
+ABL.deltaU                                  = 1.0
+ABL.deltaV                                  = 1.0
+ABL.normal_direction                        = 2
+ABL.perturb_ref_height                      = 50.0
+ABL.perturb_temperature                     = false
+ABL.perturb_velocity                        = true
+ABL.stats_output_format                     = netcdf
+ABL.stats_output_frequency                  = 1
+ABL.surface_temp_flux                       = 0.00
+ABL.wall_shear_stress_type                  = "Moeng"
+
+ABL.bndry_file = "/projects/ssc/amr_precursors/b_abl_neutral_lowTI_redo/bndry_files"
+ABL.bndry_io_mode = 1 #Input mode
+ABL.bndry_planes = ylo xlo # I'm (Paul) adding this but not sure if I have to
+ABL.bndry_var_names = velocity temperature tke
+
+
+# Output boundary files
+ABL.bndry_planes = ylo xlo
+ABL.bndry_output_start_time = 7200.0
+ABL.bndry_var_names = velocity temperature tke
+ABL.bndry_output_format = native
+ABL.stats_output_frequency = 1                   
+ABL.stats_output_format = netcdf  
+
+# Whether to use helics
+helics.activated        =   true
+helics.broker_port = 32000
+
+#¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
+#        ADAPTIVE MESH REFINEMENT       #
+#.......................................#
+amr.n_cell              = 512 512 128    # Grid cells at coarsest AMRlevel
+amr.max_level           = 0           # Max AMR level in hierarchy 
+
+#¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
+#              GEOMETRY                 #
+#.......................................#
+geometry.prob_lo        =   0.       0.     0.  # Lo corner coordinates
+geometry.prob_hi        =   5120.  5120.  1280.  # Hi corner coordinates
+geometry.is_periodic  =   0 0 0
+xlo.type = "mass_inflow"
+xlo.density = 1.0
+xlo.temperature = 0.0 # value required but ignored
+xlo.tke = 0.0
+xhi.type = "pressure_outflow"
+ 
+ylo.type = "mass_inflow"
+ylo.density = 1.0
+ylo.temperature = 0.0
+ylo.tke = 0.0
+yhi.type = "pressure_outflow"
+
+# Boundary conditions
+zlo.type =   "wall_model"
+zlo.tke_type = "zero_gradient"
+
+zhi.type =   "slip_wall"
+zhi.temperature_type = "fixed_gradient"
+zhi.temperature = 0.003 # tracer is used to specify potential temperature gradient
+
+#¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
+#              VERBOSITY                #
+#.......................................#
+incflo.verbose          =   0          # incflo_level
+
+
+
+#¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
+#              SAMPLING                 #
+#.......................................#
+incflo.post_processing = samplingPlane samplingLine
+
+samplingPlane.output_frequency = 600
+samplingPlane.labels = z_plane
+samplingPlane.fields = velocity temperature
+samplingPlane.z_plane.type = PlaneSampler
+samplingPlane.z_plane.axis1 = 5110 0.0 0.0
+samplingPlane.z_plane.axis2 = 0.0 5110 0.0
+samplingPlane.z_plane.origin = 5.0 5.0 0.0
+samplingPlane.z_plane.num_points = 512 512
+samplingPlane.z_plane.normal = 0.0 0.0 1.0
+samplingPlane.z_plane.offsets = 5.0 85.0 155.0 255.0
+
+
+samplingLine.output_frequency = 1
+samplingLine.labels = z_line
+samplingLine.fields = velocity temperature
+samplingLine.z_line.type = LineSampler
+samplingLine.z_line.num_points = 128
+samplingLine.z_line.start = 5.0 5.0 5.0
+samplingLine.z_line.end = 5.0 5.0 1275.0
+
+#¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
+#              TURBINES                 #
+#.......................................#
+
+# 2.3 MW Turbine inputs
+
+Actuator.labels                            = T00 T01 
+Actuator.type = JoukowskyDisk
+Actuator.JoukowskyDisk.rotor_diameter      = 116.0
+Actuator.JoukowskyDisk.hub_height          = 90.0
+Actuator.JoukowskyDisk.output_frequency    = 10
+Actuator.JoukowskyDisk.diameters_to_sample = 2.5                 
+Actuator.JoukowskyDisk.num_points_r        = 40                  
+Actuator.JoukowskyDisk.num_points_t        = 5                   
+Actuator.JoukowskyDisk.num_blades          = 3                   
+Actuator.JoukowskyDisk.use_tip_correction  = true                
+Actuator.JoukowskyDisk.use_root_correction = true  
+Actuator.JoukowskyDisk.epsilon             = 5.0                 
+Actuator.JoukowskyDisk.vortex_core_size    = 13.0                
+
+Actuator.JoukowskyDisk.wind_speed = 3.0 3.889649963239854 4.684006996752303 5.377830233987229 5.966542092267928 6.44625847394617 6.8138143922059236 7.066784852446481 7.203500851477444 7.22306038896904 7.320786359429763 7.535153078939617 7.864746237154081 8.30739130337076 8.860167873258558 9.519428936578247 10.280824938773394 10.589724312062877 11.13933247768231 12.08928744604103 13.12442240111568 14.237907914913496 15.422397632159566 16.670076738763772 17.972713521001396 19.321713675239476 20.708177009893884 22.122956165519163 23.556716965618207 25.0 
+Actuator.JoukowskyDisk.rpm = 5.500000000399841 5.7503730274604 6.924733009169061 7.950466035772244 8.820804709636782 9.530006866155707 10.073393458373337 10.447379427563192 10.649497356086282 10.678413746477254 10.82288967359941 11.139804720841314 11.627068002870239 12.28146474128283 13.098677474494233 13.141137992834643 13.141137992834643 13.141137992834643 13.141137992834643 13.141137992834643 13.141137992834643 13.141137992834643 13.141137992834643 13.141137992834643 13.141137992834643 13.141137992834643 13.141137992834643 13.141137992834643 13.141137992834643 13.141137992834643 
+Actuator.JoukowskyDisk.thrust_coeff = 0.795419507524108 0.8163759621542088 0.8163759621542089 0.8163759621542088 0.8163759621542088 0.8163759621542093 0.8163759621542093 0.816375962154209 0.8163759621542089 0.816375962154209 0.8163759621542089 0.8163759621542088 0.8163759621542088 0.7816497292837605 0.6881024487256834 0.5960935792514858 0.5110705883010171 0.48169007343985104 0.3992418445397665 0.301726241148816 0.23137184415660814 0.17948146484830918 0.1408250546606467 0.11178366795199553 0.08975645587417404 0.07310080594700819 0.060299514659720915 0.0504505646442757 0.04286514300370846 0.03692885272686376
+   
+
+Actuator.JoukowskyDisk.yaw = 240.0
+
+Actuator.T00.base_position = 2000.0 2000.0 0.0
+Actuator.T01.base_position = 2500.0 2500.0 0.0

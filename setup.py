@@ -93,7 +93,7 @@ except FileNotFoundError:
 
 # Load the package's VERSION module
 ROOT = Path(__file__).parent
-with open(ROOT / "wind-hybrid-open-controller" / "version.py") as version_file:
+with open(ROOT / "whoc" / "version.py") as version_file:
     VERSION = version_file.read().strip()
 
 setup(

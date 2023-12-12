@@ -1,0 +1,66 @@
+# Input YAML for emy_python
+
+# Name
+name: example_000
+
+###
+# Describe this emulator setup
+description: Just a solar plant
+
+dt: 0.5
+
+hercules_comms:
+
+  amr_wind:
+
+    wind_farm_0:
+      type: amr_wind_local #options are amr_wind or amr_wind_local
+      amr_wind_input_file: amr_input.inp
+      yaw_simulator_name: yaw_system_0 # can also use "none" (without quotes)
+
+  helics:
+
+    config:
+        name: hercules # What is the purpose of this name
+        use_dash_frontend: False
+        KAFKA: False
+        KAFKA_topics: EMUV1py
+        helics: 
+            # deltat: 1 # This will be assigned in software
+            subscription_topics: [status]
+            publication_topics: [control]
+            endpoints: []
+            helicsport : 32000
+        publication_interval: 1
+        endpoint_interval: 1
+        starttime: 0
+        stoptime: 100
+        
+        Agent: ControlCenter
+
+py_sims:
+
+  solar_farm_0: # The name of py_sim object 1
+
+    py_sim_type: SimpleSolar
+    capacity: 50 # MW
+    efficiency: 0.5 #Fraction
+
+    initial_conditions:
+
+      power: 25 # MW
+      irradiance: 1000
+
+controller:
+
+  controller_type: SimpleYawController # This may not be needed
+  num_turbines: 2 # Should match AMR-Wind! Ideally, would come from AMR-wind
+  initial_conditions:
+      yaw: 270. # degrees (same for all turbines) (will this work?)
+
+
+
+
+
+
+
