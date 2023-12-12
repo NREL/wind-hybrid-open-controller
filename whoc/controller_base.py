@@ -4,6 +4,7 @@ from abc import abstractmethod
 class ControllerBase:
     def __init__(self, interface, hercules_dict=None, timeout=100.0, verbose=True):
         self._s = interface
+        self.verbose = verbose
 
         # if use_helics_interface:
         #     raise NotImplementedError(
