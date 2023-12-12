@@ -17,7 +17,8 @@ control setpoints (which must be implemented in the children of
 `ControllerBase`); and sending the setpoints back to the plant. Children of 
 `ControllerBase` should inherit `step()` rather than overloading it.
 Additionally, on instantiation, `ControllerBase` expects to receive an 
-instantiated `interface` object (discussed next).
+instantiated `interface` object (discussed next). For information can be 
+found in controllers.md.
 
 The `interface` object handles communications with the plant simulator, 
 allowing WHOC to be used with various simulation platforms (e.g. Hercules, 
@@ -25,3 +26,11 @@ FAST.Farm) while keeping the controllers agnostic to the simulation platform
 and the boilderplate code needed to handle different platforms. `interface` 
 objects should inherit from `InterfaceBase`. More information can be found in 
 interfaces.md.
+
+
+We anticipate that, in future, multiple levels of inheritance may be useful 
+when defining top-level controllers that operate hybrid power plants with 
+various different assets. This situation is shown below, and we intend to 
+support such usage of WHOC.
+
+![](graphics/second-level_attribution_inheritance.png)

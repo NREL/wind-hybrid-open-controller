@@ -1,6 +1,6 @@
 # Interfaces
 
-The `whoc.interfaces` modules contains a library of interfaces for connecting 
+The `whoc.interfaces` module contains a library of interfaces for connecting 
 WHOC with various simulation platforms and other repositories. Each controller
 run will require an `interface`, which is an instantiated object of a class
 in this library. All interface classes should inherit from `InterfaceBase`, 
