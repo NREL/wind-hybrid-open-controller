@@ -5,10 +5,8 @@ from whoc.controller_base import ControllerBase
 
 
 class HerculesWindBatteryController(ControllerBase):
-    def __init__(
-        self, interface, input_dict, hercules_dict=None, timeout=100, verbose=True
-    ):
-        super().__init__(interface, hercules_dict, timeout, verbose)
+    def __init__(self, interface, input_dict, verbose=True):
+        super().__init__(interface, verbose)
 
         self.dt = input_dict["dt"]
         self.n_turbines = input_dict["controller"]["num_turbines"]
