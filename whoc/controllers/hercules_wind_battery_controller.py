@@ -1,6 +1,4 @@
 import numpy as np
-
-
 from whoc.controller_base import ControllerBase
 
 

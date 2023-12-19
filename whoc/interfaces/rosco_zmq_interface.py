@@ -1,13 +1,14 @@
 import zmq
-
 from whoc.interfaces.interface_base import InterfaceBase
 
-# Code copied from ROSCO; consider just importing and using that code 
+# Code copied from ROSCO; consider just importing and using that code
 # directly??
 
+
 class ROSCO_ZMQInterface(InterfaceBase):
-    def __init__(self, network_address="tcp://*:5555", identifier="0",
-                 timeout=600.0, verbose=False):
+    def __init__(
+        self, network_address="tcp://*:5555", identifier="0", timeout=600.0, verbose=False
+    ):
         """Python implementation of the ZeroMQ server side for the ROSCO
         ZeroMQ wind farm control interface. This class makes it easy for
         users to receive measurements from ROSCO and then send back control
@@ -35,9 +36,9 @@ class ROSCO_ZMQInterface(InterfaceBase):
         self._connect()
 
     def _connect(self):
-        '''
+        """
         Connect to zmq server
-        '''
+        """
         address = self.network_address
 
         # Connect socket
@@ -50,17 +51,17 @@ class ROSCO_ZMQInterface(InterfaceBase):
             print("[%s] Successfully established connection with %s" % (self.identifier, address))
 
     def _disconnect(self):
-        '''
+        """
         Disconnect from zmq server
-        '''
+        """
         self.socket.close()
         context = zmq.Context()
         context.term()
 
     def get_measurements(self, _):
-        '''
+        """
         Receive measurements from ROSCO .dll
-        '''
+        """
         if self.verbose:
             print("[%s] Waiting to receive measurements from ROSCO..." % (self.identifier))
 
@@ -72,58 +73,59 @@ class ROSCO_ZMQInterface(InterfaceBase):
             # Receive measurements over network protocol
             message_in = self.socket.recv_string()
         else:
-            raise IOError("[%s] Connection to '%s' timed out."
-                          % (self.identifier, self.network_address))
+            raise IOError(
+                "[%s] Connection to '%s' timed out." % (self.identifier, self.network_address)
+            )
 
         # Convert to individual strings and then to floats
         measurements = message_in
-        measurements = measurements.replace('\x00', '').split(',')
+        measurements = measurements.replace("\x00", "").split(",")
         measurements = [float(m) for m in measurements]
 
         # Convert to a measurement dict
-        measurements = dict({
-            'Turbine_ID': measurements[0],
-            'iStatus': measurements[1],
-            'Time': measurements[2],
-            'VS_MechGenPwr':  measurements[3],
-            'VS_GenPwr': measurements[4],
-            'GenSpeed': measurements[5],
-            'RotSpeed': measurements[6],
-            'GenTqMeas': measurements[7],
-            'NacelleHeading': measurements[8],
-            'NacelleVane': measurements[9],
-            'HorWindV': measurements[10],
-            'rootMOOP1': measurements[11],
-            'rootMOOP2': measurements[12],
-            'rootMOOP3': measurements[13],
-            'FA_Acc': measurements[14],
-            'NacIMU_FA_Acc': measurements[15],
-            'Azimuth': measurements[16],
-        })
+        measurements = dict(
+            {
+                "Turbine_ID": measurements[0],
+                "iStatus": measurements[1],
+                "Time": measurements[2],
+                "VS_MechGenPwr": measurements[3],
+                "VS_GenPwr": measurements[4],
+                "GenSpeed": measurements[5],
+                "RotSpeed": measurements[6],
+                "GenTqMeas": measurements[7],
+                "NacelleHeading": measurements[8],
+                "NacelleVane": measurements[9],
+                "HorWindV": measurements[10],
+                "rootMOOP1": measurements[11],
+                "rootMOOP2": measurements[12],
+                "rootMOOP3": measurements[13],
+                "FA_Acc": measurements[14],
+                "NacIMU_FA_Acc": measurements[15],
+                "Azimuth": measurements[16],
+            }
+        )
 
         if self.verbose:
-            print('[%s] Measurements received:' % self.identifier, measurements)
+            print("[%s] Measurements received:" % self.identifier, measurements)
 
         return measurements
 
     def check_setpoints(self, setpoints_dict):
-         
         available_setpoints = [
             "turbine_ID",
             "genTorque",
             "nacelleHeading",
             "bladePitch",
         ]
-        
+
         for k in setpoints_dict.keys():
             if k not in available_setpoints:
-                raise ValueError(
-                    "Setpoint "+k+" is not available in this configuration"
-                )
+                raise ValueError("Setpoint " + k + " is not available in this configuration")
 
-    def send_setpoints(self, turbine_ID=0, genTorque=0.0, nacelleHeading=0.0,
-                       bladePitch=[0.0, 0.0, 0.0]):
-        '''
+    def send_setpoints(
+        self, turbine_ID=0, genTorque=0.0, nacelleHeading=0.0, bladePitch=[0.0, 0.0, 0.0]
+    ):
+        """
         Send setpoints to ROSCO .dll ffor individual turbine control
 
         Parameters:
@@ -134,11 +136,15 @@ class ROSCO_ZMQInterface(InterfaceBase):
             Nacelle heading setpoint
         bladePitchAngles: List (len=3)
             Blade pitch angle setpoint
-        '''
+        """
         # Create a message with setpoints to send to ROSCO
         message_out = b"%016.5f, %016.5f, %016.5f, %016.5f, %016.5f, %016.5f" % (
-            turbine_ID, genTorque, nacelleHeading,
-            bladePitch[0], bladePitch[1], bladePitch[2]
+            turbine_ID,
+            genTorque,
+            nacelleHeading,
+            bladePitch[0],
+            bladePitch[1],
+            bladePitch[2],
         )
 
         #  Send reply back to client
