@@ -4,9 +4,7 @@ from whoc.interfaces.interface_base import InterfaceBase
 
 
 class HerculesADYawInterface(InterfaceBase):
-
     def __init__(self, input_dict):
-
         super().__init__()
 
         self.dt = input_dict["dt"]
@@ -19,51 +17,36 @@ class HerculesADYawInterface(InterfaceBase):
         pass
 
     def get_measurements(self, input_dict):
-
-        wind_directions = input_dict["hercules_comms"]\
-                                    ["amr_wind"]\
-                                    [self.wf_name]\
-                                    ["turbine_wind_directions"]
+        wind_directions = input_dict["hercules_comms"]["amr_wind"][self.wf_name][
+            "turbine_wind_directions"
+        ]
         # wind_speeds = input_dict["hercules_comms"]\
         #                         ["amr_wind"]\
         #                         [self.wf_name]\
         #                         ["turbine_wind_speeds"]
-        powers = input_dict["hercules_comms"]\
-                           ["amr_wind"]\
-                           [self.wf_name]\
-                           ["turbine_powers"]
+        powers = input_dict["hercules_comms"]["amr_wind"][self.wf_name]["turbine_powers"]
         time = input_dict["time"]
 
         measurements = {
-            "time":time,
-            "wind_directions":wind_directions,
-            #"wind_speeds":wind_speeds,
-            "turbine_powers":powers
+            "time": time,
+            "wind_directions": wind_directions,
+            # "wind_speeds":wind_speeds,
+            "turbine_powers": powers,
         }
 
         return measurements
 
     def check_setpoints(self, setpoints_dict):
-        
-        available_setpoints = [
-            "yaw_angles"
-        ]
-    
+        available_setpoints = ["yaw_angles"]
+
         for k in setpoints_dict.keys():
             if k not in available_setpoints:
-                raise ValueError(
-                    "Setpoint "+k+" is not available in this configuration"
-                )
-    
+                raise ValueError("Setpoint " + k + " is not available in this configuration")
+
     def send_setpoints(self, input_dict, yaw_angles=None):
-
         if yaw_angles is None:
-            yaw_angles = [0.]*self.n_turbines
+            yaw_angles = [0.0] * self.n_turbines
 
-        input_dict["hercules_comms"]\
-                  ["amr_wind"]\
-                  [self.wf_name]\
-                  ["turbine_yaw_angles"] = yaw_angles
+        input_dict["hercules_comms"]["amr_wind"][self.wf_name]["turbine_yaw_angles"] = yaw_angles
 
         return input_dict
-

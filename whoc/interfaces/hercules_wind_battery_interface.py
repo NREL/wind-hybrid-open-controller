@@ -9,9 +9,9 @@ class HerculesWindBatteryInterface(InterfaceBase):
         measurements = {
             "py_sims": {"battery": hercules_dict["py_sims"]["battery_0"]["outputs"]},
             "wind_farm": {
-                "turbine_powers": hercules_dict["hercules_comms"]["amr_wind"][
-                    "wind_farm_0"
-                ]["turbine_powers"],
+                "turbine_powers": hercules_dict["hercules_comms"]["amr_wind"]["wind_farm_0"][
+                    "turbine_powers"
+                ],
                 "turbine_wind_directions": hercules_dict["hercules_comms"]["amr_wind"][
                     "wind_farm_0"
                 ]["turbine_wind_directions"],

@@ -7,6 +7,7 @@ from whoc.interfaces._temp_server import sim_rosco
 NOTE: this is not yet working.
 """
 
+
 def run_zmq():
     connect_zmq = True
     s = turbine_zmq_server(network_address="tcp://*:5555", timeout=10.0, verbose=True)
@@ -15,7 +16,7 @@ def run_zmq():
         measurements = s.get_measurements()
 
         # Decide new control input based on measurements
-        current_time = measurements['Time']
+        current_time = measurements["Time"]
         if current_time <= 10.0:
             yaw_setpoint = 0.0
         else:
@@ -24,9 +25,10 @@ def run_zmq():
             # Send new setpoints back to ROSCO
         s.send_setpoints(nacelleHeading=yaw_setpoint)
 
-        if measurements['iStatus'] == -1:
+        if measurements["iStatus"] == -1:
             connect_zmq = False
             s._disconnect()
+
 
 if __name__ == "__main__":
     p1 = mp.Process(target=run_zmq)
