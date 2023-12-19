@@ -1,15 +1,10 @@
+import sys
+
 from hercules.emulator import Emulator
 from hercules.py_sims import PySims
 from hercules.utilities import load_yaml
-
-from whoc.interfaces.hercules_actuator_disk_yaw_interface import \
-    HerculesADYawInterface
-from whoc.controllers.wake_steering_actuatordisk_standin import \
-    WakeSteeringADStandin
-
-import sys
-
-
+from whoc.controllers.wake_steering_actuatordisk_standin import WakeSteeringADStandin
+from whoc.interfaces.hercules_actuator_disk_yaw_interface import HerculesADYawInterface
 
 input_dict = load_yaml(sys.argv[1])
 

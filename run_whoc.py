@@ -1,5 +1,12 @@
 import multiprocessing as mp
 
+from ROSCO_toolbox.control_interface import turbine_zmq_server
+from whoc.interfaces._temp_server import sim_rosco
+
+"""
+NOTE: this is not yet working.
+"""
+
 def run_zmq():
     connect_zmq = True
     s = turbine_zmq_server(network_address="tcp://*:5555", timeout=10.0, verbose=True)

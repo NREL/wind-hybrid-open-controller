@@ -1,5 +1,6 @@
 from whoc.controller_base import ControllerBase
 
+
 class WakeSteeringADStandin(ControllerBase):
 
     def __init__(self, interface, input_dict):

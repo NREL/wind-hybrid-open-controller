@@ -1,5 +1,4 @@
 import zmq
-
 from whoc.interfaces.interface_base import InterfaceBase
 
 # Code copied from ROSCO; consider just importing and using that code 

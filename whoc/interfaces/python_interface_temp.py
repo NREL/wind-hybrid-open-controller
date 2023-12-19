@@ -20,5 +20,5 @@ class WHOC_python_server(InterfaceBase):
         # Not sure if anything needs to be done here. Can possibly return None.
         setpoints = dict
 
-        return dict
+        return setpoints
 

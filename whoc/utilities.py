@@ -1,5 +1,5 @@
-import numpy as np
 from floris.utilities import wrap_180
+
 
 def convert_absolute_nacelle_heading_to_offset(target_nac_heading, current_nac_heading):
 

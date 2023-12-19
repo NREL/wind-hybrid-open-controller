@@ -1,8 +1,7 @@
-import numpy as np
 import matplotlib.pyplot as plt
-
-from whoc.interfaces.hercules_actuator_disk_yaw_interface import HerculesADYawInterface
+import numpy as np
 from whoc.controllers.wake_steering_actuatordisk_standin import WakeSteeringADStandin
+from whoc.interfaces.hercules_actuator_disk_yaw_interface import HerculesADYawInterface
 
 demo_hercules_dict = {
     "dt":1.0,
