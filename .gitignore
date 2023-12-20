@@ -20,5 +20,6 @@ examples/*/loghercules
 .idea
 .vscode
 
-
+# Outputs
+*echo
 
