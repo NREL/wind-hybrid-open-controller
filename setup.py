@@ -26,7 +26,7 @@ from pathlib import Path
 from setuptools import find_packages, setup
 
 # Package meta-data.
-NAME = "whoc"
+NAME = "wind-hybrid-open-controller"
 DESCRIPTION = "Wind Hybrid Open Controller."
 URL = "https://github.com/NREL/wind-hybrid-open-controller"
 EMAIL = "michael.sinner@nrel.gov"
@@ -101,7 +101,7 @@ setup(
     python_requires=REQUIRES_PYTHON,
     url=URL,
     # package_dir={"": "hercules"},
-    packages=find_packages(exclude=["tests", "*.tests", "*.tests.*", "tests.*"]),
+    packages=["whoc"], #find_packages(exclude=["tests", "*.tests", "*.tests.*", "tests.*"]),
     # If your package is a single module, use this instead of 'packages':
     # py_modules=['mypackage'],
     # entry_points={
