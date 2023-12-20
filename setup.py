@@ -23,7 +23,7 @@ import io
 import os
 from pathlib import Path
 
-from setuptools import find_packages, setup
+from setuptools import setup
 
 # Package meta-data.
 NAME = "whoc"
@@ -101,7 +101,7 @@ setup(
     python_requires=REQUIRES_PYTHON,
     url=URL,
     # package_dir={"": "hercules"},
-    packages=["whoc"], #find_packages(exclude=["tests", "*.tests", "*.tests.*", "tests.*"]),
+    packages=["whoc"],  # find_packages(exclude=["tests", "*.tests", "*.tests.*", "tests.*"]),
     # If your package is a single module, use this instead of 'packages':
     # py_modules=['mypackage'],
     # entry_points={
