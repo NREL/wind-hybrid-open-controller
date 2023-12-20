@@ -10,7 +10,7 @@ slices
 # Data files
 *.csv
 *.log
-examples/*/logdummy
+examples/*/logstandin
 examples/*/loghercules
 
 # macOS files
