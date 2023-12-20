@@ -52,7 +52,7 @@ const thebe_selector_output = ".output, .cell_output"
     <script async="async" src="_static/sphinx-thebe.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Controllers" href="controllers.html" />
+    <link rel="next" title="Code development" href="code_development.html" />
     <link rel="prev" title="Wind Hybrid Open Controller (WHOC)" href="intro.html" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="docsearch:language" content="python">
@@ -118,13 +118,18 @@ const thebe_selector_output = ".output, .cell_output"
         </ul>
         <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
-  Installation
+  General information
  </span>
 </p>
 <ul class="current nav bd-sidenav">
  <li class="toctree-l1 current active">
   <a class="current reference internal" href="#">
    Installation
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="code_development.html">
+   Code development
   </a>
  </li>
 </ul>
@@ -323,12 +328,41 @@ title="Print to PDF"
     </ul>
   </div>
 </div>
+<label for="__page-toc"
+  class="headerbtn headerbtn-page-toc"
+  
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-list"></i>
+  </span>
+
+</label>
 
     </div>
 </div>
 
 <!-- Table of contents -->
 <div class="col-md-3 bd-toc show noprint">
+    <div class="tocsection onthispage pt-5 pb-3">
+        <i class="fas fa-list"></i> Contents
+    </div>
+    <nav id="bd-toc-nav" aria-label="Page">
+        <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#general-users">
+   General users
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#developers">
+   Developers
+  </a>
+ </li>
+</ul>
+
+    </nav>
 </div>
     </div>
     <div class="article row">
@@ -340,6 +374,24 @@ title="Print to PDF"
                 <div id="print-main-content">
                     <div id="jb-print-toc">
                         
+                        <div>
+                            <h2> Contents </h2>
+                        </div>
+                        <nav aria-label="Page">
+                            <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#general-users">
+   General users
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#developers">
+   Developers
+  </a>
+ </li>
+</ul>
+
+                        </nav>
                     </div>
                 </div>
             </div>
@@ -349,10 +401,46 @@ title="Print to PDF"
                 
   <section class="tex2jax_ignore mathjax_ignore" id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">#</a></h1>
+<p>WHOC is <em>not</em> designed to be used as a stand-alone package. Most likely,
+you'll want to add WHOC to an existing conda environment that contains your
+simulation testbed, such as <a class="reference external" href="https://github.com/NREL/hercules">Hercules</a>.
+For example, see the <span class="xref myst">Hercules installation instuctions</span> for how to set up
+an appropriate conda environment.</p>
+<section id="general-users">
+<h2>General users<a class="headerlink" href="#general-users" title="Permalink to this headline">#</a></h2>
+<p>If you intend to use WHOC, but not contribute, the following lines should
+be sufficient to install WHOC (presumably, after activating your conda
+environment):</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">NREL</span><span class="o">/</span><span class="n">wind</span><span class="o">-</span><span class="n">hybrid</span><span class="o">-</span><span class="nb">open</span><span class="o">-</span><span class="n">controller</span>
-<span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">e</span> <span class="n">wind</span><span class="o">-</span><span class="n">hybrid</span><span class="o">-</span><span class="nb">open</span><span class="o">-</span><span class="n">controller</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="n">wind</span><span class="o">-</span><span class="n">hybrid</span><span class="o">-</span><span class="nb">open</span><span class="o">-</span><span class="n">controller</span><span class="o">/</span>
 </pre></div>
 </div>
+</section>
+<section id="developers">
+<h2>Developers<a class="headerlink" href="#developers" title="Permalink to this headline">#</a></h2>
+<p>If you intend to contribute to WHOC, we request that your fork the WHOC
+repository on github. You can then install WHOC (again, assuming you have
+already activated your conda environment) according to:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">your</span><span class="o">-</span><span class="n">github</span><span class="o">-</span><span class="nb">id</span><span class="o">/</span><span class="n">wind</span><span class="o">-</span><span class="n">hybrid</span><span class="o">-</span><span class="nb">open</span><span class="o">-</span><span class="n">controller</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">e</span> <span class="n">wind</span><span class="o">-</span><span class="n">hybrid</span><span class="o">-</span><span class="nb">open</span><span class="o">-</span><span class="n">controller</span><span class="o">/</span>
+</pre></div>
+</div>
+<p>To contribute back to the base repository
+<a class="reference external" href="https://github.com/NREL/wind-hybrid-open-controller">https://github.com/NREL/wind-hybrid-open-controller</a>, please do the following:</p>
+<ul class="simple">
+<li><p>Create a branch from the base repository's <code class="docutils literal notranslate"><span class="pre">develop</span></code> branch on your fork
+containing your code changes (e.g. <code class="docutils literal notranslate"><span class="pre">your-github-id:feature/your-new-feature</span></code>)</p></li>
+<li><p>Open a pull request into the base repository's <code class="docutils literal notranslate"><span class="pre">NREL:develop</span></code> branch, and provide
+a description of the new/updated capabilities</p></li>
+<li><p>The maintainers will review your pull request and provide feedback before
+possibly merging the pull request (via the &quot;squash and merge&quot; method) into the
+<code class="docutils literal notranslate"><span class="pre">NREL:develop</span></code> branch</p></li>
+<li><p>At the next release, <code class="docutils literal notranslate"><span class="pre">NREL:develop</span></code> will be merged into <code class="docutils literal notranslate"><span class="pre">NREL:main</span></code>, and your changes
+contributions will appear there</p></li>
+</ul>
+<p>For more information on what your pull request should contain, see
+<a class="reference internal" href="code_development.html"><span class="doc std std-doc">Code development</span></a>.</p>
+</section>
 </section>
 
     <script type="text/x-thebe-config">
@@ -389,10 +477,10 @@ title="Print to PDF"
             <p class="prev-next-title">Wind Hybrid Open Controller (WHOC)</p>
         </div>
     </a>
-    <a class='right-next' id="next-link" href="controllers.html" title="next page">
+    <a class='right-next' id="next-link" href="code_development.html" title="next page">
     <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Controllers</p>
+        <p class="prev-next-title">Code development</p>
     </div>
     <i class="fas fa-angle-right"></i>
     </a>
