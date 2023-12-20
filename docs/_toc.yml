@@ -4,9 +4,10 @@
 format: jb-book
 root: intro
 parts:
-  - caption: Installation
+  - caption: General information
     chapters:
     - file: install_instructions
+    - file: code_development
   - caption: Controllers
     chapters:
     - file: controllers
