@@ -7,10 +7,10 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: False
       matrix:
         python-version: ["3.9", "3.10", "3.11"]
         os: [ubuntu-latest]
+      fail-fast: False
 
     steps:
     - uses: actions/checkout@v3
