@@ -4,8 +4,9 @@
 <html lang="python">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Index &#8212; Wind Hybrid Open Controller</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Controllers &#8212; Wind Hybrid Open Controller</title>
     
   <!-- Loaded before other Sphinx assets -->
   <link href="_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
@@ -49,9 +50,7 @@ const thebe_selector_input = "pre"
 const thebe_selector_output = ".output, .cell_output"
 </script>
     <script async="async" src="_static/sphinx-thebe.js"></script>
-    <script src="https://unpkg.com/mermaid@10.2.0/dist/mermaid.min.js"></script>
-    <script>mermaid.initialize({startOnLoad:true});</script>
-    <link rel="index" title="Index" href="#" />
+    <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="docsearch:language" content="python">
@@ -204,7 +203,7 @@ title="Source repository"
       </li>
       
       <li>
-        <a href="https://github.com/NREL/wind-hybrid-open-controller/issues/new?title=Issue%20on%20page%20%2Fgenindex.html&body=Your%20issue%20content%20here."
+        <a href="https://github.com/NREL/wind-hybrid-open-controller/issues/new?title=Issue%20on%20page%20%2Fcontrollers.html&body=Your%20issue%20content%20here."
    class="headerbtn"
    data-toggle="tooltip"
 data-placement="left"
@@ -220,26 +219,150 @@ title="Open an issue"
 
       </li>
       
+      <li>
+        <a href="https://github.com/NREL/wind-hybrid-open-controller/edit/main/docs/controllers.md"
+   class="headerbtn"
+   data-toggle="tooltip"
+data-placement="left"
+title="Edit this page"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-pencil-alt"></i>
+  </span>
+<span class="headerbtn__text-container">suggest edit</span>
+</a>
+
+      </li>
+      
     </ul>
   </div>
 </div>
+
+<div class="menu-dropdown menu-dropdown-download-buttons">
+  <button class="headerbtn menu-dropdown__trigger"
+      aria-label="Download this page">
+      <i class="fas fa-download"></i>
+  </button>
+  <div class="menu-dropdown__content">
+    <ul>
+      <li>
+        <a href="_sources/controllers.md"
+   class="headerbtn"
+   data-toggle="tooltip"
+data-placement="left"
+title="Download source file"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="headerbtn__text-container">.md</span>
+</a>
+
+      </li>
+      
+      <li>
+        
+<button onclick="printPdf(this)"
+  class="headerbtn"
+  data-toggle="tooltip"
+data-placement="left"
+title="Print to PDF"
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="headerbtn__text-container">.pdf</span>
+</button>
+
+      </li>
+      
+    </ul>
+  </div>
+</div>
+<label for="__page-toc"
+  class="headerbtn headerbtn-page-toc"
+  
+>
+  
+
+<span class="headerbtn__icon-container">
+  <i class="fas fa-list"></i>
+  </span>
+
+</label>
 
     </div>
 </div>
 
 <!-- Table of contents -->
 <div class="col-md-3 bd-toc show noprint">
+    <div class="tocsection onthispage pt-5 pb-3">
+        <i class="fas fa-list"></i> Contents
+    </div>
+    <nav id="bd-toc-nav" aria-label="Page">
+        <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#available-controllers">
+   Available controllers
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#wakesteeringadstandin">
+     WakeSteeringADStandin
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#wakesteeringroscostandin">
+     WakeSteeringROSCOStandin
+    </a>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+    </nav>
 </div>
     </div>
     <div class="article row">
         <div class="col pl-md-3 pl-lg-5 content-container">
             <!-- Table of contents that is only displayed when printing the page -->
             <div id="jb-print-docs-body" class="onlyprint">
-                <h1></h1>
+                <h1>Controllers</h1>
                 <!-- Table of contents -->
                 <div id="print-main-content">
                     <div id="jb-print-toc">
                         
+                        <div>
+                            <h2> Contents </h2>
+                        </div>
+                        <nav aria-label="Page">
+                            <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#available-controllers">
+   Available controllers
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#wakesteeringadstandin">
+     WakeSteeringADStandin
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#wakesteeringroscostandin">
+     WakeSteeringROSCOStandin
+    </a>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+                        </nav>
                     </div>
                 </div>
             </div>
@@ -247,13 +370,48 @@ title="Open an issue"
                 
               <div>
                 
+  <section class="tex2jax_ignore mathjax_ignore" id="controllers">
+<h1>Controllers<a class="headerlink" href="#controllers" title="Permalink to this headline">#</a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">whoc.controllers</span></code> module contains a library of wind and hybrid power plant
+controllers. Each controller must inherit from <code class="docutils literal notranslate"><span class="pre">ControllerBase</span></code> (see
+controller_base.py) and implement a
+mandatory <code class="docutils literal notranslate"><span class="pre">compute_setpoints()</span></code> method, which contains the relevant control
+algorithm and writes final control signals to the <code class="docutils literal notranslate"><span class="pre">setpoints_dict</span></code> attribute
+as key-value pairs. <code class="docutils literal notranslate"><span class="pre">compute_setpoints()</span></code> is, in turn, called in the <code class="docutils literal notranslate"><span class="pre">step()</span></code>
+method of <code class="docutils literal notranslate"><span class="pre">ControllerBase</span></code>.</p>
+<section id="available-controllers">
+<h2>Available controllers<a class="headerlink" href="#available-controllers" title="Permalink to this headline">#</a></h2>
+<section id="wakesteeringadstandin">
+<h3>WakeSteeringADStandin<a class="headerlink" href="#wakesteeringadstandin" title="Permalink to this headline">#</a></h3>
+<p>For yaw controller of actuator disk-type turbines (as a stand-in, will be
+updated).</p>
+</section>
+<section id="wakesteeringroscostandin">
+<h3>WakeSteeringROSCOStandin<a class="headerlink" href="#wakesteeringroscostandin" title="Permalink to this headline">#</a></h3>
+<p>May be combined into a universal simple wake steering controller.</p>
+</section>
+</section>
+</section>
 
-<h1 id="index">Index</h1>
-
-<div class="genindex-jumpbox">
- 
-</div>
-
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "binder-examples/jupyter-stacks-datascience",
+            ref: "master",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            name: "python3",
+            path: "./."
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
 
               </div>
               

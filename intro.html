@@ -58,12 +58,12 @@ const thebe_selector_output = ".output, .cell_output"
 
     <!-- Google Analytics -->
     
-<script async="" src="https://www.googletagmanager.com/gtag/js?id=G-3V1BDK8KEJ"></script>
+<script async="" src="https://www.googletagmanager.com/gtag/js?id=G-BJZY823DHG"></script>
 <script>
                     window.dataLayer = window.dataLayer || [];
                     function gtag(){ dataLayer.push(arguments); }
                     gtag('js', new Date());
-                    gtag('config', 'G-3V1BDK8KEJ');
+                    gtag('config', 'G-BJZY823DHG');
                 </script>
 
   </head>
@@ -311,9 +311,34 @@ title="Print to PDF"
                 
   <section class="tex2jax_ignore mathjax_ignore" id="wind-hybrid-open-controller-whoc">
 <h1>Wind Hybrid Open Controller (WHOC)<a class="headerlink" href="#wind-hybrid-open-controller-whoc" title="Permalink to this headline">#</a></h1>
-<p>Wind Hybrid Open Controller</p>
-<p>Online documentation for Wind Hybrid Open Controller</p>
-<p>More info</p>
+<p>The Wind Hybrid Open Controller (WHOC) is a python-based tool for real-time
+plant-level wind farm control and wind-based hybrid plant control.
+WHOC will primarily be run in simulation, although we intend that it could be
+used for physical plants in future.</p>
+<p>The graphic below demonstrates the organization of the WHOC repository and
+the controller objects that it contains.
+<img alt="" src="_images/main_attribution_inheritance.png" /></p>
+<p><code class="docutils literal notranslate"><span class="pre">ControllerBase</span></code> is the core underlying class, which newly implemented
+controllers should inherit from. Inheritance is shown using arrows in the
+diagram above. The key method of <code class="docutils literal notranslate"><span class="pre">ControllerBase</span></code> is the <code class="docutils literal notranslate"><span class="pre">step()</span></code> method,
+which progresses the controller by receiving plant measurements; computing
+control setpoints (which must be implemented in the children of
+<code class="docutils literal notranslate"><span class="pre">ControllerBase</span></code>); and sending the setpoints back to the plant. Children of
+<code class="docutils literal notranslate"><span class="pre">ControllerBase</span></code> should inherit <code class="docutils literal notranslate"><span class="pre">step()</span></code> rather than overloading it.
+Additionally, on instantiation, <code class="docutils literal notranslate"><span class="pre">ControllerBase</span></code> expects to receive an
+instantiated <code class="docutils literal notranslate"><span class="pre">interface</span></code> object (discussed next). For information can be
+found in <a class="reference external" href="http://controllers.md">controllers.md</a>.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">interface</span></code> object handles communications with the plant simulator,
+allowing WHOC to be used with various simulation platforms (e.g. Hercules,
+FAST.Farm) while keeping the controllers agnostic to the simulation platform
+and the boilderplate code needed to handle different platforms. <code class="docutils literal notranslate"><span class="pre">interface</span></code>
+objects should inherit from <code class="docutils literal notranslate"><span class="pre">InterfaceBase</span></code>. More information can be found in
+<a class="reference external" href="http://interfaces.md">interfaces.md</a>.</p>
+<p>We anticipate that, in future, multiple levels of inheritance may be useful
+when defining top-level controllers that operate hybrid power plants with
+various different assets. This situation is shown below, and we intend to
+support such usage of WHOC.</p>
+<p><img alt="" src="_images/second-level_attribution_inheritance.png" /></p>
 </section>
 
     <script type="text/x-thebe-config">
