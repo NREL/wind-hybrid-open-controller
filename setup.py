@@ -26,7 +26,7 @@ from pathlib import Path
 from setuptools import find_packages, setup
 
 # Package meta-data.
-NAME = "wind-hybrid-open-controller"
+NAME = "whoc"
 DESCRIPTION = "Wind Hybrid Open Controller."
 URL = "https://github.com/NREL/wind-hybrid-open-controller"
 EMAIL = "michael.sinner@nrel.gov"
