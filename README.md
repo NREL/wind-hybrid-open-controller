@@ -19,6 +19,9 @@ controllers, including:
 WHOC controllers will also call on design tools such as
 [FLORIS](https://github.com/NREL/floris).
 
+Documentation for WHOC can be found on 
+[nrel.github.io](https://nrel.github.io/wind-hybrid-open-controller/intro.html)
+
 ## Code development
 To contribute to WHOC, please consider forking the main github repository,
 with the [main repo](https://github.com/NREL/wind-hybrid-open-controller) as an 
