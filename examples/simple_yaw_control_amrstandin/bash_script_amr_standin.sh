@@ -14,7 +14,7 @@ helics_broker -t zmq  -f 2 --loglevel="debug" --local_port=$HELICS_PORT &
 python hercules_runscript.py hercules_input_shortsim.yaml >> loghercules 2>&1 & # Start the controller center and pass in input file
 
 
-python hercules_runscript_dummy_amr.py amr_input.inp >> logdummy 2>&1
+python3 hercules_runscript_amr_standin.py amr_input.inp >> logstandin 2>&1
 # Now go back to scratch folder and launch the job
 
 # cd /scratch/pfleming/c2c/example_sim_02
