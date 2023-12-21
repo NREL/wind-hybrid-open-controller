@@ -45,8 +45,8 @@ class ControllerBase:
         #     from servers.python_server import WHOC_python_server
         #     self._s = WHOC_python_server()
 
-        # Initialize setpoints to send
-        self.setpoints_dict = None
+        # Initialize controls to send
+        self.controls_dict = None
 
     def receive_measurements(self, dict=None):
         # May need to eventually loop here, depending on server set up.
@@ -55,8 +55,8 @@ class ControllerBase:
         return None
 
     def send_controls(self, dict=None):
-        self._s.check_controls(self.setpoints_dict)
-        dict = self._s.send_controls(dict, **self.setpoints_dict)
+        self._s.check_controls(self.controls_dict)
+        dict = self._s.send_controls(dict, **self.controls_dict)
 
         return dict  # or main_dict, or what?
 

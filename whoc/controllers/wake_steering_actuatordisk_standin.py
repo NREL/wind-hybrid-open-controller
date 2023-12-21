@@ -27,14 +27,14 @@ class WakeSteeringADStandin(ControllerBase):
         yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
         if hasattr(yaw_IC, "__len__"):
             if len(yaw_IC) == self.n_turbines:
-                self.setpoints_dict = {"yaw_angles": yaw_IC}
+                self.controls_dict = {"yaw_angles": yaw_IC}
             else:
                 raise TypeError(
                     "yaw initial condition should be a float or "
                     + "a list of floats of length num_turbines."
                 )
         else:
-            self.setpoints_dict = {"yaw_angles": [yaw_IC] * self.n_turbines}
+            self.controls_dict = {"yaw_angles": [yaw_IC] * self.n_turbines}
 
         # Grab name of wind farm (assumes there is only one!)
 
@@ -50,7 +50,7 @@ class WakeSteeringADStandin(ControllerBase):
         else:
             yaw_setpoint = self.measurements_dict["wind_directions"]
 
-        self.setpoints_dict = {"yaw_angles": yaw_setpoint}
+        self.controls_dict = {"yaw_angles": yaw_setpoint}
 
         return None
 

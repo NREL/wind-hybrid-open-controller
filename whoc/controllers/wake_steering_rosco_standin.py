@@ -33,7 +33,7 @@ class WakeSteeringROSCOStandin(ControllerBase):
         else:
             yaw_setpoint = 20.0
 
-        self.setpoints_dict = {
+        self.controls_dict = {
             "turbine_ID": 0,  # TODO: hardcoded! Replace.
             "genTorque": 0.0,
             "nacelleHeading": yaw_setpoint,

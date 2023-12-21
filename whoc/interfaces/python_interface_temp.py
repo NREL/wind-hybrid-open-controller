@@ -27,6 +27,6 @@ class WHOC_python_server(InterfaceBase):
 
     def send_controls(self, dict):
         # Not sure if anything needs to be done here. Can possibly return None.
-        setpoints = dict
+        controls = dict
 
-        return setpoints
+        return controls

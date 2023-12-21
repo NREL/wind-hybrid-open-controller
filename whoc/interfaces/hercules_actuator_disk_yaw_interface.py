@@ -50,11 +50,11 @@ class HerculesADYawInterface(InterfaceBase):
 
         return measurements
 
-    def check_controls(self, setpoints_dict):
-        available_setpoints = ["yaw_angles"]
+    def check_controls(self, controls_dict):
+        available_controls = ["yaw_angles"]
 
-        for k in setpoints_dict.keys():
-            if k not in available_setpoints:
+        for k in controls_dict.keys():
+            if k not in available_controls:
                 raise ValueError("Setpoint " + k + " is not available in this configuration")
 
     def send_controls(self, input_dict, yaw_angles=None):
