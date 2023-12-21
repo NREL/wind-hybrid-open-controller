@@ -12,10 +12,10 @@
 
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 
 
-class ControllerBase:
+class ControllerBase(metaclass=ABCMeta):
     def __init__(self, interface, verbose=True):
         self._s = interface
         self.verbose = verbose
@@ -48,13 +48,13 @@ class ControllerBase:
         # Initialize controls to send
         self.controls_dict = None
 
-    def receive_measurements(self, dict=None):
+    def _receive_measurements(self, dict=None):
         # May need to eventually loop here, depending on server set up.
         self.measurements_dict = self._s.get_measurements(dict)
 
         return None
 
-    def send_controls(self, dict=None):
+    def _send_controls(self, dict=None):
         self._s.check_controls(self.controls_dict)
         dict = self._s.send_controls(dict, **self.controls_dict)
 
@@ -63,11 +63,11 @@ class ControllerBase:
     def step(self, hercules_dict=None):
         # If not running with direct hercules integration,
         # hercules_dict may simply be None throughout this method.
-        self.receive_measurements(hercules_dict)
+        self._receive_measurements(hercules_dict)
 
         self.compute_controls()
 
-        hercules_dict = self.send_controls(hercules_dict)
+        hercules_dict = self._send_controls(hercules_dict)
 
         return hercules_dict  # May simply be None.
 
