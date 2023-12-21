@@ -18,28 +18,28 @@ from whoc.interfaces.interface_base import InterfaceBase
 
 
 class HerculesADYawInterface(InterfaceBase):
-    def __init__(self, input_dict):
+    def __init__(self, hercules_dict):
         super().__init__()
 
-        self.dt = input_dict["dt"]
-        self.n_turbines = input_dict["controller"]["num_turbines"]
+        self.dt = hercules_dict["dt"]
+        self.n_turbines = hercules_dict["controller"]["num_turbines"]
         self.turbines = range(self.n_turbines)
 
         # Grab name of wind farm (assumes there is only one!)
-        self.wf_name = list(input_dict["hercules_comms"]["amr_wind"].keys())[0]
+        self.wf_name = list(hercules_dict["hercules_comms"]["amr_wind"].keys())[0]
 
         pass
 
-    def get_measurements(self, input_dict):
-        wind_directions = input_dict["hercules_comms"]["amr_wind"][self.wf_name][
+    def get_measurements(self, hercules_dict):
+        wind_directions = hercules_dict["hercules_comms"]["amr_wind"][self.wf_name][
             "turbine_wind_directions"
         ]
         # wind_speeds = input_dict["hercules_comms"]\
         #                         ["amr_wind"]\
         #                         [self.wf_name]\
         #                         ["turbine_wind_speeds"]
-        powers = input_dict["hercules_comms"]["amr_wind"][self.wf_name]["turbine_powers"]
-        time = input_dict["time"]
+        powers = hercules_dict["hercules_comms"]["amr_wind"][self.wf_name]["turbine_powers"]
+        time = hercules_dict["time"]
 
         measurements = {
             "time": time,
@@ -50,17 +50,21 @@ class HerculesADYawInterface(InterfaceBase):
 
         return measurements
 
-    def check_setpoints(self, setpoints_dict):
-        available_setpoints = ["yaw_angles"]
+    def check_controls(self, controls_dict):
+        available_controls = ["yaw_angles"]
 
-        for k in setpoints_dict.keys():
-            if k not in available_setpoints:
-                raise ValueError("Setpoint " + k + " is not available in this configuration")
+        for k in controls_dict.keys():
+            if k not in available_controls:
+                raise ValueError("Setpoint " + k + " is not available in this configuration.")
+            if len(controls_dict[k]) != self.n_turbines:
+                raise ValueError(
+                    "Length of setpoint " + k + " does not match the number of turbines."
+                )
 
-    def send_setpoints(self, input_dict, yaw_angles=None):
+    def send_controls(self, hercules_dict, yaw_angles=None):
         if yaw_angles is None:
             yaw_angles = [0.0] * self.n_turbines
 
-        input_dict["hercules_comms"]["amr_wind"][self.wf_name]["turbine_yaw_angles"] = yaw_angles
+        hercules_dict["hercules_comms"]["amr_wind"][self.wf_name]["turbine_yaw_angles"] = yaw_angles
 
-        return input_dict
+        return hercules_dict

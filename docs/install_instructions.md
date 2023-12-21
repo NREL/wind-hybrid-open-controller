@@ -26,7 +26,7 @@ already activated your conda environment) according to:
 
 ```
 git clone https://github.com/your-github-id/wind-hybrid-open-controller
-pip install -e wind-hybrid-open-controller/
+pip install -e "wind-hybrid-open-controller/[develop]"
 ```
 To contribute back to the base repository 
 https://github.com/NREL/wind-hybrid-open-controller, please do the following:

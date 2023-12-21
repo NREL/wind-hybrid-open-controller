@@ -9,13 +9,13 @@ which can be found n interface_base.py, and should implement three methods:
 organize into a dictionary that the calling controller can utilize. Optionally,
 receives a large dictionary (for example, the Hercules `main_dict`), from which
 useable measurements can be extracted/repackaged for easy use in the controller.
-- `check_setpoints()`: Check that the keys in `setpoints_dict` are viable for 
+- `check_controls()`: Check that the keys in `controls_dict` are viable for 
 the receiving plant.
-- `send_setpoints()`: Send setpoints to the simulation assets. Setpoints are 
-created as specific keyword arguements, which match those setpoints generated
+- `send_controls()`: Send controls to the simulation assets. Controls are 
+created as specific keyword arguements, which match those controls generated
 by the calling controller. Optionally, receives a large dictionary 
 (for example, the Hercules `main_dict`), which can be written to and returned
-with setpoints as needed.
+with controls as needed.
 
 These methods will all be called in the `step()` method of `ControllerBase`.
 

@@ -12,18 +12,18 @@
 
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 
 
-class InterfaceBase:
+class InterfaceBase(metaclass=ABCMeta):
     @abstractmethod
     def get_measurements(self):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
-    def check_setpoints(self):
-        pass
+    def check_controls(self):
+        raise NotImplementedError
 
     @abstractmethod
-    def send_setpoints(self):
-        pass
+    def send_controls(self):
+        raise NotImplementedError

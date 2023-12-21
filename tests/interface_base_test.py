@@ -12,14 +12,25 @@
 
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
+# import inspect
 import pytest
-from whoc.controllers.controller_base import ControllerBase
 from whoc.interfaces.interface_base import InterfaceBase
 
+# import whoc.interfaces
 
-class StandinInterface(InterfaceBase):
+
+class InheritanceTestClassBad(InterfaceBase):
     """
-    Empty class to test controllers.
+    Class that is missing necessary methods.
+    """
+
+    def __init__(self):
+        super().__init__()
+
+
+class InheritanceTestClassGood(InterfaceBase):
+    """
+    Class that is missing necessary methods.
     """
 
     def __init__(self):
@@ -35,47 +46,32 @@ class StandinInterface(InterfaceBase):
         pass
 
 
-class InheritanceTestClassBad(ControllerBase):
-    """
-    Class that is missing necessary methods.
-    """
-
-    def __init__(self, interface):
-        super().__init__(interface)
-
-
-class InheritanceTestClassGood(ControllerBase):
-    """
-    Class that is missing necessary methods.
-    """
-
-    def __init__(self, interface):
-        super().__init__(interface)
-
-    def compute_controls(self):
-        pass
-
-
-def test_ControllerBase_methods():
+def test_InterfaceBase_methods():
     """
     Check that the base interface class establishes the correct methods.
     """
-    test_interface = StandinInterface()
-
-    controller_base = InheritanceTestClassGood(test_interface)
-    assert hasattr(controller_base, "_receive_measurements")
-    assert hasattr(controller_base, "_send_controls")
-    assert hasattr(controller_base, "step")
-    assert hasattr(controller_base, "compute_controls")
+    interface_base = InheritanceTestClassGood()
+    assert hasattr(interface_base, "get_measurements")
+    assert hasattr(interface_base, "check_controls")
+    assert hasattr(interface_base, "send_controls")
 
 
 def test_inherited_methods():
     """
     Check that a subclass of InterfaceBase inherits methods correctly.
     """
-    test_interface = StandinInterface()
 
     with pytest.raises(TypeError):
-        _ = InheritanceTestClassBad(test_interface)
+        _ = InheritanceTestClassBad()
 
-    _ = InheritanceTestClassGood(test_interface)
+    _ = InheritanceTestClassGood()
+
+
+def test_all_interfaces_implement_methods():
+    # In future, I'd like to dynamically instantiate classes, but the different
+    # inputs that they require on __init__ is currently a roadblock, so I'll just
+    # explicitly instantiate each interface class for the time being.
+
+    # class_dict = dict(inspect.getmembers(whoc.interfaces, inspect.isclass))
+
+    pass

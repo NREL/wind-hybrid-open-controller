@@ -13,8 +13,8 @@ the controller objects that it contains.
 controllers should inherit from. Inheritance is shown using arrows in the 
 diagram above. The key method of `ControllerBase` is the `step()` method,
 which progresses the controller by receiving plant measurements; computing 
-control setpoints (which must be implemented in the children of 
-`ControllerBase`); and sending the setpoints back to the plant. Children of 
+controls (which must be implemented in the children of 
+`ControllerBase`); and sending the controls back to the plant. Children of 
 `ControllerBase` should inherit `step()` rather than overloading it.
 Additionally, on instantiation, `ControllerBase` expects to receive an 
 instantiated `interface` object (discussed next). For information can be 
