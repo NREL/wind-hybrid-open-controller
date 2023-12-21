@@ -46,7 +46,7 @@ REQUIRED = [
     # "dash-daq==0.5.0",
     # "scikit-image",
     # ZMQ stuff
-    # "zmq",
+    "zmq",
     # NETCDF
     # "netCDF4",
     # YAML
