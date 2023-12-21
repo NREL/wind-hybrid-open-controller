@@ -13,6 +13,7 @@
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
 import zmq
+
 from whoc.interfaces.interface_base import InterfaceBase
 
 # Code copied from ROSCO; consider just importing and using that code
@@ -124,23 +125,23 @@ class ROSCO_ZMQInterface(InterfaceBase):
 
         return measurements
 
-    def check_setpoints(self, setpoints_dict):
-        available_setpoints = [
+    def check_controls(self, controls_dict):
+        available_controls = [
             "turbine_ID",
             "genTorque",
             "nacelleHeading",
             "bladePitch",
         ]
 
-        for k in setpoints_dict.keys():
-            if k not in available_setpoints:
+        for k in controls_dict.keys():
+            if k not in available_controls:
                 raise ValueError("Setpoint " + k + " is not available in this configuration")
 
-    def send_setpoints(
+    def send_controls(
         self, turbine_ID=0, genTorque=0.0, nacelleHeading=0.0, bladePitch=[0.0, 0.0, 0.0]
     ):
         """
-        Send setpoints to ROSCO .dll ffor individual turbine control
+        Send controls to ROSCO .dll ffor individual turbine control
 
         Parameters:
         -----------
@@ -151,7 +152,7 @@ class ROSCO_ZMQInterface(InterfaceBase):
         bladePitchAngles: List (len=3)
             Blade pitch angle setpoint
         """
-        # Create a message with setpoints to send to ROSCO
+        # Create a message with controls to send to ROSCO
         message_out = b"%016.5f, %016.5f, %016.5f, %016.5f, %016.5f, %016.5f" % (
             turbine_ID,
             genTorque,
@@ -165,7 +166,7 @@ class ROSCO_ZMQInterface(InterfaceBase):
         if self.verbose:
             print("[%s] Sending setpoint string to ROSCO: %s." % (self.identifier, message_out))
 
-        # Send control setpoints over network protocol
+        # Send control controls over network protocol
         self.socket.send(message_out)
 
         if self.verbose:
