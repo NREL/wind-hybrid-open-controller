@@ -39,13 +39,6 @@ class InheritanceTestClassGood(InterfaceBase):
     def send_setpoints(self):
         pass
 
-class InheritanceTestClassBad(InterfaceBase):
-    """
-    Class that is missing necessary methods.
-    """
-    def __init__(self):
-        super().__init__()
-
 def test_InterfaceBase_methods():
     """
     Check that the base interface class establishes the correct methods.
