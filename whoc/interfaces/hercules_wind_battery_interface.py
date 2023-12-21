@@ -16,7 +16,7 @@ from whoc.interfaces.interface_base import InterfaceBase
 
 
 class HerculesWindBatteryInterface(InterfaceBase):
-    def __init__(self, input_dict):
+    def __init__(self, hercules_dict):
         super().__init__()
 
     def get_measurements(self, hercules_dict):

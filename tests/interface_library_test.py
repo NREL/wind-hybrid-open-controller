@@ -41,16 +41,16 @@ def test_interface_instantiation():
     each implement the required methods specified by InterfaceBase.
     """
 
-    _ = HerculesADYawInterface(input_dict=test_hercules_dict)
-    _ = HerculesWindBatteryInterface(input_dict=test_hercules_dict)
+    _ = HerculesADYawInterface(hercules_dict=test_hercules_dict)
+    _ = HerculesWindBatteryInterface(hercules_dict=test_hercules_dict)
     #_ = ROSCO_ZMQInterface()
 
 def test_HerculesADYawInterface():
 
-    interface = HerculesADYawInterface(input_dict=test_hercules_dict)
+    interface = HerculesADYawInterface(hercules_dict=test_hercules_dict)
 
     # Test get_measurements()
-    measurements = interface.get_measurements(input_dict=test_hercules_dict)
+    measurements = interface.get_measurements(hercules_dict=test_hercules_dict)
 
     assert measurements["time"] == test_hercules_dict["time"]
     assert measurements["wind_directions"] == \
@@ -75,7 +75,10 @@ def test_HerculesADYawInterface():
         interface.check_controls(bad_controls_dict3)
 
     # test send_controls()
-    test_hercules_dict_out = interface.send_controls(test_hercules_dict, **controls_dict)
+    test_hercules_dict_out = interface.send_controls(
+        hercules_dict=test_hercules_dict,
+        **controls_dict
+    )
     assert controls_dict["yaw_angles"] == \
         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_yaw_angles"]
 
@@ -84,3 +87,11 @@ def test_HerculesADYawInterface():
     with pytest.raises(TypeError): # Bad kwarg
         interface.send_controls(test_hercules_dict, **bad_controls_dict2)
     # bad_controls_dict3 would pass, but faile the check_controls step.
+
+def test_HerculesWindBatteryInterface():
+
+    interface = HerculesWindBatteryInterface(hercules_dict=None)
+
+    # Test get_measurements()
+    #measurements = interface.get_measurements(hercules_dict=test_hercules_dict)
+
