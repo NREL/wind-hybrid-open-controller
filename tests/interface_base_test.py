@@ -12,9 +12,11 @@
 
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
+# import inspect
 import pytest
 
 from whoc.interfaces.interface_base import InterfaceBase
+# import whoc.interfaces
 
 class InheritanceTestClassBad(InterfaceBase):
     """
@@ -59,7 +61,14 @@ def test_inherited_methods():
     _ = InheritanceTestClassGood()
 
 def test_all_interfaces_implement_methods():
+
+    # In future, I'd like to dynamically instantiate classes, but the different
+    # inputs that they require on __init__ is currently a roadblock, so I'll just
+    # explicitly instantiate each interface class for the time being.
     
-    # TODO: import and instantiate all interface classes.
+    # class_dict = dict(inspect.getmembers(whoc.interfaces, inspect.isclass))
+
     pass
+
+
 
