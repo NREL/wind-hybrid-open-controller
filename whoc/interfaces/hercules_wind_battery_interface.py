@@ -19,15 +19,21 @@ class HerculesWindBatteryInterface(InterfaceBase):
     def __init__(self, hercules_dict):
         super().__init__()
 
+        # Grab name of wind farm (assumes there is only one!)
+        self.wf_name = list(hercules_dict["hercules_comms"]["amr_wind"].keys())[0]
+
+        # Get the name of the battery (assumes the battery is the only pysim!)
+        self.battery_name = list(hercules_dict["py_sims"].keys())[0]
+
     def get_measurements(self, hercules_dict):
         measurements = {
-            "py_sims": {"battery": hercules_dict["py_sims"]["battery_0"]["outputs"]},
+            "py_sims": {"battery": hercules_dict["py_sims"][self.battery_name]["outputs"]},
             "wind_farm": {
-                "turbine_powers": hercules_dict["hercules_comms"]["amr_wind"]["wind_farm_0"][
+                "turbine_powers": hercules_dict["hercules_comms"]["amr_wind"][self.wf_name][
                     "turbine_powers"
                 ],
                 "turbine_wind_directions": hercules_dict["hercules_comms"]["amr_wind"][
-                    "wind_farm_0"
+                    self.wf_name
                 ]["turbine_wind_directions"],
             },
         }

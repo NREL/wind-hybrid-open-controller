@@ -23,15 +23,18 @@ from whoc.interfaces import (
 test_hercules_dict ={
     "dt": 1,
     "time": 0,
-    "controller":{"num_turbines": 2},
-    "hercules_comms":{
+    "controller": {"num_turbines": 2},
+    "hercules_comms": {
         "amr_wind": {
             "test_farm":{
-                "turbine_wind_directions":[271.0, 272.5],
-                "turbine_powers":[4000.0, 4001.0]
+                "turbine_wind_directions": [271.0, 272.5],
+                "turbine_powers": [4000.0, 4001.0]
             }
         }
     },
+    "py_sims": {
+        "test_battery":{"outputs":10.}
+    }
 }
 
 
@@ -90,8 +93,26 @@ def test_HerculesADYawInterface():
 
 def test_HerculesWindBatteryInterface():
 
-    interface = HerculesWindBatteryInterface(hercules_dict=None)
+    interface = HerculesWindBatteryInterface(hercules_dict=test_hercules_dict)
 
     # Test get_measurements()
-    #measurements = interface.get_measurements(hercules_dict=test_hercules_dict)
+    measurements = interface.get_measurements(hercules_dict=test_hercules_dict)
 
+    assert measurements["py_sims"]["battery"] == \
+        test_hercules_dict["py_sims"]["test_battery"]["outputs"]
+    assert measurements["wind_farm"]["turbine_powers"] == \
+        test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"]
+    assert measurements["wind_farm"]["turbine_wind_directions"] == \
+        test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_wind_directions"]
+
+    # Test check_controls()
+    # check_controls is pass-through
+
+    # Test send_controls()
+    controls_dict = {"test": 0}
+    test_hercules_dict_out = interface.send_controls(
+        hercules_dict=test_hercules_dict,
+        controls_dict=controls_dict
+    )
+
+    assert test_hercules_dict_out["controls"] == controls_dict
