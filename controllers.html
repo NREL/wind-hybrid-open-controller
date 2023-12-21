@@ -418,9 +418,9 @@ title="Print to PDF"
 <p>The <code class="docutils literal notranslate"><span class="pre">whoc.controllers</span></code> module contains a library of wind and hybrid power plant
 controllers. Each controller must inherit from <code class="docutils literal notranslate"><span class="pre">ControllerBase</span></code> (see
 controller_base.py) and implement a
-mandatory <code class="docutils literal notranslate"><span class="pre">compute_setpoints()</span></code> method, which contains the relevant control
-algorithm and writes final control signals to the <code class="docutils literal notranslate"><span class="pre">setpoints_dict</span></code> attribute
-as key-value pairs. <code class="docutils literal notranslate"><span class="pre">compute_setpoints()</span></code> is, in turn, called in the <code class="docutils literal notranslate"><span class="pre">step()</span></code>
+mandatory <code class="docutils literal notranslate"><span class="pre">compute_controls()</span></code> method, which contains the relevant control
+algorithm and writes final control signals to the <code class="docutils literal notranslate"><span class="pre">controls_dict</span></code> attribute
+as key-value pairs. <code class="docutils literal notranslate"><span class="pre">compute_controls()</span></code> is, in turn, called in the <code class="docutils literal notranslate"><span class="pre">step()</span></code>
 method of <code class="docutils literal notranslate"><span class="pre">ControllerBase</span></code>.</p>
 <section id="available-controllers">
 <h2>Available controllers<a class="headerlink" href="#available-controllers" title="Permalink to this headline">#</a></h2>
@@ -431,7 +431,7 @@ updated).</p>
 </section>
 <section id="wakesteeringroscostandin">
 <h3>WakeSteeringROSCOStandin<a class="headerlink" href="#wakesteeringroscostandin" title="Permalink to this headline">#</a></h3>
-<p>May be combined into a universal simple wake steering controller.</p>
+<p>May be combined into a universal simple wake steeringcontroller.</p>
 </section>
 </section>
 </section>

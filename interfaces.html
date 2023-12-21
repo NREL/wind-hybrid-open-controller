@@ -424,13 +424,13 @@ which can be found n interface_base.py, and should implement three methods:</p>
 organize into a dictionary that the calling controller can utilize. Optionally,
 receives a large dictionary (for example, the Hercules <code class="docutils literal notranslate"><span class="pre">main_dict</span></code>), from which
 useable measurements can be extracted/repackaged for easy use in the controller.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">check_setpoints()</span></code>: Check that the keys in <code class="docutils literal notranslate"><span class="pre">setpoints_dict</span></code> are viable for
+<li><p><code class="docutils literal notranslate"><span class="pre">check_controls()</span></code>: Check that the keys in <code class="docutils literal notranslate"><span class="pre">controls_dict</span></code> are viable for
 the receiving plant.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">send_setpoints()</span></code>: Send setpoints to the simulation assets. Setpoints are
-created as specific keyword arguements, which match those setpoints generated
+<li><p><code class="docutils literal notranslate"><span class="pre">send_controls()</span></code>: Send controls to the simulation assets. Controls are
+created as specific keyword arguements, which match those controls generated
 by the calling controller. Optionally, receives a large dictionary
 (for example, the Hercules <code class="docutils literal notranslate"><span class="pre">main_dict</span></code>), which can be written to and returned
-with setpoints as needed.</p></li>
+with controls as needed.</p></li>
 </ul>
 <p>These methods will all be called in the <code class="docutils literal notranslate"><span class="pre">step()</span></code> method of <code class="docutils literal notranslate"><span class="pre">ControllerBase</span></code>.</p>
 <section id="available-interfaces">
