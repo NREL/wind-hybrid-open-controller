@@ -13,6 +13,7 @@
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
 import numpy as np
+
 from whoc.controllers.controller_base import ControllerBase
 
 
