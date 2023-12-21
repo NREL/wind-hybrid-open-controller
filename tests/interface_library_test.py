@@ -1,5 +1,7 @@
 from whoc.interfaces import (
-    HerculesADYawInterface
+    HerculesADYawInterface,
+    HerculesWindBatteryInterface,
+    ROSCO_ZMQInterface
 )
 
 test_input_dict ={
@@ -12,3 +14,5 @@ test_input_dict ={
 def test_interface_instantiation():
 
     _ = HerculesADYawInterface(input_dict=test_input_dict)
+    _ = HerculesWindBatteryInterface(input_dict=test_input_dict)
+    _ = ROSCO_ZMQInterface()
