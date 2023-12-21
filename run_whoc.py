@@ -37,7 +37,7 @@ def run_zmq():
             yaw_setpoint = 20.0
 
             # Send new setpoints back to ROSCO
-        s.send_setpoints(nacelleHeading=yaw_setpoint)
+        s.send_controls(nacelleHeading=yaw_setpoint)
 
         if measurements["iStatus"] == -1:
             connect_zmq = False

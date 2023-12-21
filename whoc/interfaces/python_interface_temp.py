@@ -25,7 +25,7 @@ class WHOC_python_server(InterfaceBase):
 
         return measurements
 
-    def send_setpoints(self, dict):
+    def send_controls(self, dict):
         # Not sure if anything needs to be done here. Can possibly return None.
         setpoints = dict
 

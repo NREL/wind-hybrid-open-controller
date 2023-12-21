@@ -25,5 +25,5 @@ class InterfaceBase(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def send_setpoints(self):
+    def send_controls(self):
         raise NotImplementedError

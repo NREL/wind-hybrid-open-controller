@@ -57,7 +57,7 @@ class HerculesADYawInterface(InterfaceBase):
             if k not in available_setpoints:
                 raise ValueError("Setpoint " + k + " is not available in this configuration")
 
-    def send_setpoints(self, input_dict, yaw_angles=None):
+    def send_controls(self, input_dict, yaw_angles=None):
         if yaw_angles is None:
             yaw_angles = [0.0] * self.n_turbines
 

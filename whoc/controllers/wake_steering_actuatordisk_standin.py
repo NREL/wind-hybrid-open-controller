@@ -38,7 +38,7 @@ class WakeSteeringADStandin(ControllerBase):
 
         # Grab name of wind farm (assumes there is only one!)
 
-    def compute_setpoints(self):
+    def compute_controls(self):
         self.generate_turbine_references()
 
     def generate_turbine_references(self):

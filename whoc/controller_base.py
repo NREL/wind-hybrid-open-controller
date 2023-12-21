@@ -54,9 +54,9 @@ class ControllerBase:
 
         return None
 
-    def send_setpoints(self, dict=None):
+    def send_controls(self, dict=None):
         self._s.check_setpoints(self.setpoints_dict)
-        dict = self._s.send_setpoints(dict, **self.setpoints_dict)
+        dict = self._s.send_controls(dict, **self.setpoints_dict)
 
         return dict  # or main_dict, or what?
 
@@ -65,14 +65,14 @@ class ControllerBase:
         # hercules_dict may simply be None throughout this method.
         self.receive_measurements(hercules_dict)
 
-        self.compute_setpoints()
+        self.compute_controls()
 
-        hercules_dict = self.send_setpoints(hercules_dict)
+        hercules_dict = self.send_controls(hercules_dict)
 
         return hercules_dict  # May simply be None.
 
     @abstractmethod
-    def compute_setpoints(self):
-        # Control algorithms should be implemented in the compute_setpoints
+    def compute_controls(self):
+        # Control algorithms should be implemented in the compute_controls
         # method of the child class.
         pass

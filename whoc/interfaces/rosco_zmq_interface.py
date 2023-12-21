@@ -136,7 +136,7 @@ class ROSCO_ZMQInterface(InterfaceBase):
             if k not in available_setpoints:
                 raise ValueError("Setpoint " + k + " is not available in this configuration")
 
-    def send_setpoints(
+    def send_controls(
         self, turbine_ID=0, genTorque=0.0, nacelleHeading=0.0, bladePitch=[0.0, 0.0, 0.0]
     ):
         """

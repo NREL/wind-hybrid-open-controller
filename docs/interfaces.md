@@ -11,7 +11,7 @@ receives a large dictionary (for example, the Hercules `main_dict`), from which
 useable measurements can be extracted/repackaged for easy use in the controller.
 - `check_setpoints()`: Check that the keys in `setpoints_dict` are viable for 
 the receiving plant.
-- `send_setpoints()`: Send setpoints to the simulation assets. Setpoints are 
+- `send_controls()`: Send setpoints to the simulation assets. Setpoints are 
 created as specific keyword arguements, which match those setpoints generated
 by the calling controller. Optionally, receives a large dictionary 
 (for example, the Hercules `main_dict`), which can be written to and returned
