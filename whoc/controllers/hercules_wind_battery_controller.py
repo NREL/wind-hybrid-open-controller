@@ -25,13 +25,13 @@ class HerculesWindBatteryController(ControllerBase):
         self.n_turbines = input_dict["controller"]["num_turbines"]
 
     def send_controls(self, hercules_dict):
-        self._s.check_controls(self.controls_dict)
-        dict = self._s.send_controls(hercules_dict, self.controls_dict)
+        self._s.check_controls(self.setpoints_dict)
+        dict = self._s.send_controls(hercules_dict, self.setpoints_dict)
 
         return dict  # or main_dict, or what?
 
     def step(self, hercules_dict=None):
-        self.receive_measurements(hercules_dict)
+        self._receive_measurements(hercules_dict)
         # receive measurements sets self.measurements_dict
         self.compute_controls()
         hercules_dict = self.send_controls(hercules_dict)

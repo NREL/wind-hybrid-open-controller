@@ -123,4 +123,4 @@ def test_HerculesWindBatteryInterface():
         hercules_dict=test_hercules_dict, controls_dict=controls_dict
     )
 
-    assert test_hercules_dict_out["controls"] == controls_dict
+    assert test_hercules_dict_out["setpoints"] == controls_dict
