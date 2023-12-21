@@ -13,6 +13,7 @@
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
 import zmq
+
 from whoc.interfaces.interface_base import InterfaceBase
 
 # Code copied from ROSCO; consider just importing and using that code

@@ -12,7 +12,7 @@
 
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
-from abc import abstractmethod, ABCMeta
+from abc import ABCMeta, abstractmethod
 
 
 class InterfaceBase(metaclass=ABCMeta):

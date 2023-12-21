@@ -14,21 +14,25 @@
 
 # import inspect
 import pytest
-
 from whoc.interfaces.interface_base import InterfaceBase
+
 # import whoc.interfaces
+
 
 class InheritanceTestClassBad(InterfaceBase):
     """
     Class that is missing necessary methods.
     """
+
     def __init__(self):
         super().__init__()
+
 
 class InheritanceTestClassGood(InterfaceBase):
     """
     Class that is missing necessary methods.
     """
+
     def __init__(self):
         super().__init__()
 
@@ -41,6 +45,7 @@ class InheritanceTestClassGood(InterfaceBase):
     def send_controls(self):
         pass
 
+
 def test_InterfaceBase_methods():
     """
     Check that the base interface class establishes the correct methods.
@@ -49,6 +54,7 @@ def test_InterfaceBase_methods():
     assert hasattr(interface_base, "get_measurements")
     assert hasattr(interface_base, "check_controls")
     assert hasattr(interface_base, "send_controls")
+
 
 def test_inherited_methods():
     """
@@ -60,15 +66,12 @@ def test_inherited_methods():
 
     _ = InheritanceTestClassGood()
 
-def test_all_interfaces_implement_methods():
 
+def test_all_interfaces_implement_methods():
     # In future, I'd like to dynamically instantiate classes, but the different
     # inputs that they require on __init__ is currently a roadblock, so I'll just
     # explicitly instantiate each interface class for the time being.
-    
+
     # class_dict = dict(inspect.getmembers(whoc.interfaces, inspect.isclass))
 
     pass
-
-
-

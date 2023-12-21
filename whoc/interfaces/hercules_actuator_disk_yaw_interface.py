@@ -57,7 +57,9 @@ class HerculesADYawInterface(InterfaceBase):
             if k not in available_controls:
                 raise ValueError("Setpoint " + k + " is not available in this configuration.")
             if len(controls_dict[k]) != self.n_turbines:
-                raise ValueError("Length of setpoint " + k + " does not match the number of turbines.")
+                raise ValueError(
+                    "Length of setpoint " + k + " does not match the number of turbines."
+                )
 
     def send_controls(self, hercules_dict, yaw_angles=None):
         if yaw_angles is None:

@@ -13,28 +13,24 @@
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
 import pytest
-
 from whoc.interfaces import (
     HerculesADYawInterface,
     HerculesWindBatteryInterface,
-    #ROSCO_ZMQInterface
 )
 
-test_hercules_dict ={
+test_hercules_dict = {
     "dt": 1,
     "time": 0,
     "controller": {"num_turbines": 2},
     "hercules_comms": {
         "amr_wind": {
-            "test_farm":{
+            "test_farm": {
                 "turbine_wind_directions": [271.0, 272.5],
-                "turbine_powers": [4000.0, 4001.0]
+                "turbine_powers": [4000.0, 4001.0],
             }
         }
     },
-    "py_sims": {
-        "test_battery":{"outputs":10.}
-    }
+    "py_sims": {"test_battery": {"outputs": 10.0}},
 }
 
 
@@ -46,29 +42,35 @@ def test_interface_instantiation():
 
     _ = HerculesADYawInterface(hercules_dict=test_hercules_dict)
     _ = HerculesWindBatteryInterface(hercules_dict=test_hercules_dict)
-    #_ = ROSCO_ZMQInterface()
+    # _ = ROSCO_ZMQInterface()
+
 
 def test_HerculesADYawInterface():
-
     interface = HerculesADYawInterface(hercules_dict=test_hercules_dict)
 
     # Test get_measurements()
     measurements = interface.get_measurements(hercules_dict=test_hercules_dict)
 
     assert measurements["time"] == test_hercules_dict["time"]
-    assert measurements["wind_directions"] == \
-        test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_wind_directions"]
-    assert measurements["turbine_powers"] == \
-        test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"]
+    assert (
+        measurements["wind_directions"]
+        == test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_wind_directions"]
+    )
+    assert (
+        measurements["turbine_powers"]
+        == test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"]
+    )
 
     # Test check_controls()
-    controls_dict = {"yaw_angles":[270.0, 278.9]}
-    interface.check_controls(controls_dict) # Should not raise an error
-    
-    bad_controls_dict1 = {"yaw_angels":[270.0, 268.9]} # Misspelling
-    bad_controls_dict2 = {"yaw_angles":[270.0, 268.9],
-                          "power_setpoints":[3000.0, 3000.0]} # Unavailable control
-    bad_controls_dict3 = {"yaw_angles":[270.0, 268.9, 270.0]} # Mismatched number of turbines
+    controls_dict = {"yaw_angles": [270.0, 278.9]}
+    interface.check_controls(controls_dict)  # Should not raise an error
+
+    bad_controls_dict1 = {"yaw_angels": [270.0, 268.9]}  # Misspelling
+    bad_controls_dict2 = {
+        "yaw_angles": [270.0, 268.9],
+        "power_setpoints": [3000.0, 3000.0],
+    }  # Unavailable control
+    bad_controls_dict3 = {"yaw_angles": [270.0, 268.9, 270.0]}  # Mismatched number of turbines
 
     with pytest.raises(ValueError):
         interface.check_controls(bad_controls_dict1)
@@ -79,31 +81,38 @@ def test_HerculesADYawInterface():
 
     # test send_controls()
     test_hercules_dict_out = interface.send_controls(
-        hercules_dict=test_hercules_dict,
-        **controls_dict
+        hercules_dict=test_hercules_dict, **controls_dict
     )
-    assert controls_dict["yaw_angles"] == \
-        test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_yaw_angles"]
+    assert (
+        controls_dict["yaw_angles"]
+        == test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_yaw_angles"]
+    )
 
-    with pytest.raises(TypeError): # Bad kwarg
+    with pytest.raises(TypeError):  # Bad kwarg
         interface.send_controls(test_hercules_dict, **bad_controls_dict1)
-    with pytest.raises(TypeError): # Bad kwarg
+    with pytest.raises(TypeError):  # Bad kwarg
         interface.send_controls(test_hercules_dict, **bad_controls_dict2)
     # bad_controls_dict3 would pass, but faile the check_controls step.
 
-def test_HerculesWindBatteryInterface():
 
+def test_HerculesWindBatteryInterface():
     interface = HerculesWindBatteryInterface(hercules_dict=test_hercules_dict)
 
     # Test get_measurements()
     measurements = interface.get_measurements(hercules_dict=test_hercules_dict)
 
-    assert measurements["py_sims"]["battery"] == \
-        test_hercules_dict["py_sims"]["test_battery"]["outputs"]
-    assert measurements["wind_farm"]["turbine_powers"] == \
-        test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"]
-    assert measurements["wind_farm"]["turbine_wind_directions"] == \
-        test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_wind_directions"]
+    assert (
+        measurements["py_sims"]["battery"]
+        == test_hercules_dict["py_sims"]["test_battery"]["outputs"]
+    )
+    assert (
+        measurements["wind_farm"]["turbine_powers"]
+        == test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"]
+    )
+    assert (
+        measurements["wind_farm"]["turbine_wind_directions"]
+        == test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_wind_directions"]
+    )
 
     # Test check_controls()
     # check_controls is pass-through
@@ -111,8 +120,7 @@ def test_HerculesWindBatteryInterface():
     # Test send_controls()
     controls_dict = {"test": 0}
     test_hercules_dict_out = interface.send_controls(
-        hercules_dict=test_hercules_dict,
-        controls_dict=controls_dict
+        hercules_dict=test_hercules_dict, controls_dict=controls_dict
     )
 
     assert test_hercules_dict_out["controls"] == controls_dict
