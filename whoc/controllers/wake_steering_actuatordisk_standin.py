@@ -12,7 +12,7 @@
 
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
-from whoc.controller_base import ControllerBase
+from whoc.controllers.controller_base import ControllerBase
 
 
 class WakeSteeringADStandin(ControllerBase):
