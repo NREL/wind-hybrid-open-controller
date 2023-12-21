@@ -84,5 +84,5 @@ def test_WakeSteeringADStandin():
 
 
 def test_HerculesWindBatteryController():
-    # TODO: write this test
+    # TODO: write this test, possibly clean up HerculesWindBatteryController class
     pass
