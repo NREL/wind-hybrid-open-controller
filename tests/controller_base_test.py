@@ -16,9 +16,10 @@ import pytest
 from whoc.controllers.controller_base import ControllerBase
 from whoc.interfaces.interface_base import InterfaceBase
 
+
 class StandinInterface(InterfaceBase):
     """
-    Class that is missing necessary methods.
+    Empty class to test controllers.
     """
 
     def __init__(self):
