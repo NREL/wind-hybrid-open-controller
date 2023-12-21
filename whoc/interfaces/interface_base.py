@@ -21,7 +21,7 @@ class InterfaceBase(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def check_setpoints(self):
+    def check_controls(self):
         raise NotImplementedError
 
     @abstractmethod

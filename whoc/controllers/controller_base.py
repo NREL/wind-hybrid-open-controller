@@ -55,7 +55,7 @@ class ControllerBase:
         return None
 
     def send_controls(self, dict=None):
-        self._s.check_setpoints(self.setpoints_dict)
+        self._s.check_controls(self.setpoints_dict)
         dict = self._s.send_controls(dict, **self.setpoints_dict)
 
         return dict  # or main_dict, or what?

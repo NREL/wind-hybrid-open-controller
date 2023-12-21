@@ -124,7 +124,7 @@ class ROSCO_ZMQInterface(InterfaceBase):
 
         return measurements
 
-    def check_setpoints(self, setpoints_dict):
+    def check_controls(self, setpoints_dict):
         available_setpoints = [
             "turbine_ID",
             "genTorque",

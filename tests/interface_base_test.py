@@ -35,7 +35,7 @@ class InheritanceTestClassGood(InterfaceBase):
     def get_measurements(self):
         pass
 
-    def check_setpoints(self):
+    def check_controls(self):
         pass
 
     def send_controls(self):
@@ -47,7 +47,7 @@ def test_InterfaceBase_methods():
     """
     interface_base = InheritanceTestClassGood()
     assert hasattr(interface_base, "get_measurements")
-    assert hasattr(interface_base, "check_setpoints")
+    assert hasattr(interface_base, "check_controls")
     assert hasattr(interface_base, "send_controls")
 
 def test_inherited_methods():

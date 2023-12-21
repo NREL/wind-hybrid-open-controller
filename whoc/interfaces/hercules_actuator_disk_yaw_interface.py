@@ -50,7 +50,7 @@ class HerculesADYawInterface(InterfaceBase):
 
         return measurements
 
-    def check_setpoints(self, setpoints_dict):
+    def check_controls(self, setpoints_dict):
         available_setpoints = ["yaw_angles"]
 
         for k in setpoints_dict.keys():

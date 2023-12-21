@@ -1,0 +1,2 @@
+from whoc.interfaces.hercules_actuator_disk_yaw_interface import HerculesADYawInterface
+from whoc.interfaces.hercules_wind_battery_interface import HerculesWindBatteryInterface
