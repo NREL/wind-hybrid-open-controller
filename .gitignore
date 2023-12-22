@@ -7,6 +7,12 @@ data.db
 *.DS_Store
 slices
 
+# Data files
+*.csv
+*.log
+examples/*/logstandin
+examples/*/loghercules
+
 # macOS files
 .DS_Store
 
@@ -14,5 +20,6 @@ slices
 .idea
 .vscode
 
-
+# Outputs
+*echo
 

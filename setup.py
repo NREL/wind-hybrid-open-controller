@@ -23,11 +23,10 @@ import io
 import os
 from pathlib import Path
 
-from setuptools import setup, find_packages
-
+from setuptools import setup
 
 # Package meta-data.
-NAME = "wind-hybrid-open-controller"
+NAME = "whoc"
 DESCRIPTION = "Wind Hybrid Open Controller."
 URL = "https://github.com/NREL/wind-hybrid-open-controller"
 EMAIL = "michael.sinner@nrel.gov"
@@ -40,23 +39,18 @@ REQUIRED = [
     # "matplotlib~=3.0",
     # "pandas~=2.0",
     # "dash>=2.0.0",
-
-    #GUI Stuff
+    # GUI Stuff
     # "tkinter", # Comes with python?
     # "plotly==5.5.0",
     # "dash",
     # "dash-daq==0.5.0",
     # "scikit-image",
-
-    #ZMQ stuff
-    # "zmq",
-
+    # ZMQ stuff
+    "zmq",
     # NETCDF
     # "netCDF4",
-
-    #YAML
+    # YAML
     # "pyyaml"
-
 ]
 
 # What packages are optional?
@@ -93,7 +87,7 @@ except FileNotFoundError:
 
 # Load the package's VERSION module
 ROOT = Path(__file__).parent
-with open(ROOT / "wind-hybrid-open-controller" / "version.py") as version_file:
+with open(ROOT / "whoc" / "version.py") as version_file:
     VERSION = version_file.read().strip()
 
 setup(
@@ -107,7 +101,7 @@ setup(
     python_requires=REQUIRES_PYTHON,
     url=URL,
     # package_dir={"": "hercules"},
-    packages=find_packages( exclude=["tests", "*.tests", "*.tests.*", "tests.*"]),
+    packages=["whoc"],  # find_packages(exclude=["tests", "*.tests", "*.tests.*", "tests.*"]),
     # If your package is a single module, use this instead of 'packages':
     # py_modules=['mypackage'],
     # entry_points={

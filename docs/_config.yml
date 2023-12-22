@@ -33,7 +33,7 @@ html:
   use_issues_button: true
   use_repository_button: true
   use_edit_page_button: true
-  google_analytics_id: G-XXXX TODO: Update when public
+  google_analytics_id: G-BJZY823DHG
 
 
 # Sphinx for API doc generation
