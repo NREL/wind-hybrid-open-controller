@@ -19,12 +19,5 @@ controllers, including:
 WHOC controllers will also call on design tools such as
 [FLORIS](https://github.com/NREL/floris).
 
-## Code development
-To contribute to WHOC, please consider forking the main github repository,
-with the [main repo](https://github.com/NREL/wind-hybrid-open-controller) as an 
-upstream remote. To submit a new feature or bug fix, create a new branch 
-in your fork and submit a pull request back to the `develop` branch in the 
-main repo. The pull request will be reviewed by other WHOC developers and 
-merged (using "squash and merge") into the `develop` branch. Periodically, 
-the `develop` branch will be merged into the `main` branch and a version 
-number will be assigned.
+Documentation for WHOC can be found on 
+[nrel.github.io](https://nrel.github.io/wind-hybrid-open-controller/intro.html)

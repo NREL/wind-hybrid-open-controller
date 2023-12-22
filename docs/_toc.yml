@@ -3,14 +3,15 @@
 
 format: jb-book
 root: intro
-# parts:
-#   - caption: Installation
-#     chapters:
-#     - file: install_instructions
-#     - file: install_old
-#     - file: install_on_kestrel
-#     - file: install_spack
-#   - caption: Usage
-#     chapters:
-#     - file: examples
+parts:
+  - caption: General information
+    chapters:
+    - file: install_instructions
+    - file: code_development
+  - caption: Controllers
+    chapters:
+    - file: controllers
+  - caption: Interfaces
+    chapters:
+    - file: interfaces
 #     - file: order_of_op
