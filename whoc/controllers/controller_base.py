@@ -48,28 +48,29 @@ class ControllerBase(metaclass=ABCMeta):
         # Initialize controls to send
         self.controls_dict = None
 
-    def _receive_measurements(self, dict=None):
+    def _receive_measurements(self, obs_args=None):
         # May need to eventually loop here, depending on server set up.
-        self.measurements_dict = self._s.get_measurements(dict)
+        self.measurements_dict = self._s.get_measurements(obs_args)
 
         return None
 
-    def _send_controls(self, dict=None):
+    def _send_controls(self, other_args:dict=None) -> dict:
+        # TODO what are other_args for?
         self._s.check_controls(self.controls_dict)
-        dict = self._s.send_controls(dict, **self.controls_dict)
+        other_args = self._s.send_controls(other_args, **self.controls_dict)
 
-        return dict  # or main_dict, or what?
+        return other_args  # or main_dict, or what?
 
-    def step(self, hercules_dict=None):
+    def step(self, obs_args=None):
         # If not running with direct hercules integration,
         # hercules_dict may simply be None throughout this method.
-        self._receive_measurements(hercules_dict)
+        self._receive_measurements(obs_args)
 
-        self.compute_controls()
+        self.compute_controls() # set self.controls_dict
 
-        hercules_dict = self._send_controls(hercules_dict)
+        obs_args = self._send_controls(obs_args)
 
-        return hercules_dict  # May simply be None.
+        return obs_args  # May simply be None.
 
     @abstractmethod
     def compute_controls(self):
