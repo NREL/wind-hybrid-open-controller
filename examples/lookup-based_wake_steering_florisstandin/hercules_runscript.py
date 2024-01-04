@@ -27,7 +27,7 @@ input_dict = load_yaml(sys.argv[1])
 df_opt = pd.read_pickle("yaw_offsets.pkl")
 
 interface = HerculesADYawInterface(input_dict)
-controller = LookupBasedWakeSteeringController(interface, input_dict)
+controller = LookupBasedWakeSteeringController(interface, input_dict, df_yaw=df_opt)
 
 py_sims = PySims(input_dict)
 
