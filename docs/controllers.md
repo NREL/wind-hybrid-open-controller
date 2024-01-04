@@ -10,7 +10,7 @@ method of `ControllerBase`.
 
 ## Available controllers
 
-### WakeSteeringADStandin
+### LookupBasedWakeSteeringController
 For yaw controller of actuator disk-type turbines (as a stand-in, will be 
 updated).
 
