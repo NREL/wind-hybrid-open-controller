@@ -12,16 +12,24 @@
 
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
+from flasc.wake_steering.lookup_table_tools import get_yaw_angles_interpolant
+
 from whoc.controllers.controller_base import ControllerBase
 
 
-class WakeSteeringADStandin(ControllerBase):
-    def __init__(self, interface, input_dict):
+class LookupBasedWakeSteeringController(ControllerBase):
+    def __init__(self, interface, input_dict, df_yaw=None):
         super().__init__(interface)
 
         self.dt = input_dict["dt"]  # Won't be needed here, but generally good to have
         self.n_turbines = input_dict["controller"]["num_turbines"]
         self.turbines = range(self.n_turbines)
+
+        # Handle yaw optimizer object
+        if df_yaw is None:
+            pass # Figure out alternative
+        else:
+            raise NotImplementedError("Not yet implemented")
 
         # Set initial conditions
         yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
@@ -36,7 +44,6 @@ class WakeSteeringADStandin(ControllerBase):
         else:
             self.controls_dict = {"yaw_angles": [yaw_IC] * self.n_turbines}
 
-        # Grab name of wind farm (assumes there is only one!)
 
     def compute_controls(self):
         self.generate_turbine_references()

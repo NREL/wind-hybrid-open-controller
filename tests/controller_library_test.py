@@ -14,7 +14,7 @@
 
 from whoc.controllers import (
     HerculesWindBatteryController,
-    WakeSteeringADStandin,
+    LookupBasedWakeSteeringController,
 )
 from whoc.interfaces import HerculesADYawInterface
 from whoc.interfaces.interface_base import InterfaceBase
@@ -61,13 +61,13 @@ def test_controller_instantiation():
     """
     test_interface = StandinInterface()
 
-    _ = WakeSteeringADStandin(interface=test_interface, input_dict=test_hercules_dict)
+    _ = LookupBasedWakeSteeringController(interface=test_interface, input_dict=test_hercules_dict)
     _ = HerculesWindBatteryController(interface=test_interface, input_dict=test_hercules_dict)
 
 
-def test_WakeSteeringADStandin():
+def test_LookupBasedWakeSteeringController():
     test_interface = HerculesADYawInterface(test_hercules_dict)
-    test_controller = WakeSteeringADStandin(interface=test_interface, input_dict=test_hercules_dict)
+    test_controller = LookupBasedWakeSteeringController(interface=test_interface, input_dict=test_hercules_dict)
 
     # Check that the controller can be stepped
     test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
