@@ -12,8 +12,8 @@
 
 # See https://floris.readthedocs.io for documentation
 
-import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 from floris.tools import FlorisInterface
 from floris.tools.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
@@ -21,6 +21,9 @@ from floris.tools.optimization.yaw_optimization.yaw_optimizer_sr import YawOptim
 """
 NOTE: Currently, FLORIS v3 is required to run this! Will fix when v4 more mature.
 """
+
+optimize_yaw_offsets = True
+build_external_data = True
 
 floris_dict = {
     "logging": {
@@ -77,20 +80,38 @@ floris_dict = {
     "floris_version": "v4.x",
 }
 
+if optimize_yaw_offsets:
+    fi = FlorisInterface(floris_dict)
 
-fi = FlorisInterface(floris_dict)
+    fi.reinitialize(
+        layout_x=[0.0, 1000.0],
+        layout_y=[0.0, 0.0],
+        wind_directions=np.arange(0.0, 360.0, 3.0),
+        wind_speeds=np.arange(2.0, 18.0, 1.0),
+    )
 
-fi.reinitialize(
-    layout_x=[0.0, 1000.0],
-    layout_y=[0.0, 0.0],
-    wind_directions=np.arange(0.0, 360.0, 3.0),
-    wind_speeds=np.arange(2.0, 18.0, 1.0),
-)
+    yaw_opt = YawOptimizationSR(fi, verify_convergence=True)
+    df_opt = yaw_opt.optimize()
 
-yaw_opt = YawOptimizationSR(fi, verify_convergence=True)
-df_opt = yaw_opt.optimize()
+    print("Optimization results:")
+    print(df_opt)
 
-print("Optimization results:")
-print(df_opt)
+    df_opt.to_pickle("yaw_offsets.pkl")
 
-df_opt.to_pickle("yaw_offsets.pkl")
+if build_external_data:
+    # Also, build an example external data file
+    total_time = 100 # seconds
+    dt = 0.5
+    np.random.seed(0)
+    wind_directions = np.concatenate((
+        260*np.ones(60),
+        np.linspace(260., 270., 80),
+        270. + 5.*np.random.randn(round(total_time/dt)-60-80)
+    ))
+    df_data = pd.DataFrame(data={
+        "time": np.arange(0, total_time, dt),
+        "amr_wind_speed": 8.0*np.ones_like(wind_directions),
+        "amr_wind_direction": wind_directions
+    })
+
+    df_data.to_csv("amr_standin_data.csv")

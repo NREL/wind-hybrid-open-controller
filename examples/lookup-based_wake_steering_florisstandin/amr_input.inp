@@ -177,5 +177,5 @@ Actuator.JoukowskyDisk.vortex_core_size    = 24.0
 
 Actuator.UniformCtDisk.yaw = 240.0
 
-Actuator.T00.base_position = 2000.0 2000.0 0.0
-Actuator.T01.base_position = 2500.0 2500.0 0.0
+Actuator.T00.base_position = 0.0 0.0 0.0
+Actuator.T01.base_position = 1000.0 0.0 0.0
