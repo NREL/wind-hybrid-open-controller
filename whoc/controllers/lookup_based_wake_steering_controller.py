@@ -13,8 +13,8 @@
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
 import numpy as np
-from flasc.wake_steering.lookup_table_tools import get_yaw_angles_interpolant
 
+from flasc.wake_steering.lookup_table_tools import get_yaw_angles_interpolant
 from whoc.controllers.controller_base import ControllerBase
 
 
