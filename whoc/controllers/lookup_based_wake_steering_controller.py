@@ -18,8 +18,8 @@ from whoc.controllers.controller_base import ControllerBase
 
 
 class LookupBasedWakeSteeringController(ControllerBase):
-    def __init__(self, interface, input_dict, df_yaw=None):
-        super().__init__(interface)
+    def __init__(self, interface, input_dict, df_yaw=None, verbose=False):
+        super().__init__(interface, verbose=verbose)
 
         self.dt = input_dict["dt"]  # Won't be needed here, but generally good to have
         self.n_turbines = input_dict["controller"]["num_turbines"]
@@ -27,9 +27,11 @@ class LookupBasedWakeSteeringController(ControllerBase):
 
         # Handle yaw optimizer object
         if df_yaw is None:
-            pass # Figure out alternative
+            if self.verbose:
+                print("No offsets received; assuming nominal aligned control.")
+            self.wake_steering_interpolant = None
         else:
-            raise NotImplementedError("Not yet implemented")
+            self.wake_steering_interpolant = get_yaw_angles_interpolant(df_yaw)
 
         # Set initial conditions
         yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
@@ -44,31 +46,35 @@ class LookupBasedWakeSteeringController(ControllerBase):
         else:
             self.controls_dict = {"yaw_angles": [yaw_IC] * self.n_turbines}
 
+        # For startup
+        self.wd_store = [270.]*self.n_turbines # TODO: update this?
+
 
     def compute_controls(self):
-        self.generate_turbine_references()
+        self.wake_steering_angles()
 
-    def generate_turbine_references(self):
-        # Based on an early implementation for Hercules
-
-        current_time = self.measurements_dict["time"]
-        if current_time <= 10.0:
-            yaw_setpoint = [270.0] * self.n_turbines
+    def wake_steering_angles(self):
+        
+        # Handle possible bad data
+        wind_directions = self.measurements_dict["wind_directions"]
+        if not wind_directions: # Recieved empty or None
+            if self.verbose:
+                print("Bad wind direction measurement received, reverting to previous measurement.")
+            wind_directions = self.wd_store
         else:
-            yaw_setpoint = self.measurements_dict["wind_directions"]
+            self.wd_store = wind_directions
+
+        # look up wind direction
+        if self.wake_steering_interpolant is None:
+            yaw_setpoint = wind_directions
+        else:
+            # TODO: get interpolated yaw angles
+            yaw_setpoint = wind_directions
+            # print(self.measurements_dict["wind_directions"])
+            # print(yaw_setpoint)
+            # print(self.n_turbines)
+            
 
         self.controls_dict = {"yaw_angles": yaw_setpoint}
 
         return None
-
-    # def run(self):
-
-    #     connect_zmq = True
-    #     while connect_zmq:
-    #         self.receive_turbine_outputs()
-    #         self.generate_turbine_references()
-    #         self.send_turbine_references()
-
-    #         if self.measurements_dict['iStatus'] == -1:
-    #             connect_zmq = False
-    #             self.s._disconnect()
