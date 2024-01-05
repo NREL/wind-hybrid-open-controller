@@ -12,6 +12,7 @@
 
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
+import numpy as np
 from flasc.wake_steering.lookup_table_tools import get_yaw_angles_interpolant
 
 from whoc.controllers.controller_base import ControllerBase
@@ -57,6 +58,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
         
         # Handle possible bad data
         wind_directions = self.measurements_dict["wind_directions"]
+        wind_speeds = [8.0]*self.n_turbines # TODO: enable extraction of wind speed in Hercules
         if not wind_directions: # Recieved empty or None
             if self.verbose:
                 print("Bad wind direction measurement received, reverting to previous measurement.")
@@ -68,12 +70,13 @@ class LookupBasedWakeSteeringController(ControllerBase):
         if self.wake_steering_interpolant is None:
             yaw_setpoint = wind_directions
         else:
-            # TODO: get interpolated yaw angles
-            yaw_setpoint = wind_directions
-            # print(self.measurements_dict["wind_directions"])
-            # print(yaw_setpoint)
-            # print(self.n_turbines)
-            
+            interpolated_angles = self.wake_steering_interpolant(
+                wind_directions,
+                wind_speeds,
+                None
+            )
+            yaw_offsets = np.diag(interpolated_angles)
+            yaw_setpoint = (np.array(wind_directions) - yaw_offsets).tolist()
 
         self.controls_dict = {"yaw_angles": yaw_setpoint}
 
