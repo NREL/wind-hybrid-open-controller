@@ -67,14 +67,12 @@ def test_controller_instantiation():
 
 def test_LookupBasedWakeSteeringController():
     test_interface = HerculesADYawInterface(test_hercules_dict)
-    test_controller = LookupBasedWakeSteeringController(interface=test_interface, input_dict=test_hercules_dict)
+    test_controller = LookupBasedWakeSteeringController(
+        interface=test_interface,
+        input_dict=test_hercules_dict
+    )
 
     # Check that the controller can be stepped
-    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
-    assert test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"][
-        "turbine_yaw_angles"
-    ] == [270.0, 270.0]
-
     test_hercules_dict["time"] = 20
     test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
     assert (

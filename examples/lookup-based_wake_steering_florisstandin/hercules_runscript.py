@@ -13,8 +13,8 @@
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
 import sys
-import pandas as pd
 
+import pandas as pd
 from hercules.emulator import Emulator
 from hercules.py_sims import PySims
 from hercules.utilities import load_yaml
