@@ -11,8 +11,16 @@ method of `ControllerBase`.
 ## Available controllers
 
 ### LookupBasedWakeSteeringController
-For yaw controller of actuator disk-type turbines (as a stand-in, will be 
-updated).
+Yaw controller that implements wake steering based on a lookup table. 
+Requires a df_opt object produced by a FLORIS yaw optimization routine. See example 
+lookup-based_wake_steering_florisstandin for example usage.
+
+Currently, yaw angles are set based purely on the (local turbine) wind direction. The lookup table
+is sampled at a hardcoded wind speed of 8 m/s. This will be updated in future when an interface is
+developed for a simulator that provides wind turbine wind speeds also.
 
 ### WakeSteeringROSCOStandin
 May be combined into a universal simple wake steeringcontroller.
+
+### HerculesWindBatteryController
+TO WRITE
