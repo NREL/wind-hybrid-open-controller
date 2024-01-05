@@ -12,6 +12,7 @@ slices
 *.log
 examples/*/logstandin
 examples/*/loghercules
+examples/*/logfloris
 
 # macOS files
 .DS_Store
