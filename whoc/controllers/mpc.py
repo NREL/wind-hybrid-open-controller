@@ -101,6 +101,8 @@ class MPC(ControllerBase):
 		
 		self.objective = objective
 		self.dyn_model = dyn_model
+		
+		# TODO
 	
 	def solve(self):
 		"""
@@ -108,4 +110,18 @@ class MPC(ControllerBase):
 		"""
 		pass
 	
+if __name__ == '__main__':
+	pass
+	# TODO define/import parameters Q, R, P, N, Ts, n_turbines, yaw rate of change, yaw limits
+	
+	# TODO define quadratic objective function in terms of Q, R, P, given y and nu
+	
+	# TODO define linear inequality constraints on y and nu
+	
+	# TODO define dynamic state and output equality constraint: gamma(j+1) = gamma(j) + nu(j)Ts
 
+	# TODO instantiate FLORIS interface for output/power computation and define output equality constraint
+	
+	# TODO instatiate wind preview object
+	
+	# TODO instantiate cvx nonlinear solver object

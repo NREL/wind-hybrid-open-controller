@@ -12,20 +12,23 @@ Need csv containing 'true' wake characteristics at each turbine (variables) at e
 
 from functools import partial
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 import numpy as np
 from floris import tools as wfct
 import pandas as pd
 from multiprocessing import Pool
+import scipy
 # from CaseGen_General import CaseGen_General
-from postprocessing import plot_wind_farm
-from init import *
+# from postprocessing import plot_wind_farm
+from whoc.config import *
 from array import array
 from scipy.interpolate import interp1d, LinearNDInterpolator
+from collections import defaultdict
 
 # **************************************** Initialization **************************************** #
 
 # Initialize
-fi_sim = wfct.floris_interface.FlorisInterface(WAKE_FIELD_CONFIG["floris_input_file"])
+# fi_sim = wfct.floris_interface.FlorisInterface(WIND_FIELD_CONFIG["floris_input_file"])
 # fi_model = wfct.floris_interface.FlorisInterface(floris_model_dir)
 
 # for fi_temp in [fi_sim, fi_model]:
@@ -34,10 +37,10 @@ fi_sim = wfct.floris_interface.FlorisInterface(WAKE_FIELD_CONFIG["floris_input_f
 #     assert "calculate_VW_velocities" not in fi_temp.get_model_parameters()["Wake Deflection Parameters"] or fi_temp.get_model_parameters()["Wake Deflection Parameters"]["calculate_VW_velocities"] == False
 
 # **************************************** GENERATE TIME-VARYING FREESTREAM WIND SPEED/DIRECTION, YAW ANGLE, TURBINE TOPOLOGY SWEEP **************************************** #
-print(f'Simulating {N_CASES} total wake field cases...')
+# print(f'Simulating {N_CASES} total wake field cases...')
 
 # **************************************** CLASS ********************************************* #
-class WakeField:
+class WindField:
     def __init__(self, **config: dict):
         self.episode_time_step = None
         self.offline_probability = (
@@ -69,15 +72,21 @@ class WakeField:
         self.yaw_angle_change_probability = config["yaw_angle_change_probability"]
         self.ai_factor_change_probability = config["ai_factor_change_probability"]
         
+        self.wind_speed_u_range = config["wind_speed_u_range"]
+        self.wind_speed_v_range = config["wind_speed_v_range"]
+        
         self.wind_speed_var = config["wind_speed_var"]  # 0.5
         self.wind_dir_var = config["wind_dir_var"]  # 5.0
         self.yaw_angle_var = config["yaw_angle_var"]
         self.ai_factor_var = config["ai_factor_var"]
-        
-        self.wind_speed_turb_std = config["wind_speed_turb_std"]  # 0.5
-        self.wind_dir_turb_std = config["wind_dir_turb_std"]  # 5.0
-        self.yaw_angle_turb_std = config["yaw_angle_turb_std"]  # 0
-        self.ai_factor_turb_std = config["ai_factor_turb_std"]  # 0
+        #
+        # self.wind_speed_turb_std = config["wind_speed_turb_std"]  # 0.5
+        # self.wind_dir_turb_std = config["wind_dir_turb_std"]  # 5.0
+        # self.yaw_angle_turb_std = config["yaw_angle_turb_std"]  # 0
+        # self.ai_factor_turb_std = config["ai_factor_turb_std"]  # 0
+        self.wind_speed_noise_func = config["wind_speed_noise_func"]
+        self.wind_speed_u_noise_args = config["wind_speed_u_noise_args"]
+        self.wind_speed_v_noise_args = config["wind_speed_v_noise_args"]
         
         self.episode_max_time_steps = config["episode_max_time_steps"]
         self.wind_speed_sampling_time_step = config["wind_speed_sampling_time_step"]
@@ -87,12 +96,64 @@ class WakeField:
         
         self.yaw_angle_roc = config["yaw_angle_roc"]
         
+        self.wind_speed_preview_time = config["wind_speed_preview_time"]
+        
+        self.n_preview_steps = int(self.wind_speed_preview_time // self.wind_speed_sampling_time_step)
+        
     def _generate_online_bools_ts(self):
         return np.random.choice(
                 [0, 1], size=(self.episode_max_time_steps, self.n_turbines),
                 p=[self.offline_probability, 1 - self.offline_probability])
     
-    def _generate_change_ts(self, val_range, val_var, change_prob, noise_std, sample_time_step, roc=None):
+    def _generate_preview_noise(self, noise_func=np.random.multivariate_normal, noise_args=None):
+        """
+        corr(X) = (diag(Kxx))^(-0.5)Kxx(diag(Kxx))^(-0.5)
+        low variance and high covariance => high correlation
+        """
+        
+        # if noise_args is None and noise_func.__name__ == "np.multivariate_normalultivariate_normal":
+        #     noise_args = {}
+        #     if mean is None:
+        #         noise_args["mean"] = np.zeros((2 * (n_steps + 1), 1))
+            # distribution_args["mean"] = [self.wind_speed_u_range[1] / 2] * (n_steps + 1) \
+            #                             + [self.wind_speed_v_range[1] / 2] * (n_steps + 1)
+            
+            # distribution_args["cov"] = np.zeros(n_steps + 1)
+            # noise_args["cov"] = np.diag([self.wind_speed_u_range[1] / 4] * (n_steps + 1) \
+            #                             + [self.wind_speed_v_range[1] / 4] * (n_steps + 1))
+            
+            # noise_args["cov"] = np.diag([self.wind_speed_u_range[1] / 4] * (n_steps + 1) \
+            #                             + [self.wind_speed_v_range[1] / 4] * (n_steps + 1))
+           
+            
+        def preview_noise_generator(current_measurements, n_samples):
+            noise_args = {}
+            noise_args["mean"] = [current_measurements[0] / 2] * (self.n_preview_steps + 1) \
+                                        + [current_measurements[1] / 2] * (self.n_preview_steps + 1)
+            
+            noise_args["cov"] = np.diag(noise_args["mean"]) / 4
+            cov_u = np.diag(noise_args["mean"][:self.n_preview_steps + 1]) / 4
+            cov_v = np.diag(noise_args["mean"][self.n_preview_steps + 1:]) / 4
+            var_u = np.diag(cov_u)
+            var_v = np.diag(cov_v)
+            
+            for i in range(1, self.n_preview_steps + 1):
+                x = 3 * var_u - (i - 1) * ((var_u / 3) / self.n_preview_steps)
+                cov_u += np.diag(x[:self.n_preview_steps - i + 1], k=i)
+                cov_u += np.diag(x[:self.n_preview_steps - i + 1], k=-i)
+                x = 3 * var_v - (i - 1) * ((var_v / 3) / self.n_preview_steps)
+                cov_v += np.diag(x[:self.n_preview_steps - i + 1], k=i)
+                cov_v += np.diag(x[:self.n_preview_steps - i + 1], k=-i)
+            
+            noise_args["cov"] = scipy.linalg.block_diag(cov_u, cov_v)
+            
+            noise_args["size"] = n_samples
+            return noise_func(**noise_args)
+        
+        return preview_noise_generator
+    
+    def _generate_change_ts(self, val_range, val_var, change_prob, sample_time_step,
+                            noise_func=None, noise_args=None, roc=None):
         # initialize at random wind speed
         init_val = np.random.choice(
             np.arange(val_range[0], val_range[1], val_var)
@@ -131,23 +192,35 @@ class WakeField:
                                interp1d(np.arange(0, self.episode_max_time_steps, sample_time_step),
                                        random_vals, kind='linear', fill_value='extrapolate')(
                                        np.arange(0, self.episode_max_time_steps, 1)))
-            
-            
         
-        noise_vals = np.random.normal(scale=noise_std, size=(self.episode_max_time_steps,))
+        if noise_func is None:
+            noise_vals = np.zeros_like(delta_vals)
+        else:
+            noise_args["size"] = (self.episode_max_time_steps,)
+            noise_vals = noise_func(**noise_args)
         
         # add mean and noise and bound the wind speed to given range
-        ts = array('d', [init_val := np.clip(init_val + delta + n, val_range[0], val_range[1])
+        ts = array('d', [init_val := np.clip(init_val + delta + n, *val_range)
                                        for delta, n in zip(delta_vals, noise_vals)])
         
         return ts
-    def _generate_freestream_wind_speed_ts(self):
-        freestream_wind_speed_ts = self._generate_change_ts(WIND_SPEED_RANGE, self.wind_speed_var,
-                                                                 self.wind_speed_change_probability,
-                                                                 self.wind_speed_turb_std,
-                                                                 self.wind_speed_sampling_time_step)
-        return freestream_wind_speed_ts
+    def _generate_freestream_wind_speed_u_ts(self):
         
+        u_ts = self._generate_change_ts(self.wind_speed_u_range, self.wind_speed_var,
+                                                          self.wind_speed_change_probability,
+                                                          self.wind_speed_sampling_time_step,
+                                                          self.wind_speed_noise_func,
+                                                          self.wind_speed_u_noise_args)
+        return u_ts
+    
+    def _generate_freestream_wind_speed_v_ts(self):
+        v_ts = self._generate_change_ts(self.wind_speed_v_range, self.wind_speed_var,
+                                                          self.wind_speed_change_probability,
+                                                          self.wind_speed_sampling_time_step,
+                                                          self.wind_speed_noise_func,
+                                                          self.wind_speed_v_noise_args)
+        return v_ts
+    
     def _generate_freestream_wind_dir_ts(self):
         freestream_wind_dir_ts = self._generate_change_ts(WIND_DIR_RANGE, self.wind_dir_var,
                                                                  self.wind_dir_change_probability,
@@ -163,7 +236,7 @@ class WakeField:
                                                       roc=self.yaw_angle_roc)
                         for i in range(self.n_turbines)]
         yaw_angle_ts = np.array(yaw_angle_ts).T
-        
+
         return yaw_angle_ts
     
     def _generate_ai_factor_ts(self):
@@ -185,7 +258,7 @@ class WakeField:
         )
         
         return effective_ai_factor_ts
-    
+
 def plot_ts(wf):
     # Plot vs. time
     fig_ts, ax_ts = plt.subplots(2, 2, sharex=True) #len(case_list), 5)
@@ -193,201 +266,153 @@ def plot_ts(wf):
         ax_ts = ax_ts.flatten()
     else:
         ax_ts = [ax_ts]
-    colors = plt.cm.rainbow(np.linspace(0, 1, len(wf.downstream_turbine_indices)))
-
-    # for case_idx in range(n_cases):
-        # if case_idx == 0 or n_cases < 5:
         
     time = wf.df['Time']
-    freestream_wind_speed = wf.df['FreestreamWindSpeed'].to_numpy()
-    freestream_wind_dir = wf.df['FreestreamWindDir'].to_numpy()
-    ds_turbine_wind_speeds = np.hstack(
-        [wf.df[f'TurbineWindSpeeds_{t}'].to_numpy()[:, np.newaxis]
-         for t in wf.downstream_turbine_indices])
-    # ds_turbine_wind_dirs = np.hstack(
-    #     [wf.df[f'TurbineWindDirs_{t}'].to_numpy()[:, np.newaxis]
-    #      for t in wf.downstream_turbine_indices])
-    yaw_angles = np.hstack(
-        [wf.df[f'YawAngles_{t}'].to_numpy()[:, np.newaxis]
-         for t in range(wf.n_turbines)])
-    ai_factors = np.hstack(
-        [wf.df[f'AxIndFactors_{t}'].to_numpy()[:, np.newaxis]
-         for t in range(wf.n_turbines)])
+    freestream_wind_speed_u = wf.df['FreestreamWindSpeedU'].to_numpy()
+    freestream_wind_speed_v = wf.df['FreestreamWindSpeedV'].to_numpy()
+    freestream_wind_mag = np.linalg.norm(np.vstack([freestream_wind_speed_u, freestream_wind_speed_v]), axis=0)
+    freestream_wind_dir = np.arctan(freestream_wind_speed_u / freestream_wind_speed_v) * (180 / np.pi) + 180
     
-    # ds_turbine_wind_speeds_model = np.hstack(
-    #     [wf.df[f'TurbineWindSpeedsModel_{t}'].to_numpy()[:, np.newaxis]
-    #      for t in wf.downstream_turbine_indices])
+    ax_ts[0].plot(time, freestream_wind_speed_u)
+    ax_ts[1].plot(time, freestream_wind_speed_v)
+    ax_ts[2].plot(time, freestream_wind_mag)
+    ax_ts[3].plot(time, freestream_wind_dir)
     
-    ax_ts[0].plot(time, freestream_wind_speed)
-    ax_ts[1].plot(time, freestream_wind_dir)
-    
-    for t_idx, t in enumerate(wf.downstream_turbine_indices):
-        ax_ts[2].plot(time, ds_turbine_wind_speeds[:, t_idx], label=f'DS Turbine {t}',
-                             c=colors[t_idx])
-        # ax_ts[2].plot(time, ds_turbine_wind_dirs[:, t_idx], label=f'DS Turbine {t}',
-        #                  c=colors[t_idx])
-        ax_ts[3].plot(time, yaw_angles[:, t_idx], label=f'Turbine {t}',
-                         c=colors[t_idx])
-        ax_ts[4].plot(time, ai_factors[:, t_idx], label=f'Turbine {t}',
-                         c=colors[t_idx])
-    
-    ax_ts[0].set(title='Freestream Wind Speed [m/s]')
-    ax_ts[1].set(title='Freestream Wind Direction [deg]')
-    ax_ts[2].set(title='Turbine Effective Rotor Wind Speed [m/s]')
-    # ax_ts[3].set(title='Turbine Wind Direction [deg]')
-    ax_ts[3].set(title='Turbine Yaw Angle [deg]')
-    ax_ts[4].set(title='Turbine AI Factor [-]')
-
-        # ax_ts[case_idx].plot(time, ds_turbine_wind_speeds_model[:, t_idx], label=f'DS Turbine {t} Case {case_idx}',
-        #                      linestyle='--', c=colors[t_idx])
+    ax_ts[0].set(title='Freestream Wind Speed, U [m/s]')
+    ax_ts[1].set(title='Freestream Wind Speed, V [m/s]')
+    ax_ts[2].set(title='Freestream Wind Magnitude [m/s]')
+    ax_ts[3].set(title='Freestream Wind Direction [deg]')
     
     for ax in ax_ts:
         ax.set(xticks=time[0:-1:int(60 // DT)], xlabel='Time [s]')
 
-    fig_ts.savefig(os.path.join(FIG_DIR, f'{FARM_LAYOUT}_wake_field_ts.png'))
+    fig_ts.savefig(os.path.join(FIG_DIR, f'{FARM_LAYOUT}_wind_field_ts.png'))
     # fig_ts.show()
 
-def generate_wake_ts(config, case_idx):
-    wf = WakeField(**config)
+def generate_wind_ts(config, case_idx):
+    wf = WindField(**config)
     print(f'Simulating case #{case_idx}')
     
-    # Initialize
-    fi_sim = wfct.floris_interface.FlorisInterface(config["floris_input_file"])
-    # fi_model = wfct.floris_interface.FlorisInterface(floris_model_dir)
+    # define freestream time series
+    freestream_wind_speed_u = np.array(wf._generate_freestream_wind_speed_u_ts())
+    freestream_wind_speed_v = np.array(wf._generate_freestream_wind_speed_v_ts())
     
-    # define yaw angle time series
-    yaw_angles = np.array(wf._generate_yaw_angle_ts())
-    # ai_factors = np.array(wf._generate_ai_factor_ts())
-    freestream_wind_speeds = wf._generate_freestream_wind_speed_ts()
-    freestream_wind_dirs = wf._generate_freestream_wind_dir_ts()
-    fi_sim.reinitialize(wind_speeds=[freestream_wind_speeds[0]], wind_directions=[freestream_wind_dirs[0]])
-    # fi_sim.calculate_wake(yaw_angles=yaw_angles[0, :], axial_induction=ai_factors[0, :])
-    fi_sim.calculate_wake(yaw_angles=yaw_angles[0, :][np.newaxis, np.newaxis, :])
-    # fi_model.reinitialize_flow_field(wind_speed=freestream_wind_speeds[0], wind_direction=freestream_wind_dirs[0])
-    # fi_model.calculate_wake(yaw_angles=yaw_angles[0, :], axial_induction=ai_factors[0, :])
-    
-    # lists that will be needed for visualizationsd
-    turbine_wind_speeds_sim = []
-    # turbine_wind_speeds_model = [[] for t in range(wf.n_turbines)]
-    # TODO create floris instance for each turbine with stochastic 'freestream' wind speed and direction,
-    #  use calculated wind speed at turbine immediately downstream as 'freestream' wind speed for downstream turbine?
-    # turbine_wind_dirs_sim = [[] for t in range(wf.n_turbines)]
-    ai_factors = []
-    
-    # turbine_turb_intensities_sim = [[] for t in range(wf.n_turbines)]
-    # turbine_wind_dirs_model = [[] for t in range(wf.n_turbines)]
-    # turbine_turb_intensities_model = [[] for t in range(wf.n_turbines)]
-    # turbine_powers_sim = [[] for t in range(wf.n_turbines)]
-    # turbine_powers_model = [[] for t in range(wf.n_turbines)]
+    # define noise preview
     
     time = np.arange(0, wf.episode_max_time_steps) * DT
-    horizontal_planes = []
-    y_planes = []
-    cross_planes = []
     
-    for tt, sim_time in enumerate(time):
-        if sim_time % 100 == 0:
-            print("Simulation Time:", sim_time, "For Case:", case_idx)
-        
-        # fi_sim.floris.farm.flow_field.mean_wind_speed = freestream_wind_speeds[tt]
-        # fi_model.floris.farm.flow_field.mean_wind_speed = freestream_wind_speeds[tt]
-        
-        fi_sim.reinitialize(wind_speeds=[freestream_wind_speeds[tt]],
-                                       wind_directions=[freestream_wind_dirs[tt]])
-        # fi_model.reinitialize_flow_field(wind_speed=freestream_wind_speeds[tt],
-        #                                  wind_direction=freestream_wind_dirs[tt],
-        #                                  sim_time=sim_time)
-        
-        # calculate dynamic wake computationally
-        fi_sim.calculate_wake(yaw_angles=yaw_angles[tt, :][np.newaxis, np.newaxis, :])
-        # fi_model.calculate_wake(yaw_angles=yaw_angles[tt], axial_induction=ai_factors[tt], sim_time=sim_time)
-        
-        if case_idx == 0 and False:
-            fi_sim.turbine_indices = np.arange(wf.n_turbines)
-            farm_fig = plot_wind_farm(fi_sim)
-            farm_fig.show()
-            horizontal_planes.append(fi_sim.get_hor_plane(x_resolution=200, y_resolution=100,
-                                                          height=90.0))  # horizontal plane at hub-height
-            y_planes.append(fi_sim.get_y_plane(x_resolution=200, z_resolution=100,
-                                               y_loc=0.0))  # vertical plane parallel to freestream wind direction
-            cross_planes.append(fi_sim.get_cross_plane(y_resolution=100, z_resolution=100,
-                                                       x_loc=630.0))  # vertical plane parallel to turbine disc plane
-        
-        # for t in range(wf.n_turbines):
-            # QUESTION effective vs average velocities? former takes yaw misalignment into consideration?
-        turbine_wind_speeds_sim.append(fi_sim.turbine_effective_velocities[0, 0, :])
-            # turbine_wind_speeds_model[t].append(fi_model.floris.farm.turbines[t].average_velocity)
-            # turbine_wind_dirs_sim[t].append(fi_sim.floris.farm.wind_map.turbine_wind_direction[t])
-        ai_factors.append(fi_sim.get_turbine_ais()[0, 0, :])
-            # turbine_wind_dirs_model[t].append(fi_model.floris.farm.wind_map.turbine_wind_direction[t])
-            # turbine_turb_intensities_sim[t].append(fi_sim.floris.farm.turbulence_intensity[t])
-            # turbine_turb_intensities_model[t].append(fi_model.floris.farm.turbulence_intensity[t])
-            # turbine_powers_sim[t].append(fi_sim.floris.farm.turbines[t].power / 1e6)
-            # turbine_powers_model[t].append(fi_model.floris.farm.turbines[t].power / 1e6)
-        
-        # NOTE: at this point, can also use measure other quantities like average velocity at a turbine, etc.
-        # powers.append(sum([turbine.power for turbine in fi.floris.farm.turbines])/1e6)
-        
-        # calculate steady-state wake computationally
-        # fi.calculate_wake(yaw_angles=yaw_angles[tt], axial_induction=ai_factors[tt])
-        
-        # NOTE: at this point, can also use measure other quantities like average velocity at a turbine, etc.
-        # true_powers.append(sum([turbine.power for turbine in fi.floris.farm.turbines])/1e6)
+    # compute directions
+    u_only_dirs = np.zeros_like(freestream_wind_speed_u)
+    u_only_dirs[(freestream_wind_speed_v == 0) & (freestream_wind_speed_u >= 0)] = 270
+    u_only_dirs[(freestream_wind_speed_v == 0) & (freestream_wind_speed_u < 0)] = 90
+    u_only_dirs = (u_only_dirs - 180) * (np.pi / 180)
     
-    turbine_wind_speeds_sim = np.vstack(turbine_wind_speeds_sim)
-    # turbine_wind_dirs_sim = np.array(turbine_wind_dirs_sim).T
-    # turbine_wind_speeds_model = np.array(turbine_wind_speeds_model).T
-    # yaw_angles = np.vstack(yaw_angles)
-    ai_factors = np.vstack(ai_factors)
-    
-    # turbine_wind_dirs_sim = np.array(turbine_wind_dirs_sim).T
-    # turbine_wind_dirs_model = np.array(turbine_wind_dirs_model).T
-    # turbine_turb_intensities_sim = np.array(turbine_turb_intensities_sim).T
-    # turbine_turb_intensities_model = np.array(turbine_turb_intensities_model).T
-    # turbine_powers_sim = np.array(turbine_powers_sim).T
-    # turbine_powers_model = np.array(turbine_powers_model).T
+    dirs = np.arctan(np.divide(freestream_wind_speed_u, freestream_wind_speed_v,
+                               out=np.ones_like(freestream_wind_speed_u) * np.nan,
+                               where=freestream_wind_speed_v != 0),
+                     out=u_only_dirs,
+                     where=freestream_wind_speed_v != 0)
+    dirs[dirs < 0] = np.pi + dirs[dirs < 0]
+    dirs = (dirs * (180 / np.pi)) + 180
     
     # save case raw_data as dataframe
-    wake_field_data = {
+    wind_field_data = {
         'Time': time,
-        'FreestreamWindSpeed': freestream_wind_speeds,
-        'FreestreamWindDir': freestream_wind_dirs
+        'FreestreamWindSpeedU': freestream_wind_speed_u,
+        'FreestreamWindSpeedV': freestream_wind_speed_v,
+        'FreestreamWindMag': np.linalg.norm(np.vstack([freestream_wind_speed_u, freestream_wind_speed_v]), axis=0),
+        'FreestreamWindDir': dirs
     }
-    
-    for t in range(wf.n_turbines):
-        wake_field_data = {**wake_field_data,
-                           f'TurbineWindSpeeds_{t}': turbine_wind_speeds_sim[:, t],
-                           # f'TurbineWindSpeedsModel_{t}': turbine_wind_speeds_model[:, t],
-                           # f'TurbineWindDirs_{t}': turbine_wind_dirs_sim[:, t],
-                           # f'TurbineWindDirsModel_{t}': turbine_wind_dirs_model[:, t],
-                           # f'TurbineTI_{t}': turbine_turb_intensities_sim[:, t],
-                           # f'TurbineTIModel_{t}': turbine_turb_intensities_model[:, t],
-                           # f'TurbinePowers_{t}': turbine_powers_sim[:, t],
-                           # f'TurbinePowersModel_{t}': turbine_powers_model[:, t],
-                           f'YawAngles_{t}': yaw_angles[:, t],
-                           f'AxIndFactors_{t}': ai_factors[:, t]
-                           }
-    
-    wake_field_df = pd.DataFrame(data=wake_field_data)
+    wind_field_df = pd.DataFrame(data=wind_field_data)
     
     # export case raw_data to csv
-    wake_field_df.to_csv(os.path.join(DATA_SAVE_DIR, f'case_{case_idx}.csv'))
-    wf.df = wake_field_df
-    wf.horizontal_planes = horizontal_planes
-    wf.y_planes = y_planes
-    wf.cross_planes = cross_planes
+    wind_field_df.to_csv(os.path.join(DATA_SAVE_DIR, f'case_{case_idx}.csv'))
+    wf.df = wind_field_df
+    return wf
+
+def generate_noise_preview_ts(config, case_idx, mean_freestream_wind_speed_u, mean_freestream_wind_speed_v):
+    wf = WindField(**config)
+    print(f'Generating noise preview for case #{case_idx}')
     
+    time = np.arange(0, wf.episode_max_time_steps) * DT
+    # save case raw_data as dataframe
+    wind_field_data = defaultdict(list)
+    wind_field_data["Time"] = time
+    
+    # define noise preview
+    noise_func = wf._generate_preview_noise(noise_func=np.random.multivariate_normal, noise_args=None)
+    
+    for u, v in zip(mean_freestream_wind_speed_u, mean_freestream_wind_speed_v):
+        noise_preview = noise_func(current_measurements=[u, v], n_samples=1)
+        u_preview = noise_preview[:wf.n_preview_steps + 1].squeeze()
+        v_preview = noise_preview[wf.n_preview_steps + 1:].squeeze()
+        mag = np.linalg.norm(np.vstack([u_preview, v_preview]), axis=0)
+        dir = np.arctan([u / v for u, v in zip(u_preview, v_preview)]) * (180 / np.pi) + 180
+        for i in range(wf.n_preview_steps):
+            wind_field_data[f"FreestreamWindSpeedU_{i}"].append(u_preview[i])
+            wind_field_data[f"FreestreamWindSpeedV_{i}"].append(v_preview[i])
+            wind_field_data[f"FreestreamWindMag_{i}"].append(mag[i])
+            wind_field_data[f"FreestreamWindDir_{i}"].append(dir[i])
+    
+    wind_field_df = pd.DataFrame(data=wind_field_data)
+    
+    # export case raw_data to csv
+    wind_field_df.to_csv(os.path.join(DATA_SAVE_DIR, f'preview_case_{case_idx}.csv'))
+    wf.df = wind_field_df
     return wf
 
 
-if __name__ == '__main__':
-    if N_CASES == 1:
-        wake_field_data = []
-        for i in range(N_CASES):
-            wake_field_data.append(generate_wake_ts(WAKE_FIELD_CONFIG, i))
-        plot_ts(wake_field_data[0])
+def plot_distribution_ts(wf):
+    # Plot vs. time
+    fig_ts, ax_ts = plt.subplots(2, 2, sharex=True)  # len(case_list), 5)
+    if hasattr(ax_ts, '__len__'):
+        ax_ts = ax_ts.flatten()
+    else:
+        ax_ts = [ax_ts]
+    
+    time = wf.df['Time']
+    freestream_wind_speed_u = wf.df[[f'FreestreamWindSpeedU_{i}' for i in range(wf.n_preview_steps)]].to_numpy()
+    freestream_wind_speed_v = wf.df[[f'FreestreamWindSpeedV_{i}' for i in range(wf.n_preview_steps)]].to_numpy()
+    freestream_wind_mag = np.linalg.norm(np.vstack([freestream_wind_speed_u, freestream_wind_speed_v]), axis=0)
+    freestream_wind_dir = np.arctan(freestream_wind_speed_u / freestream_wind_speed_v) * (180 / np.pi) + 180
+    
+    colors = cm.rainbow(np.linspace(0, 1, wf.n_preview_steps))
+    
+    for i in range(wf.n_preview_steps):
+        ax_ts[0].plot(time + i * wf.wind_speed_sampling_time_step, freestream_wind_speed_u[:, i], marker='o')
+        ax_ts[1].plot(time + i * wf.wind_speed_sampling_time_step, freestream_wind_speed_v[:, i], marker='o')
+        ax_ts[2].plot(time + i * wf.wind_speed_sampling_time_step, freestream_wind_mag[:, i], marker='o')
+        ax_ts[3].plot(time + i * wf.wind_speed_sampling_time_step, freestream_wind_dir[:, i], marker='o')
+    
+    ax_ts[0].set(title='Freestream Wind Speed, U [m/s]')
+    ax_ts[1].set(title='Freestream Wind Speed, V [m/s]')
+    ax_ts[2].set(title='Freestream Wind Magnitude [m/s]')
+    ax_ts[3].set(title='Freestream Wind Direction [deg]')
+    
+    for ax in ax_ts:
+        ax.set(xticks=time[0:-1:int(60 // DT)], xlabel='Time [s]')
+    
+    fig_ts.savefig(os.path.join(FIG_DIR, f'{FARM_LAYOUT}_wind_field_preview_ts.png'))
+
+def generate_multi_wind_ts(config, n_cases):
+    if n_cases == 1:
+        wind_field_data = []
+        for i in range(n_cases):
+            wind_field_data.append(generate_wind_ts(config, i))
+        plot_ts(wind_field_data[0])
+        
+        # wind_field_preview_data = []
+        # for i in range(n_cases):
+        #     wind_field_preview_data.append(generate_noise_preview_ts(
+        #         config, i, wind_field_data[i].df['FreestreamWindSpeedU'].to_numpy(),
+        #         wind_field_data[i].df['FreestreamWindSpeedV'].to_numpy()))
+        # plot_distribution_ts(wind_field_preview_data[0])
+
+        
     else:
         pool = Pool()
-        res = pool.map(partial(generate_wake_ts, WAKE_FIELD_CONFIG), range(N_CASES))
+        res = pool.map(partial(generate_wind_ts, config), range(n_cases))
         pool.close()
-    
+
+if __name__ == '__main__':
+    generate_multi_wind_ts(WIND_FIELD_CONFIG, N_CASES)

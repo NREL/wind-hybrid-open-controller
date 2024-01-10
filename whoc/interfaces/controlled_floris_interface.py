@@ -21,34 +21,6 @@ import floris.tools.visualization as wakeviz
 import matplotlib.pyplot as plt
 
 
-def compute_aep(self, interface, controller, windrose_interpolant, wind_directions=None, wind_speeds=None):
-    if wind_directions is None:
-        wind_directions = np.arange(0.0, 360.0, 1.0)
-    if wind_speeds is None:
-        wind_speeds = np.arange(1.0, 25.0, 1.0)
-    # if controller is None:
-    #     yaw_angles = self.env.floris.farm.yaw_angles
-    # else:
-    yaw_angles = controller.step()
-    
-    # Calculate frequency of occurrence for each bin and normalize sum to 1.0
-    wd_grid, ws_grid = np.meshgrid(wind_directions, wind_speeds, indexing="ij")
-    freq_grid = windrose_interpolant(wd_grid, ws_grid)
-    freq_grid = freq_grid / np.sum(freq_grid)  # Normalize to 1.0
-    
-    # Calculate farm power greedy control
-    self.env.reinitialize(
-        wind_directions=wind_directions,
-        wind_speeds=wind_speeds,
-        turbulence_intensity=turbulence_intensity  # Assume 8% turbulence intensity
-    )
-    fi_greedy.env.calculate_wake(np.array([[[yaw_angles[t]
-                                             for t in range(interface.env.floris.farm.n_turbines)]
-                                            for ws in range(len(wind_speeds))]
-                                           for wd in range(len(wind_directions))]))
-    farm_power_greedy = self.env.get_farm_power()
-    aep = np.sum(24 * 365 * np.multiply(farm_power_greedy, freq_grid))
-    return aep
 
 class ControlledFlorisInterface(InterfaceBase):
     def __init__(self, max_workers, yaw_limits, dt):
@@ -58,31 +30,20 @@ class ControlledFlorisInterface(InterfaceBase):
         self.time = 0
         self.dt = dt
     
-    def load_floris(self, config_path, wind_directions, wind_speeds, turbulence_intensity):
+    def load_floris(self, config_path):
         # Load the default example floris object
         self.env = FlorisInterface(config_path)  # GCH model matched to the default "legacy_gauss" of V2
         self.n_turbines = self.env.floris.farm.n_turbines
-        # fi = FlorisInterface("inputs/cc.yaml") # New CumulativeCurl model
-        
-        # Specify wind farm layout and update in the floris object
-        # N = 3  # number of turbines per row and per column
-        # X, Y = np.meshgrid(
-        #     5.0 * self.env.floris.farm.rotor_diameters_sorted[0][0][0] * np.arange(0, N, 1),
-        #     5.0 * self.env.floris.farm.rotor_diameters_sorted[0][0][0] * np.arange(0, N, 1),
-        # )
-        # self.env.reinitialize(layout_x=X.flatten(), layout_y=Y.flatten())
-        self.env.reinitialize(
-            wind_directions=wind_directions,
-            wind_speeds=wind_speeds,
-            turbulence_intensity=turbulence_intensity  # Assume 8% turbulence intensity
-        )
-        # np.array([[[ctrl_dict['yaw_angles'][t]
-        #             for t in range(self.env.floris.farm.n_turbines)]
-        #            for ws in self.env.floris.flow_field.wind_speeds]
-        #           for wd in self.env.floris.flow_field.wind_directions])
-        self.env.calculate_wake()
         
         return self
+    
+    def reset(self, disturbances):
+        self.env.floris.farm.yaw_angles = np.zeros((len(disturbances["wind_directions"]),
+                                                    len(disturbances["wind_speeds"]),
+                                                    self.n_turbines))
+        self.step(disturbances)
+        # self.env.calculate_wake()
+        return disturbances
     
     @classmethod
     def load_windrose(cls, windrose_path):
@@ -94,7 +55,7 @@ class ControlledFlorisInterface(InterfaceBase):
     def parallelize(self):
         # Pour this into a parallel computing interface
         parallel_interface = "concurrent"
-        self.env = ParallelComputingInterface(
+        self.par_env = ParallelComputingInterface(
             fi=self.env,
             max_workers=self.max_workers,
             n_wind_direction_splits=self.max_workers,
@@ -103,47 +64,110 @@ class ControlledFlorisInterface(InterfaceBase):
             print_timings=True,
         )
     
-    def get_measurements(self, obs_args):
-        # reinitialize floris
-        self.env.reinitialize(
-            wind_directions=obs_args["wind_directions"],
-            wind_speeds=obs_args["wind_speeds"],
-            turbulence_intensity=obs_args["turbulence_intensity"]  # Assume 8% turbulence intensity
-        )
-        # np.array([[[ctrl_dict['yaw_angles'][t]
-        #             for t in range(self.env.floris.farm.n_turbines)]
-        #            for ws in self.env.floris.flow_field.wind_speeds]
-        #           for wd in self.env.floris.flow_field.wind_directions])
-        self.env.calculate_wake()
+    def get_measurements(self):
+        """ abstract method from Interface class """
+        # dir is 270 if u > 0 else 90
+        # if not np.all(self.env.floris.flow_field.v == 0):
+        #     print('oh no')
         
-        dirs = (np.arctan(self.env.floris.flow_field.u / self.env.floris.flow_field.v) * (180/np.pi)) + 180
-        dirs = dirs.reshape(*dirs.shape[:3], -1)
-        dirs = np.mean(dirs, axis=3)
+        u_only_dirs = np.zeros_like(self.env.floris.flow_field.u)
+        u_only_dirs[(self.env.floris.flow_field.v == 0) & (self.env.floris.flow_field.u >= 0)] = 270
+        u_only_dirs[(self.env.floris.flow_field.v == 0) & (self.env.floris.flow_field.u < 0)] = 90
+        u_only_dirs = (u_only_dirs - 180) * (np.pi / 180)
+        
+        dirs = np.arctan(np.divide(self.env.floris.flow_field.u, self.env.floris.flow_field.v,
+                                   out=np.ones_like(self.env.floris.flow_field.u) * np.nan,
+                         where=self.env.floris.flow_field.v != 0),
+                         out=u_only_dirs,
+                         where=self.env.floris.flow_field.v != 0)
+        dirs[dirs < 0] = np.pi + dirs[dirs < 0]
+        dirs = (dirs * (180/np.pi)) + 180
+        # dirs = (np.arctan(dirs) * (180/np.pi)) + 180
+        # dirs += u_only_dirs
+        dirs = np.squeeze(np.mean(dirs.reshape(*dirs.shape[:3], -1), axis=3))
+        
+        # TODO why does self.env.floris.flow_field.v still have negative components for freestream wind direction of 262?
+        dirs = np.repeat(self.env.floris.flow_field.wind_directions, (self.n_turbines,))
+        
+        
         mags = np.sqrt(self.env.floris.flow_field.u**2 + self.env.floris.flow_field.v**2 + self.env.floris.flow_field.w**2)
-        mags = mags.reshape(*mags.shape[:3], -1)
-        mags = np.mean(mags, axis=3)
+        mags = np.squeeze(np.mean(mags.reshape(*mags.shape[:3], -1), axis=3))
+        
         measurements = {"time": self.time,
                         "wind_directions": dirs,
                         "wind_speeds": mags,# self.env.turbine_average_velocities,
-                        "powers": self.env.get_turbine_powers(),
-                        "yaw_angles": self.env.floris.farm.yaw_angles}
-        # np.arctan(self.env.floris.flow_field.u / self.env.floris.flow_field.v)
-        # measurements = meas_dict
+                        "powers": np.squeeze(self.env.get_turbine_powers()),
+                        "yaw_angles": np.squeeze(self.env.floris.farm.yaw_angles)}
         
         return measurements
     
     def check_controls(self, ctrl_dict):
+        """ abstract method from Interface class """
+        ctrl_dict["yaw_angles"] = np.float64(ctrl_dict["yaw_angles"])
         return ctrl_dict
 
-    def send_controls(self, other_args=None, **kwargs):
+    def step(self, disturbances):
+        # reinitialize floris
+        yaw_angles = self.env.floris.farm.yaw_angles
+        self.env.reinitialize(
+            wind_directions=disturbances["wind_directions"],
+            wind_speeds=disturbances["wind_speeds"],
+            turbulence_intensity=disturbances["turbulence_intensity"]  # Assume 8% turbulence intensity
+        )
         
-        self.env.calculate_wake(np.array([[[kwargs['yaw_angles'][t]
-                                                 for t in range(self.env.floris.farm.n_turbines)]
+        self.env.calculate_wake(yaw_angles)
+        
+        # TODO why self.env.floris.flow_field.v all zero even for wind directions other than 270??
+        return disturbances
+    def send_controls(self, **controls):
+        """ abstract method from Interface class """
+        self.env.calculate_wake(np.array([[[controls['yaw_angles'][i]
+                                                 for i in range(self.env.floris.farm.n_turbines)]
                                                  for ws in self.env.floris.flow_field.wind_speeds]
                                                  for wd in self.env.floris.flow_field.wind_directions]))
         
         self.time += self.dt
-        return kwargs
+        return controls
+    
+    @classmethod
+    def compute_aep(cls, fi, controller, windrose_interpolant, wind_directions=None, wind_speeds=None):
+        # Alternatively to below code, we could calculate AEP using
+        # 'fi_aep_parallel.get_farm_AEP(...)' but then we would not have the
+        # farm power productions, which we use later on for plotting.
+        if wind_directions is None:
+            wind_directions = np.arange(0.0, 360.0, 1.0)
+        if wind_speeds is None:
+            wind_speeds = np.arange(1.0, 25.0, 1.0)
+        # if controller is None:
+        #     yaw_angles = self.env.floris.farm.yaw_angles
+        # else:
+        # yaw_angles = controller.step()
+        
+        fi.env.reinitialize(
+            wind_directions=wind_directions,
+            wind_speeds=wind_speeds,
+            turbulence_intensity=0.08  # Assume 8% turbulence intensity
+        )
+        fi.parallelize()
+        
+        # Calculate frequency of occurrence for each bin and normalize sum to 1.0
+        wd_grid, ws_grid = np.meshgrid(wind_directions, wind_speeds, indexing="ij")
+        freq_grid = windrose_interpolant(wd_grid, ws_grid)
+        freq_grid = freq_grid / np.sum(freq_grid)
+        yaw_grid = controller.yaw_angles_interpolant(wd_grid, ws_grid)
+        
+        farm_power = fi.par_env.get_farm_power(yaw_grid)
+        farm_aep = np.sum(24 * 365 * np.multiply(farm_power, freq_grid))
+        farm_energy = np.multiply(freq_grid, farm_power)
+        
+        print(" ")
+        print("===========================================================")
+        print(f"Calculating {controller.__class__!r} annual energy production (AEP)...")
+        print(f"{controller.__class__!r} AEP: {farm_aep / 1.0e9:.3f} GWh.")
+        print("===========================================================")
+        print(" ")
+        
+        return farm_power, farm_aep, farm_energy
 
 if __name__ == '__main__':
     # Parallel options
@@ -167,9 +191,6 @@ if __name__ == '__main__':
         .load_floris(config_path='/Users/aoifework/Documents/toolboxes/floris/examples/inputs/emgauss.yaml',
                      wind_directions=wind_directions_tgt, wind_speeds=wind_speeds_tgt,
                      turbulence_intensity=turbulence_intensity)
-    
-    # Pour this into a parallel computing interface
-    # fi_greedy.parallelize()
     
     # calculate wake
     # greedy_ctrl.measurements_dict["turbine_wind_directions"] =

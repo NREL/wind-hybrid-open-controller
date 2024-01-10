@@ -12,6 +12,8 @@ slices
 *.log
 examples/*/logstandin
 examples/*/loghercules
+examples/wind_field_data/*
+examples/*.csv
 
 # macOS files
 .DS_Store
