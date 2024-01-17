@@ -23,10 +23,11 @@ import matplotlib.pyplot as plt
 
 
 class ControlledFlorisInterface(InterfaceBase):
-    def __init__(self, max_workers, yaw_limits, dt):
+    def __init__(self, yaw_limits, dt, yaw_rate, max_workers=16):
         super().__init__()
         self.max_workers = max_workers
         self.yaw_limits = yaw_limits
+        self.yaw_rate = yaw_rate
         self.time = 0
         self.dt = dt
     

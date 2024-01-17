@@ -69,7 +69,7 @@ class LUTController(ControllerBase):
 			## Get optimized AEP, with wake steering
 			
 			# Load a FLORIS object for yaw optimization
-			fi_lut = ControlledFlorisInterface(max_workers=max_workers, yaw_limits=YAW_ANGLE_RANGE, dt=DT) \
+			fi_lut = ControlledFlorisInterface(max_workers=max_workers, yaw_limits=YAW_ANGLE_RANGE, dt=DT, yaw_rate=YAW_RATE) \
 				.load_floris(config_path=WIND_FIELD_CONFIG["floris_input_file"])
 			
 			fi_lut.env.reinitialize(
@@ -152,7 +152,7 @@ if __name__ == "__main__":
 	## First, get baseline AEP, without wake steering
 	
 	# Load a FLORIS object for AEP calculations
-	fi_noyaw = ControlledFlorisInterface(max_workers=max_workers, yaw_limits=YAW_ANGLE_RANGE, dt=DT) \
+	fi_noyaw = ControlledFlorisInterface(max_workers=max_workers, yaw_limits=YAW_ANGLE_RANGE, dt=DT, yaw_rate=YAW_RATE) \
 		.load_floris(config_path=WIND_FIELD_CONFIG["floris_input_file"])
 	fi_noyaw.env.reinitialize(
 		wind_directions=wind_directions_tgt,
@@ -170,7 +170,7 @@ if __name__ == "__main__":
 	                                                                     wind_directions_tgt, wind_speeds_tgt)
 	
 	# instantiate interface
-	fi_lut = ControlledFlorisInterface(max_workers=max_workers, yaw_limits=YAW_ANGLE_RANGE, dt=DT) \
+	fi_lut = ControlledFlorisInterface(max_workers=max_workers, yaw_limits=YAW_ANGLE_RANGE, dt=DT, yaw_rate=YAW_RATE) \
 		.load_floris(config_path=WIND_FIELD_CONFIG["floris_input_file"])
 	
 	# instantiate controller, and load lut from csv if it exists

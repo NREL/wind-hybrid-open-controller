@@ -26,11 +26,12 @@ class GreedyController(ControllerBase):
 		super().__init__(interface)
 		self.n_turbines = interface.n_turbines
 		self.yaw_limits = interface.yaw_limits
+		self.yaw_rate = yaw_rate
 		self.historic_measurements = {"wind_directions": np.zeros((0, self.n_turbines))}
 		
 		self.lpf_alpha = np.exp(-lpf_omega_c * lpf_T)
 		self.deadband_thr = deadband_thr
-		self.yaw_rate = yaw_rate
+		
 		# self.filtered_measurements["wind_direction"] = []
 	
 	def _first_ord_filter(self, x):
@@ -99,7 +100,7 @@ if __name__ == '__main__':
 	## First, get baseline AEP, without wake steering
 	
 	# Load a FLORIS object for AEP calculations 
-	fi_noyaw = ControlledFlorisInterface(max_workers=max_workers, yaw_limits=YAW_ANGLE_RANGE, dt=DT) \
+	fi_noyaw = ControlledFlorisInterface(max_workers=max_workers, yaw_limits=YAW_ANGLE_RANGE, dt=DT, yaw_rate=YAW_RATE) \
 		.load_floris(config_path=WIND_FIELD_CONFIG["floris_input_file"])
 	fi_noyaw.env.reinitialize(
 		wind_directions=wind_directions_tgt,
@@ -120,7 +121,7 @@ if __name__ == '__main__':
 	
 
 	# Load a FLORIS object for AEP calculations
-	fi_greedy = ControlledFlorisInterface(max_workers=max_workers, yaw_limits=YAW_ANGLE_RANGE, dt=DT) \
+	fi_greedy = ControlledFlorisInterface(max_workers=max_workers, yaw_limits=YAW_ANGLE_RANGE, dt=DT, yaw_rate=YAW_RATE) \
 		.load_floris(config_path=WIND_FIELD_CONFIG["floris_input_file"])
 	
 	# instantiate controller

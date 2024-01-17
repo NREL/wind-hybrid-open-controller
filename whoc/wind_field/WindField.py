@@ -24,6 +24,7 @@ from whoc.config import *
 from array import array
 from scipy.interpolate import interp1d, LinearNDInterpolator
 from collections import defaultdict
+from itertools import cycle, chain
 
 # **************************************** Initialization **************************************** #
 
@@ -146,6 +147,12 @@ class WindField:
                 cov_v += np.diag(x[:self.n_preview_steps - i + 1], k=-i)
             
             noise_args["cov"] = scipy.linalg.block_diag(cov_u, cov_v)
+            
+            if not np.all(noise_args["cov"].T == noise_args["cov"]):
+                print("oh no")
+            
+            # if not np.all(np.isclose(np.sqrt(noise_args["cov"].T @ noise_args["cov"]), noise_args["cov"])):
+            #     print('oh no')
             
             noise_args["size"] = n_samples
             return noise_func(**noise_args)
@@ -330,69 +337,122 @@ def generate_wind_ts(config, case_idx):
     wf.df = wind_field_df
     return wf
 
-def generate_noise_preview_ts(config, case_idx, mean_freestream_wind_speed_u, mean_freestream_wind_speed_v):
+def generate_noise_preview_ts(config, case_idx, wind_field_data):
+    
     wf = WindField(**config)
     print(f'Generating noise preview for case #{case_idx}')
     
     time = np.arange(0, wf.episode_max_time_steps) * DT
+    mean_freestream_wind_speed_u = wind_field_data[case_idx].df['FreestreamWindSpeedU'].to_numpy()
+    mean_freestream_wind_speed_v = wind_field_data[case_idx].df['FreestreamWindSpeedV'].to_numpy()
+    
     # save case raw_data as dataframe
-    wind_field_data = defaultdict(list)
-    wind_field_data["Time"] = time
+    wind_preview_data = defaultdict(list)
+    wind_preview_data["Time"] = time
     
     # define noise preview
     noise_func = wf._generate_preview_noise(noise_func=np.random.multivariate_normal, noise_args=None)
     
     for u, v in zip(mean_freestream_wind_speed_u, mean_freestream_wind_speed_v):
         noise_preview = noise_func(current_measurements=[u, v], n_samples=1)
-        u_preview = noise_preview[:wf.n_preview_steps + 1].squeeze()
-        v_preview = noise_preview[wf.n_preview_steps + 1:].squeeze()
+        u_preview = noise_preview[0, :wf.n_preview_steps + 1].squeeze()
+        v_preview = noise_preview[0, wf.n_preview_steps + 1:].squeeze()
         mag = np.linalg.norm(np.vstack([u_preview, v_preview]), axis=0)
-        dir = np.arctan([u / v for u, v in zip(u_preview, v_preview)]) * (180 / np.pi) + 180
+        
+        # compute directions
+        u_only_dir = np.zeros_like(u_preview)
+        u_only_dir[(v_preview == 0) & (u_preview >= 0)] = 270
+        u_only_dir[(v_preview == 0) & (u_preview < 0)] = 90
+        u_only_dir = (u_only_dir - 180) * (np.pi / 180)
+        
+        dir = np.arctan(np.divide(u_preview, v_preview,
+                                   out=np.ones_like(u_preview) * np.nan,
+                                   where=v_preview != 0),
+                         out=u_only_dir,
+                         where=v_preview != 0)
+        dir[dir < 0] = np.pi + dir[dir < 0]
+        dir = (dir * (180 / np.pi)) + 180
+        
+        # dir = np.arctan([u / v for u, v in zip(u_preview, v_preview)]) * (180 / np.pi) + 180
+        
         for i in range(wf.n_preview_steps):
-            wind_field_data[f"FreestreamWindSpeedU_{i}"].append(u_preview[i])
-            wind_field_data[f"FreestreamWindSpeedV_{i}"].append(v_preview[i])
-            wind_field_data[f"FreestreamWindMag_{i}"].append(mag[i])
-            wind_field_data[f"FreestreamWindDir_{i}"].append(dir[i])
+            wind_preview_data[f"FreestreamWindSpeedU_{i}"].append(u_preview[i])
+            wind_preview_data[f"FreestreamWindSpeedV_{i}"].append(v_preview[i])
+            wind_preview_data[f"FreestreamWindMag_{i}"].append(mag[i])
+            wind_preview_data[f"FreestreamWindDir_{i}"].append(dir[i])
     
-    wind_field_df = pd.DataFrame(data=wind_field_data)
+    wind_preview_df = pd.DataFrame(data=wind_preview_data)
     
     # export case raw_data to csv
-    wind_field_df.to_csv(os.path.join(DATA_SAVE_DIR, f'preview_case_{case_idx}.csv'))
-    wf.df = wind_field_df
+    wind_preview_df.to_csv(os.path.join(DATA_SAVE_DIR, f'preview_case_{case_idx}.csv'))
+    wf.df = wind_preview_df
     return wf
 
 
 def plot_distribution_ts(wf):
     # Plot vs. time
-    fig_ts, ax_ts = plt.subplots(2, 2, sharex=True)  # len(case_list), 5)
-    if hasattr(ax_ts, '__len__'):
-        ax_ts = ax_ts.flatten()
+    fig_scatter, ax_scatter = plt.subplots(2, 2, sharex=True)  # len(case_list), 5)
+    if hasattr(ax_scatter, '__len__'):
+        ax_scatter = ax_scatter.flatten()
     else:
-        ax_ts = [ax_ts]
+        ax_scatter = [ax_scatter]
+    
+    fig_plot, ax_plot = plt.subplots(2, 2, sharex=True)  # len(case_list), 5)
+    if hasattr(ax_plot, '__len__'):
+        ax_plot = ax_plot.flatten()
+    else:
+        ax_plot = [ax_plot]
     
     time = wf.df['Time']
     freestream_wind_speed_u = wf.df[[f'FreestreamWindSpeedU_{i}' for i in range(wf.n_preview_steps)]].to_numpy()
     freestream_wind_speed_v = wf.df[[f'FreestreamWindSpeedV_{i}' for i in range(wf.n_preview_steps)]].to_numpy()
-    freestream_wind_mag = np.linalg.norm(np.vstack([freestream_wind_speed_u, freestream_wind_speed_v]), axis=0)
-    freestream_wind_dir = np.arctan(freestream_wind_speed_u / freestream_wind_speed_v) * (180 / np.pi) + 180
+    freestream_wind_mag = (freestream_wind_speed_u**2 + freestream_wind_speed_v**2)**0.5
+    # freestream_wind_dir = np.arctan(freestream_wind_speed_u / freestream_wind_speed_v) * (180 / np.pi) + 180
+    
+    # compute directions
+    u_only_dir = np.zeros_like(freestream_wind_speed_u)
+    u_only_dir[(freestream_wind_speed_v == 0) & (freestream_wind_speed_u >= 0)] = 270
+    u_only_dir[(freestream_wind_speed_v == 0) & (freestream_wind_speed_u < 0)] = 90
+    u_only_dir = (u_only_dir - 180) * (np.pi / 180)
+    
+    freestream_wind_dir = np.arctan(np.divide(freestream_wind_speed_u, freestream_wind_speed_v,
+                              out=np.ones_like(freestream_wind_speed_u) * np.nan,
+                              where=freestream_wind_speed_v != 0),
+                    out=u_only_dir,
+                    where=freestream_wind_speed_v != 0)
+    freestream_wind_dir[freestream_wind_dir < 0] = np.pi + freestream_wind_dir[freestream_wind_dir < 0]
+    freestream_wind_dir = (freestream_wind_dir * (180 / np.pi)) + 180
     
     colors = cm.rainbow(np.linspace(0, 1, wf.n_preview_steps))
     
+    idx = slice(600)
     for i in range(wf.n_preview_steps):
-        ax_ts[0].plot(time + i * wf.wind_speed_sampling_time_step, freestream_wind_speed_u[:, i], marker='o')
-        ax_ts[1].plot(time + i * wf.wind_speed_sampling_time_step, freestream_wind_speed_v[:, i], marker='o')
-        ax_ts[2].plot(time + i * wf.wind_speed_sampling_time_step, freestream_wind_mag[:, i], marker='o')
-        ax_ts[3].plot(time + i * wf.wind_speed_sampling_time_step, freestream_wind_dir[:, i], marker='o')
+        ax_scatter[0].scatter(time[idx] + i * wf.wind_speed_sampling_time_step, freestream_wind_speed_u[idx, i], marker='o', color=colors[i])
+        ax_scatter[1].scatter(time[idx] + i * wf.wind_speed_sampling_time_step, freestream_wind_speed_v[idx, i], marker='o', color=colors[i])
+        ax_scatter[2].scatter(time[idx] + i * wf.wind_speed_sampling_time_step, freestream_wind_mag[idx, i], marker='o', color=colors[i])
+        ax_scatter[3].scatter(time[idx] + i * wf.wind_speed_sampling_time_step, freestream_wind_dir[idx, i], marker='o', color=colors[i])
     
-    ax_ts[0].set(title='Freestream Wind Speed, U [m/s]')
-    ax_ts[1].set(title='Freestream Wind Speed, V [m/s]')
-    ax_ts[2].set(title='Freestream Wind Magnitude [m/s]')
-    ax_ts[3].set(title='Freestream Wind Direction [deg]')
+    idx = slice(10)
+    for k, c in zip(range(len(time[idx])), cycle(colors)):
+        i = (np.arange(k * DT, k * DT + wf.wind_speed_preview_time, wf.wind_speed_sampling_time_step) * (1 // DT)).astype(int)
+        ax_plot[0].plot(time[i], freestream_wind_speed_u[k, :], color=c)
+        ax_plot[1].plot(time[i], freestream_wind_speed_v[k, :], color=c)
+        ax_plot[2].plot(time[i], freestream_wind_mag[k, :], color=c)
+        ax_plot[3].plot(time[i], freestream_wind_dir[k, :], color=c)
     
-    for ax in ax_ts:
-        ax.set(xticks=time[0:-1:int(60 // DT)], xlabel='Time [s]')
+    for axs in [ax_scatter, ax_plot]:
+        axs[0].set(title='Freestream Wind Speed, U [m/s]')
+        axs[1].set(title='Freestream Wind Speed, V [m/s]')
+        axs[2].set(title='Freestream Wind Magnitude [m/s]')
+        axs[3].set(title='Freestream Wind Direction [deg]')
     
-    fig_ts.savefig(os.path.join(FIG_DIR, f'{FARM_LAYOUT}_wind_field_preview_ts.png'))
+    for ax in chain(ax_scatter, ax_plot):
+        ax.set(xticks=time[idx][0:-1:int(60 // DT)], xlabel='Time [s]')
+    
+    fig_scatter.show()
+    fig_plot.show()
+    fig_scatter.savefig(os.path.join(FIG_DIR, f'{FARM_LAYOUT}_wind_field_preview_ts1.png'))
+    fig_plot.savefig(os.path.join(FIG_DIR, f'{FARM_LAYOUT}_wind_field_preview_ts2.png'))
 
 def generate_multi_wind_ts(config, n_cases):
     if n_cases == 1:
@@ -401,12 +461,7 @@ def generate_multi_wind_ts(config, n_cases):
             wind_field_data.append(generate_wind_ts(config, i))
         plot_ts(wind_field_data[0])
         
-        # wind_field_preview_data = []
-        # for i in range(n_cases):
-        #     wind_field_preview_data.append(generate_noise_preview_ts(
-        #         config, i, wind_field_data[i].df['FreestreamWindSpeedU'].to_numpy(),
-        #         wind_field_data[i].df['FreestreamWindSpeedV'].to_numpy()))
-        # plot_distribution_ts(wind_field_preview_data[0])
+        return wind_field_data
 
         
     else:
@@ -414,5 +469,21 @@ def generate_multi_wind_ts(config, n_cases):
         res = pool.map(partial(generate_wind_ts, config), range(n_cases))
         pool.close()
 
+
+def generate_multi_wind_preview_ts(config, n_cases, wind_field_data):
+    if n_cases == 1:
+        wind_field_preview_data = []
+        for i in range(n_cases):
+            wind_field_preview_data.append(generate_noise_preview_ts(
+                config, i, wind_field_data))
+        plot_distribution_ts(wind_field_preview_data[0])
+        return wind_field_preview_data
+    
+    else:
+        pool = Pool()
+        res = pool.map(partial(generate_noise_preview_ts, config, wind_field_data), range(n_cases))
+        pool.close()
+
 if __name__ == '__main__':
-    generate_multi_wind_ts(WIND_FIELD_CONFIG, N_CASES)
+    wind_field_data = generate_multi_wind_ts(WIND_FIELD_CONFIG, N_CASES)
+    generate_multi_wind_preview_ts(WIND_FIELD_CONFIG, N_CASES, wind_field_data)

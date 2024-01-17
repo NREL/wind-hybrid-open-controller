@@ -144,5 +144,5 @@ WIND_FIELD_CONFIG = {
 		"wind_speed_v_noise_args": {"scale": WIND_SPEED_TURB_STD},
 		"wind_speed_u_range": WIND_SPEED_U_RANGE,
 		"wind_speed_v_range": WIND_SPEED_V_RANGE,
-		"wind_speed_preview_time": EPISODE_MAX_TIME
+		"wind_speed_preview_time": 600
     }
