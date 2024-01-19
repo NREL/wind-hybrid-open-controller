@@ -1,3 +1,5 @@
+import pyomo.core
+
 from controller_base import ControllerBase
 import numpy as np
 import pandas as pd
@@ -7,6 +9,9 @@ from whoc.interfaces.controlled_floris_interface import ControlledFlorisInterfac
 from whoc.wind_field.WindField import generate_multi_wind_ts, generate_multi_wind_preview_ts
 from glob import glob
 import matplotlib.pyplot as plt
+from pyomo.core.expr import ExternalFunctionExpression
+from pyomo.core.base.external import ExternalFunction, PythonCallbackFunction # https://github.com/Pyomo/pyomo/blob/main/pyomo/core/tests/unit/test_external.py
+from pyoptsparse import Optimization, SLSQP
 
 class Objective:
 	def __init__(self, is_quadratic, is_stochastic, n_horizon, dyn_model, **kwargs):
@@ -99,14 +104,6 @@ class MPC(ControllerBase):
 	def __init__(self, interface, n_horizon: int, dt: float, alpha: float, control_input_domain: str = "continuous"):
 		
 		super().__init__(interface)
-		# # self.bounds = bounds
-		# self._state_horizon = None # optimized states over current prediction horizon
-		# self._output_horizon = None # modeled outputs over current prediction horizon
-		# self._ctrl_inpt_horizon = None # optimized control inputs over current prediction horizon
-		# self._dist_horizon = None # preview or prediction of disturbance
-		
-		# self.objective = objective
-		# self.dyn_model = dyn_model
 		
 		self.n_turbines = interface.n_turbines
 		self.yaw_limits = interface.yaw_limits
@@ -130,9 +127,46 @@ class MPC(ControllerBase):
 		                                    yaw_limits=self.yaw_limits, dt=self.dt, yaw_rate=self.yaw_rate) \
 			.load_floris(config_path=WIND_FIELD_CONFIG["floris_input_file"])
 		
-		self.setup_mi_solver()
+		# self.setup_pyomo_solver()
+		self.setup_pyopt_solver()
 	
-	def setup_mi_solver(self):
+	def setup_pyopt_solver(self):
+		def horizon_cost_rule(states):
+			# TODO parallelize this, check if reset is necessary
+			# TODO stochastic variation: sample wind_dir/wind_mag
+			# if np.all(np.isnan(self.norm_turbine_powers[j, :])):
+			# for j in self.mi_model.j:
+			
+			yaw_angles = np.array([[pyo.value(self.mi_model.states[j, i])
+			                        for i in range(self.n_turbines)] for j in range(self.n_horizon)])
+			
+			for j in range(self.n_horizon):
+				self.fi.env.reinitialize(
+					wind_directions=[self.disturbance_preview["wind_dir"][j]],
+					wind_speeds=[self.disturbance_preview["wind_mag"][j]],
+					turbulence_intensity=self.disturbance_preview["wind_ti"][j]
+				)
+				
+				# send yaw angles
+				self.fi.env.calculate_wake(yaw_angles[j, :][np.newaxis, np.newaxis, :])
+				yawed_turbine_powers = self.fi.env.get_turbine_powers()
+				
+				self.fi.env.calculate_wake(np.zeros((1, 1, self.n_turbines)))
+				noyaw_turbine_powers = self.fi.env.get_turbine_powers()
+				
+				# normalize power by no yaw output
+				self.norm_turbine_powers[j, :] = np.divide(yawed_turbine_powers, noyaw_turbine_powers,
+				                                           where=noyaw_turbine_powers != 0,
+				                                           out=np.zeros_like(noyaw_turbine_powers))
+			
+			cost = sum(-self.norm_turbine_powers[j, i] * pyo.value(self.mi_model.Q)
+			           for j in range(self.n_horizon) for i in range(self.n_turbines)) \
+			       + sum(pyo.value(self.mi_model.control_inputs[j, i]) * pyo.value(self.mi_model.R)
+			             for j in range(self.n_horizon) for i in range(self.n_turbines))
+			
+			return cost
+	
+	def setup_pyomo_solver(self):
 		# instantiate mixed-integer solver
 		self.mi_model = pyo.ConcreteModel()
 		
@@ -159,7 +193,7 @@ class MPC(ControllerBase):
 		
 		self.mi_model.initial_state = pyo.Param(self.mi_model.i,
 		                                        initialize=lambda model, i: 0,
-		                                        domain=pyo.Reals, doc="yaw angles at time-step j=0")
+		                                        domain=pyo.Reals, mutable=True, doc="yaw angles at time-step j=0")
 		
 		self.mi_model.wind_mag_disturbances = pyo.Param(self.mi_model.j, domain=pyo.NonNegativeReals, mutable=True,
 		                                                initialize=lambda model, j: 0,
@@ -180,46 +214,83 @@ class MPC(ControllerBase):
 		
 		# Define optimization variables: yaw angles of all turbines at all time-steps (continuous),
 		# yaw rates of change of all turbines at all time-steps excluding terminal one (integer-values)
-		self.mi_model.control_inputs = pyo.Var(self.mi_model.j, self.mi_model.i, domain=pyo.Integers, bounds=(-1, 1),
+		
+		self.mi_model.control_inputs = pyo.Var(self.mi_model.j, self.mi_model.i,
+		                                       domain=pyo.Integers if self.control_input_domain == 'discrete' else pyo.Reals,
+		                                       bounds=(-1, 1),
 		                                       initialize=lambda model, j, i: 0.0,
 		                                       doc="Yaw rate-of-change integers of the i-th turbine at the j-th time-step")
 		
 		self.mi_model.states = pyo.Var(self.mi_model.j, self.mi_model.i, domain=pyo.Reals, bounds=self.yaw_limits,
-		                               initialize=lambda model, j, i: 0,
+		                               initialize=lambda model, j, i: 0.0,
 		                               doc="Yaw angle of the i-th turbine at the j-th time-step")
 		
 		# Define outputs
-		def output_rule(model, j, i):
+		# def horizon_cost_rule(states, control_inputs, Q, R):
+		def horizon_cost_rule(states):
 			# TODO parallelize this, check if reset is necessary
 			# TODO stochastic variation: sample wind_dir/wind_mag
-			if np.all(np.isnan(self.norm_turbine_powers[j, :])):
+			# if np.all(np.isnan(self.norm_turbine_powers[j, :])):
+				# for j in self.mi_model.j:
+			
+			yaw_angles = np.array([[pyo.value(self.mi_model.states[j, i])
+			                        for i in range(self.n_turbines)] for j in range(self.n_horizon)])
+
+			for j in range(self.n_horizon):
+
 				self.fi.env.reinitialize(
 					wind_directions=[self.disturbance_preview["wind_dir"][j]],
 					wind_speeds=[self.disturbance_preview["wind_mag"][j]],
 					turbulence_intensity=self.disturbance_preview["wind_ti"][j]
 				)
-				
-				yaw_angles = np.array([[pyo.value(model.control_inputs[j, i]) for i in model.i] for j in model.j])
-				
+
 				# send yaw angles
 				self.fi.env.calculate_wake(yaw_angles[j, :][np.newaxis, np.newaxis, :])
 				yawed_turbine_powers = self.fi.env.get_turbine_powers()
-				
+
 				self.fi.env.calculate_wake(np.zeros((1, 1, self.n_turbines)))
 				noyaw_turbine_powers = self.fi.env.get_turbine_powers()
-				
+
 				# normalize power by no yaw output
-				self.norm_turbine_powers[j, :] = (yawed_turbine_powers / noyaw_turbine_powers)
+				self.norm_turbine_powers[j, :] = np.divide(yawed_turbine_powers, noyaw_turbine_powers,
+				                                           where=noyaw_turbine_powers != 0,
+				                                           out=np.zeros_like(noyaw_turbine_powers))
+				
+				# if np.any(np.isnan(self.norm_turbine_powers[j, :])):
+				# 	print(self.disturbance_preview["wind_dir"][j])
+				# 	print(self.disturbance_preview["wind_mag"][j])
+				# 	print(self.disturbance_preview["wind_ti"][j])
+					# print(yawed_turbine_powers)
+					# print(noyaw_turbine_powers)
+					# print(yaw_angles[j, :])
+
+			# return -self.norm_turbine_powers
+			# print(self.norm_turbine_powers)
+			# print(pyo.value(self.mi_model.control_inputs[0, 0]))
 			
-			return -self.norm_turbine_powers[j, i]
+			cost = sum(-self.norm_turbine_powers[j, i] * pyo.value(self.mi_model.Q)
+			           for j in range(self.n_horizon) for i in range(self.n_turbines)) \
+		       + sum(pyo.value(self.mi_model.control_inputs[j, i]) * pyo.value(self.mi_model.R)
+		             for j in range(self.n_horizon) for i in range(self.n_turbines))
+			
+			# print(np.sum(self.norm_turbine_powers), cost)
+			# print(yaw_angles[0, :])
+			
+			# return sum(pyo.value(self.mi_model.states[0, i]) for i in range(self.n_turbines))
+			return cost
 		
-		self.mi_model.outputs = pyo.Expression(self.mi_model.j, self.mi_model.i,
-		                                       rule=output_rule,
-		                                       doc="Normalized negative power output of the i-th turbine at the j-th time-step")
+		self.mi_model.horizon_cost_func = ExternalFunction(function=horizon_cost_rule)
+		# self.mi_model.outputs = pyo.Expression(expr=self.mi_model.output_func(self.mi_model.states))
+		
+		# self.mi_model.outputs = self.mi_model.output_func(self.mi_model, self.mi_model.j, self.mi_model.i)
+			# ExternalFunctionExpression(self.mi_model.j, self.mi_model.i,
+		    #                                    fcn='output_func',
+		    #                                    doc="Normalized negative power output of the i-th turbine at the j-th time-step")
 		
 		# Define constraints
 		def dyn_yaw_angle_rule(model, j, i):
 			# return pyo.Constraint.Skip
+			# print(227)
 			delta_yaw = self.mi_model.sampling_time * self.mi_model.yaw_rate * self.mi_model.control_inputs[j, i]
 			if j == 0: # corresponds to time-step k=1 for states,
 				# pass initial state as parameter
@@ -230,14 +301,20 @@ class MPC(ControllerBase):
 		self.mi_model.dyn_yaw_angle = pyo.Constraint(self.mi_model.j, self.mi_model.i, rule=dyn_yaw_angle_rule)
 		
 		# Define objective
-		def horizon_cost_rule(model):
-			# if j < self.n_horizon - 1) \
-			return sum(model.outputs[j, i] * model.Q for j in model.j for i in model.i) \
-				+ sum(model.control_inputs[j, i] * model.R for j in model.j for i in model.i)
+		# def horizon_cost_rule(model):
+		# 	# if j < self.n_horizon - 1) \
+		# 	# print(240)
+		# 	cost = sum(model.outputs(model.states) * model.Q for j in model.j for i in model.i) \
+		# 		   + sum(model.control_inputs[j, i] * model.R for j in model.j for i in model.i)
+		# 	return cost
 		
 		# + sum(model.outputs[self.n_horizon-1, i] * model.P for i in model.i)
-		
-		self.mi_model.horizon_cost = pyo.Objective(rule=horizon_cost_rule, sense=pyo.minimize)
+		# states, control_inputs, Q, R, J, I
+		self.mi_model.horizon_cost = pyo.Objective(expr=self.mi_model.horizon_cost_func(
+			self.mi_model.states
+			# self.mi_model.control_inputs,
+			# self.mi_model.Q, self.mi_model.R
+		), sense=pyo.minimize)
 	
 	@property
 	def disturbance_preview(self):
@@ -253,6 +330,10 @@ class MPC(ControllerBase):
 			self.mi_model.wind_dir_disturbances[j] = self.disturbance_preview["wind_dir"][j]
 			self.mi_model.wind_ti_disturbances[j] = self.disturbance_preview["wind_ti"][j]
 	
+	def _pyomo_postprocess(self, options=None, instance=None, results=None):
+		self.mi_model.states.display()
+		self.mi_model.control_inputs.display()
+		
 	def compute_controls(self):
 		"""
 		solve OCP to minimize objective over future horizon
@@ -264,13 +345,16 @@ class MPC(ControllerBase):
 		
 		if current_time_step > 0:
 			# update initial state self.mi_model.initial_state
-			self.mi_model.initial_state = self.measurements_dict["yaw_angles"]
+			for i in self.mi_model.i:
+				self.mi_model.initial_state[i] = self.measurements_dict["yaw_angles"][i]
 			
 			# warm start Vars by reinitializing the solution from last time-step self.mi_model.states
-			for j in self.mi_model.j[:-1]:
+			for j in self.mi_model.j:
+				if j == self.n_horizon - 1:
+					continue
 				for i in self.mi_model.i:
-					self.mi_model.states[j, i] = pyo.value(self.mi_model.states[j + 1, i])
-					self.mi_model.control_inputs[j, i] = pyo.value(self.mi_model.control_inputs[j + 1, i])
+					self.mi_model.states[j, i] = np.clip(pyo.value(self.mi_model.states[j + 1, i]), *self.yaw_limits)
+					self.mi_model.control_inputs[j, i] = np.clip(pyo.value(self.mi_model.control_inputs[j + 1, i]), -1, 1)
 		
 		#     appsi_cbc                     Automated persistent interface to
 		#                                   Cbc
@@ -374,12 +458,14 @@ class MPC(ControllerBase):
 		# discrete control space - mathematical program with equilibrium constraints (mpec) - mixed integer nonlinear program (minlp)
 		if self.control_input_domain == 'discrete':
 			opt = pyo.SolverFactory('mpec_minlp')
-			opt.solve(self.mi_model)
+			results = opt.solve(self.mi_model)
+			results.write()
+			self.pyomo_postprocess(results=results)
 			
-			for j in self.mi_model.j:
-				for i in self.mi_model.i:
-					print(f"x({j}, {i}) = {pyo.value(self.mi_model.states[j, i])}")
-					print(f"u({j}, {i}) = {pyo.value(self.mi_model.control_inputs[j, i])}")
+			# for j in self.mi_model.j:
+			# 	for i in self.mi_model.i:
+			# 		print(f"x({j}, {i}) = {pyo.value(self.mi_model.states[j, i])}")
+			# 		print(f"u({j}, {i}) = {pyo.value(self.mi_model.control_inputs[j, i])}")
 			
 			self.controls_dict = {"yaw_angles":
 				                      np.array([pyo.value(self.mi_model.states[0, i]) for i in self.mi_model.i])}
@@ -387,14 +473,15 @@ class MPC(ControllerBase):
 		else:
 			# continuous control space
 			opt = pyo.SolverFactory('mpec_nlp')
-			opt.solve(self.mi_model)
+			results = opt.solve(self.mi_model)
 			
-			for j in self.mi_model.j:
-				for i in self.mi_model.i:
-					print(f"x({j}, {i}) = {pyo.value(self.mi_model.states[j, i])}")
-					print(f"u({j}, {i}) = {pyo.value(self.mi_model.control_inputs[j, i])}")
+			# for j in self.mi_model.j:
+			# 	for i in self.mi_model.i:
+			# 		print(f"x({j}, {i}) = {pyo.value(self.mi_model.states[j, i])}")
+			# 		print(f"u({j}, {i}) = {pyo.value(self.mi_model.control_inputs[j, i])}")
 			
 			# TODO will this work with continuous control inputs...
+			[pyo.value(self.mi_model.control_inputs[0, i]) for i in self.mi_model.i]
 			self.controls_dict = {"yaw_angles":
 				                      np.array([pyo.value(self.mi_model.states[0, i]) for i in self.mi_model.i])}
 			
@@ -477,14 +564,14 @@ if __name__ == '__main__':
 		# receive measurements from interface, compute control actions, and send to interface
 		ctrl_mpc.step()
 		
-		print(f"Time = {ctrl_mpc.measurements_dict['time']}",
-		      f"Freestream Wind Direction = {wind_dir_ts[k]}",
-		      f"Freestream Wind Magnitude = {wind_mag_ts[k]}",
-		      f"Turbine Wind Directions = {ctrl_mpc.measurements_dict['wind_directions']}",
-		      f"Turbine Wind Magnitudes = {ctrl_mpc.measurements_dict['wind_speeds']}",
-		      f"Turbine Powers = {ctrl_mpc.measurements_dict['powers']}",
-		      f"Yaw Angles = {ctrl_mpc.measurements_dict['yaw_angles']}",
-		      sep='\n')
+		# print(f"Time = {ctrl_mpc.measurements_dict['time']}",
+		#       f"Freestream Wind Direction = {wind_dir_ts[k]}",
+		#       f"Freestream Wind Magnitude = {wind_mag_ts[k]}",
+		#       f"Turbine Wind Directions = {ctrl_mpc.measurements_dict['wind_directions']}",
+		#       f"Turbine Wind Magnitudes = {ctrl_mpc.measurements_dict['wind_speeds']}",
+		#       f"Turbine Powers = {ctrl_mpc.measurements_dict['powers']}",
+		#       f"Yaw Angles = {ctrl_mpc.measurements_dict['yaw_angles']}",
+		#       sep='\n')
 		yaw_angles_ts.append(ctrl_mpc.measurements_dict['yaw_angles'])
 	
 	yaw_angles_ts = np.vstack(yaw_angles_ts)
