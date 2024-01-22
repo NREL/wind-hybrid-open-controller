@@ -2,10 +2,10 @@
 # I just run these one at a t time
 
 # A lot of modules and conda stuff
-conda activate hercules
+conda activate whoc
 
 # Set the helics port to use: 
-export HELICS_PORT=32000
+export HELICS_PORT=23404
 
 #make sure you use the same port number in the amr_input.inp and hercules_input_000.yaml files. 
 

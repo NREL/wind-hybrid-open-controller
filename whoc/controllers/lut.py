@@ -4,8 +4,6 @@ Output yaw angles equal to those optimized for that wind magnitude and direction
 Perform optimization upon LUT controller class initialization
 """
 
-# TODO check definition of greedy and lut controllers
-
 from controller_base import ControllerBase
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,7 +18,7 @@ from whoc.interfaces.controlled_floris_interface import ControlledFlorisInterfac
 from whoc.config import *
 from whoc.wind_field.WindField import generate_multi_wind_ts
 from whoc.plotting import plot_power_vs_speed, plot_yaw_vs_dir, plot_power_vs_dir
-from whoc.controllers.no_yaw import NoYawController
+from whoc.controllers.no_yaw_wake_steering_controller import NoYawController
 
 from floris.tools.visualization import visualize_quiver2
 
@@ -144,6 +142,7 @@ if __name__ == "__main__":
 	wind_directions_tgt = np.arange(0.0, 360.0, 1.0)
 	wind_speeds_tgt = np.arange(1.0, 25.0, 1.0)
 	
+	
 	# Load a dataframe containing the wind rose information
 	df_windrose, windrose_interpolant \
 		= ControlledFlorisInterface.load_windrose(
@@ -164,7 +163,14 @@ if __name__ == "__main__":
 	fi_noyaw.parallelize()
 	
 	# instantiate controller
-	ctrl_noyaw = NoYawController(fi_noyaw)
+	input_dict = {"controller": {
+		"num_turbines": fi_noyaw.n_turbines, "yaw_limits": fi_noyaw.yaw_limits, "yaw_rate": fi_noyaw.yaw_rate,
+		"ws_lpf_omega_c": 0.005, "wd_lpf_omega_c": 0.005, "lpf_T": 60,
+		"lut_path": os.path.join(os.path.dirname(__file__), "../../examples/lut.csv"),
+		"initial_conditions": {
+			"yaw": 0
+		}}}
+	ctrl_noyaw = NoYawController(fi_noyaw, input_dict=input_dict)
 	
 	farm_power_noyaw, farm_aep_noyaw, farm_energy_noyaw = ControlledFlorisInterface.compute_aep(fi_noyaw, ctrl_noyaw, windrose_interpolant,
 	                                                                     wind_directions_tgt, wind_speeds_tgt)
@@ -174,7 +180,8 @@ if __name__ == "__main__":
 		.load_floris(config_path=WIND_FIELD_CONFIG["floris_input_file"])
 	
 	# instantiate controller, and load lut from csv if it exists
-	ctrl_lut = LUTController(fi_lut, lut_path=os.path.join(os.path.dirname(__file__), "../../examples/lut.csv"))
+	
+	ctrl_lut = LUTController(fi_lut, input_dict=input_dict)
 	
 	farm_power_lut, farm_aep_lut, farm_energy_lut = ControlledFlorisInterface.compute_aep(fi_lut, ctrl_lut, windrose_interpolant,
 	                                                       wind_directions_tgt, wind_speeds_tgt)
