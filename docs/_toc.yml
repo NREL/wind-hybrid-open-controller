@@ -14,4 +14,7 @@ parts:
   - caption: Interfaces
     chapters:
     - file: interfaces
+  - caption: Examples
+    chapters:
+    - file: examples
 #     - file: order_of_op
