@@ -17,7 +17,7 @@ from whoc.controllers import (
     HerculesWindBatteryController,
     LookupBasedWakeSteeringController,
 )
-from whoc.interfaces import HerculesADYawInterface
+from whoc.interfaces import HerculesADYawInterface, HerculesWindBatteryInterface
 from whoc.interfaces.interface_base import InterfaceBase
 
 
@@ -112,5 +112,34 @@ def test_LookupBasedWakeSteeringController():
     assert np.allclose(test_angles, wind_directions - test_offsets)
 
 def test_HerculesWindBatteryController():
-    # TODO: write this test, possibly clean up HerculesWindBatteryController class
-    pass
+    # TODO: possibly clean up HerculesWindBatteryController class
+
+    test_interface = HerculesWindBatteryInterface(test_hercules_dict)
+    test_controller = HerculesWindBatteryController(test_interface, test_hercules_dict)
+    
+
+    # Check the low level methods behave as expected
+    test_controller._receive_measurements(test_hercules_dict)
+
+    wind_setpoints = test_controller.calc_wind_setpoints()
+    assert not wind_setpoints # wind setpoints should be empty
+
+    battery_setpoints = test_controller.calc_battery_setpoints()
+    assert battery_setpoints["signal"] == -500 # battery setpoints should not be empty
+
+    test_controller.compute_controls()
+    assert test_controller.setpoints_dict == {"wind": wind_setpoints, "battery": battery_setpoints}
+
+    # Test step
+    # We will need to change these cases when the wind_battery_controller has more general behavior
+    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [450, 450]
+    hercules_dict_out = test_controller.step(test_hercules_dict)
+    assert hercules_dict_out["setpoints"]["battery"]["signal"] == 900
+
+    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [550, 550]
+    hercules_dict_out = test_controller.step(test_hercules_dict)
+    assert hercules_dict_out["setpoints"]["battery"]["signal"] == -500
+
+
+    
+
