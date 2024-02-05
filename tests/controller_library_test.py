@@ -14,8 +14,8 @@
 import numpy as np
 import pandas as pd
 from whoc.controllers import (
-    HerculesWindBatteryController,
     LookupBasedWakeSteeringController,
+    WindBatteryController,
 )
 from whoc.interfaces import HerculesADYawInterface, HerculesWindBatteryInterface
 from whoc.interfaces.interface_base import InterfaceBase
@@ -63,7 +63,7 @@ def test_controller_instantiation():
     test_interface = StandinInterface()
 
     _ = LookupBasedWakeSteeringController(interface=test_interface, input_dict=test_hercules_dict)
-    _ = HerculesWindBatteryController(interface=test_interface, input_dict=test_hercules_dict)
+    _ = WindBatteryController(interface=test_interface, input_dict=test_hercules_dict)
 
 
 def test_LookupBasedWakeSteeringController():
@@ -111,11 +111,11 @@ def test_LookupBasedWakeSteeringController():
     )
     assert np.allclose(test_angles, wind_directions - test_offsets)
 
-def test_HerculesWindBatteryController():
+def test_WindBatteryController():
     # TODO: possibly clean up HerculesWindBatteryController class
 
     test_interface = HerculesWindBatteryInterface(test_hercules_dict)
-    test_controller = HerculesWindBatteryController(test_interface, test_hercules_dict)
+    test_controller = WindBatteryController(test_interface, test_hercules_dict)
     
 
     # Check the low level methods behave as expected

@@ -17,7 +17,7 @@ import numpy as np
 from whoc.controllers.controller_base import ControllerBase
 
 
-class HerculesWindBatteryController(ControllerBase):
+class WindBatteryController(ControllerBase):
     def __init__(self, interface, input_dict, verbose=True):
         super().__init__(interface, verbose)
 
