@@ -48,9 +48,9 @@ class ControllerBase(metaclass=ABCMeta):
         # Initialize controls to send
         self.controls_dict = None
 
-    def _receive_measurements(self):
+    def _receive_measurements(self, hercules_dict=None):
         # May need to eventually loop here, depending on server set up.
-        self.measurements_dict = self._s.get_measurements()
+        self.measurements_dict = self._s.get_measurements(hercules_dict)
 
         return None
 
@@ -61,7 +61,7 @@ class ControllerBase(metaclass=ABCMeta):
 
         return controller_output  # or main_dict, or what?
 
-    def step(self):
+    def step(self, hercules_dict=None):
         # If not running with direct hercules integration,
         # hercules_dict may simply be None throughout this method.
         self._receive_measurements()

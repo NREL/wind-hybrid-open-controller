@@ -30,7 +30,7 @@ hercules_comms:
             subscription_topics: [status]
             publication_topics: [control]
             endpoints: []
-            helicsport : 23404
+            helicsport : 32000
         publication_interval: 1
         endpoint_interval: 1
         starttime: 0

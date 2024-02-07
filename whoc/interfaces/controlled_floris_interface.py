@@ -23,25 +23,31 @@ import matplotlib.pyplot as plt
 
 
 class ControlledFlorisInterface(InterfaceBase):
-    def __init__(self, yaw_limits, dt, yaw_rate, max_workers=16):
+    def __init__(self, yaw_limits, dt, yaw_rate, max_workers=16, floris_version='v4'):
         super().__init__()
         self.max_workers = max_workers
         self.yaw_limits = yaw_limits
         self.yaw_rate = yaw_rate
         self.time = 0
         self.dt = dt
+        self.floris_version = floris_version
     
     def load_floris(self, config_path):
         # Load the default example floris object
-        self.env = FlorisInterface(config_path)  # GCH model matched to the default "legacy_gauss" of V2
+        if self.floris_version == 'v4':
+            self.env = FlorisInterface(config_path)  # GCH model matched to the default "legacy_gauss" of V2
+        elif self.floris_version == 'dev':
+            from floris_dev.tools import FlorisInterface as FlorisInterfaceDev
+            self.env = FlorisInterfaceDev(config_path)
         self.n_turbines = self.env.floris.farm.n_turbines
         
         return self
     
     def reset(self, disturbances):
-        self.env.floris.farm.yaw_angles = np.zeros((len(disturbances["wind_directions"]),
-                                                    len(disturbances["wind_speeds"]),
-                                                    self.n_turbines))
+        self.env.floris.farm.yaw_angles = np.zeros((1, self.n_turbines))
+        # np.zeros((len(disturbances["wind_directions"]),
+        #                                             len(disturbances["wind_speeds"]),
+        #                                             self.n_turbines))
         self.step(disturbances)
         # self.env.calculate_wake()
         return disturbances
@@ -65,7 +71,7 @@ class ControlledFlorisInterface(InterfaceBase):
             print_timings=True,
         )
     
-    def get_measurements(self):
+    def get_measurements(self, hercules_dict=None):
         """ abstract method from Interface class """
         # dir is 270 if u > 0 else 90
         # if not np.all(self.env.floris.flow_field.v == 0):
@@ -85,14 +91,13 @@ class ControlledFlorisInterface(InterfaceBase):
         dirs = (dirs * (180/np.pi)) + 180
         # dirs = (np.arctan(dirs) * (180/np.pi)) + 180
         # dirs += u_only_dirs
-        dirs = np.squeeze(np.mean(dirs.reshape(*dirs.shape[:3], -1), axis=3))
+        dirs = np.squeeze(np.mean(dirs.reshape(*dirs.shape[:2], -1), axis=2))
         
-        # TODO why does self.env.floris.flow_field.v still have negative components for freestream wind direction of 262?
+
         dirs = np.repeat(self.env.floris.flow_field.wind_directions, (self.n_turbines,))
         
-        
         mags = np.sqrt(self.env.floris.flow_field.u**2 + self.env.floris.flow_field.v**2 + self.env.floris.flow_field.w**2)
-        mags = np.squeeze(np.mean(mags.reshape(*mags.shape[:3], -1), axis=3))
+        mags = np.squeeze(np.mean(mags.reshape(*mags.shape[:2], -1), axis=2))
         
         measurements = {"time": self.time,
                         "wind_directions": dirs,
@@ -113,19 +118,19 @@ class ControlledFlorisInterface(InterfaceBase):
         self.env.reinitialize(
             wind_directions=disturbances["wind_directions"],
             wind_speeds=disturbances["wind_speeds"],
-            turbulence_intensity=disturbances["turbulence_intensity"]  # Assume 8% turbulence intensity
+            turbulence_intensity=disturbances["turbulence_intensity"]  # Assume 8% turbulence intensity,
+            # solver_settings={"turbine_grid_points": 1} # TODO is it okay to set to 1 in input file?
         )
         
-        self.env.calculate_wake(yaw_angles)
+        self.env.calculate_wake(yaw_angles) # TODO switch from wind dir/speed coords to findex
         
-        # TODO why self.env.floris.flow_field.v all zero even for wind directions other than 270??
         return disturbances
     def send_controls(self, **controls):
         """ abstract method from Interface class """
-        self.env.calculate_wake(np.array([[[controls['yaw_angles'][i]
-                                                 for i in range(self.env.floris.farm.n_turbines)]
-                                                 for ws in self.env.floris.flow_field.wind_speeds]
-                                                 for wd in self.env.floris.flow_field.wind_directions]))
+        self.env.calculate_wake(np.array([[controls['yaw_angles'][i]
+                                                 for i in range(self.env.floris.farm.n_turbines)]]))
+                                                #  for ws in self.env.floris.flow_field.wind_speeds]
+                                                #  for wd in self.env.floris.flow_field.wind_directions]))
         
         self.time += self.dt
         return controls
@@ -147,7 +152,8 @@ class ControlledFlorisInterface(InterfaceBase):
         fi.env.reinitialize(
             wind_directions=wind_directions,
             wind_speeds=wind_speeds,
-            turbulence_intensity=0.08  # Assume 8% turbulence intensity
+            turbulence_intensity=0.08,  # Assume 8% turbulence intensity
+            solver_settings={"turbine_grid_points": 1}
         )
         fi.parallelize()
         

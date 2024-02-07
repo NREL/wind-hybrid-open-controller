@@ -6,11 +6,11 @@ import numpy as np
 FARM_LAYOUT = '9turb'
 
 if sys.platform == 'darwin':
-	PROJECT_DIR = '/Users/aoifework/Documents/Research/nn_wake_modeling/'
-	FLORIS_DIR = '/Users/aoifework/Documents/toolboxes/floris'
+	PROJECT_DIR = '/Users/ahenry/Documents/Research/nn_wake_modeling/'
+	FLORIS_DIR = '/Users/ahenry/Documents/toolboxes/floris'
 	EPISODE_MAX_TIME = 60 * 60 * 1  # 60 minutes
 	N_CASES = 1
-	STORAGE_DIR = '/Users/aoifework/Documents/toolboxes/wind-hybrid-open-controller/examples/wind_field_data'
+	STORAGE_DIR = '/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/wind_field_data'
 elif sys.platform == 'linux':
 	STORAGE_DIR = f'/scratch/alpine/aohe7145/nn_wake_modeling/'
 	PROJECT_DIR = '/projects/aohe7145/projects/nn_wake_modeling'
@@ -41,10 +41,10 @@ SAMPLING_TIME_STEP = {'freestream_wind_speed': int(60 // DT),
 				 'yaw_angle': int(60 // DT),
                  'ai_factor': int(1 // DT)}  # interval of DT seconds at which each agent takes a step
 
-EPISODE_MAX_TIME_STEPS = int(EPISODE_MAX_TIME // DT)
+EPISODE_MAX_TIME_STEPS = int(EPISODE_MAX_TIME // DT) # number of discrete time-stpes
 
-WIND_SPEED_U_RANGE = (8, 24)
-WIND_SPEED_V_RANGE = (0, 3)
+WIND_SPEED_U_RANGE = (8, 22)
+WIND_SPEED_V_RANGE = (0, 6)
 # WIND_SPEED_RANGE = (1, 24)
 WIND_DIR_RANGE = (250, 290)
 
@@ -73,11 +73,11 @@ ACTION_RANGE = {'yaw_angle': YAW_ANGLE_RANGE, 'ai_factor': AI_FACTOR_RANGE}
 INIT_VALS = {'yaw_angle': 0, 'ai_factor': 1 / 3, 'freestream_wind_speed': 10, 'freestream_wind_direction': 270}
 
 WIND_SPEED_CHANGE_PROBABILITY = 0.25
-WIND_SPEED_VAR = 0.4
+WIND_SPEED_VAR = 0.25
 WIND_SPEED_TURB_STD = 1
-WIND_DIR_CHANGE_PROBABILITY = 0.4
+WIND_DIR_CHANGE_PROBABILITY = 0.25
 WIND_DIR_VAR = 2.5
-WIND_DIR_TURB_STD = 5
+WIND_DIR_TURB_STD = 2.5
 YAW_ANGLE_CHANGE_PROBABILITY = 0.0
 YAW_ANGLE_CHANGE_VAR = 1
 YAW_ANGLE_VAR = DELTA_YAW * SAMPLING_TIME_STEP['yaw_angle']

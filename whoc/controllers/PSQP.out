@@ -1,0 +1,4 @@
+ ENTRY TO PSQP :
+ NIT=   0  NFV=   1  NFG=   1  F=-3.75000      C=0.0E+00  G=0.1E+61
+ EXIT FROM PSQP :
+ NIT=   1  NFV=  22  NFG=   1  F=-3.75000      C=0.4E-23  G=0.2E-02  ITERM= -6

@@ -83,14 +83,19 @@ if optimize_yaw_offsets:
     fi = FlorisInterface(floris_dict)
 
     fi.reinitialize(
-        layout_x=[0.0, 1000.0],
-        layout_y=[0.0, 0.0],
+        layout_x=[0.0, 1000.0, 2000.0],
+        layout_y=[0.0, 0.0, 0.0],
         wind_directions=np.arange(0.0, 360.0, 3.0),
         wind_speeds=np.arange(2.0, 18.0, 1.0),
     )
 
-    yaw_opt = YawOptimizationSR(fi, verify_convergence=True)
+    yaw_opt = YawOptimizationSR(fi, minimum_yaw_angle=-30.0, maximum_yaw_angle=30.0, verify_convergence=True)
     df_opt = yaw_opt.optimize()
+
+    # [idx for idx, row in df_opt.iterrows() if sum(row["yaw_angles_opt"]) > 0]
+    # x = df_opt.iloc[[idx for idx, (_, row) in enumerate(df_opt.iterrows()) if sum(abs(row["yaw_angles_opt"])) > 0]]
+    # x.loc[x["wind_direction"] == 270.]
+    # pd.unique(x["wind_direction"])
 
     print("Optimization results:")
     print(df_opt)
