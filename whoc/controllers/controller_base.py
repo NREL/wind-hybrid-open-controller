@@ -54,21 +54,21 @@ class ControllerBase(metaclass=ABCMeta):
 
         return None
 
-    def _send_controls(self) -> dict:
+    def _send_controls(self, hercules_dict=None) -> dict:
         # TODO what are other_args for?
         self._s.check_controls(self.controls_dict)
-        controller_output = self._s.send_controls(**self.controls_dict)
+        controller_output = self._s.send_controls(hercules_dict, **self.controls_dict)
 
         return controller_output  # or main_dict, or what?
 
     def step(self, hercules_dict=None):
         # If not running with direct hercules integration,
         # hercules_dict may simply be None throughout this method.
-        self._receive_measurements()
+        self._receive_measurements(hercules_dict)
 
         self.compute_controls() # set self.controls_dict
 
-        observations = self._send_controls()
+        observations = self._send_controls(hercules_dict)
 
         return observations  # May simply be None.
 
