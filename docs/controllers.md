@@ -22,5 +22,5 @@ developed for a simulator that provides wind turbine wind speeds also.
 ### WakeSteeringROSCOStandin
 May be combined into a universal simple wake steeringcontroller.
 
-### HerculesWindBatteryController
+### WindBatteryController
 TO WRITE

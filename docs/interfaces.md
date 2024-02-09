@@ -21,7 +21,7 @@ These methods will all be called in the `step()` method of `ControllerBase`.
 
 ## Available interfaces
 
-### HerculesADYawInterface
+### HerculesADInterface
 For direct python communication with Hercules. This should be instantiated 
 in a runscript that is running Hercules; used to generate a `controller` from 
 the WHOC controllers submodule; and that `controller` should be passed to the

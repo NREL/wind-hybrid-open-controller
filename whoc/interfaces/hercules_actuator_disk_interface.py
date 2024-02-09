@@ -17,7 +17,7 @@
 from whoc.interfaces.interface_base import InterfaceBase
 
 
-class HerculesADYawInterface(InterfaceBase):
+class HerculesADInterface(InterfaceBase):
     def __init__(self, hercules_dict):
         super().__init__()
 
@@ -51,7 +51,7 @@ class HerculesADYawInterface(InterfaceBase):
         return measurements
 
     def check_controls(self, controls_dict):
-        available_controls = ["yaw_angles"]
+        available_controls = ["yaw_angles", "power_setpoints"]
 
         for k in controls_dict.keys():
             if k not in available_controls:
@@ -61,10 +61,15 @@ class HerculesADYawInterface(InterfaceBase):
                     "Length of setpoint " + k + " does not match the number of turbines."
                 )
 
-    def send_controls(self, hercules_dict, yaw_angles=None):
+    def send_controls(self, hercules_dict, yaw_angles=None, power_setpoints=None):
         if yaw_angles is None:
             yaw_angles = [0.0] * self.n_turbines
+        if power_setpoints is None:
+            power_setpoints = [1e9] * self.n_turbines
 
         hercules_dict["hercules_comms"]["amr_wind"][self.wf_name]["turbine_yaw_angles"] = yaw_angles
+        hercules_dict["hercules_comms"]["amr_wind"][self.wf_name][
+            "turbine_power_setpoints"
+        ] = power_setpoints
 
         return hercules_dict

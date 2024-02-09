@@ -19,14 +19,14 @@ from hercules.emulator import Emulator
 from hercules.py_sims import PySims
 from hercules.utilities import load_yaml
 from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
-from whoc.interfaces.hercules_actuator_disk_yaw_interface import HerculesADYawInterface
+from whoc.interfaces.hercules_actuator_disk_interface import HerculesADInterface
 
 input_dict = load_yaml(sys.argv[1])
 
 # Load the optimal yaw angle lookup table for controller us
 df_opt = pd.read_pickle("yaw_offsets.pkl")
 
-interface = HerculesADYawInterface(input_dict)
+interface = HerculesADInterface(input_dict)
 controller = LookupBasedWakeSteeringController(interface, input_dict, df_yaw=df_opt)
 
 py_sims = PySims(input_dict)

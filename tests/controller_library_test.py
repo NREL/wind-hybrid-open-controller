@@ -17,7 +17,7 @@ from whoc.controllers import (
     LookupBasedWakeSteeringController,
     WindBatteryController,
 )
-from whoc.interfaces import HerculesADYawInterface, HerculesWindBatteryInterface
+from whoc.interfaces import HerculesADInterface, HerculesWindBatteryInterface
 from whoc.interfaces.interface_base import InterfaceBase
 
 
@@ -67,7 +67,7 @@ def test_controller_instantiation():
 
 
 def test_LookupBasedWakeSteeringController():
-    test_interface = HerculesADYawInterface(test_hercules_dict)
+    test_interface = HerculesADInterface(test_hercules_dict)
     
     # No lookup table passed; simply passes through wind direction to yaw angles
     test_controller = LookupBasedWakeSteeringController(
