@@ -44,6 +44,6 @@ class WindFarmPowerTrackingController(ControllerBase):
         turbine_current_powers = self.measurements_dict["turbine_powers"]
         print(turbine_current_powers)
         
-        self.controls_dict = {"power_setpoints": 2000}
+        self.controls_dict = {"power_setpoints": [2000]*self.n_turbines}
 
         return None

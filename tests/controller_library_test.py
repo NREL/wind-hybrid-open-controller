@@ -16,7 +16,9 @@ import pandas as pd
 from whoc.controllers import (
     LookupBasedWakeSteeringController,
     WindBatteryController,
+    WindFarmPowerTrackingController
 )
+from whoc.controllers.wind_farm_power_tracking_controller import POWER_SETPOINT_DEFAULT
 from whoc.interfaces import HerculesADInterface, HerculesWindBatteryInterface
 from whoc.interfaces.interface_base import InterfaceBase
 
@@ -64,6 +66,7 @@ def test_controller_instantiation():
 
     _ = LookupBasedWakeSteeringController(interface=test_interface, input_dict=test_hercules_dict)
     _ = WindBatteryController(interface=test_interface, input_dict=test_hercules_dict)
+    _ = WindFarmPowerTrackingController(interface=test_interface, input_dict=test_hercules_dict)
 
 
 def test_LookupBasedWakeSteeringController():
@@ -112,7 +115,6 @@ def test_LookupBasedWakeSteeringController():
     assert np.allclose(test_angles, wind_directions - test_offsets)
 
 def test_WindBatteryController():
-    # TODO: possibly clean up HerculesWindBatteryController class
 
     test_interface = HerculesWindBatteryInterface(test_hercules_dict)
     test_controller = WindBatteryController(test_interface, test_hercules_dict)
@@ -140,6 +142,18 @@ def test_WindBatteryController():
     hercules_dict_out = test_controller.step(test_hercules_dict)
     assert hercules_dict_out["setpoints"]["battery"]["signal"] == -500
 
+def test_WindFarmPowerTrackingController():
+    test_interface = HerculesADInterface(test_hercules_dict)
 
-    
+    test_controller = WindFarmPowerTrackingController(
+        interface=test_interface,
+        input_dict=test_hercules_dict
+    )
 
+    # Check that the controller can be stepped
+    test_hercules_dict["time"] = 20
+    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_power_setpoints = np.array(
+        test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
+    )
+    assert np.allclose(test_power_setpoints, 2000)
