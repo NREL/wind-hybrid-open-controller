@@ -202,7 +202,7 @@ def test_WindFarmPowerTrackingController():
 
     # Test if power is less than farm reference, power setpoints are increased
     test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["wind_power_reference"] = 1000
-    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [400, 400]
+    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [550, 400]
     test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
     test_power_setpoints = np.array(
         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
