@@ -17,6 +17,7 @@ from whoc.controllers import (
     LookupBasedWakeSteeringController,
     WindBatteryController,
     WindFarmPowerDistributingController,
+    WindFarmPowerTrackingController,
 )
 from whoc.controllers.wind_farm_power_tracking_controller import POWER_SETPOINT_DEFAULT
 from whoc.interfaces import HerculesADInterface, HerculesWindBatteryInterface
@@ -67,6 +68,7 @@ def test_controller_instantiation():
     _ = LookupBasedWakeSteeringController(interface=test_interface, input_dict=test_hercules_dict)
     _ = WindBatteryController(interface=test_interface, input_dict=test_hercules_dict)
     _ = WindFarmPowerDistributingController(interface=test_interface, input_dict=test_hercules_dict)
+    _ = WindFarmPowerTrackingController(interface=test_interface, input_dict=test_hercules_dict)
 
 
 def test_LookupBasedWakeSteeringController():
@@ -168,3 +170,11 @@ def test_WindFarmPowerDistributingController():
         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
     )
     assert np.allclose(test_power_setpoints, 500)
+
+def test_WindFarmPowerTrackingController():
+    test_interface = HerculesADInterface(test_hercules_dict)
+
+    test_controller = WindFarmPowerTrackingController(
+        interface=test_interface,
+        input_dict=test_hercules_dict
+    )

@@ -19,7 +19,8 @@ POWER_SETPOINT_DEFAULT = 1e9
 
 class WindFarmPowerDistributingController(ControllerBase):
     """
-    Based on controller developed under A2e2g project.
+    Evenly distributes wind farm power reference between turbines without 
+    feedback on current power generation.
     """
     def __init__(self, interface, input_dict, verbose=False):
         super().__init__(interface, verbose=verbose)
@@ -52,9 +53,37 @@ class WindFarmPowerDistributingController(ControllerBase):
         - None (sets self.controls_dict)
         """
         
+        # Split farm power reference among turbines and set "no value" for yaw angles (Floris not
+        # compatible with both power_setpoints and yaw_angles).
+        self.controls_dict = {
+            "power_setpoints": [farm_power_reference/self.n_turbines]*self.n_turbines,
+            "yaw_angles": [-1000]*self.n_turbines
+        }
+
+        return None
+
+class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
+    """
+    Based on controller developed under A2e2g project.
+
+    Inherits from WindFarmPowerDistributingController.
+    """
+
+    def __init__(self, interface, input_dict, verbose=False):
+        super().__init__(interface, input_dict, verbose=verbose)
+
+    def turbine_power_references(self, farm_power_reference=POWER_SETPOINT_DEFAULT):
+        """
+        Compute turbine-level power setpoints based on farm-level power
+        reference signal.
+        Inputs:
+        - farm_power_reference: float, farm-level power reference signal
+        Outputs:
+        - None (sets self.controls_dict)
+        """
+        
         # Handle possible bad data
         turbine_current_powers = self.measurements_dict["turbine_powers"]
-        print(turbine_current_powers)
         
         # set "no value" for yaw angles (Floris not compatible with both 
         # power_setpoints and yaw_angles)
