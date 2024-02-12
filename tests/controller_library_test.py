@@ -150,7 +150,7 @@ def test_WindFarmPowerDistributingController():
         input_dict=test_hercules_dict
     )
 
-    # Check that the controller can be stepped
+    # Default behavior when no power reference is given
     test_hercules_dict["time"] = 20
     test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
     test_power_setpoints = np.array(
@@ -160,3 +160,11 @@ def test_WindFarmPowerDistributingController():
         test_power_setpoints,
         POWER_SETPOINT_DEFAULT/test_hercules_dict["controller"]["num_turbines"]
     )
+
+    # Test with power reference
+    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["wind_power_reference"] = 1000
+    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_power_setpoints = np.array(
+        test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
+    )
+    assert np.allclose(test_power_setpoints, 500)
