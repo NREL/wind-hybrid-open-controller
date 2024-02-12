@@ -76,17 +76,17 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
         # TODO: Add these to input dict?
         beta=0.7
         omega_n=0.01
-        K_p_reduction=1.0
-        K_i_reduction=0.2
+        K_p_reduction=0.1
+        K_i_reduction=0 # No integral action for now
 
         self.K_p = K_p_reduction * 1/self.n_turbines
         self.K_i = K_i_reduction*(4*beta*omega_n)
 
-        # Initialize controller
+        # Initialize controller (only used for integral action)
         self.e_prev = 0
         self.u_prev = 0
         self.u_i_prev = 0
-        self.ai_prev = [0.33]*self.n_turbines
+        self.ai_prev = [0.33]*self.n_turbines # TODO: different method for anti-windup?
         self.n_saturated = 0 
 
     def turbine_power_references(self, farm_power_reference=POWER_SETPOINT_DEFAULT):

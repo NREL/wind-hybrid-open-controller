@@ -178,4 +178,36 @@ def test_WindFarmPowerTrackingController():
         interface=test_interface,
         input_dict=test_hercules_dict
     )
-    test_controller.step(hercules_dict=test_hercules_dict)
+
+    # Test no change to power setpoints if producing desired power
+    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["wind_power_reference"] = 1000
+    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [500, 500]
+    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_power_setpoints = np.array(
+        test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
+    )
+    assert np.allclose(test_power_setpoints, 500)
+
+    # Test if power exceeds farm reference, power setpoints are reduced
+    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["wind_power_reference"] = 1000
+    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [600, 600]
+    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_power_setpoints = np.array(
+        test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
+    )
+    assert (
+        test_power_setpoints
+        <= test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"]
+    ).all()
+
+    # Test if power is less than farm reference, power setpoints are increased
+    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["wind_power_reference"] = 1000
+    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [400, 400]
+    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_power_setpoints = np.array(
+        test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
+    )
+    assert (
+        test_power_setpoints
+        >= test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"]
+    ).all()
