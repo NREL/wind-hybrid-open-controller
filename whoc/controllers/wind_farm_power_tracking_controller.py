@@ -12,7 +12,6 @@
 
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
-# import numpy as np
 
 from whoc.controllers.controller_base import ControllerBase
 
@@ -44,6 +43,11 @@ class WindFarmPowerTrackingController(ControllerBase):
         turbine_current_powers = self.measurements_dict["turbine_powers"]
         print(turbine_current_powers)
         
-        self.controls_dict = {"power_setpoints": [2000]*self.n_turbines}
+        # set "no value" for yaw angles (Floris not compatible with both 
+        # power_setpoints and yaw_angles)
+        self.controls_dict = {
+            "power_setpoints": [2000]*self.n_turbines,
+            "yaw_angles": [-1000]*self.n_turbines
+        }
 
         return None

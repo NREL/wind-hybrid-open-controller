@@ -63,7 +63,7 @@ class HerculesADInterface(InterfaceBase):
 
     def send_controls(self, hercules_dict, yaw_angles=None, power_setpoints=None):
         if yaw_angles is None:
-            yaw_angles = [0.0] * self.n_turbines
+            yaw_angles = [-1000] * self.n_turbines
         if power_setpoints is None:
             power_setpoints = [1e9] * self.n_turbines
 
