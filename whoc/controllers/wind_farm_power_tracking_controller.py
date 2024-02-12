@@ -17,7 +17,7 @@ from whoc.controllers.controller_base import ControllerBase
 
 POWER_SETPOINT_DEFAULT = 1e9
 
-class WindFarmPowerTrackingController(ControllerBase):
+class WindFarmPowerDistributingController(ControllerBase):
     """
     Based on controller developed under A2e2g project.
     """

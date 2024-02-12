@@ -17,13 +17,13 @@ import sys
 from hercules.emulator import Emulator
 from hercules.py_sims import PySims
 from hercules.utilities import load_yaml
-from whoc.controllers.wind_farm_power_tracking_controller import WindFarmPowerTrackingController
+from whoc.controllers.wind_farm_power_tracking_controller import WindFarmPowerDistributingController
 from whoc.interfaces.hercules_actuator_disk_interface import HerculesADInterface
 
 input_dict = load_yaml(sys.argv[1])
 
 interface = HerculesADInterface(input_dict)
-controller = WindFarmPowerTrackingController(interface, input_dict)
+controller = WindFarmPowerDistributingController(interface, input_dict)
 
 py_sims = PySims(input_dict)
 

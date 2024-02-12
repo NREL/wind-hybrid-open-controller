@@ -16,7 +16,7 @@ import pandas as pd
 from whoc.controllers import (
     LookupBasedWakeSteeringController,
     WindBatteryController,
-    WindFarmPowerTrackingController,
+    WindFarmPowerDistributingController,
 )
 from whoc.controllers.wind_farm_power_tracking_controller import POWER_SETPOINT_DEFAULT
 from whoc.interfaces import HerculesADInterface, HerculesWindBatteryInterface
@@ -66,7 +66,7 @@ def test_controller_instantiation():
 
     _ = LookupBasedWakeSteeringController(interface=test_interface, input_dict=test_hercules_dict)
     _ = WindBatteryController(interface=test_interface, input_dict=test_hercules_dict)
-    _ = WindFarmPowerTrackingController(interface=test_interface, input_dict=test_hercules_dict)
+    _ = WindFarmPowerDistributingController(interface=test_interface, input_dict=test_hercules_dict)
 
 
 def test_LookupBasedWakeSteeringController():
@@ -142,10 +142,10 @@ def test_WindBatteryController():
     hercules_dict_out = test_controller.step(test_hercules_dict)
     assert hercules_dict_out["setpoints"]["battery"]["signal"] == -500
 
-def test_WindFarmPowerTrackingController():
+def test_WindFarmPowerDistributingController():
     test_interface = HerculesADInterface(test_hercules_dict)
 
-    test_controller = WindFarmPowerTrackingController(
+    test_controller = WindFarmPowerDistributingController(
         interface=test_interface,
         input_dict=test_hercules_dict
     )
