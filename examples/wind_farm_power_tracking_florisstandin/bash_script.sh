@@ -10,19 +10,14 @@ export HELICS_PORT=32000
 #make sure you use the same port number in the amr_input.inp and hercules_input_000.yaml files. 
 
 # Clear old log files for clarity
-rm loghercules logfloris
+rm loghercules_ol logfloris_ol loghercules_cl logfloris_cl
 
-# Set up the helics broker
+# Set up the helics broker and run the open-loop control simulation
 helics_broker -t zmq  -f 2 --loglevel="debug" --local_port=$HELICS_PORT & 
-#helics_broker -f 2 --consoleloglevel=trace --loglevel=debug --local_port=$HELICS_PORT >> loghelics &
+python3 hercules_runscript_OLcontrol.py hercules_input_000.yaml >> loghercules_ol 2>&1 &
+python3 floris_runscript.py amr_input.inp amr_standin_data.csv >> logfloris_ol 2>&1
 
-# Need to set this to your hercules folder
-# cd /home/pfleming/hercules/hercules
-python3 hercules_runscript.py hercules_input_000.yaml >> loghercules 2>&1 & # Start the controller center and pass in input file
-
-
-python3 floris_runscript.py amr_input.inp amr_standin_data.csv >> logfloris 2>&1
-# Now go back to scratch folder and launch the job
-
-# cd /scratch/pfleming/c2c/example_sim_02
-# mpirun -n 72 /home/pfleming/amr-wind/build/amr_wind amr_input.inp >> logamr 
+# Wait for the open-loop control simulation to finish and then run the closed-loop simulation
+helics_broker -t zmq  -f 2 --loglevel="debug" --local_port=$HELICS_PORT & 
+python3 hercules_runscript_CLcontrol.py hercules_input_000.yaml >> loghercules_cl 2>&1 &
+python3 floris_runscript.py amr_input.inp amr_standin_data.csv >> logfloris_cl 2>&1

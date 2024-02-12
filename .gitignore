@@ -10,9 +10,9 @@ slices
 # Data files
 *.csv
 *.log
-examples/*/logstandin
-examples/*/loghercules
-examples/*/logfloris
+examples/*/logstandin*
+examples/*/loghercules*
+examples/*/logfloris*
 
 # macOS files
 .DS_Store
