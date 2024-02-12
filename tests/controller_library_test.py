@@ -178,3 +178,4 @@ def test_WindFarmPowerTrackingController():
         interface=test_interface,
         input_dict=test_hercules_dict
     )
+    test_controller.step(hercules_dict=test_hercules_dict)
