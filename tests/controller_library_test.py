@@ -18,6 +18,7 @@ from whoc.controllers import (
     WindBatteryController,
     WindFarmPowerTrackingController,
 )
+from whoc.controllers.wind_farm_power_tracking_controller import POWER_SETPOINT_DEFAULT
 from whoc.interfaces import HerculesADInterface, HerculesWindBatteryInterface
 from whoc.interfaces.interface_base import InterfaceBase
 
@@ -155,4 +156,7 @@ def test_WindFarmPowerTrackingController():
     test_power_setpoints = np.array(
         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
     )
-    assert np.allclose(test_power_setpoints, 2000)
+    assert np.allclose(
+        test_power_setpoints,
+        POWER_SETPOINT_DEFAULT/test_hercules_dict["controller"]["num_turbines"]
+    )

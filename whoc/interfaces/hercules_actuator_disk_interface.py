@@ -15,6 +15,7 @@
 # How will we handle other things here? May need to have a wind farm
 # version, an electrolyzer version, etc...
 from whoc.interfaces.interface_base import InterfaceBase
+from whoc.controllers.wind_farm_power_tracking_controller import POWER_SETPOINT_DEFAULT
 
 
 class HerculesADInterface(InterfaceBase):
@@ -65,7 +66,7 @@ class HerculesADInterface(InterfaceBase):
         if yaw_angles is None:
             yaw_angles = [-1000] * self.n_turbines
         if power_setpoints is None:
-            power_setpoints = [1e9] * self.n_turbines
+            power_setpoints = [POWER_SETPOINT_DEFAULT] * self.n_turbines
 
         hercules_dict["hercules_comms"]["amr_wind"][self.wf_name]["turbine_yaw_angles"] = yaw_angles
         hercules_dict["hercules_comms"]["amr_wind"][self.wf_name][

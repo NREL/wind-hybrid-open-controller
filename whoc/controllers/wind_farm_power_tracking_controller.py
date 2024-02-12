@@ -35,9 +35,22 @@ class WindFarmPowerTrackingController(ControllerBase):
 
 
     def compute_controls(self):
-        self.turbine_power_references()
+        if "wind_power_reference" in self.measurements_dict:
+            farm_power_reference = self.measurements_dict["wind_power_reference"]
+        else:
+            farm_power_reference = POWER_SETPOINT_DEFAULT
+        
+        self.turbine_power_references(farm_power_reference=farm_power_reference)
 
-    def turbine_power_references(self):
+    def turbine_power_references(self, farm_power_reference=POWER_SETPOINT_DEFAULT):
+        """
+        Compute turbine-level power setpoints based on farm-level power
+        reference signal.
+        Inputs:
+        - farm_power_reference: float, farm-level power reference signal
+        Outputs:
+        - None (sets self.controls_dict)
+        """
         
         # Handle possible bad data
         turbine_current_powers = self.measurements_dict["turbine_powers"]
@@ -46,7 +59,7 @@ class WindFarmPowerTrackingController(ControllerBase):
         # set "no value" for yaw angles (Floris not compatible with both 
         # power_setpoints and yaw_angles)
         self.controls_dict = {
-            "power_setpoints": [2000]*self.n_turbines,
+            "power_setpoints": [farm_power_reference/self.n_turbines]*self.n_turbines,
             "yaw_angles": [-1000]*self.n_turbines
         }
 
