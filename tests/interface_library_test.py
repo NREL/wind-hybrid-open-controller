@@ -31,6 +31,7 @@ test_hercules_dict = {
         }
     },
     "py_sims": {"test_battery": {"outputs": 10.0}},
+    "external_signals": {"wind_power_reference": 1000.0},
 }
 
 
