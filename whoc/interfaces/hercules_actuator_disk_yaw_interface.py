@@ -52,7 +52,7 @@ class HerculesADYawInterface(InterfaceBase):
 
     def check_controls(self, controls_dict):
         available_controls = ["yaw_angles"]
-
+        # print(controls_dict)
         for k in controls_dict.keys():
             if k not in available_controls:
                 raise ValueError("Setpoint " + k + " is not available in this configuration.")

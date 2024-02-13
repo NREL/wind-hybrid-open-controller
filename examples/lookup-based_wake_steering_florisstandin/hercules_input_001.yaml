@@ -7,7 +7,7 @@ name: example_000
 # Describe this emulator setup
 description: Just a solar plant
 
-dt: 60
+dt: 0.5
 
 hercules_comms:
 
@@ -56,7 +56,7 @@ controller:
   controller_type: SimpleYawController # This may not be needed
   num_turbines: 3 # Should match AMR-Wind! Ideally, would come from AMR-wind
   initial_conditions:
-      yaw: 0.0 # degrees (same for all turbines) (will this work?)
+      yaw: 270.0 # degrees (same for all turbines) (will this work?)
   yaw_limits: [-30, 30]
   yaw_rate: 0.5
   yaw_increment: 0.25
@@ -74,5 +74,5 @@ controller:
   nu: 0.1 # step size for stochastic gradient estimate
   use_filtered_wind_measurements: False
   floris_input_file: /Users/ahenry/Documents/toolboxes/floris/examples/inputs/gch.yaml
-  solver: pyopt # may equal floris, pyopt, or zsgd
+  solver: floris # may equal floris, pyopt, or zsgd
   sequential_neighborhood_solve: False

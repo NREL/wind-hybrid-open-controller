@@ -51,11 +51,6 @@ class LookupBasedWakeSteeringController(ControllerBase):
             # optimize, unless passed existing lookup table
             # os.path.abspath(lut_path)
             self._optimize_lookup_table(lut_path=lut_path, load_lut=lut_path is not None)
-        # else:
-            # if self.verbose:
-            #     print("No offsets received; assuming nominal aligned control.")
-            # self.wake_steering_interpolant = None
-
         # Set initial conditions
         yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
         if hasattr(yaw_IC, "__len__"):
@@ -106,20 +101,13 @@ class LookupBasedWakeSteeringController(ControllerBase):
             # Pour this into a parallel computing interface
             fi_lut.parallelize()
             
-            # Now optimize the yaw angles using the Serial Refine method
-            # df_lut = fi_lut.optimize_yaw_angles(
-            #     minimum_yaw_angle=self.yaw_limits[0],
-            #     maximum_yaw_angle=self.yaw_limits[1],
-            #     Ny_passes=[5, 4],
-            #     exclude_downstream_turbines=True,
-            #     exploit_layout_symmetry=True,
-            # )
-            yaw_opt = YawOptimizationSR(fi_lut.env, minimum_yaw_angle=self.yaw_limits[0],
-                maximum_yaw_angle=self.yaw_limits[1],
-                # yaw_angles_baseline=np.zeros((len(wind_directions_lut), len(wind_speeds_lut), self.n_turbines)),
-                Ny_passes=[5, 4],
-                exclude_downstream_turbines=True,
-                exploit_layout_symmetry=True, verify_convergence=True)
+            yaw_opt = YawOptimizationSR(fi_lut.env, 
+                                        minimum_yaw_angle=self.yaw_limits[0],
+                                        maximum_yaw_angle=self.yaw_limits[1],
+                                        # yaw_angles_baseline=np.zeros((len(wind_directions_lut), len(wind_speeds_lut), self.n_turbines)),
+                                        Ny_passes=[5, 4],
+                                        exclude_downstream_turbines=True,
+                                        exploit_layout_symmetry=True, verify_convergence=True)
             df_lut = yaw_opt.optimize()
             
             # Assume linear ramp up at 5-6 m/s and ramp down at 13-14 m/s,
@@ -150,44 +138,41 @@ class LookupBasedWakeSteeringController(ControllerBase):
         )
     
     def compute_controls(self):
-        # wind_directions = self.measurements_dict["wind_directions"]
-        # wind_speeds = [8.0] * self.n_turbines  # TODO: enable extraction of wind speed in Hercules
-        # if wind_directions is None or not len(wind_directions): # Recieved empty or None
-        #     if self.verbose:
-        #         print("Bad wind direction measurement received, reverting to previous measurement.")
-        #     wind_directions = self.wd_store
-        # else:
-        #     self.wd_store = wind_directions
 
         if self.use_filt:
             self.historic_measurements["wind_directions"] = np.vstack([self.historic_measurements["wind_directions"],
                                                             self.measurements_dict["wind_directions"]])
             self.historic_measurements["wind_speeds"] = np.vstack([self.historic_measurements["wind_speeds"],
                                                                 self.measurements_dict["wind_speeds"]])
-    
+
+        # if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
         if self.measurements_dict["time"] < 60 or not self.use_filt:
-            wind_dir = self.measurements_dict["wind_directions"][0]
-            wind_speed = self.measurements_dict["wind_speeds"][0]
+            wind_dirs = self.measurements_dict["wind_directions"]
+            if len(wind_dirs) == 0:
+                if self.verbose:
+                    print("Bad wind direction measurement received, reverting to previous measurement.")
+                wind_dirs = self.wd_store
+            else:
+                wind_dirs = wind_dirs[0] # TODO Misha do we use all turbine wind directions in lut table?
+                self.wd_store = wind_dirs
+            # wind_speed = self.measurements_dict["wind_speeds"][0]
+            wind_speeds = 8.0 # TODO hercules can't get wind_speeds from measurements_dict
         else:
             if self.use_filt:
                 # use filtered wind direction and speed
-                wind_dir = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"][:, i],
+                wind_dirs = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"][:, i],
                                                                     self.wd_lpf_alpha)
                                             for i in range(self.n_turbines)]).T[-1, 0]
-                wind_speed = np.array([self._first_ord_filter(self.historic_measurements["wind_speeds"][:, i],
+                wind_speeds = np.array([self._first_ord_filter(self.historic_measurements["wind_speeds"][:, i],
                                                                     self.ws_lpf_alpha)
                                                 for i in range(self.n_turbines)]).T[-1, 0]
         
         # TODO shouldn't freestream wind speed/dir also be availalbe in measurements_dict, or just assume first row of turbines?
         # TODO filter wind speed and dir before certain time statpm?
-        yaw_offsets = self.wake_steering_interpolant(wind_dir, wind_speed)
+        yaw_offsets = self.wake_steering_interpolant(wind_dirs, wind_speeds)
+        yaw_setpoints = (np.array(wind_dirs) - yaw_offsets).tolist()
+        self.controls_dict = {"yaw_angles": yaw_setpoints}
         # yaw_offsets = np.diag(interpolated_angles)
-        # TODO don't think this should be subtracted? depends where wind direction is measured from
-        # yaw_setpoints = (np.array(wind_dir) - yaw_offsets).tolist()
-        yaw_setpoints = yaw_offsets.tolist()
-        
-        self.controls_dict = {"yaw_angles": np.clip(yaw_setpoints, *self.yaw_limits)}
-        
         return None
     
     def compute_controls_old(self):
@@ -290,14 +275,6 @@ if __name__ == "__main__":
     # Pour this into a parallel computing interface
     fi_noyaw.parallelize()
     
-    # instantiate controller
-    # input_dict = {"controller": {
-    #     "num_turbines": fi_noyaw.n_turbines, "yaw_limits": fi_noyaw.yaw_limits, "yaw_rate": fi_noyaw.yaw_rate,
-    #     "ws_lpf_omega_c": 0.005, "wd_lpf_omega_c": 0.005, "lpf_T": 60,
-    #     "lut_path": os.path.join(os.path.dirname(__file__), "../../examples/lut.csv"),
-    #     "initial_conditions": {
-    #         "yaw": 0
-    #     }}}
     ctrl_noyaw = NoYawController(fi_noyaw, input_dict=input_dict)
     
     farm_power_noyaw, farm_aep_noyaw, farm_energy_noyaw = ControlledFlorisInterface.compute_aep(fi_noyaw, ctrl_noyaw,

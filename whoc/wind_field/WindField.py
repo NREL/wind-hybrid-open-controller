@@ -128,9 +128,9 @@ class WindField:
 		# is zero for u and v elements (no correlation),
 		# positive and greater for adjacent elements u[j], u[j +/- 1], and v[j], v[j +/- 1] 
 		# more off-diagonal covariance elements are farther apart in time over the prediction horizon (i.e. the row number is farther from the column number)
-		# for the covariance matrix to be postive definite, off-diagonal elements should be less than diagonal elements, so p should be a fraction
-		# requirement on p such that covariance does not become negative, times safety factor of 5%
-		p = 1.05 * (1 - (1 / (n_preview_steps)))**0.5
+		# for the covariance matrix to be positive definite, off-diagonal elements should be less than diagonal elements, so p should be a fraction
+		# requirement on the variance such that covariance does not become negative, (plus safety factor of 5%)
+		p = 1.0 * (1 - (1 / (n_preview_steps)))**0.5
 		for i in range(1, n_preview_steps + 1):
 			# off-diagonal elements
 			x = p * var_u[:n_preview_steps - i + 1] - (i - 1) * ((var_u[:n_preview_steps - i + 1] / p) / n_preview_steps)

@@ -56,7 +56,7 @@ controller:
   controller_type: SimpleYawController # This may not be needed
   num_turbines: 3 # Should match AMR-Wind! Ideally, would come from AMR-wind
   initial_conditions:
-      yaw: 0.0 # degrees (same for all turbines) (will this work?)
+      yaw: 270.0 # degrees (same for all turbines) (will this work?)
   yaw_limits: [-30, 30]
   yaw_rate: 0.5
   yaw_increment: 0.25
@@ -67,12 +67,11 @@ controller:
   deadband_thr: 8
   dt: 60
   n_horizon: 10
-  alpha: 0.9
+  alpha: 0.5
   control_input_domain: continuous
   stochastic: False
   warm_start: lut # may equal 'previous' to warm-start with time-shifted previous solution,  "lut" to warm-start with lookup table solution, or "none"
-  nu: 0.1 # step size for stochastic gradient estimate
+  nu: 0.001 # step size to add/subtract from yaw angles for stochastic gradient estimate
   use_filtered_wind_measurements: False
   floris_input_file: /Users/ahenry/Documents/toolboxes/floris/examples/inputs/gch.yaml
   solver: pyopt # may equal floris, pyopt, or zsgd
-  sequential_neighborhood_solve: False

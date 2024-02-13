@@ -43,13 +43,11 @@ class ControlledFlorisInterface(InterfaceBase):
         
         return self
     
-    def reset(self, disturbances):
-        self.env.floris.farm.yaw_angles = np.zeros((1, self.n_turbines))
-        # np.zeros((len(disturbances["wind_directions"]),
-        #                                             len(disturbances["wind_speeds"]),
-        #                                             self.n_turbines))
+    def reset(self, disturbances, init_controls_dict):
+        self.env.floris.farm.yaw_angles = disturbances["wind_directions"][0] - np.array(init_controls_dict["yaw_angles"])[np.newaxis, :]
+        # self.env.floris.flow_field.u, self.env.floris.flow_field.v
         self.step(disturbances)
-        # self.env.calculate_wake()
+        
         return disturbances
     
     @classmethod
@@ -73,9 +71,6 @@ class ControlledFlorisInterface(InterfaceBase):
     
     def get_measurements(self, hercules_dict=None):
         """ abstract method from Interface class """
-        # dir is 270 if u > 0 else 90
-        # if not np.all(self.env.floris.flow_field.v == 0):
-        #     print('oh no')
         
         u_only_dirs = np.zeros_like(self.env.floris.flow_field.u)
         u_only_dirs[(self.env.floris.flow_field.v == 0) & (self.env.floris.flow_field.u >= 0)] = 270
@@ -103,7 +98,7 @@ class ControlledFlorisInterface(InterfaceBase):
                         "wind_directions": dirs,
                         "wind_speeds": mags,# self.env.turbine_average_velocities,
                         "powers": np.squeeze(self.env.get_turbine_powers()),
-                        "yaw_angles": np.squeeze(self.env.floris.farm.yaw_angles)}
+                        "yaw_angles": np.squeeze(dirs - self.env.floris.farm.yaw_angles)}
         
         return measurements
     
@@ -118,19 +113,15 @@ class ControlledFlorisInterface(InterfaceBase):
         self.env.reinitialize(
             wind_directions=disturbances["wind_directions"],
             wind_speeds=disturbances["wind_speeds"],
-            turbulence_intensity=disturbances["turbulence_intensity"]  # Assume 8% turbulence intensity,
-            # solver_settings={"turbine_grid_points": 1} # TODO is it okay to set to 1 in input file?
+            turbulence_intensity=disturbances["turbulence_intensity"]
         )
         
-        self.env.calculate_wake(yaw_angles) # TODO switch from wind dir/speed coords to findex
+        self.env.calculate_wake(yaw_angles)
         
         return disturbances
-    def send_controls(self, **controls):
+    def send_controls(self, hercules_dict, **controls):
         """ abstract method from Interface class """
-        self.env.calculate_wake(np.array([[controls['yaw_angles'][i]
-                                                 for i in range(self.env.floris.farm.n_turbines)]]))
-                                                #  for ws in self.env.floris.flow_field.wind_speeds]
-                                                #  for wd in self.env.floris.flow_field.wind_directions]))
+        self.env.calculate_wake((self.env.floris.flow_field.wind_directions - controls["yaw_angles"])[np.newaxis, :])
         
         self.time += self.dt
         return controls
@@ -180,7 +171,6 @@ if __name__ == '__main__':
     # Parallel options
     max_workers = 16
     
-    # Yaw options TODO put this in config file
     yaw_limits = (-30, 30)
     
     # results wind field options
@@ -199,15 +189,7 @@ if __name__ == '__main__':
                      wind_directions=wind_directions_tgt, wind_speeds=wind_speeds_tgt,
                      turbulence_intensity=turbulence_intensity)
     
-    # calculate wake
-    # greedy_ctrl.measurements_dict["turbine_wind_directions"] =
-    # greedy_ctrl.compute_controls(wd, ws, fi_greedy.env.yaw_angles[t])
-    # fi_greedy.env.calculate_wake(yaw_angles=[[[270 - wd
-    #                                          for wd in wind_directions_tgt]
-    #                                          for ws in wind_speeds_tgt]
-    #                                          for t in range(fi_greedy.env.floris.farm.n_turbines)])
-    # TODO check controls should turn yaw angles into floats
-    fi_greedy.send_controls(yaw_angles=np.array([[[270. - float(wd) #+ np.random.randint(-30, 30)
+    fi_greedy.send_controls(yaw_angles=np.array([[[float(wd) #+ np.random.randint(-30, 30)
                                              for t in range(fi_greedy.env.floris.farm.n_turbines)]
                                              for ws in wind_speeds_tgt]
                                              for wd in wind_directions_tgt]).flatten())

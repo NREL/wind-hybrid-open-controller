@@ -1,21 +1,19 @@
-# import pyomo.core
-# TODO add option to .yaml to assume perfect vs stochastic preview
-
-from time import perf_counter, time
+from time import perf_counter, time, strftime
 from glob import glob
 from functools import partial
 from multiprocessing import Pool, cpu_count
 import copy
 from collections import defaultdict
+import yaml
 
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from pyoptsparse import Optimization, SLSQP #, NSGA2, PSQP, ParOpt, CONMIN, ALPSO
+from pyoptsparse import Optimization, SLSQP, CONMIN #, NSGA2, PSQP, ParOpt, CONMIN, ALPSO
 from scipy.optimize import linprog
 
+import whoc
 from whoc.config import *
-# import pyomo.environ as pyo
 from whoc.controllers.controller_base import ControllerBase
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisInterface
 from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
@@ -24,6 +22,8 @@ from whoc.helpers import cluster_turbines
 
 from floris_dev.tools import FlorisInterface as FlorisInterfaceDev
 from floris_dev.tools.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
+
+import pyoptsparse.pyOpt_optimization
 
 optimizer_idx = 0
 
@@ -38,7 +38,7 @@ class YawOptimizationSRRHC(YawOptimizationSR):
         maximum_yaw_angle=25.0,
         yaw_angles_baseline=None,
         x0=None,
-        Ny_passes=[5, 4],  # Optimization options
+        Ny_passes=[10, 8, 6, 4],  # Optimization options
         turbine_weights=None,
         exclude_downstream_turbines=True,
         exploit_layout_symmetry=True,
@@ -66,9 +66,13 @@ class YawOptimizationSRRHC(YawOptimizationSR):
         self.yaw_rate = yaw_rate
         self.dt = dt
         self.Q = alpha
-        self.R = 100.0 * (1 - alpha) # need to scale control input componet to contend with power component
+        self.R = (1 - alpha) # need to scale control input componet to contend with power component
         self._turbine_power_opt_subset = np.zeros_like(self._minimum_yaw_angle_subset)
-        self._cost_opt_subset = np.zeros_like(self._farm_power_baseline_subset)
+        self._cost_opt_subset = np.ones_like(self._farm_power_baseline_subset) * 1e6
+        self._cost_terms_opt_subset = np.ones((*self._cost_opt_subset.shape, 2)) * 1e6
+
+        self._yaw_lbs_init = copy.deepcopy(self._minimum_yaw_angle_subset)
+        self._yaw_ubs_init = copy.deepcopy(self._maximum_yaw_angle_subset)
 
     def _calculate_turbine_powers(self, yaw_angles=None, wd_array=None, turbine_weights=None,
         heterogeneous_speed_multipliers=None
@@ -205,12 +209,15 @@ class YawOptimizationSRRHC(YawOptimizationSR):
 
         return turbine_powers
         
-    def optimize(self, current_yaw_angles, print_progress=False):
+    def optimize(self, current_yaw_offsets, print_progress=False):
+        # TODO why does this sometimes output the same yaw angle for all three turbines?
         """
         Find the yaw angles that maximize the power production for every wind direction,
         wind speed and turbulence intensity.
         """
-        norm_current_yaw_angles = current_yaw_angles / self.maximum_yaw_angle
+        self._yaw_lbs = copy.deepcopy(self._minimum_yaw_angle_subset)
+        self._yaw_ubs = copy.deepcopy(self._maximum_yaw_angle_subset)
+        
         self.print_progress = print_progress
         # compute baseline (no yaw) powers instead
         self._calculate_baseline_turbine_powers()
@@ -230,15 +237,16 @@ class YawOptimizationSRRHC(YawOptimizationSR):
 
                 # Create grid to evaluate yaw angles for one turbine == turbine_depth
                 
-                # norm_current_yaw_angles + self.dt * (self.yaw_rate / self.yaw_limits[1]) * opt_var_dict["control_inputs"][current_idx]
+                # norm_current_yaw_angles + self.dt * (self.yaw_rate / self.yaw_norm_const) * opt_var_dict["control_inputs"][current_idx]
+                # clip for control input values between -1 and 1
+                
+                self._yaw_lbs = np.max([(current_yaw_offsets - (self.dt * self.yaw_rate))[np.newaxis, np.newaxis, :], self._yaw_lbs], axis=0)
+                self._yaw_ubs = np.min([(current_yaw_offsets + (self.dt * self.yaw_rate))[np.newaxis, np.newaxis, :], self._yaw_ubs], axis=0)
                 evaluation_grid = self._generate_evaluation_grid(
                     pass_depth=Nii,
                     turbine_depth=turbine_depth
                 )
-                # clip for control input values between -1 and 1
-                evaluation_grid = np.clip(evaluation_grid,
-                                           current_yaw_angles - (self.dt * self.yaw_rate),
-                                            current_yaw_angles + (self.dt * self.yaw_rate))
+                
                 self._yaw_evaluation_grid = evaluation_grid
 
                 # Evaluate grid of yaw angles, get farm powers and find optimal solutions
@@ -255,14 +263,27 @@ class YawOptimizationSRRHC(YawOptimizationSR):
 
                 # Find optimal solutions in new evaluation grid
                 # integrate linear cost function alpha, normalized powers and normalized yaw rate of changes
-                norm_turbine_powers = turbine_powers / self.turbine_powers_baseline
+                norm_turbine_powers = turbine_powers / max(self.turbine_powers_baseline) # choose power not in wake to normalize with
                 # for each value in farm_powers, get corresponding next_yaw_angles from evaluation grid
                 
-                control_inputs = (evaluation_grid - current_yaw_angles) * (1 / (self.yaw_rate * self.dt))
+                control_inputs = (evaluation_grid - current_yaw_offsets) * (1 / (self.yaw_rate * self.dt))
                 
-                cost = np.sum((-0.5 * norm_turbine_powers**2 * self.Q) + (0.5 * control_inputs**2 * self.R), axis=3)
+                cost_state = np.sum(-0.5 * norm_turbine_powers**2 * self.Q, axis=3)
+                cost_control_inputs = np.sum(0.5 * control_inputs**2 * self.R, axis=3)
+                cost_terms = np.stack([cost_state, cost_control_inputs], axis=3)
+                cost = cost_state + cost_control_inputs
+
                 
                 args_opt = np.expand_dims(np.nanargmin(cost, axis=0), axis=0)
+
+                # print(turbine_depth, args_opt, sep='\n\n')
+
+                cost_terms_opt_new = np.squeeze(
+                    np.take_along_axis(cost_terms, 
+                                       np.expand_dims(args_opt, axis=2),
+                                       axis=0),
+                    axis=0,
+                )
 
                 cost_opt_new = np.squeeze(
                     np.take_along_axis(cost, args_opt, axis=0),
@@ -288,6 +309,7 @@ class YawOptimizationSRRHC(YawOptimizationSR):
                     axis=0
                 )
 
+                cost_terms_opt_prev = self._cost_terms_opt_subset
                 cost_opt_prev = self._cost_opt_subset
                 farm_powers_opt_prev = self._farm_power_opt_subset
                 turbine_powers_opt_prev = self._turbine_power_opt_subset
@@ -299,6 +321,9 @@ class YawOptimizationSRRHC(YawOptimizationSR):
                 cost_opt[ids_better] = cost_opt_new[ids_better]
                 farm_power_opt = farm_powers_opt_prev
                 farm_power_opt[ids_better] = farm_powers_opt_new[ids_better]
+
+                cost_terms_opt = cost_terms_opt_prev
+                cost_terms_opt[*ids_better, :] = cost_terms_opt_new[*ids_better, :]
 
                 # Now update optimal yaw angles if better than previous
                 turbs_sorted = self.turbines_ordered_array_subset
@@ -328,29 +353,30 @@ class YawOptimizationSRRHC(YawOptimizationSR):
                 )
 
                 # Save results to self
+                self._cost_terms_opt_subset = cost_terms_opt
                 self._cost_opt_subset = cost_opt
                 self._farm_power_opt_subset = farm_power_opt
                 self._turbine_power_opt_subset = turbine_powers_opt
                 self._yaw_angles_opt_subset = yaw_angles_opt
 
         # Finalize optimization, i.e., retrieve full solutions
+        self.cost_terms_opt = self._unreduce_variable(self._cost_terms_opt_subset)
         self.cost_opt = self._unreduce_variable(self._cost_opt_subset)
         df_opt = self._finalize()
+        df_opt["cost_states"] = self.cost_terms_opt[0][0][0]
+        df_opt["cost_control_inputs"] = self.cost_terms_opt[0][0][1]
         df_opt["cost"] = self.cost_opt
         return df_opt
 
-
-
-# TODO check if dynamic state equation constraints hold
 class MPC(ControllerBase):
 
     # SLSQP, NSGA2, ParOpt, CONMIN, ALPSO
     max_iter = 25
     acc = 1e-6
     optimizers = [
-        SLSQP(options={"IPRINT": -1, "MAXIT": max_iter, "ACC": acc})
+        SLSQP(options={"IPRINT": -1, "MAXIT": max_iter, "ACC": acc}),
         # NSGA2(options={"xinit": 1, "PrintOut": 0, "maxGen": 50})
-        # CONMIN(options={"IPRINT": 0}), # "ITMAX": 25}),
+        CONMIN(options={"IPRINT": 1, "ITMAX": max_iter})
         # ALPSO(options={}) #"maxOuterIter": 25})
         ]
 
@@ -373,16 +399,18 @@ class MPC(ControllerBase):
         self.stochastic = input_dict["controller"]["stochastic"]
         self.warm_start = input_dict["controller"]["warm_start"]
         self.Q = self.alpha
-        self.R = 100 * (1 - self.alpha)
+        self.R = (1 - self.alpha)
         self.nu = input_dict["controller"]["nu"]
-        self.sequential_neighborhood_solve = input_dict["controller"]["sequential_neighborhood_solve"]
+        # self.sequential_neighborhood_solve = input_dict["controller"]["sequential_neighborhood_solve"]
+        self.yaw_norm_const = 360
 
-        self.n_cluster_turbines = self.n_turbines if not self.sequential_neighborhood_solve else 4
-        self.n_states = self.n_horizon * self.n_turbines if not self.sequential_neighborhood_solve else self.n_horizon * self.n_cluster_turbines
-        self.n_control_inputs = self.n_horizon * self.n_turbines if not self.sequential_neighborhood_solve else self.n_horizon * self.n_cluster_turbines
-
-        self.dyn_state_jac = self.con_sens_rules()
         self.solver = input_dict["controller"]["solver"]
+        self.n_solve_turbines = self.n_turbines if self.solver != "sequential_pyopt" else 1
+        self.n_solve_states = self.n_solve_turbines * self.n_horizon
+        self.n_solve_control_inputs = self.n_solve_turbines * self.n_horizon
+
+        self.dyn_state_jac, self.state_jac = self.con_sens_rules()
+        
         
         
         # Set initial conditions
@@ -398,9 +426,8 @@ class MPC(ControllerBase):
         else:
             self.controls_dict = {"yaw_angles": [self.yaw_IC] * self.n_turbines}
         
-        # self.norm_turbine_powers = np.ones((self.n_wind_preview_samples, self.n_horizon, self.n_turbines)) * np.nan
-        self.initial_state = np.zeros((self.n_turbines,))
-        # self.most_recent_solution = {"states": [], "control_inputs": []}
+        self.initial_state = np.array([self.yaw_IC / self.yaw_norm_const] * self.n_turbines)
+        
         self.opt_sol = {"states": [], "control_inputs": []}
         
         if input_dict["controller"]["control_input_domain"].lower() in ['discrete', 'continuous']:
@@ -408,291 +435,371 @@ class MPC(ControllerBase):
         else:
             raise TypeError("control_input_domain must be have value of 'discrete' or 'continuous'")
         
-        # TODO pull from true disturbances
-        self._disturbance_preview = {"wind_mag": [12.] * self.n_horizon,
-                                     "wind_dir": [270.] * self.n_horizon,
-                                     "wind_ti": [0.08] * self.n_horizon}
-        
+        self.wind_ti = 0.08
+
         self.fi = ControlledFlorisInterface(max_workers=interface.max_workers,
                                             yaw_limits=self.yaw_limits, dt=self.dt, yaw_rate=self.yaw_rate) \
             .load_floris(config_path=WIND_FIELD_CONFIG["floris_input_file"])
         
-        # self.setup_pyomo_solver()
         if self.solver == "floris":
             self.fi_opt = FlorisInterfaceDev(input_dict["controller"]["floris_input_file"])
-        elif self.solver == "pyopt":
+        elif self.solver == "pyopt" or self.solver == "sequential_pyopt":
             self.setup_pyopt_solver()
         elif self.solver == "zsgd":
             pass
-            # raise NotImplementedError
         
     
     def con_sens_rules(self):
-        sens = {"states": [], "control_inputs": []}
+        dyn_state_con_sens = {"states": [], "control_inputs": []}
+        state_con_sens = {"states": [], "control_inputs": []}
 
         for j in range(self.n_horizon):
-            for i in range(self.n_cluster_turbines):
-                current_idx = (self.n_cluster_turbines * j) + i
+            for i in range(self.n_solve_turbines):
+                current_idx = (self.n_solve_turbines * j) + i
                 
                 # scaled by yaw limit
-                sens["control_inputs"].append([
-                    -(self.dt * (self.yaw_rate / self.yaw_limits[1])) if idx == current_idx else 0
-                    for idx in range(self.n_control_inputs)
+                dyn_state_con_sens["control_inputs"].append([
+                    -(self.dt * (self.yaw_rate / self.yaw_norm_const)) if idx == current_idx else 0
+                    for idx in range(self.n_solve_control_inputs)
                 ])
                 
                 if j == 0:  # corresponds to time-step k=1 for states,
                     # pass initial state as parameter
                     
-                    sens["states"].append([
+                    dyn_state_con_sens["states"].append([
                         1 if idx == current_idx else 0
-                        for idx in range(self.n_states)
+                        for idx in range(self.n_solve_states)
                     ])
                     
                     
                 else:
-                    prev_idx = (self.n_cluster_turbines * (j - 1)) + i
+                    prev_idx = (self.n_solve_turbines * (j - 1)) + i
                     
                     # drvt_states_ji = 1, drvt_states_(j-1,i) = -1,
-                    # drvt_control_inputs_ji = -(self.dt * (self.yaw_rate / self.yaw_limits[1]))
+                    # drvt_control_inputs_ji = -(self.dt * (self.yaw_rate / self.yaw_norm_const))
                     
-                    sens["states"].append([
+                    dyn_state_con_sens["states"].append([
                         1 if idx == current_idx else (-1 if idx == prev_idx else 0)
-                        for idx in range(self.n_states)
+                        for idx in range(self.n_solve_states)
                     ])
-        return sens
+                
+                state_con_sens["states"].append([
+                        -1 if idx == current_idx else 0
+                        for idx in range(self.n_solve_states)
+                    ])
+                state_con_sens["control_inputs"].append([0] * self.n_solve_control_inputs)
+        
+         
+        return dyn_state_con_sens, state_con_sens
     
     def dyn_state_rules(self, opt_var_dict):
+
         # define constraints
         dyn_state_cons = []
         for j in range(self.n_horizon):
-            for i in range(self.n_cluster_turbines):
-                current_idx = (self.n_cluster_turbines * j) + i
-                delta_yaw = self.dt * (self.yaw_rate / self.yaw_limits[1]) * opt_var_dict["control_inputs"][current_idx]
+            for i in range(self.n_solve_turbines):
+                current_idx = (self.n_solve_turbines * j) + i
+                delta_yaw = self.dt * (self.yaw_rate / self.yaw_norm_const) * opt_var_dict["control_inputs"][current_idx]
                 
                 if j == 0:  # corresponds to time-step k=1 for states,
                     # pass initial state as parameter
                     # scaled by yaw limit
                     dyn_state_cons = dyn_state_cons + [opt_var_dict["states"][current_idx] - (self.initial_state[i] + delta_yaw)]
-                    # drvt_states_ji = 1, drvt_control_inputs_ji = -(self.dt * (self.yaw_rate / self.yaw_limits[1]))
+                    # drvt_states_ji = 1, drvt_control_inputs_ji = -(self.dt * (self.yaw_rate / self.yaw_norm_const))
                     
                 else:
-                    prev_idx = (self.n_cluster_turbines * (j - 1)) + i
+                    prev_idx = (self.n_solve_turbines * (j - 1)) + i
                     # scaled by yaw limit
                     dyn_state_cons = dyn_state_cons + [
                         opt_var_dict["states"][current_idx] - (opt_var_dict["states"][prev_idx] + delta_yaw)]
                     # drvt_states_ji = 1, drvt_states_(j-1,i) = -1,
-                    # drvt_control_inputs_ji = -(self.dt * (self.yaw_rate / self.yaw_limits[1]))
+                    # drvt_control_inputs_ji = -(self.dt * (self.yaw_rate / self.yaw_norm_const))
         return dyn_state_cons
+    
+    def state_rules(self, opt_var_dict, disturbance_dict):
+        # define constraints
+        state_cons = []
+        
+        for j in range(self.n_horizon):
+            for i in range(self.n_solve_turbines):
+                current_idx = (self.n_solve_turbines * j) + i
+                
+                state_cons = state_cons + [(disturbance_dict["wind_direction"][j] / self.yaw_norm_const) - opt_var_dict["states"][current_idx]]
+                    
+        return state_cons
         
     def opt_rules(self, opt_var_dict):
         # TODO parallelize this, check if reset is necessary
         
         funcs = {}
-        
-        # define objective function
-        # yaw_angles = np.array([[opt_var_dict["states"][(self.n_turbines * j) + i] * self.yaw_limits[1]
-        #                         for i in range(self.n_turbines)] for j in range(self.n_horizon)])
-        # TODO fetch last solution for turbines not in the current cluster and concatenate with current 
-        # solutions for turbines in current cluster in opt_var_dict
-        yaw_angles = np.clip(np.array([[((self.initial_state[i] * self.yaw_limits[1]) 
-                                + (self.yaw_rate * self.dt * np.sum(opt_var_dict["control_inputs"][i:(self.n_cluster_turbines * j) + i:self.n_cluster_turbines])))
-                                for i in range(self.n_cluster_turbines)] for j in range(self.n_horizon)]), *self.yaw_limits)
-        
+        if self.solver == "sequential_pyopt":
+            control_inputs = np.array(self.opt_sol["control_inputs"])
+            control_inputs[self.solve_turbine_id:-1:self.n_horizon] = opt_var_dict["control_inputs"]
+
+            yaw_setpoints = np.array([[((self.initial_state[i] * self.yaw_norm_const) 
+                                    + (self.yaw_rate * self.dt * np.sum(control_inputs[i:(self.n_solve_turbines * j) + i:self.n_solve_turbines])))
+                                    for i in range(self.n_solve_turbines)] for j in range(self.n_horizon)])
+        else:
+            yaw_setpoints = np.array([[((self.initial_state[i] * self.yaw_norm_const) 
+                                    + (self.yaw_rate * self.dt * np.sum(opt_var_dict["control_inputs"][i:(self.n_solve_turbines * j) + i:self.n_solve_turbines])))
+                                    for i in range(self.n_solve_turbines)] for j in range(self.n_horizon)])
+
+
+        assert np.all(self.wind_preview_samples[f"FreestreamWindDir_{0}"] == self.measurements_dict["wind_directions"][0])
         # plot_distribution_samples(pd.DataFrame(wind_preview_samples), self.n_horizon)
         # derivative of turbine power output with respect to yaw angles
         if self.stochastic:
             
-            u = np.random.normal(loc=0.0, scale=1.0, size=(self.n_wind_preview_samples, self.n_horizon, self.n_cluster_turbines))
-            self.norm_turbine_powers_states_drvt = np.zeros((self.n_wind_preview_samples, self.n_horizon, self.n_cluster_turbines))
-            self.norm_turbine_powers = np.zeros((self.n_wind_preview_samples, self.n_horizon, self.n_cluster_turbines))
+            # TODO add dynamically varying constraints to overleaf
+            funcs["state_cons"] = self.state_rules(opt_var_dict, 
+                                                   {
+                                                       "wind_direction": [np.mean(self.wind_preview_samples[f"FreestreamWindDir_{j}"]) for j in range(self.n_horizon)]
+                                                    })
+            
+            u = np.random.normal(loc=0.0, scale=1.0, size=(self.n_wind_preview_samples, self.n_horizon, self.n_solve_turbines))
+            self.norm_turbine_powers_states_drvt = np.zeros((self.n_wind_preview_samples, self.n_horizon, self.n_turbines, self.n_solve_turbines))
+            self.norm_turbine_powers = np.zeros((self.n_wind_preview_samples, self.n_horizon, self.n_turbines))
             # derivative of turbine power output with respect to yaw angle changes
             # norm_turbine_powers_ctrl_inputs_drvt = np.zeros((self.n_wind_preview_samples, self.n_horizon * self.n_turbines))
         
             for m in range(self.n_wind_preview_samples):
+                # if any yaw offset are out of the [-90, 90] range, then the power output of all turbines will be nan. clip to avoid this
+                # TODO does clipping this way make sense?
+                # TODO use the freestream wind dire to calculate offsets or local wind dir?
+                current_yaw_offsets = (self.wind_preview_samples[f"FreestreamWindDir_{j}"][m] - yaw_setpoints[j, :])
+
                 for j in range(self.n_horizon):
                     
                     self.fi.env.reinitialize(
                         wind_directions=[self.wind_preview_samples[f"FreestreamWindDir_{j}"][m]],
                         wind_speeds=[self.wind_preview_samples[f"FreestreamWindMag_{j}"][m]],
-                        turbulence_intensity=self.disturbance_preview["wind_ti"][j]
+                        turbulence_intensity=self.wind_ti
                     )
                 
-                    # send yaw angles
-                    self.fi.env.calculate_wake(yaw_angles[j, :][np.newaxis, :])
+                    # send yaw angles 
+                    self.fi.env.calculate_wake(current_yaw_offsets[np.newaxis, :])
                     yawed_turbine_powers = self.fi.env.get_turbine_powers()
 
-                    self.fi.env.calculate_wake((yaw_angles[j, :] + self.nu * u[m, j, :])[np.newaxis, :])
-                    perturbed_yawed_turbine_powers = self.fi.env.get_turbine_powers()
-                
+                    if np.any(np.isnan(yawed_turbine_powers)):
+                        self.fi.env.calculate_wake(np.clip(current_yaw_offsets, -60.0, 60.0)[np.newaxis, :])
+                        yawed_turbine_powers = self.fi.env.get_turbine_powers()
+
+                    # greedily yaw directly into wind for normalization constant
                     self.fi.env.calculate_wake(np.zeros((1, self.n_turbines)))
-                    noyaw_turbine_powers = self.fi.env.get_turbine_powers()
+                    greedy_yaw_turbine_powers = self.fi.env.get_turbine_powers()
+                    greedy_yaw_turbine_powers = max(greedy_yaw_turbine_powers) # choose unwaked turbine for normalization constant
                 
                     # normalize power by no yaw output
-                    self.norm_turbine_powers[m, j, :] = np.divide(yawed_turbine_powers, noyaw_turbine_powers,
-                                                            where=noyaw_turbine_powers != 0,
-                                                            out=np.zeros_like(noyaw_turbine_powers))
+                    self.norm_turbine_powers[m, j, :] = np.divide(yawed_turbine_powers, greedy_yaw_turbine_powers,
+                                                            out=np.zeros_like(yawed_turbine_powers))
+
+                    mask = np.zeros((self.n_turbines,))
+                    mask[self.solve_turbine_id] = 1
+                    self.fi.env.calculate_wake((current_yaw_offsets + mask * self.nu * self.yaw_norm_const * u[m, j, :])[np.newaxis, :])
+                    perturbed_yawed_turbine_powers = self.fi.env.get_turbine_powers()
+
+                    norm_turbine_power_diff = np.divide((perturbed_yawed_turbine_powers - yawed_turbine_powers), greedy_yaw_turbine_powers,
+                                                        where=greedy_yaw_turbine_powers!=0,
+                                                        out=np.zeros_like(yawed_turbine_powers))
                     
-                    self.norm_turbine_powers_states_drvt[m, j, :] = np.divide(((perturbed_yawed_turbine_powers - yawed_turbine_powers) / self.nu) * u[m, j, :], noyaw_turbine_powers, 
-                                                                                where=noyaw_turbine_powers != 0,
-                                                                                out=np.zeros_like(noyaw_turbine_powers))
-                    
+                    if np.any(np.isnan(norm_turbine_power_diff)):
+                        # norm_turbine_power_diff[plus_yaw_offsets > self.yaw_limits[1]]
+                        # norm_turbine_power_diff[neg_yaw_offsets < self.yaw_limits[0]]
+                        # if increasing the yaw angle of turbine i brings it closer to a feasible (>-30deg) value, then set the power diff of all three turbines positive
+                        self.norm_turbine_powers_states_drvt[m, j, :, neg_yaw_offsets < self.yaw_limits[0]] = 1.5 * np.max(abs(self.norm_turbine_powers_states_drvt[m, j, :, :]))
+
+                        # elif decreasing the yaw angle of turbine i brings it closer to a feasible (<30deg) value, then set the power diff of all three turbines negative
+                        self.norm_turbine_powers_states_drvt[m, j, :, plus_yaw_offsets > self.yaw_limits[1]] = -1.5 * np.max(abs(self.norm_turbine_powers_states_drvt[m, j, :, :]))
+                        # else:
+                        #     # elif the perturbed yaw offsets are within a feasible range and the computed power is still nan, raise error
+                        #     # raise ValueError("nan power computed for peturbed yaw offsets that are within feasible range")
+                        #     print("oh no")
+                        
+                    else:
+                        # TODO test should compute derivative of each power of each turbine wrt state (yaw angle) of each turbine
+                        self.norm_turbine_powers_states_drvt[m, j, :, :] = (norm_turbine_power_diff / self.nu) @ u[m, j, :].T
 
             # compute power based on sampling from wind preview
-            funcs["cost"] = sum([-0.5*np.mean((self.norm_turbine_powers[:, j, i])**2) * self.Q
-                                for j in range(self.n_horizon) for i in range(self.n_turbines)]) \
-                            + sum(0.5*(opt_var_dict["control_inputs"][(self.n_turbines * j) + i])**2 * self.R
-                                for j in range(self.n_horizon) for i in range(self.n_turbines))
-        
+            funcs["cost_states"] = sum([-0.5*np.mean((self.norm_turbine_powers[:, j, i])**2) * self.Q
+                                for j in range(self.n_horizon) for i in range(self.n_turbines)])
+
+            funcs["cost_control_inputs"] = sum(0.5*(opt_var_dict["control_inputs"][(self.n_solve_turbines * j) + i])**2 * self.R
+                                for j in range(self.n_horizon) for i in range(self.n_solve_turbines))
+            
+            
         else:
+            funcs["state_cons"] = self.state_rules(opt_var_dict, {"wind_direction": [self.wind_preview_samples[f"FreestreamWindDir_{0}"][0]] * self.n_horizon})
+            
             # if not using stochastic variation, pass mean values of u, v disturbances to FLORIS, rather than multiple realizations of probability distribution
-            self.norm_turbine_powers_states_drvt = np.zeros((self.n_horizon, self.n_turbines))
+            self.norm_turbine_powers_states_drvt = np.zeros((self.n_horizon, self.n_turbines, self.n_turbines))
             self.norm_turbine_powers = np.zeros((self.n_horizon, self.n_turbines))
             # test_norm_turbine_powers = np.zeros((self.n_horizon, self.n_turbines))
 
             for j in range(self.n_horizon):
-                # self.measurements_dict["wind_speeds"][0]
-                # self.measurements_dict["wind_directions"][0]
+                
                 # assume persistance of current measurement
                 # assume persistant freestream wind conditions over course of horizon
                 self.fi.env.reinitialize(
-                    wind_directions=[self.measurements_dict["wind_directions"][0]],
-                    wind_speeds=[self.measurements_dict["wind_speeds"][0]],
-                    turbulence_intensity=self.disturbance_preview["wind_ti"][0]
+                    wind_directions=[self.wind_preview_samples[f"FreestreamWindDir_{0}"][0]],
+                    wind_speeds=[self.wind_preview_samples[f"FreestreamWindMag_{0}"][0]],
+                    turbulence_intensity=self.wind_ti
                 )
-            
-                # send yaw angles
-                self.fi.env.calculate_wake(yaw_angles[j, :][np.newaxis, :])
+                
+                current_yaw_offsets = (self.wind_preview_samples[f"FreestreamWindDir_{0}"][0] - yaw_setpoints[j, :])
+                self.fi.env.calculate_wake(current_yaw_offsets[np.newaxis, :])
                 yawed_turbine_powers = self.fi.env.get_turbine_powers()
 
-                # self.fi.env.calculate_wake(np.array([-30, -13.565, 0.0])[np.newaxis, np.newaxis, :])
-                # test_yawed_turbine_powers = self.fi.env.get_turbine_powers()
+                if np.any(np.isnan(yawed_turbine_powers)):
+                    self.fi.env.calculate_wake(np.clip(current_yaw_offsets, -60.0, 60.0)[np.newaxis, :])
+                    yawed_turbine_powers = self.fi.env.get_turbine_powers()
 
-                self.fi.env.calculate_wake(np.clip((yaw_angles[j, :] + self.nu)[np.newaxis, :], *self.yaw_limits))
-                plus_perturbed_yawed_turbine_powers = self.fi.env.get_turbine_powers()
-
-                self.fi.env.calculate_wake(np.clip((yaw_angles[j, :] - self.nu)[np.newaxis, :], *self.yaw_limits))
-                neg_perturbed_yawed_turbine_powers = self.fi.env.get_turbine_powers()
-
-                # if yaw_angles[j, 0] == -30.0:
-                # 	print('here')
-
-                self.fi.env.calculate_wake(np.zeros((1, self.n_turbines)))
-                noyaw_turbine_powers = self.fi.env.get_turbine_powers()
-            
-                # normalize power by no yaw output
-                self.norm_turbine_powers[j, :] = np.divide(yawed_turbine_powers, noyaw_turbine_powers,
-                                                        where=noyaw_turbine_powers != 0,
-                                                        out=np.zeros_like(noyaw_turbine_powers))
-                # test_norm_turbine_powers[j, :] = np.divide(test_yawed_turbine_powers, noyaw_turbine_powers,
-                # 										where=noyaw_turbine_powers != 0,
-                # 										out=np.zeros_like(noyaw_turbine_powers))
+                # greedily yaw directly into wind for normalization constant
                 
-                self.norm_turbine_powers_states_drvt[j, :] = np.divide(((plus_perturbed_yawed_turbine_powers - neg_perturbed_yawed_turbine_powers) / (2 * self.nu)), 
-                                                                            noyaw_turbine_powers,
-                                                                            where=noyaw_turbine_powers != 0,
-                                                                            out=np.zeros_like(noyaw_turbine_powers))
+                self.fi.env.calculate_wake(np.zeros((1, self.n_turbines)))
+                greedy_yaw_turbine_powers = self.fi.env.get_turbine_powers()
+                greedy_yaw_turbine_powers = max(greedy_yaw_turbine_powers) # choose unwaked turbine for normalization constant
+                
+                # normalize power by no yaw output
+                self.norm_turbine_powers[j, :] = np.divide(yawed_turbine_powers, greedy_yaw_turbine_powers,
+                                                        where=greedy_yaw_turbine_powers!=0,
+                                                        out=np.zeros_like(yawed_turbine_powers))
+                
+                
+                # perturb each state (each yaw angle) by +/= nu to estimate derivative of all turbines power output for a variation in each turbines yaw offset
+                # if any yaw offset are out of the [-90, 90] range, then the power output of all turbines will be nan. clip to avoid this
+                    
+                for i in range(self.n_solve_turbines):
+                    mask = np.zeros((self.n_turbines,))
+                    if self.solver == "sequential_pyopt":
+                        mask[self.solve_turbine_id] = 1
+                    else:
+                        mask[i] = 1
+                    
+                    plus_yaw_offsets = current_yaw_offsets + mask * self.nu * self.yaw_norm_const
+                    
+                    self.fi.env.calculate_wake(plus_yaw_offsets[np.newaxis, :])
+                    plus_perturbed_yawed_turbine_powers = self.fi.env.get_turbine_powers()
 
-                # self.norm_turbine_powers_states_drvt[j, :] = np.divide(((perturbed_yawed_turbine_powers - yawed_turbine_powers) / self.nu), 
-                # 														 noyaw_turbine_powers,
-                # 														 where=noyaw_turbine_powers != 0,
-                # 														 out=np.zeros_like(noyaw_turbine_powers))
+                    neg_yaw_offsets = current_yaw_offsets - mask * self.nu * self.yaw_norm_const
+
+                    self.fi.env.calculate_wake(neg_yaw_offsets[np.newaxis, :])
+                    neg_perturbed_yawed_turbine_powers = self.fi.env.get_turbine_powers()
+
+                    norm_turbine_power_diff = np.divide((plus_perturbed_yawed_turbine_powers - neg_perturbed_yawed_turbine_powers), greedy_yaw_turbine_powers,
+                                                        where=greedy_yaw_turbine_powers!=0,
+                                                        out=np.zeros_like(plus_perturbed_yawed_turbine_powers))
+
+                    if np.any(np.isnan(norm_turbine_power_diff)):
+                        # norm_turbine_power_diff[plus_yaw_offsets > self.yaw_limits[1]]
+                        # norm_turbine_power_diff[neg_yaw_offsets < self.yaw_limits[0]]
+                        # if increasing the yaw angle of turbine i brings it closer to a feasible (>-30deg) value, then set the power diff of all three turbines positive
+                        self.norm_turbine_powers_states_drvt[j, :, neg_yaw_offsets < self.yaw_limits[0]] = 1.5 * np.max(abs(self.norm_turbine_powers_states_drvt[j, :, :]))
+                        
+                        # elif decreasing the yaw angle of turbine i brings it closer to a feasible (<30deg) value, then set the power diff of all three turbines negative
+                        self.norm_turbine_powers_states_drvt[j, :, plus_yaw_offsets > self.yaw_limits[1]] = -1.5 * np.max(abs(self.norm_turbine_powers_states_drvt[j, :, :]))
+                        # else:
+                        #     # elif the perturbed yaw offsets are within a feasible range and the computed power is still nan, raise error
+                        #     # raise ValueError("nan power computed for peturbed yaw offsets that are within feasible range")
+                        #     print("oh no")
+                        
+                    else:
+                        # TODO test should compute derivative of each power of each turbine wrt state (yaw angle) of each turbine
+                        self.norm_turbine_powers_states_drvt[j, :, i] = norm_turbine_power_diff / (2 * self.nu)
+                    
 
             # compute power based on mean values from wind preview (persistance)
-            # TODO power term is dominating for approx zero control inputs
-            funcs["cost"] = sum([-0.5*(self.norm_turbine_powers[j, i])**2 * self.Q
-                                for j in range(self.n_horizon) for i in range(self.n_turbines)]) \
-                            + sum(0.5*(opt_var_dict["control_inputs"][(self.n_turbines * j) + i])**2 * self.R
-                                for j in range(self.n_horizon) for i in range(self.n_turbines))
+            
+            funcs["cost_states"] = sum([-0.5*(self.norm_turbine_powers[j, i])**2 * self.Q
+                                for j in range(self.n_horizon) for i in range(self.n_turbines)])
 
+            funcs["cost_control_inputs"] = sum(0.5*(opt_var_dict["control_inputs"][(self.n_solve_turbines * j) + i])**2 * self.R
+                                for j in range(self.n_horizon) for i in range(self.n_solve_turbines))
 
+        funcs["cost"] = funcs["cost_states"] + funcs["cost_control_inputs"]
         
         funcs["dyn_state_cons"] = self.dyn_state_rules(opt_var_dict)
-        # print(dyn_state_cons)
+
+        if self.solver == "sequential_pyopt":
+            self.opt_cost_terms[0] += funcs["cost_states"]
+            self.opt_cost_terms[1] += funcs["cost_control_inputs"]
+        else:
+            self.opt_cost_terms = [funcs["cost_states"], funcs["cost_control_inputs"]]
+        
         fail = False
         
         return funcs, fail
     
     def sens_rules(self, opt_var_dict, obj_con_dict):
         sens = {"cost": {"states": [], "control_inputs": []},
-                "dyn_state_cons": {"states": [], "control_inputs": []}}
+                "dyn_state_cons": {"states": [], "control_inputs": []},
+                "state_cons": {"states": [], "control_inputs": []}}
         
-        # yaw_angles = np.clip(np.array([[((self.initial_state[i] * self.yaw_limits[1]) 
-        # 					  + (self.yaw_rate * self.dt * np.sum(opt_var_dict["control_inputs"][i:(self.n_turbines * j) + i:self.n_turbines])))
-        #                         for i in range(self.n_turbines)] for j in range(self.n_horizon)]), *self.yaw_limits)
         
-
         if self.stochastic:
             for j in range(self.n_horizon):
-                for i in range(self.n_turbines):
-                    current_idx = (self.n_turbines * j) + i
+                for i in range(self.n_solve_turbines):
+                    current_idx = (self.n_solve_turbines * j) + i
                     sens["cost"]["control_inputs"].append(
                         opt_var_dict["control_inputs"][current_idx] * self.R
                     )
                     # compute power derivative based on sampling from wind preview
+                    # using derivative: power of each turbine wrt each turbine's yaw setpoint, summing over terms for each turbine
                     sens["cost"]["states"].append(
-                                np.mean(-(self.norm_turbine_powers[:, j, i]) * self.Q * self.norm_turbine_powers_states_drvt[:, j, i])
+                                np.mean(np.sum(-(self.norm_turbine_powers[:, j, :]) * self.Q * self.norm_turbine_powers_states_drvt[:, j, :, i], axis=1))
                             )
                     
         else:
             # if not using stochastic variation, pass mean values of u, v disturbances to FLORIS, rather than multiple realizations of probability distribution
-            # norm_turbine_powers_states_drvt = np.zeros((self.n_horizon, self.n_turbines))
-            # norm_turbine_powers = np.zeros((self.n_horizon, self.n_turbines))
 
             for j in range(self.n_horizon):
                 
-                for i in range(self.n_turbines):
-                    current_idx = (self.n_turbines * j) + i
+                for i in range(self.n_solve_turbines):
+                    current_idx = (self.n_solve_turbines * j) + i
                     sens["cost"]["control_inputs"].append(
                         opt_var_dict["control_inputs"][current_idx] * self.R
                     )
+                    # using derivative: power of each turbine wrt each turbine's yaw setpoint, summing over terms for each turbine
                     sens["cost"]["states"].append(
-                            -(self.norm_turbine_powers[j, i]) * self.Q * self.norm_turbine_powers_states_drvt[j, i]
+                            np.sum(-(self.norm_turbine_powers[j, :]) * self.Q * self.norm_turbine_powers_states_drvt[j, :, i])
                         )
 
-                # print(np.sum(self.norm_turbine_powers[j, :] - norm_turbine_powers[j, :]))
-                # print(np.sum(self.norm_turbine_powers_states_drvt[j, :] - norm_turbine_powers_states_drvt[j, :]))
-
         sens["dyn_state_cons"] = self.dyn_state_jac # self.con_sens_rules()
-        
+        sens["state_cons"] = self.state_jac
+
         return sens
 
     def setup_pyopt_solver(self):
-        # TODO if using sequential solver need to run for ever solve
-
-        self.pyopt_sens = self.sens_rules
+        
         # initialize optimization object
-        self.pyopt_prob = Optimization("Wake Steerng MPC", self.opt_rules) #, sens=sens_rules)
+        self.pyopt_prob = Optimization("Wake Steering MPC", self.opt_rules, sens=self.sens_rules)
         
-        
-
         # add design variables
-        self.pyopt_prob.addVarGroup("states", self.n_states,
-                                    "c",  # continuous variables
-                                    # lower=[self.yaw_limits[0]] * (self.n_horizon * self.n_turbines),
-                                    # upper=[self.yaw_limits[1]] * (self.n_horizon * self.n_turbines),
-                                    lower=[-1] * self.n_states,
-                                    upper=[1] * self.n_states,
-                                    value=[0] * self.n_states)
-                                    # scale=(1 / self.yaw_limits[1]))
+        self.pyopt_prob.addVarGroup("states", self.n_solve_states,
+                                    varType="c",  # continuous variables
+                                    lower=[0] * self.n_solve_states,
+                                    upper=[1] * self.n_solve_states,
+                                    value=[0] * self.n_solve_states)
+                                    # scale=(1 / self.yaw_norm_const))
         
         if self.control_input_domain == 'continuous':
-            self.pyopt_prob.addVarGroup("control_inputs", self.n_control_inputs,
+            self.pyopt_prob.addVarGroup("control_inputs", self.n_solve_control_inputs,
                                         varType="c",
-                                        lower=[-1] * self.n_control_inputs,
-                                        upper=[1] * self.n_control_inputs,
-                                        value=[0] * self.n_control_inputs)
+                                        lower=[-1] * self.n_solve_control_inputs,
+                                        upper=[1] * self.n_solve_control_inputs,
+                                        value=[0] * self.n_solve_control_inputs)
         else:
-            self.pyopt_prob.addVarGroup("control_inputs", self.n_control_inputs,
+            self.pyopt_prob.addVarGroup("control_inputs", self.n_solve_control_inputs,
                                         varType="i",
-                                        lower=[-1] * self.n_control_inputs,
-                                        upper=[1] * self.n_control_inputs,
-                                        value=[0] * self.n_control_inputs)
+                                        lower=[-1] * self.n_solve_control_inputs,
+                                        upper=[1] * self.n_solve_control_inputs,
+                                        value=[0] * self.n_solve_control_inputs)
         
         # # add dynamic state equation constraints
         # jac = self.con_sens_rules()
-        self.pyopt_prob.addConGroup("dyn_state_cons", self.n_horizon * self.n_turbines, lower=0.0, upper=0.0)
-                        #   linear=True, wrt=["states", "control_inputs"], # TODO supplying fixed jac won't work because value of initial_state changes
+        self.pyopt_prob.addConGroup("dyn_state_cons", self.n_solve_states, lower=0.0, upper=0.0)
+                        #   linear=True, wrt=["states", "control_inputs"], # NOTE supplying fixed jac won't work because value of initial_state changes
                         #   jac=jac)
+        self.pyopt_prob.addConGroup("state_cons", self.n_solve_states, lower=self.yaw_limits[0] / self.yaw_norm_const, upper=self.yaw_limits[1] / self.yaw_norm_const)
         
         # add objective function
         self.pyopt_prob.addObj("cost")
@@ -711,47 +818,43 @@ class MPC(ControllerBase):
         
         if current_time_step > 0.:
             # update initial state self.mi_model.initial_state
-            self.initial_state = self.measurements_dict["yaw_angles"] / self.yaw_limits[1] # scaled by yaw limits
+            self.initial_state = self.measurements_dict["yaw_angles"] / self.yaw_norm_const # scaled by yaw limits
         
-        current_freestream_measurements = [
-                self.measurements_dict["wind_speeds"][0]
-                * np.cos((270. - self.measurements_dict["wind_directions"][0]) * (np.pi / 180.)),
-                self.measurements_dict["wind_speeds"][0]
-                * np.sin((270. - self.measurements_dict["wind_directions"][0]) * (np.pi / 180.))
-            ]
+        if self.current_freestream_measurements is None:
+            self.current_freestream_measurements = [
+                    self.measurements_dict["wind_speeds"][0]
+                    * np.cos((270. - self.measurements_dict["wind_directions"][0]) * (np.pi / 180.)),
+                    self.measurements_dict["wind_speeds"][0]
+                    * np.sin((270. - self.measurements_dict["wind_directions"][0]) * (np.pi / 180.))
+                ]
             
-        self.wind_preview_samples = self.wind_preview_func(current_freestream_measurements)
+        self.wind_preview_samples = self.wind_preview_func(self.current_freestream_measurements)
        
         if self.solver == "pyopt":
             yaw_star = self.pyopt_solve()
+        elif self.solver == "sequential_pyopt":
+            yaw_star = self.SR_pyopt_solve()
         elif self.solver == "floris":
             yaw_star = self.floris_solve()
         elif self.solver == "zsgd":
             yaw_star = self.zsgd_solve()
         
-        # self.turbine_powers = np.mean((self.norm_turbine_powers[:, j, i]) for j in range(self.n_horizon) for i in range(self.n_turbines)) # \
+        # check constraints
+        # assert np.isclose(sum(self.opt_sol["states"][:self.n_turbines] - (self.initial_state + self.opt_sol["control_inputs"][:self.n_turbines] * (self.yaw_rate / self.yaw_norm_const) * self.dt)), 0, atol=1e-2)
+        print(sum(self.opt_sol["states"][:self.n_solve_turbines] - (self.initial_state + self.opt_sol["control_inputs"][:self.n_solve_turbines] * (self.yaw_rate / self.yaw_norm_const) * self.dt)))
+        # assert np.isclose(sum(self.opt_sol["states"][self.n_turbines:] - (self.opt_sol["states"][:-self.n_turbines] + self.opt_sol["control_inputs"][self.n_turbines:] * (self.yaw_rate / self.yaw_norm_const) * self.dt)), 0)
+        print(sum(self.opt_sol["states"][self.n_solve_turbines:] - (self.opt_sol["states"][:-self.n_solve_turbines] + self.opt_sol["control_inputs"][self.n_solve_turbines:] * (self.yaw_rate / self.yaw_norm_const) * self.dt)))
+        if self.stochastic:
+            # assert np.isclose(sum((np.mean(self.wind_preview_samples[f"FreestreamWindDir_{j}"]) / self.yaw_norm_const) - self.opt_sol["states"][(j * self.n_turbines) + i] for j in range(self.n_horizon) for i in range(self.n_turbines)), 0)
+            print(sum((np.mean(self.wind_preview_samples[f"FreestreamWindDir_{j}"]) / self.yaw_norm_const) - self.opt_sol["states"][(j * self.n_solve_turbines) + i] for j in range(self.n_horizon) for i in range(self.n_solve_turbines)))
+        else:
+            state_cons = [(self.wind_preview_samples[f"FreestreamWindDir_{0}"][0] / self.yaw_norm_const) - self.opt_sol["states"][(j * self.n_solve_turbines) + i] for j in range(self.n_horizon) for i in range(self.n_solve_turbines)]
+        
+        print(all([(c <= (self.yaw_limits[1] / self.yaw_norm_const)) and (c >= (self.yaw_limits[0] / self.yaw_norm_const)) for c in state_cons]))
         
         self.controls_dict = {"yaw_angles": yaw_star}
     
     def zsgd_solve(self):
-
-        # current_yaw_angles = self.measurements_dict["yaw_angles"]
-
-        # warm start with previous solution
-        # current_time_step = int(self.measurements_dict["time"] // self.dt)
-        # init_states = np.zeros((self.n_horizon, self.n_turbines))
-        
-        # warm-up with previous solution
-        # if current_time_step > 0:
-        #     for j in range(self.n_horizon - 1):
-        #         next_idx = slice(((j + 1) * self.n_turbines), ((j + 2) * self.n_turbines))
-        #         init_states[j, :] = np.clip(self.opt_sol["states"][next_idx], -1, 1)
-        #     init_states[self.n_horizon - 1, :] = np.clip(self.opt_sol["states"][-self.n_turbines:], -1, 1)
-        
-        # # TODO is init_sol appearing in optimized solution?
-        # self.init_sol = [init_states[j, i] for j in range(self.n_horizon) for i in range(self.n_turbines)] + \
-        #     [(init_states[j, i] - (init_states[j - 1, i] if j > 0 else self.initial_state[i])) 
-        #              * (self.yaw_limits[1] / (self.yaw_rate * self.dt)) for j in range(self.n_horizon) for i in range(self.n_turbines)]
 
         self.warm_start_opt_vars()
 
@@ -762,8 +865,8 @@ class MPC(ControllerBase):
         for j in range(self.n_horizon):
             for i in range(self.n_turbines):
                 current_idx = (self.n_turbines * j) + i
-                # delta_yaw = self.dt * (self.yaw_rate / self.yaw_limits[1]) * opt_var_dict["control_inputs"][current_idx]
-                A_eq[current_idx, (self.n_horizon * self.n_turbines) + current_idx] = -self.dt * (self.yaw_rate / self.yaw_limits[1])
+                # delta_yaw = self.dt * (self.yaw_rate / self.yaw_norm_const) * opt_var_dict["control_inputs"][current_idx]
+                A_eq[current_idx, (self.n_horizon * self.n_turbines) + current_idx] = -self.dt * (self.yaw_rate / self.yaw_norm_const)
                 A_eq[current_idx, current_idx] = 1
 
                 if j == 0:  # corresponds to time-step k=1 for states,
@@ -814,113 +917,113 @@ class MPC(ControllerBase):
         self.opt_sol = opt_var_dict
         self.opt_code = {"text": None}
         self.opt_cost = funcs["cost"]
+        self.opt_cost_terms = [funcs["cost_states"], funcs["cost_control_inputs"]]
 
-        # TODO this is not zero
-        print(np.sum(opt_var_dict["states"][:self.n_turbines] - (self.initial_state + opt_var_dict["control_inputs"][:self.n_turbines] * (self.yaw_rate / self.yaw_limits[1]) * self.dt)))
-
-        print(np.sum(opt_var_dict["states"][self.n_turbines:] - (opt_var_dict["states"][:-self.n_turbines] + opt_var_dict["control_inputs"][self.n_turbines:] * (self.yaw_rate / self.yaw_limits[1]) * self.dt)))
-
-        print(self.opt_sol["states"][:self.n_turbines] - 
-              ((self.initial_state) + ((self.yaw_rate / self.yaw_limits[1]) * self.dt * self.opt_sol["control_inputs"][:self.n_turbines])))
-        
-        return np.rint(np.clip(((self.initial_state * self.yaw_limits[1]) + (self.yaw_rate * self.dt * self.opt_sol["control_inputs"][:self.n_turbines])), *self.yaw_limits) / self.yaw_increment) * self.yaw_increment
+        yaw_setpoints = ((self.initial_state * self.yaw_norm_const) + (self.yaw_rate * self.dt * self.opt_sol["control_inputs"][:self.n_turbines]))
+        return np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
 
     def floris_solve(self):
-        current_yaw_angles = self.measurements_dict["yaw_angles"]
-
-        # warm start with previous solution
-        current_time_step = int(self.measurements_dict["time"] // self.dt)
-        init_states = np.zeros((self.n_horizon, self.n_turbines))
-        
+        # TODO iterate over each horizon loop until solution stops changing (within tolerance), cycle between forward-pass/backward-pass?
         # warm-up with previous solution
         self.warm_start_opt_vars()
-        # if current_time_step > 0:
-        #     for j in range(self.n_horizon - 1):
-        #         next_idx = slice(((j + 1) * self.n_turbines), ((j + 2) * self.n_turbines))
-        #         init_states[j, :] = np.clip(self.opt_sol["states"][next_idx], -1, 1)
-        #     init_states[self.n_horizon - 1, :] = np.clip(self.opt_sol["states"][-self.n_turbines:], -1, 1)
         
-        # TODO is init_sol appearing in optimized solution?
-        # self.init_sol = [init_states[j, i] for j in range(self.n_horizon) for i in range(self.n_turbines)] + \
-        #     [(init_states[j, i] - (init_states[j - 1, i] if j > 0 else self.initial_state[i])) 
-        #              * (self.yaw_limits[1] / (self.yaw_rate * self.dt)) for j in range(self.n_horizon) for i in range(self.n_turbines)]
-        # TODO Misha question: problem if Floris wind direction array does not intersect 0.0 and 180.0.?
         if self.stochastic:
-            opt_yaw_angles = np.zeros((self.n_wind_preview_samples, self.n_horizon, self.n_turbines))
+            opt_yaw_setpoints = np.zeros((self.n_wind_preview_samples, self.n_horizon, self.n_turbines))
             opt_cost = np.zeros((self.n_wind_preview_samples, self.n_horizon))
+            opt_cost_terms = np.zeros((self.n_wind_preview_samples, self.n_horizon, 2))
             for j in range(self.n_horizon):
                 for m in range(self.n_wind_preview_samples):
                     self.fi_opt.reinitialize(
                         wind_directions=[self.wind_preview_samples[f"FreestreamWindDir_{j}"][m]],
                         wind_speeds=[self.wind_preview_samples[f"FreestreamWindMag_{j}"][m]],
-                        turbulence_intensity=self.disturbance_preview["wind_ti"][j]
+                        turbulence_intensity=self.wind_ti
                     )
                 
                     # optimize yaw angles
-                    # TODO MISHA is there a reason not to optimize for negative yaw angles?
-                    yaw_opt = YawOptimizationSRRHC(self.fi_opt, 
+                    
+                    yaw_offset_opt = YawOptimizationSRRHC(self.fi_opt, 
                                  self.yaw_rate, self.dt, self.alpha,
                                  minimum_yaw_angle=self.yaw_limits[0],
                                  maximum_yaw_angle=self.yaw_limits[1],
-                                 yaw_angles_baseline=np.zeros((1, 1, self.n_turbines)),
+                                #  yaw_angles_baseline=np.zeros((1, 1, self.n_turbines)),
+                                yaw_angles_baseline=np.zeros((self.n_turbines,)),
                                 #  normalize_control_variables=True,
-                                    Ny_passes=[10, 8, 6, 4],
-                                 x0=init_states[j, :][np.newaxis, np.newaxis, :],
+                                    Ny_passes=[16, 12, 8, 4],
+                                x0=(self.wind_preview_samples[f"FreestreamWindDir_{j}"][m] 
+                                    - self.init_sol["states"][j * self.n_turbines:(j + 1) * self.n_turbines] * self.yaw_norm_const)[np.newaxis, np.newaxis, :],
                                  verify_convergence=False)#, exploit_layout_symmetry=False)
                     if j == 0:
-                        current_yaw_angles = self.initial_state * self.yaw_limits[1]
+                        # self.initial_state = np.array([self.yaw_IC / self.yaw_norm_const] * self.n_turbines)
+                        # current_yaw_offsets = self.wind_preview_samples[f"FreestreamWindDir_{j}"][m] - (self.initial_state * self.yaw_norm_const)
+                        current_yaw_offsets = np.zeros((self.n_turbines, ))
                     else:
-                        current_yaw_angles = opt_yaw_angles[m, j - 1, :]
+                        current_yaw_offsets = opt_yaw_setpoints[m, j - 1, :]
+
                     # TODO can we optimize for all samples in one sweep
-                    tmp = yaw_opt.optimize(current_yaw_angles)
-                    opt_yaw_angles[m, j, :] = tmp["yaw_angles_opt"].iloc[0]
-                    opt_cost[m, j] = tmp["cost"].iloc[0]
+                    opt_yaw_offsets_df = yaw_offset_opt.optimize(current_yaw_offsets)
+                    opt_yaw_setpoints[m, j, :] = self.wind_preview_samples[f"FreestreamWindDir_{j}"][m] - opt_yaw_offsets_df["yaw_angles_opt"].iloc[0]
+                    opt_cost[m, j] = opt_yaw_offsets_df["cost"].iloc[0]
+                    opt_cost_terms[m, j, 0] = opt_yaw_offsets_df["cost_states"].iloc[0]
+                    opt_cost_terms[m, j, 1] = opt_yaw_offsets_df["cost_control_inputs"].iloc[0]
+
 
             # TODO MISHA averaging solutions for stochastic preview??
             
-            opt_yaw_angles = np.mean(opt_yaw_angles, axis=0)
+            opt_yaw_setpoints = np.mean(opt_yaw_setpoints, axis=0)
             opt_cost = np.sum(np.mean(opt_cost, axis=0))
+            opt_cost_terms = np.sum(np.mean(opt_cost_terms, axis=0))
                 
         else:
-            opt_yaw_angles = np.zeros((self.n_horizon, self.n_turbines))
+            opt_yaw_setpoints = np.zeros((self.n_horizon, self.n_turbines))
             opt_cost = 0
+            opt_cost_terms = [0, 0]
             # if not using stochastic variation, pass mean values of u, v disturbances to FLORIS, rather than multiple realizations of probability distribution
             for j in range(self.n_horizon):
                 # assume persistance of current measurement
                 self.fi_opt.reinitialize(
-                    wind_directions=[self.measurements_dict["wind_directions"][0]],
-                    wind_speeds=[self.measurements_dict["wind_speeds"][0]],
-                    turbulence_intensity=self.disturbance_preview["wind_ti"][0]
+                    wind_directions=[self.wind_preview_samples[f"FreestreamWindDir_{0}"][0]],
+                    wind_speeds=[self.wind_preview_samples[f"FreestreamWindMag_{0}"][0]],
+                    turbulence_intensity=self.wind_ti # TODO should be available in self.measurements_dict??
                 )
                 # optimize yaw angles
-                yaw_opt = YawOptimizationSRRHC(self.fi_opt, self.yaw_rate, self.dt, self.alpha,
+                yaw_offset_opt = YawOptimizationSRRHC(self.fi_opt, self.yaw_rate, self.dt, self.alpha,
                                                 minimum_yaw_angle=self.yaw_limits[0],
                                                 maximum_yaw_angle=self.yaw_limits[1],
-                                                yaw_angles_baseline=np.zeros((1, 1, self.n_turbines)),
+                                                # yaw_angles_baseline=np.zeros((1, 1, self.n_turbines)),
+                                                yaw_angles_baseline=np.zeros((self.n_turbines,)),
+                                                Ny_passes=[16, 12, 8, 4],
                                                 # normalize_control_variables=True,
-                                                x0=init_states[j, :][np.newaxis, np.newaxis, :],
+                                                x0=(self.measurements_dict["wind_directions"] 
+                                                    - self.init_sol["states"][j * self.n_turbines:(j + 1) * self.n_turbines] * self.yaw_norm_const)[np.newaxis, np.newaxis, :],
                                                 verify_convergence=False)#, exploit_layout_symmetry=False)
                 
                 if j == 0:
-                    current_yaw_angles = self.initial_state * self.yaw_limits[1]
+                    # current_yaw_offsets = self.wind_preview_samples[f"FreestreamWindDir_{0}"][0] - (self.initial_state * self.yaw_norm_const)
+                    current_yaw_offsets = np.zeros((self.n_turbines, ))
                 else:
-                    current_yaw_angles = opt_yaw_angles[j - 1, :]
+                    current_yaw_offsets = self.wind_preview_samples[f"FreestreamWindDir_{0}"][0] - opt_yaw_setpoints[j - 1, :]
                 
-                tmp = yaw_opt.optimize(current_yaw_angles)
-                opt_yaw_angles[j, :] = tmp["yaw_angles_opt"].iloc[0]
-                opt_cost += tmp["cost"].iloc[0]
+                opt_yaw_offsets_df = yaw_offset_opt.optimize(current_yaw_offsets)
+                opt_yaw_setpoints[j, :] = self.wind_preview_samples[f"FreestreamWindDir_{0}"][0] - opt_yaw_offsets_df["yaw_angles_opt"].iloc[0] # TODO use freestream for computing all offsets
+                opt_cost += opt_yaw_offsets_df["cost"].iloc[0]
+                opt_cost_terms[0] += opt_yaw_offsets_df["cost_states"].iloc[0]
+                opt_cost_terms[1] += opt_yaw_offsets_df["cost_control_inputs"].iloc[0]
 
-        self.opt_sol = {"states": np.array([opt_yaw_angles[j, i] / self.yaw_limits[1] for j in range(self.n_horizon) for i in range(self.n_turbines)]), 
-                        "control_inputs": np.array([(opt_yaw_angles[j, i] - (opt_yaw_angles[j-1, i] if j > 0 else self.initial_state[i] * self.yaw_limits[1])) * (1 / (self.yaw_rate * self.dt)) for j in range(self.n_horizon) for i in range(self.n_turbines)])}
+        self.opt_sol = {
+            "states": np.array([opt_yaw_setpoints[j, i] / self.yaw_norm_const for j in range(self.n_horizon) for i in range(self.n_turbines)]), 
+            "control_inputs": np.array([(opt_yaw_setpoints[j, i] - (opt_yaw_setpoints[j-1, i] if j > 0 else self.initial_state[i] * self.yaw_norm_const)) * (1 / (self.yaw_rate * self.dt)) for j in range(self.n_horizon) for i in range(self.n_turbines)])
+            }
         self.opt_code = {"text": None}
         self.opt_cost = opt_cost
+        # funcs, _ = self.opt_rules(self.opt_sol)
+        self.opt_cost_terms = opt_cost_terms
 
-        return opt_yaw_angles[0, :]
+        return np.rint(opt_yaw_setpoints[0, :] / self.yaw_increment) * self.yaw_increment
             # reinitialize the floris object with the predicted wind magnitude and direction at this time-step in the horizon
 
-    def warm_start_opt_vars(self,):
+    def warm_start_opt_vars(self):
         self.init_sol = {"states": [], "control_inputs": []}
-        current_yaw_angles = self.measurements_dict["yaw_angles"]
+        current_yaw_setpoints = self.measurements_dict["yaw_angles"]
         
         if self.warm_start == "previous":
             current_time_step = int(self.measurements_dict["time"] // self.dt)
@@ -934,13 +1037,13 @@ class MPC(ControllerBase):
                         ]), -1, 1)
                 }
             else:
-                next_yaw_angles = np.array([self.yaw_IC / self.yaw_limits[1]] * (self.n_horizon * self.n_turbines))
+                next_yaw_setpoints = np.array([self.yaw_IC / self.yaw_norm_const] * (self.n_horizon * self.n_turbines))
                 current_control_inputs = np.array([0] * (self.n_horizon * self.n_turbines))
-                self.init_sol["states"] = next_yaw_angles
+                self.init_sol["states"] = next_yaw_setpoints
                 self.init_sol["control_inputs"] = current_control_inputs
 
         elif self.warm_start == "lut":
-            # delta_yaw = self.dt * (self.yaw_rate / self.yaw_limits[1]) * opt_var_dict["control_inputs"][prev_idx]
+            # delta_yaw = self.dt * (self.yaw_rate / self.yaw_norm_const) * opt_var_dict["control_inputs"][prev_idx]
             
             self.init_sol = {
                     "states": [],
@@ -950,40 +1053,78 @@ class MPC(ControllerBase):
                 # compute yaw angle setpoints from warm_start_func
                 
                 if self.stochastic:
-                    next_yaw_angles = self.warm_start_func({"wind_speeds": 
+                    next_yaw_setpoints = self.warm_start_func({"wind_speeds": 
                                         [np.mean(self.wind_preview_samples[f"FreestreamWindMag_{j + 1}"])], 
                                         "wind_directions": [np.mean(self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"])]})
                 else:
-                    next_yaw_angles = self.warm_start_func({
-                        "wind_speeds": [self.measurements_dict["wind_speeds"][0]], # TODO should be freestream
-                        "wind_directions": [self.measurements_dict["wind_directions"][0]]})
+                    next_yaw_setpoints = self.warm_start_func({
+                        "wind_speeds": [self.wind_preview_samples[f"FreestreamWindMag_{0}"][0]],
+                        "wind_directions": [self.wind_preview_samples[f"FreestreamWindDir_{0}"][0]]})
                 
-                current_control_inputs = (next_yaw_angles - current_yaw_angles) * (1 / (self.yaw_rate * self.dt))
+                current_control_inputs = (next_yaw_setpoints - current_yaw_setpoints) * (1 / (self.yaw_rate * self.dt))
                 
-                self.init_sol["states"] = self.init_sol["states"] + list(next_yaw_angles / self.yaw_limits[1])
+                self.init_sol["states"] = self.init_sol["states"] + list(next_yaw_setpoints / self.yaw_norm_const)
                 self.init_sol["control_inputs"] = self.init_sol["control_inputs"] + list(current_control_inputs)
-
-                # for i in range(self.n_turbines):
-                #     current_idx = (j * self.n_turbines) + i
-                #     next_idx = ((j + 1) * self.n_turbines) + i
-
-                #     self.pyopt_prob.variables["states"][current_idx].value \
-                #         = np.clip(next_yaw_angles[i] / self.yaw_limits[1], -1, 1)
-                    
-                #     self.pyopt_prob.variables["control_inputs"][current_idx].value \
-                #         = np.clip(current_control_inputs[i], -1, 1)
                 
-                current_yaw_angles = next_yaw_angles
-            
+                current_yaw_setpoints = next_yaw_setpoints
 
-            self.init_sol["states"] = np.clip(self.init_sol["states"], -1, 1)
+            self.init_sol["states"] = np.array(self.init_sol["states"])
             self.init_sol["control_inputs"] = np.clip(self.init_sol["control_inputs"], -1, 1)
 
         # self.init_sol = [s.value for s in self.pyopt_prob.variables["states"]] + [c.value for c in self.pyopt_prob.variables["control_inputs"]]
         
+    def SR_pyopt_solve(self):
+        # set self.opt_sol to initial solution
+        self.warm_start_opt_vars()
+        self.opt_sol = dict(self.init_sol)
+        self.opt_cost = 0
+        self.opt_cost_terms = [0, 0]
+        self.opt_code = []
+
+        # rotate turbine coordinates based on most recent wind direction measurement
+        # order turbines based on order of wind incidence
+        layout_x = self.fi.layout_x
+        layout_y = self.fi.layout_y
+        turbines_ordered_array = []
+        for wd in self.wind_preview_samples["FreestreamWindDir_0"][0]:
+            layout_x_rot = (
+                np.cos((wd - 270.0) * np.pi / 180.0) * layout_x
+                - np.sin((wd - 270.0) * np.pi / 180.0) * layout_y
+            )
+            turbines_ordered = np.argsort(layout_x_rot)
+            turbines_ordered_array.append(turbines_ordered)
+        self.turbines_ordered_array = np.vstack(turbines_ordered_array)
+
+        # for each turbine in sorted array
+        for i in range(self.n_turbines):
+            self.solve_turbine_id = self.turbines_ordered_array[i]
+            
+            # setup pyopt problem to consider 2 optimization variables for this turbine and set all others as fixed parameters
+            self.setup_pyopt_solver()
+
+            for j in range(self.n_horizon):
+                
+                self.pyopt_prob.variables["states"][j].value \
+                    = self.init_sol["states"][(j * self.n_turbines) + i]
+                
+                self.pyopt_prob.variables["control_inputs"][j].value \
+                    = self.init_sol["control_inputs"][(j * self.n_turbines) + i]
+            
+            # solve problem based on self.opt_sol
+            sol = MPC.optimizers[self.optimizer_idx](self.pyopt_prob, sens=self.sens_rules) #, sensMode='pgc')
+            # sol = MPC.optimizers[self.optimizer_idx](self.pyopt_prob, sens="FD")
+
+            # update self.opt_sol with most recent solutions for all turbines
+            self.opt_sol["states"][self.solve_turbine_id:-1:self.n_horizon] = dict(sol.xStar["states"])
+            self.opt_sol["control_inputs"][self.solve_turbine_id:-1:self.n_horizon] = dict(sol.xStar["control_inputs"])
+            self.opt_code.append(sol.optInform)
+            self.opt_cost += sol.fStar
+            
+        yaw_setpoints = ((self.initial_state * self.yaw_norm_const) + (self.yaw_rate * self.dt * self.opt_sol["control_inputs"][:self.n_turbines]))
+        return np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
 
     def pyopt_solve(self):
-        
+        # TODO why converging to initial values?
         # opt_options = {}
         # opt = ParOpt(options=opt_options) # requires install paropt
         # opt = ALPSO(options=opt_options)
@@ -991,48 +1132,30 @@ class MPC(ControllerBase):
         # warm start Vars by reinitializing the solution from last time-step self.mi_model.states
         self.warm_start_opt_vars()
 
-        # TODO only set values corresponding to cluster of turbines being optimized,
-        # set yaw angles. yaw angle changes of other as parameters for clustered approach
-        for j in range(self.n_horizon):
-            for i in range(self.n_turbines):
-                current_idx = (j * self.n_turbines) + i
-                # next_idx = ((j + 1) * self.n_turbines) + i
-                self.pyopt_prob.variables["states"][current_idx].value \
-                    = np.clip(self.init_sol["states"][current_idx], -1, 1)
+        # for j in range(self.n_horizon):
+        #     for i in range(self.n_turbines):
+        #         current_idx = (j * self.n_turbines) + i
+        #         # next_idx = ((j + 1) * self.n_turbines) + i
+        #         self.pyopt_prob.variables["states"][current_idx].value \
+        #             = self.init_sol["states"][current_idx]
                 
-                self.pyopt_prob.variables["control_inputs"][current_idx].value \
-                    = np.clip(self.init_sol["control_inputs"][current_idx], -1, 1)
-        
-        sol = MPC.optimizers[self.optimizer_idx](self.pyopt_prob, sens=self.pyopt_sens) #, sensMode='pgc')
-        # TODO why do control inputs deviate from initial values of zero and problem still "terminates successfully"
-        # TODO first dynamic state constraint violated when jac passed to equality constraints
-        # print(f"469 = {self.initial_state}")
-        print(np.sum(sol.xStar["states"][:self.n_turbines] - (self.initial_state + sol.xStar["control_inputs"][:self.n_turbines] * (self.yaw_rate / self.yaw_limits[1]) * self.dt)))
-        print(np.sum(sol.xStar["states"][self.n_turbines:] - (sol.xStar["states"][:-self.n_turbines] + sol.xStar["control_inputs"][self.n_turbines:] * (self.yaw_rate / self.yaw_limits[1]) * self.dt)))
-        # TODO try to update dynamic state constraints at each iteration, ie redefine self.dyn_state_rules
-        # self.dyn_state_rules_partial = partial(self.dyn_state_rules, self.initial_state)
-        # print(sol)
-        # sol.xStar["states"][:self.n_turbines] * self.yaw_limits[1]
-        # sol.constraints["dyn_state_cons"].value
-        # TODO opt_sol must be populate with most recent solution for all turbines and horizon steps for clustered approach
+        #         self.pyopt_prob.variables["control_inputs"][current_idx].value \
+        #             = self.init_sol["control_inputs"][current_idx]
+
+        sol = MPC.optimizers[self.optimizer_idx](self.pyopt_prob, sens=self.sens_rules) #, sensMode='pgc')
+        # sol = MPC.optimizers[self.optimizer_idx](self.pyopt_prob, sens="FD")
+
         self.opt_sol = dict(sol.xStar)
         self.opt_code = sol.optInform
         self.opt_cost = sol.fStar
-        # opt_elapsed_time = [res[1] for res in results]
+        assert sum(self.opt_cost_terms) == self.opt_cost
+        
         # solution is scaled by yaw limit
-        # assert np.all(np.isclose(self.initial_state + (self.yaw_rate / self.yaw_limits[1])* self.dt * self.opt_sol["control_inputs"][:self.n_turbines], self.opt_sol["states"][:self.n_turbines]))
-        return np.rint(np.clip(((self.initial_state * self.yaw_limits[1]) + (self.yaw_rate * self.dt * sol.xStar["control_inputs"][:self.n_turbines])), *self.yaw_limits) / self.yaw_increment) * self.yaw_increment
-        # return (self.initial_state * self.yaw_limits[1]) \
+        yaw_setpoints = ((self.initial_state * self.yaw_norm_const) + (self.yaw_rate * self.dt * self.opt_sol["control_inputs"][:self.n_turbines]))
+        return np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
+        # return (self.initial_state * self.yaw_norm_const) \
         # 	+ self.yaw_rate * self.dt * self.opt_sol["control_inputs"][:self.n_turbines]  # solution is scaled by yaw limit
     
-    
-    @property
-    def disturbance_preview(self):
-        return self._disturbance_preview
-    
-    @disturbance_preview.setter
-    def disturbance_preview(self, disturbance_preview):
-        self._disturbance_preview = disturbance_preview
     
 def mpc_runner(input_dict, wind_mag_ts, wind_dir_ts, wind_ti_ts, wind_mag_preview_ts, wind_dir_preview_ts, wind_ti_preview_ts, optimizer_idx):
     # Load a FLORIS object for AEP calculations
@@ -1059,19 +1182,23 @@ def mpc_runner(input_dict, wind_mag_ts, wind_dir_ts, wind_ti_ts, wind_mag_previe
             
             # receive measurements from interface, compute control actions, and send to interface
             ctrl_lut.step()
+            # must return yaw setpoints
             return ctrl_lut.controls_dict["yaw_angles"]
 
         # TODO define descriptor class to ensure that this function takes current_measurements
         ctrl_mpc.warm_start_func = warm_start_func
     
     yaw_angles_ts = []
+    yaw_angles_change_ts = []
     turbine_powers_ts = []
     convergence_time_ts = []
     opt_codes_ts = []
-    opt_costs_ts = []
+    opt_cost_ts = []
+    opt_cost_terms_ts = []
     fi_mpc.reset(disturbances={"wind_speeds": [wind_mag_ts[0]],
                             "wind_directions": [wind_dir_ts[0]],
-                            "turbulence_intensity": wind_ti_ts[0]})
+                            "turbulence_intensity": wind_ti_ts[0]},
+                            init_controls_dict={"yaw_angles": [ctrl_mpc.yaw_IC] * ctrl_mpc.n_turbines})
     
     for k, t in enumerate(np.arange(0, EPISODE_MAX_TIME - input_dict["dt"], input_dict["dt"])):
 
@@ -1079,19 +1206,19 @@ def mpc_runner(input_dict, wind_mag_ts, wind_dir_ts, wind_ti_ts, wind_mag_previe
         fi_mpc.step(disturbances={"wind_speeds": [wind_mag_ts[k]],
                                 "wind_directions": [wind_dir_ts[k]],
                                 "turbulence_intensity": wind_ti_ts[k]})
-        
-        # update disturbance preview
-        ctrl_mpc.disturbance_preview = {"wind_mag": wind_mag_preview_ts[k],
-                                        "wind_dir": wind_dir_preview_ts[k],
-                                        "wind_ti": wind_ti_preview_ts[k]}
-        
+        # fi_mpc.env.floris.flow_field.u, fi_mpc.env.floris.flow_field.u
         # receive measurements from interface, compute control actions, and send to interface
+        ctrl_mpc.current_freestream_measurements = [
+                    wind_mag_ts[k] * np.cos((270. - wind_dir_ts[k]) * (np.pi / 180.)),
+                    wind_mag_ts[k] * np.sin((270. - wind_dir_ts[k]) * (np.pi / 180.))
+                ]
         start_time = time()
         ctrl_mpc.step()
         end_time = time()
         convergence_time_ts.append(end_time - start_time)
         opt_codes_ts.append(ctrl_mpc.opt_code)
-        opt_costs_ts.append(ctrl_mpc.opt_cost)
+        opt_cost_terms_ts.append(ctrl_mpc.opt_cost_terms)
+        opt_cost_ts.append(ctrl_mpc.opt_cost)
         
         # print(f"Time = {ctrl_mpc.measurements_dict['time']} for Optimizer {MPC.optimizers[optimizer_idx].__class__}")
         print(f"\nTime = {ctrl_mpc.measurements_dict['time']}",
@@ -1101,22 +1228,25 @@ def mpc_runner(input_dict, wind_mag_ts, wind_dir_ts, wind_ti_ts, wind_mag_previe
             f"Measured Turbine Wind Magnitudes = {ctrl_mpc.measurements_dict['wind_speeds']}",
             f"Measured Yaw Angles = {ctrl_mpc.measurements_dict['yaw_angles']}",
             f"Measured Turbine Powers = {ctrl_mpc.measurements_dict['powers']}",
-            f"Initial Yaw Angle Solution = {np.array(ctrl_mpc.init_sol['states']) * ctrl_mpc.yaw_limits[1]}",
+            f"Initial Yaw Angle Solution = {np.array(ctrl_mpc.init_sol['states']) * ctrl_mpc.yaw_norm_const}",
             f"Initial Yaw Angle Change Solution = {ctrl_mpc.init_sol['control_inputs']}",
-            f"Optimizer Output = {ctrl_mpc.opt_code['text']}",
-            f"Optimized Yaw Angle Solution = {ctrl_mpc.opt_sol['states'] * ctrl_mpc.yaw_limits[1]}",
+            # f"Optimizer Output = {ctrl_mpc.opt_code['text']}",
+            f"Optimized Yaw Angle Solution = {ctrl_mpc.opt_sol['states'] * ctrl_mpc.yaw_norm_const}",
             f"Optimized Yaw Angle Change Solution = {ctrl_mpc.opt_sol['control_inputs']}",
             f"Optimized Yaw Angles = {ctrl_mpc.controls_dict['yaw_angles']}",
+            f"Optimized Power Cost = {ctrl_mpc.opt_cost_terms[0]}",
+            f"Optimized Yaw Change Cost = {ctrl_mpc.opt_cost_terms[1]}",
             f"Convergence Time = {convergence_time_ts[-1]}",
             sep='\n')
         
         yaw_angles_ts.append(ctrl_mpc.measurements_dict['yaw_angles'])
+        yaw_angles_change_ts.append(ctrl_mpc.opt_sol['control_inputs'][:ctrl_mpc.n_turbines])
         turbine_powers_ts.append(ctrl_mpc.measurements_dict['powers'])
 
         if k > 0:
             print(f"Change in Optimized Farm Powers relative to previous time-step = {100 * (sum(turbine_powers_ts[-1]) - sum(turbine_powers_ts[-2])) /  sum(turbine_powers_ts[-2])} %")
-            print(f"Change in Optimized Cost relative to previous time-step = {100 * (opt_costs_ts[-1] - opt_costs_ts[-2]) /  opt_costs_ts[-2]} %")
-            print(f"Change in Optimized Cost relative to first time-step = {100 * (opt_costs_ts[-1] - opt_costs_ts[0]) /  opt_costs_ts[0]} %")
+            print(f"Change in Optimized Cost relative to previous time-step = {100 * (opt_cost_ts[-1] - opt_cost_ts[-2]) /  opt_cost_ts[-2]} %")
+            print(f"Change in Optimized Cost relative to first time-step = {100 * (opt_cost_ts[-1] - opt_cost_ts[0]) /  opt_cost_ts[0]} %")
             # print(f"Change in Optimized Cost relative to second time-step = {100 * (opt_costs_ts[-1] - opt_costs_ts[1]) /  opt_costs_ts[1]} %")
 
             ctrl_mpc.fi.env.reinitialize(
@@ -1132,20 +1262,22 @@ def mpc_runner(input_dict, wind_mag_ts, wind_dir_ts, wind_ti_ts, wind_mag_previe
             
             # receive measurements from interface, compute control actions, and send to interface
             ctrl_lut.step()
-            ctrl_mpc.fi.env.calculate_wake(ctrl_lut.controls_dict["yaw_angles"][np.newaxis, :])
+
+            ctrl_mpc.fi.env.calculate_wake((ctrl_lut.measurements_dict["wind_directions"] - ctrl_lut.controls_dict["yaw_angles"])[np.newaxis, :])
             lut_yawed_turbine_powers = np.squeeze(ctrl_mpc.fi.env.get_turbine_powers())
         
             ctrl_mpc.fi.env.calculate_wake(np.zeros((1, ctrl_mpc.n_turbines)))
-            noyaw_turbine_powers = np.squeeze(ctrl_mpc.fi.env.get_turbine_powers())
+            greedy_yaw_turbine_powers = np.squeeze(ctrl_mpc.fi.env.get_turbine_powers())
 
-            print(f"Change in Optimized Farm Powers relative to No Yaw = {100 * (sum(turbine_powers_ts[-1]) - sum(noyaw_turbine_powers)) /  sum(noyaw_turbine_powers)} %")
+            print(f"Change in Optimized Farm Powers relative to Greedy Yaw = {100 * (sum(turbine_powers_ts[-1]) - sum(greedy_yaw_turbine_powers)) /  sum(greedy_yaw_turbine_powers)} %")
             print(f"Change in Optimized Farm Powers relative to LUT = {100 * (sum(turbine_powers_ts[-1]) - sum(lut_yawed_turbine_powers)) /  sum(lut_yawed_turbine_powers)} %")
 
     yaw_angles_ts = np.vstack(yaw_angles_ts)
+    yaw_angles_change_ts = np.vstack(yaw_angles_change_ts)
     turbine_powers_ts = np.vstack(turbine_powers_ts)
-    convergence_time_ts = np.vstack(convergence_time_ts)
+    opt_cost_terms_ts = np.vstack(opt_cost_terms_ts)
 
-    return yaw_angles_ts, turbine_powers_ts, convergence_time_ts, opt_codes_ts, opt_costs_ts
+    return yaw_angles_ts, yaw_angles_change_ts, turbine_powers_ts, convergence_time_ts, opt_codes_ts, opt_cost_terms_ts
 
 if __name__ == '__main__':
     # import
@@ -1156,7 +1288,7 @@ if __name__ == '__main__':
     # input_dict = load_yaml(sys.argv[1])
     input_dict = load_yaml("../../examples/hercules_input_001.yaml")
 
-    input_dict["controller"]["n_wind_preview_samples"] = 20
+    input_dict["controller"]["n_wind_preview_samples"] = 50
 
     # instantiate wind preview distribution
     wf = WindField(**WIND_FIELD_CONFIG)
@@ -1181,15 +1313,19 @@ if __name__ == '__main__':
         wind_field_filenames = [f"case_{i}.csv" for i in range(N_CASES)]
         regenerate_wind_preview = True
     
+    WIND_TYPE = "step"
     # if wind field data exists, get it
     wind_field_data = []
     if os.path.exists(DATA_SAVE_DIR):
         for fn in wind_field_filenames:
             wind_field_data.append(pd.read_csv(os.path.join(DATA_SAVE_DIR, fn)))
 
-            if True:
-                wind_field_data[-1][f"FreestreamWindMag"] = 9.0
-                wind_field_data[-1][f"FreestreamWindDir"] = 260.0
+            if WIND_TYPE == "step":
+                # n_rows = len(wind_field_data[-1].index)
+                wind_field_data[-1].loc[:15, f"FreestreamWindMag"] = 8.0
+                wind_field_data[-1].loc[15:, f"FreestreamWindMag"] = 11.0
+                wind_field_data[-1].loc[:45, f"FreestreamWindDir"] = 260.0
+                wind_field_data[-1].loc[45:, f"FreestreamWindDir"] = 270.0
     
     # instantiate wind field preview if files don't already exist
     wind_field_preview_filenames = glob(f"{DATA_SAVE_DIR}/preview_case_*.csv")
@@ -1203,10 +1339,12 @@ if __name__ == '__main__':
         for fn in wind_field_preview_filenames:
             wind_field_preview_data.append(pd.read_csv(os.path.join(DATA_SAVE_DIR, fn)))
 
-            if True:
+            if WIND_TYPE == "step":
                 for j in range(wf.n_preview_steps):
-                    wind_field_preview_data[-1][f"FreestreamWindMag_{j}"] = 9.0
-                    wind_field_preview_data[-1][f"FreestreamWindDir_{j}"] = 260.0
+                    wind_field_preview_data[-1].loc[:15, f"FreestreamWindMag"] = 8.0
+                    wind_field_preview_data[-1].loc[15:, f"FreestreamWindMag"] = 11.0
+                    wind_field_preview_data[-1].loc[:45, f"FreestreamWindDir"] = 260.0
+                    wind_field_preview_data[-1].loc[45:, f"FreestreamWindDir"] = 280.0
     
     # true wind disturbance time-series
     case_idx = 0
@@ -1233,10 +1371,36 @@ if __name__ == '__main__':
     
     results = mpc_runner(input_dict, wind_mag_ts, wind_dir_ts, wind_ti_ts, wind_mag_preview_ts, wind_dir_preview_ts, wind_ti_preview_ts, optimizer_idx=optimizer_idx)
     
-    yaw_angles_ts, turbine_powers_ts, convergence_time_ts, opt_codes_ts, opt_costs_ts = results
+    yaw_angles_ts, yaw_angles_change_ts, turbine_powers_ts, convergence_time_ts, opt_codes_ts, opt_cost_terms_ts = results
     # filt_wind_dir_ts = ctrl_mpc._first_ord_filter(wind_dir_ts, ctrl_mpc.wd_lpf_alpha)
     # filt_wind_speed_ts = ctrl_mpc._first_ord_filter(wind_mag_ts, ctrl_mpc.ws_lpf_alpha)
-    # TODO save results and configurataion in a dataframe of results
+    
+    # save results and configurataion in a dataframe of results
+    # make folder for results
+    results_dir = os.path.join(os.path.dirname(whoc.__file__), "case_studies", strftime("%Y%m%d-%H%M%S"))
+    os.makedirs(results_dir)
+    with open(os.path.join(results_dir, "input_config.yaml"), 'w') as fp:
+        yaml.dump(input_dict, fp)
+    
+    results_df = pd.DataFrame(data={
+        **{
+            f"TurbineYawAngle_{i}": yaw_angles_ts[:, i] for i in range(input_dict["controller"]["num_turbines"])
+        }, 
+        **{
+            f"TurbineYawAngleChange_{i}": yaw_angles_change_ts[:, i] for i in range(input_dict["controller"]["num_turbines"])
+        },
+        **{
+            f"TurbinePower_{i}": turbine_powers_ts[:, i] for i in range(input_dict["controller"]["num_turbines"])
+        },
+        "FarmPower": np.sum(turbine_powers_ts, axis=1),
+        **{
+            f"OptimizationCostTerm_{i}": opt_cost_terms_ts[:, i] for i in range(opt_cost_terms_ts.shape[1])
+        },
+        "TotalOptimizationCost": np.sum(opt_cost_terms_ts, axis=1),
+        "OptimizationConvergenceTime": convergence_time_ts,
+        # "OptimizationCode": opt_codes_ts
+        })
+    results_df.to_csv(os.path.join(results_dir, "time_series_results.csv"))
 
     fig_wind, ax_wind = plt.subplots(2, 1, figsize=FIGSIZE)
     ax_wind[0].plot(time_ts[:int(EPISODE_MAX_TIME // input_dict["dt"])], wind_dir_ts[:int(EPISODE_MAX_TIME // input_dict["dt"])], label='raw')
@@ -1249,15 +1413,21 @@ if __name__ == '__main__':
     ax_wind[1].set(title='Wind Speed [m/s]', xlabel='Time [s]')
     # ax.set_xlim((time_ts[1], time_ts[-1]))
     ax_wind[0].legend()
-    fig_wind.savefig(os.path.join(FIG_DIR, f'mpc_{MPC.optimizers[optimizer_idx].__class__}_wind_results.png'))
+    fig_wind.savefig(os.path.join(results_dir, f'wind_ts.png'))
     fig_wind.show()
 
-    fig_outputs, ax_outputs = plt.subplots(3, 1, figsize=FIGSIZE)
-    ax_outputs[0].plot(time_ts[:int(EPISODE_MAX_TIME // input_dict["dt"]) - 1], yaw_angles_ts)
-    ax_outputs[0].set(title='Yaw Angles [deg]', xlabel='Time [s]')
-    ax_outputs[1].plot(time_ts[:int(EPISODE_MAX_TIME // input_dict["dt"]) - 1], turbine_powers_ts)
-    ax_outputs[1].set(title="Turbine Powers [MW]")
-    ax_outputs[2].scatter(time_ts[:int(EPISODE_MAX_TIME // input_dict["dt"]) - 1], convergence_time_ts)
-    ax_outputs[2].set(title="Convergence Time [s]")
-    fig_outputs.savefig(os.path.join(FIG_DIR, f'mpc_{MPC.optimizers[optimizer_idx].__class__}_outputs_results.png'))
+    fig_outputs, ax_outputs = plt.subplots(2, 2)
+    ax_outputs[0, 0].plot(time_ts[:int(EPISODE_MAX_TIME // input_dict["dt"]) - 1], yaw_angles_ts)
+    ax_outputs[0, 0].set(title='Yaw Angles [deg]', xlabel='Time [s]')
+    ax_outputs[1, 0].plot(time_ts[:int(EPISODE_MAX_TIME // input_dict["dt"]) - 1], yaw_angles_change_ts)
+    ax_outputs[1, 0].set(title='Yaw Angles Change [-]', xlabel='Time [s]')
+    # ax_outputs[1, 0].plot(time_ts[:int(EPISODE_MAX_TIME // input_dict["dt"]) - 1], turbine_powers_ts)
+    # ax_outputs[1, 0].set(title="Turbine Powers [MW]")
+    ax_outputs[0, 1].scatter(time_ts[:int(EPISODE_MAX_TIME // input_dict["dt"]) - 1], opt_cost_terms_ts[:, 0])
+    ax_outputs[0, 1].set(title="Optimization Yaw Angle Cost [-]")
+    ax_outputs[1, 1].scatter(time_ts[:int(EPISODE_MAX_TIME // input_dict["dt"]) - 1], opt_cost_terms_ts[:, 1])
+    ax_outputs[1, 1].set(title="Optimization Yaw Angle Change Cost [-]")
+    # ax_outputs[2].scatter(time_ts[:int(EPISODE_MAX_TIME // input_dict["dt"]) - 1], convergence_time_ts)
+    # ax_outputs[2].set(title="Convergence Time [s]")
+    fig_outputs.savefig(os.path.join(results_dir, f'optimization_ts.png'))
     fig_outputs.show()

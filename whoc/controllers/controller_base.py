@@ -55,7 +55,7 @@ class ControllerBase(metaclass=ABCMeta):
         return None
 
     def _send_controls(self, hercules_dict=None) -> dict:
-        # TODO what are other_args for?
+        
         self._s.check_controls(self.controls_dict)
         controller_output = self._s.send_controls(hercules_dict, **self.controls_dict)
 
@@ -68,9 +68,9 @@ class ControllerBase(metaclass=ABCMeta):
 
         self.compute_controls() # set self.controls_dict
 
-        observations = self._send_controls(hercules_dict)
+        hercules_dict = self._send_controls(hercules_dict)
 
-        return observations  # May simply be None.
+        return hercules_dict  # May simply be None.
 
     @abstractmethod
     def compute_controls(self):
