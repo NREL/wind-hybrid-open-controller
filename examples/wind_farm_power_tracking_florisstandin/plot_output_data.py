@@ -11,7 +11,7 @@ pow_cols = [wf_str+"turbine_powers.{0:03d}".format(t) for t in range(n_turbines)
 wd_cols = [wf_str+"turbine_wind_directions.{0:03d}".format(t) for t in range(n_turbines)]
 yaw_cols = [wf_str+"turbine_yaw_angles.{0:03d}".format(t) for t in range(n_turbines)]
 
-for df, l in zip(dfs, labels):
+for df, label in zip(dfs, labels):
     # Extract data from larger array
     time = df.dt.values * np.arange(0, len(df), 1)
     powers = df[pow_cols].to_numpy()
@@ -41,7 +41,7 @@ for df, l in zip(dfs, labels):
     ax[0].set_ylim([240, 290])
     ax[0].set_ylabel("Direction [deg]")
     ax[0].legend(loc="lower left")
-    ax[0].set_title(l)
+    ax[0].set_title(label)
 
     ax[1].grid()
     ax[1].set_ylabel("Power [kW]")
