@@ -564,7 +564,7 @@ class MPC(ControllerBase):
         
             for m in range(self.n_wind_preview_samples):
                 # if any yaw offset are out of the [-90, 90] range, then the power output of all turbines will be nan. clip to avoid this
-                # TODO does clipping this way make sense?
+                
                 # TODO use the freestream wind dire to calculate offsets or local wind dir?
                 current_yaw_offsets = (self.wind_preview_samples[f"FreestreamWindDir_{j}"][m] - yaw_setpoints[j, :])
 
@@ -580,10 +580,6 @@ class MPC(ControllerBase):
                     self.fi.env.calculate_wake(current_yaw_offsets[np.newaxis, :])
                     yawed_turbine_powers = self.fi.env.get_turbine_powers()
 
-                    if np.any(np.isnan(yawed_turbine_powers)):
-                        self.fi.env.calculate_wake(np.clip(current_yaw_offsets, -60.0, 60.0)[np.newaxis, :])
-                        yawed_turbine_powers = self.fi.env.get_turbine_powers()
-
                     # greedily yaw directly into wind for normalization constant
                     self.fi.env.calculate_wake(np.zeros((1, self.n_turbines)))
                     greedy_yaw_turbine_powers = self.fi.env.get_turbine_powers()
@@ -595,29 +591,17 @@ class MPC(ControllerBase):
 
                     mask = np.zeros((self.n_turbines,))
                     mask[self.solve_turbine_id] = 1
-                    self.fi.env.calculate_wake((current_yaw_offsets + mask * self.nu * self.yaw_norm_const * u[m, j, :])[np.newaxis, :])
+
+                    # we subtract plus change since current_yaw_offsets = wind dir - yaw setpoints
+                    self.fi.env.calculate_wake((current_yaw_offsets - mask * self.nu * self.yaw_norm_const * u[m, j, :])[np.newaxis, :])
                     perturbed_yawed_turbine_powers = self.fi.env.get_turbine_powers()
 
                     norm_turbine_power_diff = np.divide((perturbed_yawed_turbine_powers - yawed_turbine_powers), greedy_yaw_turbine_powers,
                                                         where=greedy_yaw_turbine_powers!=0,
                                                         out=np.zeros_like(yawed_turbine_powers))
-                    
-                    if np.any(np.isnan(norm_turbine_power_diff)):
-                        # norm_turbine_power_diff[plus_yaw_offsets > self.yaw_limits[1]]
-                        # norm_turbine_power_diff[neg_yaw_offsets < self.yaw_limits[0]]
-                        # if increasing the yaw angle of turbine i brings it closer to a feasible (>-30deg) value, then set the power diff of all three turbines positive
-                        self.norm_turbine_powers_states_drvt[m, j, :, neg_yaw_offsets < self.yaw_limits[0]] = 1.5 * np.max(abs(self.norm_turbine_powers_states_drvt[m, j, :, :]))
 
-                        # elif decreasing the yaw angle of turbine i brings it closer to a feasible (<30deg) value, then set the power diff of all three turbines negative
-                        self.norm_turbine_powers_states_drvt[m, j, :, plus_yaw_offsets > self.yaw_limits[1]] = -1.5 * np.max(abs(self.norm_turbine_powers_states_drvt[m, j, :, :]))
-                        # else:
-                        #     # elif the perturbed yaw offsets are within a feasible range and the computed power is still nan, raise error
-                        #     # raise ValueError("nan power computed for peturbed yaw offsets that are within feasible range")
-                        #     print("oh no")
-                        
-                    else:
-                        # TODO test should compute derivative of each power of each turbine wrt state (yaw angle) of each turbine
-                        self.norm_turbine_powers_states_drvt[m, j, :, :] = (norm_turbine_power_diff / self.nu) @ u[m, j, :].T
+                    # TODO test should compute derivative of each power of each turbine wrt state (yaw angle) of each turbine
+                    self.norm_turbine_powers_states_drvt[m, j, :, :] = (norm_turbine_power_diff / self.nu) @ u[m, j, :].T
 
             # compute power based on sampling from wind preview
             funcs["cost_states"] = sum([-0.5*np.mean((self.norm_turbine_powers[:, j, i])**2) * self.Q
@@ -631,7 +615,7 @@ class MPC(ControllerBase):
             funcs["state_cons"] = self.state_rules(opt_var_dict, {"wind_direction": [self.wind_preview_samples[f"FreestreamWindDir_{0}"][0]] * self.n_horizon})
             
             # if not using stochastic variation, pass mean values of u, v disturbances to FLORIS, rather than multiple realizations of probability distribution
-            self.norm_turbine_powers_states_drvt = np.zeros((self.n_horizon, self.n_turbines, self.n_turbines))
+            self.norm_turbine_powers_states_drvt = np.zeros((self.n_horizon, self.n_turbines, self.n_solve_turbines))
             self.norm_turbine_powers = np.zeros((self.n_horizon, self.n_turbines))
             # test_norm_turbine_powers = np.zeros((self.n_horizon, self.n_turbines))
 
@@ -648,10 +632,6 @@ class MPC(ControllerBase):
                 current_yaw_offsets = (self.wind_preview_samples[f"FreestreamWindDir_{0}"][0] - yaw_setpoints[j, :])
                 self.fi.env.calculate_wake(current_yaw_offsets[np.newaxis, :])
                 yawed_turbine_powers = self.fi.env.get_turbine_powers()
-
-                if np.any(np.isnan(yawed_turbine_powers)):
-                    self.fi.env.calculate_wake(np.clip(current_yaw_offsets, -60.0, 60.0)[np.newaxis, :])
-                    yawed_turbine_powers = self.fi.env.get_turbine_powers()
 
                 # greedily yaw directly into wind for normalization constant
                 
@@ -675,12 +655,14 @@ class MPC(ControllerBase):
                     else:
                         mask[i] = 1
                     
-                    plus_yaw_offsets = current_yaw_offsets + mask * self.nu * self.yaw_norm_const
+                    # we subtract plus change since current_yaw_offsets = wind dir - yaw setpoints
+                    plus_yaw_offsets = current_yaw_offsets - mask * self.nu * self.yaw_norm_const
                     
                     self.fi.env.calculate_wake(plus_yaw_offsets[np.newaxis, :])
                     plus_perturbed_yawed_turbine_powers = self.fi.env.get_turbine_powers()
 
-                    neg_yaw_offsets = current_yaw_offsets - mask * self.nu * self.yaw_norm_const
+                    # we add negative since current_yaw_offsets = wind dir - yaw setpoints
+                    neg_yaw_offsets = current_yaw_offsets + mask * self.nu * self.yaw_norm_const
 
                     self.fi.env.calculate_wake(neg_yaw_offsets[np.newaxis, :])
                     neg_perturbed_yawed_turbine_powers = self.fi.env.get_turbine_powers()
@@ -689,22 +671,8 @@ class MPC(ControllerBase):
                                                         where=greedy_yaw_turbine_powers!=0,
                                                         out=np.zeros_like(plus_perturbed_yawed_turbine_powers))
 
-                    if np.any(np.isnan(norm_turbine_power_diff)):
-                        # norm_turbine_power_diff[plus_yaw_offsets > self.yaw_limits[1]]
-                        # norm_turbine_power_diff[neg_yaw_offsets < self.yaw_limits[0]]
-                        # if increasing the yaw angle of turbine i brings it closer to a feasible (>-30deg) value, then set the power diff of all three turbines positive
-                        self.norm_turbine_powers_states_drvt[j, :, neg_yaw_offsets < self.yaw_limits[0]] = 1.5 * np.max(abs(self.norm_turbine_powers_states_drvt[j, :, :]))
-                        
-                        # elif decreasing the yaw angle of turbine i brings it closer to a feasible (<30deg) value, then set the power diff of all three turbines negative
-                        self.norm_turbine_powers_states_drvt[j, :, plus_yaw_offsets > self.yaw_limits[1]] = -1.5 * np.max(abs(self.norm_turbine_powers_states_drvt[j, :, :]))
-                        # else:
-                        #     # elif the perturbed yaw offsets are within a feasible range and the computed power is still nan, raise error
-                        #     # raise ValueError("nan power computed for peturbed yaw offsets that are within feasible range")
-                        #     print("oh no")
-                        
-                    else:
-                        # TODO test should compute derivative of each power of each turbine wrt state (yaw angle) of each turbine
-                        self.norm_turbine_powers_states_drvt[j, :, i] = norm_turbine_power_diff / (2 * self.nu)
+                    # compute derivative of each power of each turbine wrt state (yaw angle) of each turbine
+                    self.norm_turbine_powers_states_drvt[j, :, i] = norm_turbine_power_diff / (2 * self.nu)
                     
 
             # compute power based on mean values from wind preview (persistance)
@@ -850,10 +818,11 @@ class MPC(ControllerBase):
         else:
             state_cons = [(self.wind_preview_samples[f"FreestreamWindDir_{0}"][0] / self.yaw_norm_const) - self.opt_sol["states"][(j * self.n_solve_turbines) + i] for j in range(self.n_horizon) for i in range(self.n_solve_turbines)]
         
-        print(all([(c <= (self.yaw_limits[1] / self.yaw_norm_const)) and (c >= (self.yaw_limits[0] / self.yaw_norm_const)) for c in state_cons]))
-        
+        print(all([(c <= (self.yaw_limits[1] / self.yaw_norm_const) + 1e-12) and (c >= (self.yaw_limits[0] / self.yaw_norm_const) - 1e-12) for c in state_cons]))
+        self.norm_turbine_powers_states_drvt
+        [c * self.yaw_norm_const for c in state_cons] # offsets
         self.controls_dict = {"yaw_angles": yaw_star}
-    
+        # [c1 == c2 for c1, c2 in zip(self.pyopt_sol_obj.constraints["state_cons"].value, state_cons)]
     def zsgd_solve(self):
 
         self.warm_start_opt_vars()
@@ -1132,24 +1101,26 @@ class MPC(ControllerBase):
         # warm start Vars by reinitializing the solution from last time-step self.mi_model.states
         self.warm_start_opt_vars()
 
-        # for j in range(self.n_horizon):
-        #     for i in range(self.n_turbines):
-        #         current_idx = (j * self.n_turbines) + i
-        #         # next_idx = ((j + 1) * self.n_turbines) + i
-        #         self.pyopt_prob.variables["states"][current_idx].value \
-        #             = self.init_sol["states"][current_idx]
+        for j in range(self.n_horizon):
+            for i in range(self.n_turbines):
+                current_idx = (j * self.n_turbines) + i
+                # next_idx = ((j + 1) * self.n_turbines) + i
+                self.pyopt_prob.variables["states"][current_idx].value \
+                    = self.init_sol["states"][current_idx]
                 
-        #         self.pyopt_prob.variables["control_inputs"][current_idx].value \
-        #             = self.init_sol["control_inputs"][current_idx]
+                self.pyopt_prob.variables["control_inputs"][current_idx].value \
+                    = self.init_sol["control_inputs"][current_idx]
 
         sol = MPC.optimizers[self.optimizer_idx](self.pyopt_prob, sens=self.sens_rules) #, sensMode='pgc')
         # sol = MPC.optimizers[self.optimizer_idx](self.pyopt_prob, sens="FD")
-
+        self.pyopt_sol_obj = sol
         self.opt_sol = dict(sol.xStar)
         self.opt_code = sol.optInform
         self.opt_cost = sol.fStar
         assert sum(self.opt_cost_terms) == self.opt_cost
-        
+
+        self.wind_preview_samples["FreestreamWindDir_0"][0] - (self.initial_state * self.yaw_norm_const)
+        self.norm_turbine_powers_states_drvt[0, :, :] # should be p
         # solution is scaled by yaw limit
         yaw_setpoints = ((self.initial_state * self.yaw_norm_const) + (self.yaw_rate * self.dt * self.opt_sol["control_inputs"][:self.n_turbines]))
         return np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
