@@ -25,7 +25,8 @@ These methods will all be called in the `step()` method of `ControllerBase`.
 For direct python communication with Hercules. This should be instantiated 
 in a runscript that is running Hercules; used to generate a `controller` from 
 the WHOC controllers submodule; and that `controller` should be passed to the
-Hercules `Emulator` upon its instantiation.
+Hercules `Emulator` upon its instantiation. Support transmitting yaw angles 
+and power setpoints to wind turbines.
 
 ### ROSCO_ZMQInterface
 For sending and receiving communications from one or more ROSCO instances 
