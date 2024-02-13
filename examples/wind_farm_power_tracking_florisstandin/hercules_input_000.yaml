@@ -58,6 +58,7 @@ controller:
   initial_conditions:
       yaw: 270. # degrees (same for all turbines) (will this work?)
 
+external_data_file: wind_power_reference_data.csv
 
 
 

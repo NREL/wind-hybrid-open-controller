@@ -10,6 +10,7 @@ wf_str = "hercules_comms.amr_wind.wind_farm_0."
 pow_cols = [wf_str+"turbine_powers.{0:03d}".format(t) for t in range(n_turbines)]
 wd_cols = [wf_str+"turbine_wind_directions.{0:03d}".format(t) for t in range(n_turbines)]
 yaw_cols = [wf_str+"turbine_yaw_angles.{0:03d}".format(t) for t in range(n_turbines)]
+ref_col = "external_signals.wind_power_reference"
 
 for df, label in zip(dfs, labels):
     # Extract data from larger array
@@ -17,6 +18,7 @@ for df, label in zip(dfs, labels):
     powers = df[pow_cols].to_numpy()
     wds = df[wd_cols].to_numpy()
     yaws = df[yaw_cols].to_numpy()
+    ref = df[ref_col].to_numpy()
 
     # Plots
     fig, ax = plt.subplots(2, 1, sharex=True)
@@ -34,6 +36,7 @@ for df, label in zip(dfs, labels):
             ax[1].fill_between(time, powers[:,:t+1].sum(axis=1), powers[:,:t].sum(axis=1),
                 color=line.get_color(), label="T{0:03d} power".format(t))
     ax[1].plot(time, powers.sum(axis=1), color="black", label="Farm power")
+    ax[1].plot(time, ref, color="lightgray", linestyle="dotted", label="Ref. power")
 
     # Plot aesthetics
     ax[0].grid()
