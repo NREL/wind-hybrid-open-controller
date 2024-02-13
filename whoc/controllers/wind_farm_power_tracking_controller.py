@@ -70,17 +70,16 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
     Inherits from WindFarmPowerDistributingController.
     """
 
-    def __init__(self, interface, input_dict, verbose=False):
+    def __init__(self, interface, input_dict, proportional_gain=1, verbose=False):
         super().__init__(interface, input_dict, verbose=verbose)
 
-        # TODO: Add these to input dict?
+        # No integral action for now. beta and omega_n not used.
         beta=0.7
         omega_n=0.01
-        K_p_reduction=1
-        K_i_reduction=0 # No integral action for now
+        integral_gain=0 
 
-        self.K_p = K_p_reduction * 1/self.n_turbines
-        self.K_i = K_i_reduction*(4*beta*omega_n)
+        self.K_p = proportional_gain * 1/self.n_turbines
+        self.K_i = integral_gain *(4*beta*omega_n)
 
         # Initialize controller (only used for integral action)
         self.e_prev = 0
@@ -105,6 +104,7 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
 
         self.n_saturated = 0 # TODO: determine whether to use gain scheduling
         if self.n_saturated < self.n_turbines:
+            # with self.n_saturated = 0, gain_adjustment = 1
             gain_adjustment = self.n_turbines/(self.n_turbines-self.n_saturated)
         else:
             gain_adjustment = self.n_turbines

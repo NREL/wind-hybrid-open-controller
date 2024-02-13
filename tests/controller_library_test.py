@@ -211,3 +211,16 @@ def test_WindFarmPowerTrackingController():
         test_power_setpoints
         >= test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"]
     ).all()
+
+    # Test that more aggressive control leads to faster response
+    test_controller = WindFarmPowerTrackingController(
+        interface=test_interface,
+        input_dict=test_hercules_dict,
+        proportional_gain=2
+    )
+    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [600, 600]
+    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_power_setpoints_a = np.array(
+        test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
+    )
+    assert (test_power_setpoints_a < test_power_setpoints).all()
