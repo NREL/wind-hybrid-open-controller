@@ -76,7 +76,7 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
         # TODO: Add these to input dict?
         beta=0.7
         omega_n=0.01
-        K_p_reduction=0.1
+        K_p_reduction=1
         K_i_reduction=0 # No integral action for now
 
         self.K_p = K_p_reduction * 1/self.n_turbines
