@@ -197,7 +197,7 @@ class YawOptimizationSRRHC(YawOptimizationSR):
 
         return turbine_powers
         
-    def optimize(self, current_yaw_offsets, print_progress=False):
+    def optimize(self, current_yaw_offsets, constrain_yaw_dynamics=True, print_progress=False):
         
         """
         Find the yaw angles that maximize the power production for every wind direction,
@@ -228,8 +228,11 @@ class YawOptimizationSRRHC(YawOptimizationSR):
                 # norm_current_yaw_angles + self.dt * (self.yaw_rate / self.yaw_norm_const) * opt_var_dict["control_inputs"][current_idx]
                 # clip for control input values between -1 and 1
                 
-                self._yaw_lbs = np.max([(current_yaw_offsets - (self.dt * self.yaw_rate))[np.newaxis, np.newaxis, :], self._yaw_lbs], axis=0)
-                self._yaw_ubs = np.min([(current_yaw_offsets + (self.dt * self.yaw_rate))[np.newaxis, np.newaxis, :], self._yaw_ubs], axis=0)
+                # if we are solving an optimization problem constrainted by the dynamic state equation, constrain the alowwable range of yaw angles accordingly
+                if constrain_yaw_dynamics:
+                    self._yaw_lbs = np.max([(current_yaw_offsets - (self.dt * self.yaw_rate))[np.newaxis, np.newaxis, :], self._yaw_lbs], axis=0)
+                    self._yaw_ubs = np.min([(current_yaw_offsets + (self.dt * self.yaw_rate))[np.newaxis, np.newaxis, :], self._yaw_ubs], axis=0)
+
                 evaluation_grid = self._generate_evaluation_grid(
                     pass_depth=Nii,
                     turbine_depth=turbine_depth
@@ -256,12 +259,12 @@ class YawOptimizationSRRHC(YawOptimizationSR):
                 
                 control_inputs = (evaluation_grid - current_yaw_offsets) * (1 / (self.yaw_rate * self.dt))
                 
+                # TODO average over given samples
                 cost_state = np.sum(-0.5 * norm_turbine_powers**2 * self.Q, axis=3)
                 cost_control_inputs = np.sum(0.5 * control_inputs**2 * self.R, axis=3)
                 cost_terms = np.stack([cost_state, cost_control_inputs], axis=3)
                 cost = cost_state + cost_control_inputs
 
-                
                 args_opt = np.expand_dims(np.nanargmin(cost, axis=0), axis=0)
 
                 # print(turbine_depth, args_opt, sep='\n\n')
@@ -322,7 +325,6 @@ class YawOptimizationSRRHC(YawOptimizationSR):
 
                 turbine_powers_opt = turbine_powers_opt_prev
                 turbine_powers_opt[ids] = turbine_powers_opt_new[ids]
-
 
                 # Update bounds for next iteration to close proximity of optimal solution
                 dx = (
@@ -530,8 +532,8 @@ class MPC(ControllerBase):
                                     + (self.yaw_rate * self.dt * np.sum(opt_var_dict["control_inputs"][i:(self.n_turbines * j) + i:self.n_turbines])))
                                     for i in range(self.n_turbines)] for j in range(self.n_horizon)])
 
-
-        assert np.all(self.wind_preview_samples[f"FreestreamWindDir_{0}"] == self.measurements_dict["wind_directions"][0])
+        assert np.all(np.isclose(self.wind_preview_samples[f"FreestreamWindDir_{0}"], self.measurements_dict["wind_directions"][0]))
+        
         # plot_distribution_samples(pd.DataFrame(wind_preview_samples), self.n_horizon)
         # derivative of turbine power output with respect to yaw angles
         
@@ -843,7 +845,11 @@ class MPC(ControllerBase):
         opt_yaw_setpoints = np.zeros((self.n_wind_preview_samples, self.n_horizon, self.n_turbines))
         opt_cost = np.zeros((self.n_wind_preview_samples, self.n_horizon))
         opt_cost_terms = np.zeros((self.n_wind_preview_samples, self.n_horizon, 2))
-        if False: # parallel version, needs v4...
+
+        run_parallel = False
+        unconstrained_solve = True
+
+        if run_parallel: # parallel version, needs v4...
             self.fi_opt.reinitialize(
                     wind_directions=[self.wind_preview_samples[f"FreestreamWindDir_{j}"][m] for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)],
                     wind_speeds=[self.wind_preview_samples[f"FreestreamWindMag_{j}"][m] for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)],
@@ -869,21 +875,59 @@ class MPC(ControllerBase):
                                     for i in range(self.n_turbines)] for j in range(self.n_horizon)])
             current_yaw_offsets = np.vstack([(self.wind_preview_samples[f"FreestreamWindDir_{j}"][m] - yaw_setpoints[j, :]) for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)])
 
-            opt_yaw_offsets_df = yaw_offset_opt.optimize(current_yaw_offsets)
+            opt_yaw_offsets_df = yaw_offset_opt.optimize(current_yaw_offsets=current_yaw_offsets, constrain_yaw_dynamics=True)
             opt_yaw_setpoints = np.array([self.wind_preview_samples[f"FreestreamWindDir_{j}"][m] - opt_yaw_offsets_df["yaw_angles_opt"].iloc[(self.n_horizon * m) + j] for m in range(self.n_wind_preview_samples) for j in range(1, self.n_horizon)])
             opt_cost = opt_yaw_offsets_df["cost"]
             opt_cost_terms[:, 0] = opt_yaw_offsets_df["cost_states"]
             opt_cost_terms[:, 1] = opt_yaw_offsets_df["cost_control_inputs"]
 
+        elif unconstrained_solve:
+
+            for j in range(self.n_horizon):
+                self.fi_opt.reinitialize(
+                    wind_directions=[self.wind_preview_samples[f"FreestreamWindDir_{j}"][m] for m in range(self.n_wind_preview_samples)],
+                    wind_speeds=[self.wind_preview_samples[f"FreestreamWindMag_{j}"][m] for m in range(self.n_wind_preview_samples)],
+                    turbulence_intensity=self.wind_ti,
+                    time_series=True
+                )
+            
+                # optimize yaw angles
+                
+                yaw_offset_opt = YawOptimizationSRRHC(self.fi_opt, 
+                                self.yaw_rate, self.dt, self.alpha,
+                                minimum_yaw_angle=self.yaw_limits[0],
+                                maximum_yaw_angle=self.yaw_limits[1],
+                            #  yaw_angles_baseline=np.zeros((1, 1, self.n_turbines)),
+                            yaw_angles_baseline=np.zeros((self.n_turbines,)),
+                            #  normalize_control_variables=True,
+                                Ny_passes=[16, 12, 8, 4],
+                            # x0=(self.wind_preview_samples[f"FreestreamWindDir_{j}"][m] 
+                            #     - self.init_sol["states"][j * self.n_turbines:(j + 1) * self.n_turbines] * self.yaw_norm_const)[np.newaxis, np.newaxis, :],
+                                verify_convergence=False)#, exploit_layout_symmetry=False)
+
+                yaw_setpoints = np.array([[((self.initial_state[i] * self.yaw_norm_const) 
+                                    + (self.yaw_rate * self.dt * np.sum(self.opt_sol["control_inputs"][i:(self.n_turbines * j) + i:self.n_turbines])))
+                                    for i in range(self.n_turbines)] for j in range(self.n_horizon)])
+                current_yaw_offsets = np.vstack([(self.wind_preview_samples[f"FreestreamWindDir_{j}"][m] - yaw_setpoints[j, :]) for m in range(self.n_wind_preview_samples)])
+
+                opt_yaw_offsets_df = yaw_offset_opt.optimize(current_yaw_offsets=current_yaw_offsets, constrain_yaw_dynamics=False)
+                opt_yaw_setpoints[j, :] = np.mean(self.wind_preview_samples[f"FreestreamWindDir_{j}"]) - opt_yaw_offsets_df["yaw_angles_opt"].iloc[0]
+                opt_cost[j] = opt_yaw_offsets_df["cost"].iloc[0]
+                opt_cost_terms[j, 0] = opt_yaw_offsets_df["cost_states"].iloc[0]
+                opt_cost_terms[j, 1] = opt_yaw_offsets_df["cost_control_inputs"].iloc[0]
+
+            opt_cost = np.sum(opt_cost)
+            opt_cost_terms = np.sum(opt_cost_terms, axis=0)
         else:
             for j in range(self.n_horizon):
                 for m in range(self.n_wind_preview_samples):
                     # TODO parallelize with time_series=True
-                    # TODO solve at each time-step independently, then adjust to make feasible
+                    # TODO solve at each time-step independently, passing samples to compute expected cost function, then adjust to make feasible
                     self.fi_opt.reinitialize(
                         wind_directions=[self.wind_preview_samples[f"FreestreamWindDir_{j}"][m]],
                         wind_speeds=[self.wind_preview_samples[f"FreestreamWindMag_{j}"][m]],
-                        turbulence_intensity=self.wind_ti
+                        turbulence_intensity=self.wind_ti,
+                        time_series=True
                     )
                 
                     # optimize yaw angles
@@ -1211,7 +1255,7 @@ if __name__ == '__main__':
         wind_field_filenames = [f"case_{i}.csv" for i in range(N_CASES)]
         regenerate_wind_preview = True
     
-    WIND_TYPE = "step"
+    WIND_TYPE = "stochastic"
     # if wind field data exists, get it
     wind_field_data = []
     if os.path.exists(DATA_SAVE_DIR):
@@ -1298,10 +1342,13 @@ if __name__ == '__main__':
     
     # save results and configurataion in a dataframe of results
     # make folder for results
+    results_dir = os.path.join(os.path.dirname(whoc.__file__), "case_studies", "pyopt_persistent_timevarying")
+    # results_dir = os.path.join(os.path.dirname(whoc.__file__), "case_studies", "pyopt_stochastic_timevarying")
+    # results_dir = os.path.join(os.path.dirname(whoc.__file__), "case_studies", "pyopt_perfect_timevarying")
     # results_dir = os.path.join(os.path.dirname(whoc.__file__), "case_studies", "pyopt_persistent")
     # results_dir = os.path.join(os.path.dirname(whoc.__file__), "case_studies", "pyopt_stochastic")
     # results_dir = os.path.join(os.path.dirname(whoc.__file__), "case_studies", "pyopt_perfect")
-    results_dir = os.path.join(os.path.dirname(whoc.__file__), "case_studies", "floris_persistent")
+    # results_dir = os.path.join(os.path.dirname(whoc.__file__), "case_studies", "floris_persistent")
     # results_dir = os.path.join(os.path.dirname(whoc.__file__), "case_studies", "floris_stochastic")
     # results_dir = os.path.join(os.path.dirname(whoc.__file__), "case_studies", "floris_perfect")
     # results_dir = os.path.join(os.path.dirname(whoc.__file__), "case_studies", "pyopt_sequential")
