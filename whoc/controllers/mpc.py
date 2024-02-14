@@ -364,7 +364,7 @@ class MPC(ControllerBase):
     optimizers = [
         SLSQP(options={"IPRINT": -1, "MAXIT": max_iter, "ACC": acc}),
         # NSGA2(options={"xinit": 1, "PrintOut": 0, "maxGen": 50})
-        CONMIN(options={"IPRINT": 1, "ITMAX": max_iter})
+        # CONMIN(options={"IPRINT": 1, "ITMAX": max_iter})
         # ALPSO(options={}) #"maxOuterIter": 25})
         ]
 
