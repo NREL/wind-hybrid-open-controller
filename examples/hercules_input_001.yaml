@@ -69,9 +69,10 @@ controller:
   n_horizon: 10
   alpha: 0.5
   control_input_domain: continuous
-  stochastic: False
+  wind_preview_type: perfect # wind preview type asumed in MPC: persistent (assumes that current freestream measurements will stay constant over horizon), stochastic (sample from Gaussian model of preview), perfect (preview known)
   warm_start: lut # may equal 'previous' to warm-start with time-shifted previous solution,  "lut" to warm-start with lookup table solution, or "none"
   nu: 0.001 # step size to add/subtract from yaw angles for stochastic gradient estimate
   use_filtered_wind_measurements: False
   floris_input_file: /Users/ahenry/Documents/toolboxes/floris/examples/inputs/gch.yaml
-  solver: pyopt # may equal floris, pyopt, or zsgd
+  solver: floris # may equal floris, pyopt, sequential_pyopt, or zsgd
+  basin_hop: False

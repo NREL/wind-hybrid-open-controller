@@ -388,7 +388,7 @@ def generate_wind_ts(config, from_gaussian, case_idx):
 	wf.df = wind_field_df
 	return wf
 
-def generate_wind_preview(wind_preview_generator, n_preview_steps, n_samples, current_freestream_measurements):
+def generate_wind_preview(wind_preview_generator, n_preview_steps, n_samples, current_freestream_measurements, time_step):
 	
 	# define noise preview
 	# noise_func = wf._sample_wind_preview(noise_func=np.random.multivariate_normal, noise_args=None)
@@ -416,7 +416,7 @@ def generate_wind_preview(wind_preview_generator, n_preview_steps, n_samples, cu
 	
 	# dir = np.arctan([u / v for u, v in zip(u_preview, v_preview)]) * (180 / np.pi) + 180
 	
-	for j in range(n_preview_steps):
+	for j in range(n_preview_steps + 1):
 		wind_preview_data[f"FreestreamWindSpeedU_{j}"] += list(u_preview[:, j])
 		wind_preview_data[f"FreestreamWindSpeedV_{j}"] += list(v_preview[:, j])
 		wind_preview_data[f"FreestreamWindMag_{j}"] += list(mag_preview[:, j])
@@ -430,8 +430,8 @@ def generate_wind_preview_ts(config, case_idx, wind_field_data):
 	print(f'Generating noise preview for case #{case_idx}')
 	
 	time = np.arange(0, wf.episode_max_time_steps * DT, wf.wind_speed_sampling_time_step)
-	mean_freestream_wind_speed_u = wind_field_data[case_idx].df['FreestreamWindSpeedU'].to_numpy()
-	mean_freestream_wind_speed_v = wind_field_data[case_idx].df['FreestreamWindSpeedV'].to_numpy()
+	mean_freestream_wind_speed_u = wind_field_data[case_idx]['FreestreamWindSpeedU'].to_numpy()
+	mean_freestream_wind_speed_v = wind_field_data[case_idx]['FreestreamWindSpeedV'].to_numpy()
 	
 	# save case raw_data as dataframe
 	wind_preview_data = defaultdict(list)

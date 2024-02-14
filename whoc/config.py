@@ -42,6 +42,7 @@ SAMPLING_TIME_STEP = {'freestream_wind_speed': int(60 // DT),
                  'ai_factor': int(1 // DT)}  # interval of DT seconds at which each agent takes a step
 
 EPISODE_MAX_TIME_STEPS = int(EPISODE_MAX_TIME // DT) # number of discrete time-stpes
+N_PREVIEW_STEPS = 600
 
 WIND_SPEED_U_RANGE = (8, 22)
 WIND_SPEED_V_RANGE = (0, 6)
@@ -130,7 +131,7 @@ WIND_FIELD_CONFIG = {
         # 5, # standard deviation of normal turbulence  of wind direction, set to 0 for no turbulence
 		"yaw_angle_turb_std": YAW_ANGLE_TURB_STD,
 		"ai_factor_turb_std": AI_FACTOR_TURB_STD,
-        "episode_max_time_steps": EPISODE_MAX_TIME_STEPS,
+        "episode_max_time_steps": EPISODE_MAX_TIME_STEPS + N_PREVIEW_STEPS,
         # ensure there is enough power reference preview steps left before the full 24 hour mark
         "simulation_sampling_time": DT,
 		"wind_speed_sampling_time_step": SAMPLING_TIME_STEP['freestream_wind_speed'],
