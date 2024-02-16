@@ -42,14 +42,15 @@ ax[0].set_xlim([time[0], time[-1]])
 ax[0].legend(loc="lower left")
 ax[1].set_xlabel("Time [s]")
 
-#fig.savefig("../../docs/graphics/lookup-table-example-plot.png", dpi=300, format="png")
+# fig.savefig("../../docs/graphics/wf-power-tracking-plot.png", dpi=300, format="png")
 
-# Almost equal power to begin with as turbines turbines are not aligned. As the wind direction
-# shifts towards the aligned direction beginning at t = 30s, the downstream turbine (T001) begins to
-# lose significant power, until the wake steering begins around t = 60s. At t = 70s, noise in the
-# wind direction propagates instantaneously into the power signal (as steady-state FLORIS is used
-# in place of the dynamic AMR-wind simulation.
-
-# Note that in the upper plot, T000 dir., T001 dir., and T001 yaw are identical througout.
+# In this example, the wind turbines are aligned with the oncoming wind, so T000 wakes T001.
+# The farm power setpoint more than available to begin, so both
+# turbines are at max power. Between 10s and 20s, the setpoint ramps down to 3000kW; the open-loop
+# controller asks each turbine for 1500kW, but only the upstream turbine is able to meet the demand,
+# so the total farm power is below the setpoint. The closed-loop controller is able to adjust the 
+# power of T000 to compensate for T001's underperformance, and the farm power tracks the setpoint.
+# When the setpoint shifts to 2000kW, there is sufficient resource for T001 to produce 1000kW, and
+# both controllers meet the setpoint.
 
 plt.show()
