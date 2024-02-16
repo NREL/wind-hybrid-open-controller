@@ -12,7 +12,11 @@ wd_cols = [wf_str+"turbine_wind_directions.{0:03d}".format(t) for t in range(n_t
 yaw_cols = [wf_str+"turbine_yaw_angles.{0:03d}".format(t) for t in range(n_turbines)]
 ref_col = "external_signals.wind_power_reference"
 
-for df, label in zip(dfs, labels):
+# Create plots
+fig, ax = plt.subplots(2, 1, sharex=True, sharey=True)
+fig.set_size_inches(10, 5)
+
+for case, (df, label) in enumerate(zip(dfs, labels)):
     # Extract data from larger array
     time = df.dt.values * np.arange(0, len(df), 1)
     powers = df[pow_cols].to_numpy()
@@ -20,36 +24,23 @@ for df, label in zip(dfs, labels):
     yaws = df[yaw_cols].to_numpy()
     ref = df[ref_col].to_numpy()
 
-    # Plots
-    fig, ax = plt.subplots(2, 1, sharex=True)
-    fig.set_size_inches(10, 5)
-
     # Direction
     for t in range(n_turbines):
-        line, = ax[0].plot(time, wds[:,t], label="T{0:03d} wind dir.".format(t))
-        ax[0].plot(time, yaws[:,t], color=line.get_color(), label="T{0:03d} yaw pos.".format(t),
-            linestyle=":")
         if t == 0:
-            ax[1].fill_between(time, powers[:,t], color=line.get_color(),
-                label="T{0:03d} power".format(t))
+            line = ax[case].fill_between(time, powers[:,t], label="T{0:03d} power".format(t))
         else:
-            ax[1].fill_between(time, powers[:,:t+1].sum(axis=1), powers[:,:t].sum(axis=1),
-                color=line.get_color(), label="T{0:03d} power".format(t))
-    ax[1].plot(time, powers.sum(axis=1), color="black", label="Farm power")
-    ax[1].plot(time, ref, color="lightgray", linestyle="dotted", label="Ref. power")
+            ax[case].fill_between(time, powers[:,:t+1].sum(axis=1), powers[:,:t].sum(axis=1),
+                label="T{0:03d} power".format(t))
+    ax[case].plot(time, powers.sum(axis=1), color="black", label="Farm power")
+    ax[case].plot(time, ref, color="gray", linestyle="dashed", label="Ref. power")
 
     # Plot aesthetics
-    ax[0].grid()
-    ax[0].set_xlim([time[0], time[-1]])
-    ax[0].set_ylim([240, 290])
-    ax[0].set_ylabel("Direction [deg]")
-    ax[0].legend(loc="lower left")
-    ax[0].set_title(label)
-
-    ax[1].grid()
-    ax[1].set_ylabel("Power [kW]")
-    ax[1].set_xlabel("Time [s]")
-    ax[1].legend(loc="lower left")
+    ax[case].grid()
+    ax[case].set_title(label)
+    ax[case].set_ylabel("Power [kW]")
+ax[0].set_xlim([time[0], time[-1]])
+ax[0].legend(loc="lower left")
+ax[1].set_xlabel("Time [s]")
 
 #fig.savefig("../../docs/graphics/lookup-table-example-plot.png", dpi=300, format="png")
 
