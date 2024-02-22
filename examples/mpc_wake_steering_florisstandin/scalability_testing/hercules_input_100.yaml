@@ -15,7 +15,7 @@ hercules_comms:
 
     wind_farm_0:
       type: amr_wind_local #options are amr_wind or amr_wind_local
-      amr_wind_input_file: amr_input.inp
+      amr_wind_input_file: amr_input_10.inp
       yaw_simulator_name: yaw_system_0 # can also use "none" (without quotes)
 
   helics:
@@ -54,7 +54,7 @@ py_sims:
 controller:
 
   controller_type: SimpleYawController # This may not be needed
-  num_turbines: 3 # Should match AMR-Wind! Ideally, would come from AMR-wind
+  num_turbines: 100 # Should match AMR-Wind! Ideally, would come from AMR-wind
   initial_conditions:
       yaw: 270.0 # degrees (same for all turbines) (will this work?)
   yaw_limits: [-30, 30]

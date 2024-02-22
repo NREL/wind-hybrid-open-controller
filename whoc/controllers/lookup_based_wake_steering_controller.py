@@ -28,7 +28,7 @@ from floris.tools.optimization.yaw_optimization.yaw_optimizer_sr import YawOptim
 
 
 class LookupBasedWakeSteeringController(ControllerBase):
-    def __init__(self, interface, input_dict, max_workers=None, df_yaw=None, lut_path=None, verbose=False):
+    def __init__(self, interface, input_dict, max_workers=None, df_yaw=None, lut_path=None, generate_lut=False, verbose=False):
         super().__init__(interface, verbose=verbose)
 
         self.dt = input_dict["dt"]  # Won't be needed here, but generally good to have
@@ -50,19 +50,19 @@ class LookupBasedWakeSteeringController(ControllerBase):
         else:
             # optimize, unless passed existing lookup table
             # os.path.abspath(lut_path)
-            self._optimize_lookup_table(lut_path=lut_path, load_lut=lut_path is not None)
+            self._optimize_lookup_table(lut_path=lut_path, generate_lut=generate_lut)
         # Set initial conditions
-        yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
-        if hasattr(yaw_IC, "__len__"):
-            if len(yaw_IC) == self.n_turbines:
-                self.controls_dict = {"yaw_angles": yaw_IC}
+        self.yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
+        if hasattr(self.yaw_IC, "__len__"):
+            if len(self.yaw_IC) == self.n_turbines:
+                self.controls_dict = {"yaw_angles": self.yaw_IC}
             else:
                 raise TypeError(
                     "yaw initial condition should be a float or "
                     + "a list of floats of length num_turbines."
                 )
         else:
-            self.controls_dict = {"yaw_angles": [yaw_IC] * self.n_turbines}
+            self.controls_dict = {"yaw_angles": [self.yaw_IC] * self.n_turbines}
 
         # For startup
         self.wd_store = [270.]*self.n_turbines # TODO: update this?
@@ -73,8 +73,8 @@ class LookupBasedWakeSteeringController(ControllerBase):
         a = [1, -alpha]
         return lfilter(b, a, x)
     
-    def _optimize_lookup_table(self, lut_path=None, load_lut=False):
-        if load_lut is True and lut_path is not None and os.path.exists(lut_path):
+    def _optimize_lookup_table(self, lut_path=None, generate_lut=True):
+        if not generate_lut and lut_path is not None and os.path.exists(lut_path):
             df_lut = pd.read_csv(lut_path, index_col=0)
             df_lut["yaw_angles_opt"] = [[float(f) for f in re.findall(r"-*\d+\.\d*", s)] for i, s in
                                         df_lut["yaw_angles_opt"].items()]
@@ -92,22 +92,20 @@ class LookupBasedWakeSteeringController(ControllerBase):
                                                yaw_rate=self.yaw_rate, floris_version='dev') \
                 .load_floris(config_path=self.floris_input_file)
             
+            wd_grid, ws_grid = np.meshgrid(wind_directions_lut, wind_speeds_lut, indexing="ij")
             fi_lut.env.reinitialize(
-                wind_directions=wind_directions_lut,
-                wind_speeds=wind_speeds_lut,
-                turbulence_intensity=0.08  # Assume 8% turbulence intensity
+                wind_directions=wd_grid.flatten(),
+                wind_speeds=ws_grid.flatten()
             )
             
             # Pour this into a parallel computing interface
-            fi_lut.parallelize()
+            # fi_lut.parallelize()
             
             yaw_opt = YawOptimizationSR(fi_lut.env, 
                                         minimum_yaw_angle=self.yaw_limits[0],
                                         maximum_yaw_angle=self.yaw_limits[1],
                                         # yaw_angles_baseline=np.zeros((len(wind_directions_lut), len(wind_speeds_lut), self.n_turbines)),
-                                        Ny_passes=[5, 4],
-                                        exclude_downstream_turbines=True,
-                                        exploit_layout_symmetry=True, verify_convergence=True)
+                                        Ny_passes=[5, 4])
             df_lut = yaw_opt.optimize()
             
             # Assume linear ramp up at 5-6 m/s and ramp down at 13-14 m/s,
@@ -158,19 +156,20 @@ class LookupBasedWakeSteeringController(ControllerBase):
             # wind_speed = self.measurements_dict["wind_speeds"][0]
             wind_speeds = 8.0 # TODO hercules can't get wind_speeds from measurements_dict
         else:
-            if self.use_filt:
-                # use filtered wind direction and speed
-                wind_dirs = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"][:, i],
-                                                                    self.wd_lpf_alpha)
+            # use filtered wind direction and speed
+            wind_dirs = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"][:, i],
+                                                                self.wd_lpf_alpha)
+                                        for i in range(self.n_turbines)]).T[-1, 0]
+            wind_speeds = np.array([self._first_ord_filter(self.historic_measurements["wind_speeds"][:, i],
+                                                                self.ws_lpf_alpha)
                                             for i in range(self.n_turbines)]).T[-1, 0]
-                wind_speeds = np.array([self._first_ord_filter(self.historic_measurements["wind_speeds"][:, i],
-                                                                    self.ws_lpf_alpha)
-                                                for i in range(self.n_turbines)]).T[-1, 0]
         
         # TODO shouldn't freestream wind speed/dir also be availalbe in measurements_dict, or just assume first row of turbines?
         # TODO filter wind speed and dir before certain time statpm?
         yaw_offsets = self.wake_steering_interpolant(wind_dirs, wind_speeds)
         yaw_setpoints = (np.array(wind_dirs) - yaw_offsets).tolist()
+        # print(f"Wind Speeds: {wind_speeds}", f"Wind Dirs: {wind_dirs}", f"Yaw Offsets: {yaw_offsets}", f"Yaw Setpoints: {yaw_setpoints}", sep='\n')
+        # print(f"Measurements: {self.measurements_dict}")
         self.controls_dict = {"yaw_angles": yaw_setpoints}
         # yaw_offsets = np.diag(interpolated_angles)
         return None
@@ -268,8 +267,7 @@ if __name__ == "__main__":
         .load_floris(config_path=WIND_FIELD_CONFIG["floris_input_file"])
     fi_noyaw.env.reinitialize(
         wind_directions=wind_directions_tgt,
-        wind_speeds=wind_speeds_tgt,
-        turbulence_intensity=0.08  # Assume 8% turbulence intensity
+        wind_speeds=wind_speeds_tgt        # turbulence_intensity=0.08  # Assume 8% turbulence intensity
     )
     
     # Pour this into a parallel computing interface

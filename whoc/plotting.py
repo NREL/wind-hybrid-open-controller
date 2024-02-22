@@ -41,20 +41,25 @@ def plot_power_vs_speed(df):
 	plt.tight_layout()
 	plt.show()
 
+	return fig
 
-def plot_yaw_vs_dir(yaw_angles_interpolant, n_turbines):
+
+def plot_yaw_vs_dir(yaw_offsets_interpolant, n_turbines):
 	# Now plot yaw angle distributions over wind direction up to first three turbines
 	wd_plot = np.arange(0.0, 360.001, 1.0)
 	ws_plot = [6.0, 9.0, 12.0]
+	wd_grid, ws_grid = np.meshgrid(wd_plot, ws_plot, indexing="ij")
 	colors = ["maroon", "dodgerblue", "grey"]
 	styles = ["-o", "-v", "-o"]
+	yaw_offsets = yaw_offsets_interpolant(wd_grid, ws_grid)
+	figs = []
 	
 	for i in range(min(n_turbines, 3)):
 		fig, ax = plt.subplots()
 		for ws_idx, ws in enumerate(ws_plot):
 			ax.plot(
 				wd_plot,
-				yaw_angles_interpolant(wd_plot, ws * np.ones_like(wd_plot))[:, i],
+				yaw_offsets[:, ws_idx, i],
 				styles[ws_idx],
 				color=colors[ws_idx],
 				markersize=3,
@@ -65,8 +70,10 @@ def plot_yaw_vs_dir(yaw_angles_interpolant, n_turbines):
 		ax.grid(True)
 		ax.legend()
 		plt.tight_layout()
+		figs.append(fig)
 	
 	plt.show()
+	return figs
 
 
 def plot_power_vs_dir(df, wind_directions):
@@ -111,3 +118,5 @@ def plot_power_vs_dir(df, wind_directions):
 	ax[2].grid(True)
 	plt.tight_layout()
 	plt.show()
+
+	return fig

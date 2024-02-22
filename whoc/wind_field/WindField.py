@@ -116,10 +116,14 @@ class WindField:
 							+ [current_measurements[1] for j in range(n_preview_steps + 1)]
 		# variance of u[j], and v[j], grows over the course of the prediction horizon (by 1+j*0.05, or 5% for each step), and has an initial variance of 0.25 the value of the current measurement
 		# prepend 0 variance values for the deterministic measurements at the current (0) time-step
-		o = 0.25
-		var_u = np.array([current_measurements[0] * (1. + j*0.05) * o for j in range(0, n_preview_steps + 1)])
-		var_v = np.array([current_measurements[1] * (1. + j*0.05) * o for j in range(0, n_preview_steps + 1)])
+		o = 0.2
+		var_u = np.array([current_measurements[0] * (1. + j*0.02) * o for j in range(0, n_preview_steps + 1)])
+		var_v = np.array([current_measurements[1] * (1. + j*0.02) * o for j in range(0, n_preview_steps + 1)])
 		
+		# almost all likely u/v wind speeds within these deviations?
+		# print(3 * np.sqrt(var_u))
+		# print(3 * np.sqrt(var_v))
+
 		noise_args["cov"] = np.diag(np.concatenate([var_u, var_v]))
 		
 		cov_u = np.diag(var_u)
@@ -228,33 +232,38 @@ class WindField:
 		
 		return ts
 	
-	def _generate_stochastic_freestream_wind_speed_ts(self):
+	def _generate_stochastic_freestream_wind_speed_ts(self, seed=None):
+		np.random.seed(seed)
 		# initialize at random wind speed
 		init_val = [
 			np.random.choice(np.arange(self.wind_speed_u_range[0], self.wind_speed_u_range[1], self.wind_speed_var)),
 			np.random.choice(np.arange(self.wind_speed_v_range[0], self.wind_speed_v_range[1], self.wind_speed_var))
 	    ]
 		n_time_steps = int(self.episode_max_time_steps * DT // self.wind_speed_sampling_time_step)
-		u_ts = np.zeros((n_time_steps,))
-		v_ts = np.zeros((n_time_steps,))
+		wind_sample = self._sample_wind_preview(init_val, n_time_steps, 1, noise_func=np.random.multivariate_normal, noise_args=None)
 
-		# number of samples generated for each time-step, used to compute running average
-		n_u = np.zeros((n_time_steps,)) 
-		n_v = np.zeros((n_time_steps,))
+		u_ts, v_ts = wind_sample[0, :n_time_steps + 1], wind_sample[0, n_time_steps + 1:]
 
-		for k in range(n_time_steps):
-			horizon_preview = self._sample_wind_preview(init_val, self.n_preview_steps, 1, noise_func=np.random.multivariate_normal, noise_args=None)
-			horizon_preview_u = horizon_preview[0, :self.n_preview_steps + 1].squeeze()[:n_time_steps - k]
-			horizon_preview_v = horizon_preview[0, self.n_preview_steps + 1:].squeeze()[:n_time_steps - k]
+		# u_ts = np.zeros((n_time_steps,))
+		# v_ts = np.zeros((n_time_steps,))
+
+		# # number of samples generated for each time-step, used to compute running average
+		# n_u = np.zeros((n_time_steps,)) 
+		# n_v = np.zeros((n_time_steps,))
+
+		# for k in range(n_time_steps):
+		# 	horizon_preview = self._sample_wind_preview(init_val, self.n_preview_steps, 1, noise_func=np.random.multivariate_normal, noise_args=None)
+		# 	horizon_preview_u = horizon_preview[0, :self.n_preview_steps + 1].squeeze()[:n_time_steps - k]
+		# 	horizon_preview_v = horizon_preview[0, self.n_preview_steps + 1:].squeeze()[:n_time_steps - k]
 			
-			u_ts[k:k + self.n_preview_steps + 1] = ((u_ts[k:k + self.n_preview_steps + 1] * n_u[k:k + self.n_preview_steps + 1]) + horizon_preview_u) / (n_u[k:k + self.n_preview_steps + 1] + 1)
-			v_ts[k:k + self.n_preview_steps + 1] = ((v_ts[k:k + self.n_preview_steps + 1] * n_v[k:k + self.n_preview_steps + 1]) + horizon_preview_v) / (n_v[k:k + self.n_preview_steps + 1] + 1)
+		# 	u_ts[k:k + self.n_preview_steps + 1] = ((u_ts[k:k + self.n_preview_steps + 1] * n_u[k:k + self.n_preview_steps + 1]) + horizon_preview_u) / (n_u[k:k + self.n_preview_steps + 1] + 1)
+		# 	v_ts[k:k + self.n_preview_steps + 1] = ((v_ts[k:k + self.n_preview_steps + 1] * n_v[k:k + self.n_preview_steps + 1]) + horizon_preview_v) / (n_v[k:k + self.n_preview_steps + 1] + 1)
 
-			n_u[k:k + self.n_preview_steps + 1] += 1
-			n_v[k:k + self.n_preview_steps + 1] += 1
+		# 	n_u[k:k + self.n_preview_steps + 1] += 1
+		# 	n_v[k:k + self.n_preview_steps + 1] += 1
 
-			init_val[0] = u_ts[k]
-			init_val[1] = v_ts[k]
+		# 	init_val[0] = u_ts[k]
+		# 	init_val[1] = v_ts[k]
 
 		return u_ts, v_ts
 
@@ -346,17 +355,17 @@ def plot_ts(wf):
 	# fig_ts.show()
 
 
-def generate_wind_ts(config, from_gaussian, case_idx):
+def generate_wind_ts(config, from_gaussian, case_idx, seed=None):
 	wf = WindField(**config)
 	print(f'Simulating case #{case_idx}')
 	# define freestream time series
 	if from_gaussian:
-		freestream_wind_speed_u, freestream_wind_speed_v = wf._generate_stochastic_freestream_wind_speed_ts()
+		freestream_wind_speed_u, freestream_wind_speed_v = wf._generate_stochastic_freestream_wind_speed_ts(seed=seed)
 	else:
 		freestream_wind_speed_u = np.array(wf._generate_freestream_wind_speed_u_ts())
 		freestream_wind_speed_v = np.array(wf._generate_freestream_wind_speed_v_ts())
 	
-	time = np.arange(0, wf.episode_max_time_steps*DT, wf.wind_speed_sampling_time_step)
+	time = np.arange(0, (wf.episode_max_time_steps + 1)*DT, wf.wind_speed_sampling_time_step)
 	# define noise preview
 	
 	# compute directions
@@ -372,13 +381,15 @@ def generate_wind_ts(config, from_gaussian, case_idx):
 	                 where=freestream_wind_speed_v != 0)
 	dirs[dirs < 0] = np.pi + dirs[dirs < 0]
 	dirs = (dirs * (180 / np.pi)) + 180
+
+	mags = np.linalg.norm(np.vstack([freestream_wind_speed_u, freestream_wind_speed_v]), axis=0)
 	
 	# save case raw_data as dataframe
 	wind_field_data = {
 		'Time': time,
 		'FreestreamWindSpeedU': freestream_wind_speed_u,
 		'FreestreamWindSpeedV': freestream_wind_speed_v,
-		'FreestreamWindMag': np.linalg.norm(np.vstack([freestream_wind_speed_u, freestream_wind_speed_v]), axis=0),
+		'FreestreamWindMag': mags,
 		'FreestreamWindDir': dirs
 	}
 	wind_field_df = pd.DataFrame(data=wind_field_data)
@@ -597,11 +608,11 @@ def plot_distribution_ts(wf):
 	fig_plot.savefig(os.path.join(FIG_DIR, f'{FARM_LAYOUT}_wind_field_preview_ts2.png'))
 
 
-def generate_multi_wind_ts(config, n_cases):
+def generate_multi_wind_ts(config, n_cases, seed=None):
 	if n_cases == 1:
 		wind_field_data = []
 		for i in range(n_cases):
-			wind_field_data.append(generate_wind_ts(config, True, i))
+			wind_field_data.append(generate_wind_ts(config, True, i, seed))
 		plot_ts(wind_field_data[0])
 		return wind_field_data
 	

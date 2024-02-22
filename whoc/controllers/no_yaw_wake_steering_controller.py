@@ -1,4 +1,4 @@
-from controller_base import ControllerBase
+from whoc.controllers.controller_base import ControllerBase
 from whoc.config import *
 
 class NoYawController(ControllerBase):
@@ -23,11 +23,15 @@ class NoYawController(ControllerBase):
 		else:
 			self.controls_dict = {"yaw_angles": [yaw_IC] * self.n_turbines}
 		
-	# def yaw_angles_interpolant(self, wind_directions, wind_speeds):
-	# 	return np.zeros((*wind_directions.shape, self.n_turbines))
+	def yaw_offsets_interpolant(self, wind_directions, wind_speeds):
+		# return np.ones((*wind_directions.shape, 1)) * self.controls_dict["yaw_angles"]
+		yaw_offsets = wind_directions[:, :, np.newaxis] - self.controls_dict["yaw_angles"]
+		yaw_offsets[yaw_offsets < -180.0] = 360.0 + yaw_offsets[yaw_offsets < -180.0]
+		return yaw_offsets
 	
 	def compute_controls(self):
 		
-		self.controls_dict = {"yaw_angles": np.zeros((self.n_turbines,))}
+		# maintain initial yaw angles
+		# self.controls_dict = {"yaw_angles": np.zeros((self.n_turbines,))}
 		
 		return None

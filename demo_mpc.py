@@ -1,4 +1,4 @@
-from whoc.controllers.mpc import MPC, Objective, DynamicModel
+from whoc.controllers.mpc_wake_steering_controller import MPC, Objective, DynamicModel
 from scipy.optimize import Bounds
 import numpy as np
 

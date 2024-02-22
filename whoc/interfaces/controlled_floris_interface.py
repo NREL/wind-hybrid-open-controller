@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 
 
 class ControlledFlorisInterface(InterfaceBase):
-    def __init__(self, yaw_limits, dt, yaw_rate, max_workers=16, floris_version='v4'):
+    def __init__(self, yaw_limits, dt, yaw_rate, offline_probability=0.0, max_workers=16, floris_version='v4'):
         super().__init__()
         self.max_workers = max_workers
         self.yaw_limits = yaw_limits
@@ -31,13 +31,15 @@ class ControlledFlorisInterface(InterfaceBase):
         self.time = 0
         self.dt = dt
         self.floris_version = floris_version
+        self.offline_probability = offline_probability
     
     def load_floris(self, config_path):
         # Load the default example floris object
         if self.floris_version == 'v4':
             self.env = FlorisInterface(config_path)  # GCH model matched to the default "legacy_gauss" of V2
         elif self.floris_version == 'dev':
-            from floris_dev.tools import FlorisInterface as FlorisInterfaceDev
+            # from floris_dev.tools import FlorisInterface as FlorisInterfaceDev
+            from floris.tools import FlorisInterface as FlorisInterfaceDev
             self.env = FlorisInterfaceDev(config_path)
         self.n_turbines = self.env.floris.farm.n_turbines
         
@@ -107,16 +109,20 @@ class ControlledFlorisInterface(InterfaceBase):
         ctrl_dict["yaw_angles"] = np.float64(ctrl_dict["yaw_angles"])
         return ctrl_dict
 
-    def step(self, disturbances):
+    def step(self, disturbances, seed=None):
+        np.random.seed(seed)
+        # get factor to multiply ai_factor with based on offline probabilities
+        online_status = np.random.choice([0, 1], size=self.n_turbines, p=[self.offline_probability, 1 - self.offline_probability])
+        online_status = online_status.astype(bool)
         # reinitialize floris
         yaw_angles = self.env.floris.farm.yaw_angles
         self.env.reinitialize(
             wind_directions=disturbances["wind_directions"],
-            wind_speeds=disturbances["wind_speeds"],
-            turbulence_intensity=disturbances["turbulence_intensity"]
+            wind_speeds=disturbances["wind_speeds"]
+            # turbulence_intensities=disturbances["turbulence_intensities"]
         )
         
-        self.env.calculate_wake(yaw_angles)
+        self.env.calculate_wake(yaw_angles, disable_turbines=online_status[np.newaxis, :])
         
         return disturbances
     def send_controls(self, hercules_dict, **controls):
@@ -127,36 +133,43 @@ class ControlledFlorisInterface(InterfaceBase):
         return controls
     
     @classmethod
-    def compute_aep(cls, fi, controller, windrose_interpolant, wind_directions=None, wind_speeds=None):
+    def compute_aep(cls, fi, controller, wind_rose):
+
+        # aep = fi.env.get_farm_AEP(freq=wind_rose.freq_table.flatten())
+
         # Alternatively to below code, we could calculate AEP using
         # 'fi_aep_parallel.get_farm_AEP(...)' but then we would not have the
         # farm power productions, which we use later on for plotting.
-        if wind_directions is None:
-            wind_directions = np.arange(0.0, 360.0, 1.0)
-        if wind_speeds is None:
-            wind_speeds = np.arange(1.0, 25.0, 1.0)
-        # if controller is None:
-        #     yaw_angles = self.env.floris.farm.yaw_angles
-        # else:
-        # yaw_angles = controller.step()
+        # if wind_directions is None:
+        #     wind_directions = np.arange(0.0, 360.0, 1.0)
+        # if wind_speeds is None:
+        #     wind_speeds = np.arange(1.0, 25.0, 1.0)
+        # # if controller is None:
+        # #     yaw_angles = self.env.floris.farm.yaw_angles
+        # # else:
+        # # yaw_angles = controller.step()
         
         fi.env.reinitialize(
-            wind_directions=wind_directions,
-            wind_speeds=wind_speeds,
-            turbulence_intensity=0.08,  # Assume 8% turbulence intensity
-            solver_settings={"turbine_grid_points": 1}
+            wind_directions=wind_rose.wd_flat,
+            wind_speeds=wind_rose.ws_flat
+            # turbulence_intensity=0.08  # Assume 8% turbulence intensity
+            # solver_settings={"turbine_grid_points": 1}
         )
-        fi.parallelize()
+        # # fi.parallelize()
         
-        # Calculate frequency of occurrence for each bin and normalize sum to 1.0
-        wd_grid, ws_grid = np.meshgrid(wind_directions, wind_speeds, indexing="ij")
-        freq_grid = windrose_interpolant(wd_grid, ws_grid)
-        freq_grid = freq_grid / np.sum(freq_grid)
-        yaw_grid = controller.yaw_angles_interpolant(wd_grid, ws_grid)
+        # # Calculate frequency of occurrence for each bin and normalize sum to 1.0
+        # wd_grid, ws_grid = np.meshgrid(wind_directions, wind_speeds, indexing="ij")
+        # freq_grid = windrose_interpolant(wd_grid, ws_grid)
+        # freq_grid = freq_grid / np.sum(freq_grid)
+        yaw_grid = controller.yaw_offsets_interpolant(wind_rose.wd_grid, wind_rose.ws_grid)
         
-        farm_power = fi.par_env.get_farm_power(yaw_grid)
-        farm_aep = np.sum(24 * 365 * np.multiply(farm_power, freq_grid))
-        farm_energy = np.multiply(freq_grid, farm_power)
+        # farm_power = fi.par_env.get_farm_power(yaw_grid)
+        yaw_flat = np.reshape(yaw_grid, (len(wind_rose.wind_directions) * len(wind_rose.wind_speeds), -1))
+        fi.env.calculate_wake(yaw_flat)
+        farm_power = fi.env.get_farm_power(yaw_flat)
+        farm_power[np.isnan(farm_power)] = 0.0 # MISHA does this make sense?
+        farm_energy = np.multiply(wind_rose.freq_table_flat, farm_power)
+        farm_aep = np.sum(24 * 365 * farm_energy)
         
         print(" ")
         print("===========================================================")

@@ -44,8 +44,8 @@ SAMPLING_TIME_STEP = {'freestream_wind_speed': int(60 // DT),
 EPISODE_MAX_TIME_STEPS = int(EPISODE_MAX_TIME // DT) # number of discrete time-stpes
 N_PREVIEW_STEPS = 600
 
-WIND_SPEED_U_RANGE = (8, 22)
-WIND_SPEED_V_RANGE = (0, 6)
+WIND_SPEED_U_RANGE = (8, 12)
+WIND_SPEED_V_RANGE = (4, 6)
 # WIND_SPEED_RANGE = (1, 24)
 WIND_DIR_RANGE = (250, 290)
 
