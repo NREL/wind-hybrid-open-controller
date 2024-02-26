@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 dfs = [pd.read_csv("hercules_output_ol.csv"), pd.read_csv("hercules_output_cl.csv")]
@@ -18,7 +17,7 @@ fig.set_size_inches(10, 5)
 
 for case, (df, label) in enumerate(zip(dfs, labels)):
     # Extract data from larger array
-    time = df.dt.values * np.arange(0, len(df), 1)
+    time = df['time'].to_numpy()
     powers = df[pow_cols].to_numpy()
     wds = df[wd_cols].to_numpy()
     yaws = df[yaw_cols].to_numpy()

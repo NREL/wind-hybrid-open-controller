@@ -53,7 +53,7 @@ class WindFarmPowerDistributingController(ControllerBase):
         Outputs:
         - None (sets self.controls_dict)
         """
-        
+
         # Split farm power reference among turbines and set "no value" for yaw angles (Floris not
         # compatible with both power_setpoints and yaw_angles).
         self.controls_dict = {
