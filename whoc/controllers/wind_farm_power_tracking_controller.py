@@ -16,7 +16,8 @@ import numpy as np
 
 from whoc.controllers.controller_base import ControllerBase
 
-POWER_SETPOINT_DEFAULT = 1e9
+# Default power setpoint in kW (meant to ensure power maximization)
+POWER_SETPOINT_DEFAULT = 1e9 
 
 class WindFarmPowerDistributingController(ControllerBase):
     """
@@ -65,7 +66,8 @@ class WindFarmPowerDistributingController(ControllerBase):
 
 class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
     """
-    Based on controller developed under A2e2g project.
+    Based on controller developed under A2e2g project. Proportional control only---
+    all integral action is disabled.
 
     Inherits from WindFarmPowerDistributingController.
     """
@@ -74,19 +76,19 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
         super().__init__(interface, input_dict, verbose=verbose)
 
         # No integral action for now. beta and omega_n not used.
-        beta=0.7
-        omega_n=0.01
-        integral_gain=0 
+        # beta=0.7
+        # omega_n=0.01
+        # integral_gain=0 
 
         self.K_p = proportional_gain * 1/self.n_turbines
-        self.K_i = integral_gain *(4*beta*omega_n)
+        # self.K_i = integral_gain *(4*beta*omega_n)
 
         # Initialize controller (only used for integral action)
-        self.e_prev = 0
-        self.u_prev = 0
-        self.u_i_prev = 0
-        self.ai_prev = [0.33]*self.n_turbines # TODO: different method for anti-windup?
-        self.n_saturated = 0 
+        # self.e_prev = 0
+        # self.u_prev = 0
+        # self.u_i_prev = 0
+        # self.ai_prev = [0.33]*self.n_turbines # TODO: different method for anti-windup?
+        # self.n_saturated = 0 
 
     def turbine_power_references(self, farm_power_reference=POWER_SETPOINT_DEFAULT):
         """
@@ -109,19 +111,19 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
         else:
             gain_adjustment = self.n_turbines
         K_p_gs = gain_adjustment*self.K_p
-        K_i_gs = gain_adjustment*self.K_i
+        #K_i_gs = gain_adjustment*self.K_i
 
         # Discretize and apply difference equation (trapezoid rule)
         u_p = K_p_gs*farm_current_error
-        u_i = self.dt/2*K_i_gs * (farm_current_error + self.e_prev) + self.u_i_prev
+        #u_i = self.dt/2*K_i_gs * (farm_current_error + self.e_prev) + self.u_i_prev
 
         # Apply integral anti-windup
-        eps = 0.0001 # Threshold for anti-windup
-        if (np.array(self.ai_prev) > 1/3-eps).all() or \
-           (np.array(self.ai_prev) < 0+eps).all():
-           u_i = 0
+        #eps = 0.0001 # Threshold for anti-windup
+        #if (np.array(self.ai_prev) > 1/3-eps).all() or \
+        #   (np.array(self.ai_prev) < 0+eps).all():
+        #   u_i = 0
         
-        u = u_p + u_i
+        u = u_p #+ u_i
         delta_P_ref = u
 
         turbine_power_setpoints = np.array(turbine_current_powers) + delta_P_ref
@@ -133,9 +135,9 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
             "yaw_angles": [-1000]*self.n_turbines
         }
 
-        # Store error, control
-        self.e_prev = farm_current_error
-        self.u_prev = u
-        self.u_i_prev = u_i
+        # Store error, control (only needed for integral action, which is disabled)
+        # self.e_prev = farm_current_error
+        # self.u_prev = u
+        # self.u_i_prev = u_i
 
         return None
