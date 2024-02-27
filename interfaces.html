@@ -412,7 +412,7 @@ document.write(`
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#available-interfaces">Available interfaces</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#herculesadyawinterface">HerculesADYawInterface</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#herculesadinterface">HerculesADInterface</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rosco-zmqinterface">ROSCO_ZMQInterface</a></li>
 </ul>
 </li>
@@ -450,12 +450,13 @@ with controls as needed.</p></li>
 <p>These methods will all be called in the <code class="docutils literal notranslate"><span class="pre">step()</span></code> method of <code class="docutils literal notranslate"><span class="pre">ControllerBase</span></code>.</p>
 <section id="available-interfaces">
 <h2>Available interfaces<a class="headerlink" href="#available-interfaces" title="Link to this heading">#</a></h2>
-<section id="herculesadyawinterface">
-<h3>HerculesADYawInterface<a class="headerlink" href="#herculesadyawinterface" title="Link to this heading">#</a></h3>
+<section id="herculesadinterface">
+<h3>HerculesADInterface<a class="headerlink" href="#herculesadinterface" title="Link to this heading">#</a></h3>
 <p>For direct python communication with Hercules. This should be instantiated
 in a runscript that is running Hercules; used to generate a <code class="docutils literal notranslate"><span class="pre">controller</span></code> from
 the WHOC controllers submodule; and that <code class="docutils literal notranslate"><span class="pre">controller</span></code> should be passed to the
-Hercules <code class="docutils literal notranslate"><span class="pre">Emulator</span></code> upon its instantiation.</p>
+Hercules <code class="docutils literal notranslate"><span class="pre">Emulator</span></code> upon its instantiation. Support transmitting yaw angles
+and power setpoints to wind turbines.</p>
 </section>
 <section id="rosco-zmqinterface">
 <h3>ROSCO_ZMQInterface<a class="headerlink" href="#rosco-zmqinterface" title="Link to this heading">#</a></h3>
@@ -531,7 +532,7 @@ messages between workers.</p>
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#available-interfaces">Available interfaces</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#herculesadyawinterface">HerculesADYawInterface</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#herculesadinterface">HerculesADInterface</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rosco-zmqinterface">ROSCO_ZMQInterface</a></li>
 </ul>
 </li>

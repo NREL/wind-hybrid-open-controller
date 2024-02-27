@@ -6,7 +6,7 @@ of certain controllers and interfaces.
 ### lookup-based_wake_steering_florisstandin
 2-turbine example of lookup-based wake steering control, run using Hercules with the FLORIS standin
 in place of AMR-Wind for exposition purposes. To run this example, navigate to the 
-examples/lookup-based_wake_steering_florisstandin and then run the following.
+examples/lookup-based_wake_steering_florisstandin folder and then run the following.
 ```
 python construct_yaw_offsets.py
 ```
@@ -32,4 +32,20 @@ python plot_output_data.py
 This should produce the following plot.
 ![Results of lookup-based_wake_steering_florisstandin example](
     graphics/lookup-table-example-plot.png
+)
+
+## wind_farm_power_tracking_florisstandin
+2-turbine example of wind-farm-level power reference tracking, run using Hercules with the FLORIS 
+standin in place of AMR-Wind for exposition purposes. To run this example, navigate to the 
+examples/wind_farm_power_tracking_florisstandin folder and run the following:
+```
+./bash_script.sh
+```
+
+This will run both a closed-loop controller, which compensates for underproduction at individual 
+turbines, and an open-loop controller, which simply distributes the farm-wide reference evenly
+amongst the turbines of the farm without feedback. The resulting trajectories are plotted, 
+producing:
+![Results of wind_farm_power_tracking_florisstandin example](
+    graphics/wf-power-tracking-plot.png
 )

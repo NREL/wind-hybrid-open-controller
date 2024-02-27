@@ -411,6 +411,7 @@ document.write(`
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#lookup-based-wake-steering-florisstandin">lookup-based_wake_steering_florisstandin</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#wind-farm-power-tracking-florisstandin">wind_farm_power_tracking_florisstandin</a></li>
 </ul>
             </nav>
         </div>
@@ -430,7 +431,7 @@ of certain controllers and interfaces.</p>
 <h2>lookup-based_wake_steering_florisstandin<a class="headerlink" href="#lookup-based-wake-steering-florisstandin" title="Link to this heading">#</a></h2>
 <p>2-turbine example of lookup-based wake steering control, run using Hercules with the FLORIS standin
 in place of AMR-Wind for exposition purposes. To run this example, navigate to the
-examples/lookup-based_wake_steering_florisstandin and then run the following.</p>
+examples/lookup-based_wake_steering_florisstandin folder and then run the following.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">construct_yaw_offsets</span><span class="o">.</span><span class="n">py</span>
 </pre></div>
 </div>
@@ -452,6 +453,20 @@ executable (<code class="docutils literal notranslate"><span class="pre">chmod</
 </div>
 <p>This should produce the following plot.
 <img alt="Results of lookup-based_wake_steering_florisstandin example" src="_images/lookup-table-example-plot.png" /></p>
+</section>
+<section id="wind-farm-power-tracking-florisstandin">
+<h2>wind_farm_power_tracking_florisstandin<a class="headerlink" href="#wind-farm-power-tracking-florisstandin" title="Link to this heading">#</a></h2>
+<p>2-turbine example of wind-farm-level power reference tracking, run using Hercules with the FLORIS
+standin in place of AMR-Wind for exposition purposes. To run this example, navigate to the
+examples/wind_farm_power_tracking_florisstandin folder and run the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">bash_script</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>This will run both a closed-loop controller, which compensates for underproduction at individual
+turbines, and an open-loop controller, which simply distributes the farm-wide reference evenly
+amongst the turbines of the farm without feedback. The resulting trajectories are plotted,
+producing:
+<img alt="Results of wind_farm_power_tracking_florisstandin example" src="_images/wf-power-tracking-plot.png" /></p>
 </section>
 </section>
 
@@ -511,6 +526,7 @@ executable (<code class="docutils literal notranslate"><span class="pre">chmod</
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#lookup-based-wake-steering-florisstandin">lookup-based_wake_steering_florisstandin</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#wind-farm-power-tracking-florisstandin">wind_farm_power_tracking_florisstandin</a></li>
 </ul>
   </nav></div>
 
