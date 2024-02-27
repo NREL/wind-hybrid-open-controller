@@ -57,11 +57,11 @@ REQUIRED = [
 # What packages are optional?
 EXTRAS = {
     "docs": {
-        "jupyter-book<=0.13.3",
+        "jupyter-book",
         "sphinx-book-theme",
-        "sphinx-autodoc-typehints",
-        "sphinxcontrib-autoyaml",
-        "sphinxcontrib.mermaid",
+        # "sphinx-autodoc-typehints",
+        # "sphinxcontrib-autoyaml",
+        # "sphinxcontrib.mermaid",
     },
     "develop": {
         "pytest",
