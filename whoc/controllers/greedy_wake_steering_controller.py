@@ -25,11 +25,12 @@ from glob import glob
 # np.seterr(all="ignore")
 
 class GreedyController(ControllerBase):
-	def __init__(self, interface, input_dict, verbose=False):
+	def __init__(self, interface, input_dict, verbose=False, **kwargs):
 		super().__init__(interface)
 		self.n_turbines = input_dict["controller"]["num_turbines"]
 		self.yaw_limits = input_dict["controller"]["yaw_limits"]
 		self.yaw_rate = input_dict["controller"]["yaw_rate"]
+		self.yaw_increment = input_dict["controller"]["yaw_increment"]
 		self.dt = input_dict["dt"]  # Won't be needed here, but generally good to have
 		self.turbines = range(self.n_turbines)
 		self.historic_measurements = {"wind_directions": np.zeros((0, self.n_turbines))}
@@ -39,17 +40,17 @@ class GreedyController(ControllerBase):
 		self.use_filt = input_dict["controller"]["use_filtered_wind_measurements"]
 
 		# Set initial conditions
-		yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
-		if hasattr(yaw_IC, "__len__"):
-			if len(yaw_IC) == self.n_turbines:
-				self.controls_dict = {"yaw_angles": yaw_IC}
+		self.yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
+		if hasattr(self.yaw_IC, "__len__"):
+			if len(self.yaw_IC) == self.n_turbines:
+				self.controls_dict = {"yaw_angles": self.yaw_IC}
 			else:
 				raise TypeError(
 					"yaw initial condition should be a float or "
 					+ "a list of floats of length num_turbines."
 				)
 		else:
-			self.controls_dict = {"yaw_angles": [yaw_IC] * self.n_turbines}
+			self.controls_dict = {"yaw_angles": [self.yaw_IC] * self.n_turbines}
 	
 	# self.filtered_measurements["wind_direction"] = []
 	
@@ -90,11 +91,10 @@ class GreedyController(ControllerBase):
 											for i in range(self.n_turbines)]).T[-1, 0]
 
 		yaw_offsets = [0.0] * self.n_turbines
-		yaw_setpoints = (np.array(wind_dirs) - yaw_offsets).tolist()
+		yaw_setpoints = (np.array(wind_dirs) - yaw_offsets)
+		yaw_setpoints = np.clip(yaw_setpoints, yaw_setpoints - self.dt * self.yaw_rate, yaw_setpoints + self.dt * self.yaw_rate)
+		yaw_setpoints = np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
 		self.controls_dict = {"yaw_angles": yaw_setpoints}
-
-		print(f"Wind Speeds: {wind_speeds}", f"Wind Dirs: {wind_dirs}", f"Yaw Offsets: {yaw_offsets}", f"Yaw Setpoints: {yaw_setpoints}", sep='\n')
-		print(f"Measurements: {self.measurements_dict}")
 		
 		return None
 

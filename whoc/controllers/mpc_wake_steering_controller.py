@@ -14,7 +14,7 @@ from scipy.optimize import linprog, basinhopping
 
 import whoc
 from whoc.config import *
-from whoc.controllers.controller_base import ControllerBase
+from whoc.controllers.controller_base import ControllerBase, simulate_controller
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisInterface
 from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
 from whoc.wind_field.WindField import generate_multi_wind_ts, generate_multi_wind_preview_ts, WindField, generate_wind_preview
@@ -567,7 +567,7 @@ class MPC(ControllerBase):
         # ALPSO(options={}) #"maxOuterIter": 25})
         ]
 
-    def __init__(self, interface, input_dict, wind_mag_ts, wind_dir_ts, optimizer_idx=0, verbose=False):
+    def __init__(self, interface, input_dict, verbose=False, **kwargs):
         
         super().__init__(interface, verbose=verbose)
         
@@ -594,16 +594,16 @@ class MPC(ControllerBase):
             def wind_preview_func(current_freestream_measurements, time_step):
                 wind_preview_data = defaultdict(list)
                 for j in range(input_dict["controller"]["n_horizon"] + 1):
-                    wind_preview_data[f"FreestreamWindMag_{j}"] += [wind_mag_ts[time_step]]
-                    wind_preview_data[f"FreestreamWindDir_{j}"] += [wind_dir_ts[time_step]]
+                    wind_preview_data[f"FreestreamWindMag_{j}"] += [kwargs["wind_mag_ts"][time_step]]
+                    wind_preview_data[f"FreestreamWindDir_{j}"] += [kwargs["wind_dir_ts"][time_step]]
                 return wind_preview_data
             
         elif input_dict["controller"]["wind_preview_type"] == "perfect":
             def wind_preview_func(current_freestream_measurements, time_step):
                 wind_preview_data = defaultdict(list)
                 for j in range(input_dict["controller"]["n_horizon"] + 1):
-                    wind_preview_data[f"FreestreamWindMag_{j}"] += [wind_mag_ts[time_step + j]]
-                    wind_preview_data[f"FreestreamWindDir_{j}"] += [wind_dir_ts[time_step + j]]
+                    wind_preview_data[f"FreestreamWindMag_{j}"] += [kwargs["wind_mag_ts"][time_step + j]]
+                    wind_preview_data[f"FreestreamWindDir_{j}"] += [kwargs["wind_dir_ts"][time_step + j]]
                 return wind_preview_data
             
         self.wind_preview_func = wind_preview_func
@@ -615,6 +615,31 @@ class MPC(ControllerBase):
             self.n_wind_preview_samples = 1
         
         self.warm_start = input_dict["controller"]["warm_start"]
+
+        if self.warm_start == "lut":
+            fi_lut = ControlledFlorisInterface(max_workers=max_workers, yaw_limits=input_dict["controller"]["yaw_limits"],
+                                        dt=input_dict["dt"],
+                                        yaw_rate=input_dict["controller"]["yaw_rate"]) \
+                        .load_floris(config_path=input_dict["controller"]["floris_input_file"])
+        
+            ctrl_lut = LookupBasedWakeSteeringController(fi_lut, input_dict=input_dict, 
+                                                    lut_path=os.path.join(os.path.dirname(whoc.__file__), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{fi_lut.n_turbines}.csv"), 
+                                                    generate_lut=False)
+            def warm_start_func(measurements: dict):
+                # feed interface with new disturbances
+                fi_lut.step(disturbances={"wind_speeds": [measurements["wind_speeds"][0]],
+                                        "wind_directions": [measurements["wind_directions"][0]]},
+                                        seed=1)
+                
+                # receive measurements from interface, compute control actions, and send to interface
+                ctrl_lut.step()
+                # must return yaw setpoints
+                return ctrl_lut.controls_dict["yaw_angles"]
+
+            # TODO define descriptor class to ensure that this function takes current_measurements
+            self.warm_start_func = warm_start_func
+
         self.Q = self.alpha
         self.R = (1 - self.alpha)
         self.nu = input_dict["controller"]["nu"]
@@ -657,7 +682,7 @@ class MPC(ControllerBase):
             .load_floris(config_path=input_dict["controller"]["floris_input_file"])
         
         if self.solver == "floris":
-            self.fi_opt = FlorisInterfaceDev(input_dict["controller"]["floris_input_file"]) #.replace("floris", "floris_dev"))
+            # self.fi_opt = FlorisInterfaceDev(input_dict["controller"]["floris_input_file"]) #.replace("floris", "floris_dev"))
             if self.warm_start == "lut":
                 print("Can't warm-start FLORIS SR solver, setting self.warm_start to none")
                 self.warm_start = "none"
@@ -703,7 +728,6 @@ class MPC(ControllerBase):
                         for idx in range(self.n_solve_states)
                     ])
                 state_con_sens["control_inputs"].append([0] * self.n_solve_control_inputs)
-        
          
         return dyn_state_con_sens, state_con_sens
     
@@ -744,7 +768,6 @@ class MPC(ControllerBase):
         
     def opt_rules(self, opt_var_dict, compute_constraints=True, compute_derivatives=True):
         
-        
         funcs = {}
         if self.solver == "sequential_pyopt":
             control_inputs = np.array(self.opt_sol["control_inputs"])
@@ -775,12 +798,6 @@ class MPC(ControllerBase):
         # derivative of turbine power output with respect to yaw angle changes
         # norm_turbine_powers_ctrl_inputs_drvt = np.zeros((self.n_wind_preview_samples, self.n_horizon * self.n_turbines))
 
-        
-        self.fi.env.reinitialize(
-                    wind_directions=[self.wind_preview_samples[f"FreestreamWindDir_{j}"][m] for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)],
-                    wind_speeds=[self.wind_preview_samples[f"FreestreamWindMag_{j}"][m] for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)]
-                    # turbulence_intensities=[self.wind_ti]
-                )
         # TODO use the freestream wind dire to calculate offsets or local wind dir?
         current_yaw_offsets = np.vstack([(self.wind_preview_samples[f"FreestreamWindDir_{j}"][m] - yaw_setpoints[j, :]) for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)])
 
@@ -813,8 +830,14 @@ class MPC(ControllerBase):
                 u = np.random.normal(loc=0.0, scale=1.0, size=(self.n_wind_preview_samples * self.n_horizon, self.n_solve_turbines))
                 # self.norm_turbine_powers_states_drvt = np.zeros((self.n_wind_preview_samples, self.n_horizon, self.n_turbines, self.n_solve_turbines))
                 # we subtract plus change since current_yaw_offsets = wind dir - yaw setpoints
-                plus_yaw_offsets = current_yaw_offsets - self.nu * self.yaw_norm_const * u
-            
+                
+                if self.solver == "sequential_pyopt":
+                    mask = np.zeros((self.n_turbines,))
+                    mask[self.solve_turbine_id] = 1
+                    plus_yaw_offsets = current_yaw_offsets - self.nu * self.yaw_norm_const * u * mask
+                else:
+                    plus_yaw_offsets = current_yaw_offsets - self.nu * self.yaw_norm_const * u
+
                 self.fi.env.calculate_wake(plus_yaw_offsets)
                 plus_perturbed_yawed_turbine_powers = self.fi.env.get_turbine_powers()
 
@@ -968,6 +991,18 @@ class MPC(ControllerBase):
                 ]
             
         self.wind_preview_samples = self.wind_preview_func(self.current_freestream_measurements, current_time_step)
+
+        # update floris model TODO test with floris
+        if self.solver == "pyopt" or self.solver == "sequential_pyopt":
+            self.fi.env.reinitialize(
+                wind_directions=[self.wind_preview_samples[f"FreestreamWindDir_{j}"][m] for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)],
+                wind_speeds=[self.wind_preview_samples[f"FreestreamWindMag_{j}"][m] for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)]
+            )
+        elif self.solver == "floris":
+            self.fi.env.reinitialize(
+                wind_directions=[self.wind_preview_samples[f"FreestreamWindDir_{j}"][m] for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon + 1)],
+                wind_speeds=[self.wind_preview_samples[f"FreestreamWindMag_{j}"][m] for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon + 1)]
+            )            
        
         if self.solver == "pyopt":
             yaw_star = self.pyopt_solve()
@@ -1078,15 +1113,9 @@ class MPC(ControllerBase):
         unconstrained_solve = True
 
         if run_parallel: # parallel version, needs v4...
-            self.fi_opt.reinitialize(
-                    wind_directions=[self.wind_preview_samples[f"FreestreamWindDir_{j}"][m] for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)],
-                    wind_speeds=[self.wind_preview_samples[f"FreestreamWindMag_{j}"][m] for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)]
-                    # turbulence_intensity=self.wind_ti,
-                    # time_series=True
-                )
             
             # optimize yaw angles
-            yaw_offset_opt = YawOptimizationSRRHC(self.fi_opt, 
+            yaw_offset_opt = YawOptimizationSRRHC(self.fi, 
                             self.yaw_rate, self.dt, self.alpha,
                             n_wind_preview_samples=self.n_wind_preview_samples,
                             n_horizon=self.n_horizon,
@@ -1112,7 +1141,7 @@ class MPC(ControllerBase):
             opt_cost_terms[:, 1] = opt_yaw_offsets_df["cost_control_inputs"]
 
         elif unconstrained_solve:
-
+            
             yaw_setpoints = np.array([[((self.initial_state[i] * self.yaw_norm_const) 
                                     + (self.yaw_rate * self.dt * np.sum(self.opt_sol["control_inputs"][i:(self.n_turbines * j) + i:self.n_turbines])))
                                     for i in range(self.n_turbines)] for j in range(self.n_horizon)])
@@ -1122,12 +1151,6 @@ class MPC(ControllerBase):
             # current_yaw_setpoints = yaw_setpoints[0, :]
 
             # solve for each horizon step independently
-            # for j in range(self.n_horizon):
-            self.fi_opt.reinitialize(
-                wind_directions=[self.wind_preview_samples[f"FreestreamWindDir_{j}"][m] for m in range(self.n_wind_preview_samples) for j in range(1, self.n_horizon + 1)],
-                wind_speeds=[self.wind_preview_samples[f"FreestreamWindMag_{j}"][m] for m in range(self.n_wind_preview_samples) for j in range(1, self.n_horizon + 1)]
-            )
-
             # wd_tmp = (359.0 - 180.0) * np.random.random_sample(self.n_wind_preview_samples * (self.n_horizon)) + 180.
             # # wd_tmp[0::self.n_horizon] = wd_tmp[0]
             # ws_tmp = (12.0 - 8.0) * np.random.random_sample(self.n_wind_preview_samples * (self.n_horizon)) + 8.
@@ -1138,7 +1161,7 @@ class MPC(ControllerBase):
             # )
         
             # optimize yaw angles
-            yaw_offset_opt = YawOptimizationSRRHC(self.fi_opt, 
+            yaw_offset_opt = YawOptimizationSRRHC(self.fi, 
                             self.yaw_rate, self.dt, self.alpha,
                             n_wind_preview_samples=self.n_wind_preview_samples,
                             n_horizon=self.n_horizon,
@@ -1156,10 +1179,11 @@ class MPC(ControllerBase):
             opt_cost_terms[:, 1] = opt_yaw_offsets_df["cost_control_inputs"].to_numpy()
 
             # check if solution adheres to dynamic state equaion
+            # ensure that the rate of change is not greater than yaw_rate
             for j in range(self.n_horizon):
                 # gamma(k+1) in [gamma(k) - gamma_dot delta_t, gamma(k) + gamma_dot delta_t]
                 init_gamma = self.initial_state * self.yaw_norm_const if j == 0 else opt_yaw_setpoints[j - 1, :]
-                delta_gamma = opt_yaw_setpoints[j, :] - init_gamma
+                # delta_gamma = opt_yaw_setpoints[j, :] - init_gamma
                 # if np.any(np.abs(delta_gamma) > self.yaw_rate * self.dt):
                 #     pass
             
@@ -1172,16 +1196,8 @@ class MPC(ControllerBase):
             for j in range(self.n_horizon):
                 for m in range(self.n_wind_preview_samples):
                     # solve at each time-step, checking that new yaw angles are feasible given last yaw angles, then average solutions over all samples
-                    self.fi_opt.reinitialize(
-                        wind_directions=[self.wind_preview_samples[f"FreestreamWindDir_{j}"][m]],
-                        wind_speeds=[self.wind_preview_samples[f"FreestreamWindMag_{j}"][m]]
-                        # turbulence_intensity=self.wind_ti,
-                        # time_series=True
-                    )
-                
                     # optimize yaw angles
-                    
-                    yaw_offset_opt = YawOptimizationSRRHC(self.fi_opt, 
+                    yaw_offset_opt = YawOptimizationSRRHC(self.fi, 
                                     self.yaw_rate, self.dt, self.alpha,
                                     n_wind_preview_samples=self.n_wind_preview_samples,
                                     n_horizon=self.n_horizon,
@@ -1272,10 +1288,10 @@ class MPC(ControllerBase):
         elif self.warm_start == "none":
             self.init_sol["states"] = np.array([self.yaw_IC / self.yaw_norm_const] * self.n_turbines)
             self.init_sol["control_inputs"] = np.zeros((self.n_turbines,))
-        elif self.warm_Start == "random":
-            # TODO
-            pass
-
+        elif self.warm_start == "random":
+            self.init_sol["states"] = np.random.uniform(low=-1.0, high=1.0, size=(self.n_turbines * self.n_horizon,))
+            self.init_sol["control_inputs"] = np.zeros((self.n_turbines * self.n_horizon,))
+        
         if self.basin_hop:
             def basin_hop_obj(opt_var_arr):
                 funcs, _ = self.opt_rules({"states": opt_var_arr[:self.n_horizon * self.n_turbines],
@@ -1368,138 +1384,6 @@ class MPC(ControllerBase):
         # return (self.initial_state * self.yaw_norm_const) \
         # 	+ self.yaw_rate * self.dt * self.opt_sol["control_inputs"][:self.n_turbines]  # solution is scaled by yaw limit
     
-    
-def mpc_runner(input_dict, wind_mag_ts, wind_dir_ts, max_workers=16, optimizer_idx=0):
-    print("Running instance of mpc_runner")
-    # Load a FLORIS object for AEP calculations
-    fi_mpc = ControlledFlorisInterface(yaw_limits=input_dict["controller"]["yaw_limits"],
-                                        dt=input_dict["dt"],
-                                        yaw_rate=input_dict["controller"]["yaw_rate"]) \
-        .load_floris(config_path=input_dict["controller"]["floris_input_file"])
-    
-    ctrl_mpc = MPC(fi_mpc, wind_mag_ts=wind_mag_ts, wind_dir_ts=wind_dir_ts, input_dict=input_dict, optimizer_idx=optimizer_idx)
-    # TODO use coroutines or threading for hercules interfaces
-    # optionally warm-start with LUT solution
-    fi_lut = ControlledFlorisInterface(max_workers=max_workers, yaw_limits=input_dict["controller"]["yaw_limits"],
-                                    dt=input_dict["dt"],
-                                    yaw_rate=input_dict["controller"]["yaw_rate"]) \
-                    .load_floris(config_path=input_dict["controller"]["floris_input_file"])
-    
-    ctrl_lut = LookupBasedWakeSteeringController(fi_lut, input_dict=input_dict, 
-                                                 lut_path=os.path.join(os.path.dirname(whoc.__file__), f"case_studies/lut_{fi_mpc.n_turbines}.csv"), 
-                                                 generate_lut=False)
-    if input_dict["controller"]["warm_start"] == "lut":
-        def warm_start_func(measurements: dict):
-            # feed interface with new disturbances
-            fi_lut.step(disturbances={"wind_speeds": [measurements["wind_speeds"][0]],
-                                      "wind_directions": [measurements["wind_directions"][0]]},
-                                      seed=1)
-            
-            # receive measurements from interface, compute control actions, and send to interface
-            ctrl_lut.step()
-            # must return yaw setpoints
-            return ctrl_lut.controls_dict["yaw_angles"]
-
-        # TODO define descriptor class to ensure that this function takes current_measurements
-        ctrl_mpc.warm_start_func = warm_start_func
-    
-    yaw_angles_ts = []
-    yaw_angles_change_ts = []
-    turbine_powers_ts = []
-    convergence_time_ts = []
-    opt_codes_ts = []
-    opt_cost_ts = []
-    opt_cost_terms_ts = []
-    lut_yaw_angles = ctrl_lut.yaw_IC
-    greedy_yaw_angles = ctrl_lut.yaw_IC
-    fi_mpc.reset(disturbances={"wind_speeds": [wind_mag_ts[0]],
-                            "wind_directions": [wind_dir_ts[0]]},
-                            # "turbulence_intensities": [wind_ti_ts[0]]},
-                            init_controls_dict={"yaw_angles": [ctrl_mpc.yaw_IC] * ctrl_mpc.n_turbines})
-    
-    for k, t in enumerate(np.arange(0, EPISODE_MAX_TIME - input_dict["dt"], input_dict["dt"])):
-
-        # feed interface with new disturbances
-        fi_mpc.step(disturbances={"wind_speeds": [wind_mag_ts[k]],
-                                "wind_directions": [wind_dir_ts[k]]},
-                                seed=2)
-                                # "turbulence_intensities": [wind_ti_ts[k]]})
-        # fi_mpc.env.floris.flow_field.u, fi_mpc.env.floris.flow_field.u
-        # receive measurements from interface, compute control actions, and send to interface
-        ctrl_mpc.current_freestream_measurements = [
-                    wind_mag_ts[k] * np.cos((270. - wind_dir_ts[k]) * (np.pi / 180.)),
-                    wind_mag_ts[k] * np.sin((270. - wind_dir_ts[k]) * (np.pi / 180.))
-                ]
-        start_time = time()
-        ctrl_mpc.step()
-        end_time = time()
-        convergence_time_ts.append(end_time - start_time)
-        opt_codes_ts.append(ctrl_mpc.opt_code)
-        opt_cost_terms_ts.append(ctrl_mpc.opt_cost_terms)
-        opt_cost_ts.append(ctrl_mpc.opt_cost)
-        
-        # print(f"Time = {ctrl_mpc.measurements_dict['time']} for Optimizer {MPC.optimizers[optimizer_idx].__class__}")
-        print(f"\nTime = {ctrl_mpc.measurements_dict['time']}",
-            f"Measured Freestream Wind Direction = {wind_dir_ts[k]}",
-            f"Measured Freestream Wind Magnitude = {wind_mag_ts[k]}",
-            f"Measured Turbine Wind Directions = {ctrl_mpc.measurements_dict['wind_directions']}",
-            f"Measured Turbine Wind Magnitudes = {ctrl_mpc.measurements_dict['wind_speeds']}",
-            f"Measured Yaw Angles = {ctrl_mpc.measurements_dict['yaw_angles']}",
-            f"Measured Turbine Powers = {ctrl_mpc.measurements_dict['powers']}",
-            f"Initial Yaw Angle Solution = {np.array(ctrl_mpc.init_sol['states']) * ctrl_mpc.yaw_norm_const}",
-            f"Initial Yaw Angle Change Solution = {ctrl_mpc.init_sol['control_inputs']}",
-            # f"Optimizer Output = {ctrl_mpc.opt_code['text']}",
-            f"Optimized Yaw Angle Solution = {ctrl_mpc.opt_sol['states'] * ctrl_mpc.yaw_norm_const}",
-            f"Optimized Yaw Angle Change Solution = {ctrl_mpc.opt_sol['control_inputs']}",
-            f"Optimized Yaw Angles = {ctrl_mpc.controls_dict['yaw_angles']}",
-            f"Optimized Power Cost = {ctrl_mpc.opt_cost_terms[0]}",
-            f"Optimized Yaw Change Cost = {ctrl_mpc.opt_cost_terms[1]}",
-            f"Convergence Time = {convergence_time_ts[-1]}",
-            sep='\n')
-        
-        yaw_angles_ts.append(ctrl_mpc.measurements_dict['yaw_angles'])
-        yaw_angles_change_ts.append(ctrl_mpc.opt_sol['control_inputs'][:ctrl_mpc.n_turbines])
-        turbine_powers_ts.append(ctrl_mpc.measurements_dict['powers'])
-
-        if k > 0:
-            print(f"Change in Optimized Farm Powers relative to previous time-step = {100 * (sum(turbine_powers_ts[-1]) - sum(turbine_powers_ts[-2])) / sum(turbine_powers_ts[-2])} %")
-            print(f"Change in Optimized Cost relative to previous time-step = {100 * (opt_cost_ts[-1] - opt_cost_ts[-2]) /  abs(opt_cost_ts[-2])} %")
-            print(f"Change in Optimized Cost relative to first time-step = {100 * (opt_cost_ts[-1] - opt_cost_ts[0]) /  abs(opt_cost_ts[0])} %")
-            # print(f"Change in Optimized Cost relative to second time-step = {100 * (opt_costs_ts[-1] - opt_costs_ts[1]) /  opt_costs_ts[1]} %")
-            
-            ctrl_mpc.fi.env.reinitialize(
-                    wind_directions=[wind_dir_ts[k]],
-                    wind_speeds=[wind_mag_ts[k]])
-                #     turbulence_intensities=[wind_ti_ts[k]]
-                # )
-                    
-            # send yaw angles to compute lut solution
-            fi_lut.step(disturbances={"wind_speeds": [wind_mag_ts[k]],
-                                "wind_directions": [wind_dir_ts[k]]},
-                                seed=2)
-                                # "turbulence_intensities": [wind_ti_ts[k]]})
-            
-            # receive measurements from interface, compute control actions, and send to interface
-            # TODO only valid to compare to lut and greedy solutions if we ensure feasibility
-            ctrl_lut.step()
-            lut_yaw_angles = np.clip(ctrl_lut.controls_dict["yaw_angles"], lut_yaw_angles - ctrl_lut.dt * ctrl_lut.yaw_rate, lut_yaw_angles + ctrl_lut.dt * ctrl_lut.yaw_rate)
-            ctrl_mpc.fi.env.calculate_wake((ctrl_lut.measurements_dict["wind_directions"] - lut_yaw_angles)[np.newaxis, :])
-            lut_yawed_turbine_powers = np.squeeze(ctrl_mpc.fi.env.get_turbine_powers())
-
-            greedy_yaw_angles = np.clip(ctrl_lut.measurements_dict["wind_directions"], greedy_yaw_angles - ctrl_lut.dt * ctrl_lut.yaw_rate, greedy_yaw_angles + ctrl_lut.dt * ctrl_lut.yaw_rate)
-            ctrl_mpc.fi.env.calculate_wake((ctrl_lut.measurements_dict["wind_directions"] - greedy_yaw_angles)[np.newaxis, :])
-            greedy_yaw_turbine_powers = np.squeeze(ctrl_mpc.fi.env.get_turbine_powers())
-
-            print(f"Change in Optimized Farm Powers relative to Greedy Yaw = {100 * (sum(turbine_powers_ts[-1]) - sum(greedy_yaw_turbine_powers)) /  sum(greedy_yaw_turbine_powers)} %")
-            print(f"Change in Optimized Farm Powers relative to LUT = {100 * (sum(turbine_powers_ts[-1]) - sum(lut_yawed_turbine_powers)) /  sum(lut_yawed_turbine_powers)} %")
-
-    yaw_angles_ts = np.vstack(yaw_angles_ts)
-    yaw_angles_change_ts = np.vstack(yaw_angles_change_ts)
-    turbine_powers_ts = np.vstack(turbine_powers_ts)
-    opt_cost_terms_ts = np.vstack(opt_cost_terms_ts)
-
-    return yaw_angles_ts, yaw_angles_change_ts, turbine_powers_ts, convergence_time_ts, opt_codes_ts, opt_cost_terms_ts
-
 if __name__ == '__main__':
     # import
     from hercules.utilities import load_yaml
@@ -1541,11 +1425,12 @@ if __name__ == '__main__':
     wind_dir_ts = wind_field_data[case_idx]["FreestreamWindDir"].to_numpy()
     
     # instantiate controller and execute simulation
-    results = mpc_runner(input_dict, wind_mag_ts, wind_dir_ts, optimizer_idx=optimizer_idx)
+    results = simulate_controller(MPC, input_dict, wind_mag_ts, wind_dir_ts, episode_max_time=EPISODE_MAX_TIME)
     
-    yaw_angles_ts, yaw_angles_change_ts, turbine_powers_ts, convergence_time_ts, opt_codes_ts, opt_cost_terms_ts = results
-    # filt_wind_dir_ts = ctrl_mpc._first_ord_filter(wind_dir_ts, ctrl_mpc.wd_lpf_alpha)
-    # filt_wind_speed_ts = ctrl_mpc._first_ord_filter(wind_mag_ts, ctrl_mpc.ws_lpf_alpha)
+    # yaw_angles_ts, yaw_angles_change_ts, turbine_powers_ts, convergence_time_ts, opt_codes_ts, opt_cost_terms_ts 
+    results_df = results
+    # filt_wind_dir_ts = ctrl._first_ord_filter(wind_dir_ts, ctrl.wd_lpf_alpha)
+    # filt_wind_speed_ts = ctrl._first_ord_filter(wind_mag_ts, ctrl.ws_lpf_alpha)
     
     # save results and configurataion in a dataframe of results
     # make folder for results
@@ -1567,24 +1452,7 @@ if __name__ == '__main__':
     with open(os.path.join(results_dir, "input_config.yaml"), 'w') as fp:
         yaml.dump(input_dict, fp)
     
-    results_df = pd.DataFrame(data={
-        **{
-            f"TurbineYawAngle_{i}": yaw_angles_ts[:, i] for i in range(input_dict["controller"]["num_turbines"])
-        }, 
-        **{
-            f"TurbineYawAngleChange_{i}": yaw_angles_change_ts[:, i] for i in range(input_dict["controller"]["num_turbines"])
-        },
-        **{
-            f"TurbinePower_{i}": turbine_powers_ts[:, i] for i in range(input_dict["controller"]["num_turbines"])
-        },
-        "FarmPower": np.sum(turbine_powers_ts, axis=1),
-        **{
-            f"OptimizationCostTerm_{i}": opt_cost_terms_ts[:, i] for i in range(opt_cost_terms_ts.shape[1])
-        },
-        "TotalOptimizationCost": np.sum(opt_cost_terms_ts, axis=1),
-        "OptimizationConvergenceTime": convergence_time_ts,
-        # "OptimizationCode": opt_codes_ts
-        })
+
     results_df.to_csv(os.path.join(results_dir, "time_series_results.csv"))
 
     fig_wind, ax_wind = plot_wind_field_ts(time_ts[:int(EPISODE_MAX_TIME // input_dict["dt"])], 

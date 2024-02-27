@@ -28,7 +28,7 @@ from floris.tools.optimization.yaw_optimization.yaw_optimizer_sr import YawOptim
 
 
 class LookupBasedWakeSteeringController(ControllerBase):
-    def __init__(self, interface, input_dict, max_workers=None, df_yaw=None, lut_path=None, generate_lut=False, verbose=False):
+    def __init__(self, interface, input_dict, verbose=False, **kwargs):
         super().__init__(interface, verbose=verbose)
 
         self.dt = input_dict["dt"]  # Won't be needed here, but generally good to have
@@ -41,16 +41,17 @@ class LookupBasedWakeSteeringController(ControllerBase):
         self.floris_input_file = input_dict["controller"]["floris_input_file"]
         self.yaw_limits = input_dict["controller"]["yaw_limits"]
         self.yaw_rate = input_dict["controller"]["yaw_rate"]
-        self.max_workers = max_workers or 16
+        self.yaw_increment = input_dict["controller"]["yaw_increment"]
+        self.max_workers = kwargs["max_workers"] if "max_workers" in kwargs else 16
         self.use_filt = input_dict["controller"]["use_filtered_wind_measurements"]
 
         # Handle yaw optimizer object
-        if df_yaw is not None:
-            self.wake_steering_interpolant = get_yaw_angles_interpolant(df_yaw)
+        if "df_yaw" in kwargs:
+            self.wake_steering_interpolant = get_yaw_angles_interpolant(kwargs["df_yaw"])
         else:
             # optimize, unless passed existing lookup table
             # os.path.abspath(lut_path)
-            self._optimize_lookup_table(lut_path=lut_path, generate_lut=generate_lut)
+            self._optimize_lookup_table(lut_path=kwargs["lut_path"], generate_lut=kwargs["generate_lut"])
         # Set initial conditions
         self.yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
         if hasattr(self.yaw_IC, "__len__"):
@@ -105,7 +106,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
                                         minimum_yaw_angle=self.yaw_limits[0],
                                         maximum_yaw_angle=self.yaw_limits[1],
                                         # yaw_angles_baseline=np.zeros((len(wind_directions_lut), len(wind_speeds_lut), self.n_turbines)),
-                                        Ny_passes=[5, 4])
+                                        Ny_passes=[12, 10, 8, 4])
             df_lut = yaw_opt.optimize()
             
             # Assume linear ramp up at 5-6 m/s and ramp down at 13-14 m/s,
@@ -167,13 +168,13 @@ class LookupBasedWakeSteeringController(ControllerBase):
         # TODO shouldn't freestream wind speed/dir also be availalbe in measurements_dict, or just assume first row of turbines?
         # TODO filter wind speed and dir before certain time statpm?
         yaw_offsets = self.wake_steering_interpolant(wind_dirs, wind_speeds)
-        yaw_setpoints = (np.array(wind_dirs) - yaw_offsets).tolist()
-        # print(f"Wind Speeds: {wind_speeds}", f"Wind Dirs: {wind_dirs}", f"Yaw Offsets: {yaw_offsets}", f"Yaw Setpoints: {yaw_setpoints}", sep='\n')
-        # print(f"Measurements: {self.measurements_dict}")
+        yaw_setpoints = np.array(wind_dirs) - yaw_offsets
+        yaw_setpoints = np.clip(yaw_setpoints, yaw_setpoints - self.dt * self.yaw_rate, yaw_setpoints + self.dt * self.yaw_rate)
+        yaw_setpoints = np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
         self.controls_dict = {"yaw_angles": yaw_setpoints}
-        # yaw_offsets = np.diag(interpolated_angles)
+        
         return None
-    
+
     def compute_controls_old(self):
         self.wake_steering_angles()
 

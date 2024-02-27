@@ -54,7 +54,7 @@ py_sims:
 controller:
 
   controller_type: SimpleYawController # This may not be needed
-  num_turbines: 25 # Should match AMR-Wind! Ideally, would come from AMR-wind
+  num_turbines: 9 # Should match AMR-Wind! Ideally, would come from AMR-wind
   initial_conditions:
       yaw: 270.0 # degrees (same for all turbines) (will this work?)
   yaw_limits: [-30, 30]
@@ -71,10 +71,10 @@ controller:
   control_input_domain: continuous
   wind_preview_type: stochastic # wind preview type asumed in MPC: persistent (assumes that current freestream measurements will stay constant over horizon), stochastic (sample from Gaussian model of preview), perfect (preview known)
   n_wind_preview_samples: 20
-  warm_start: lut # may equal 'previous' to warm-start with time-shifted previous solution,  "lut" to warm-start with lookup table solution, or "random" #TODO
+  warm_start: random # may equal 'previous' to warm-start with time-shifted previous solution,  "lut" to warm-start with lookup table solution, or "random" #TODO
   nu: 0.001 # step size to add/subtract from yaw angles for stochastic gradient estimate
   use_filtered_wind_measurements: False
-  floris_input_file: /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/mpc_wake_steering_florisstandin/floris_gch_25.yaml
-  solver: floris # may equal floris, pyopt, sequential_pyopt, or zsgd
+  floris_input_file: /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml
+  solver: sequential_pyopt # may equal floris, pyopt, sequential_pyopt, or zsgd
   basin_hop: False
   offline_probability: 0.0
