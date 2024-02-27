@@ -16,8 +16,11 @@ import pandas as pd
 from whoc.controllers import (
     LookupBasedWakeSteeringController,
     WindBatteryController,
+    WindFarmPowerDistributingController,
+    WindFarmPowerTrackingController,
 )
-from whoc.interfaces import HerculesADYawInterface, HerculesWindBatteryInterface
+from whoc.controllers.wind_farm_power_tracking_controller import POWER_SETPOINT_DEFAULT
+from whoc.interfaces import HerculesADInterface, HerculesWindBatteryInterface
 from whoc.interfaces.interface_base import InterfaceBase
 
 
@@ -52,6 +55,7 @@ test_hercules_dict = {
         }
     },
     "py_sims": {"test_battery": {"outputs": 10.0}},
+    "external_signals": {"wind_power_reference": 1000.0},
 }
 
 
@@ -64,10 +68,12 @@ def test_controller_instantiation():
 
     _ = LookupBasedWakeSteeringController(interface=test_interface, input_dict=test_hercules_dict)
     _ = WindBatteryController(interface=test_interface, input_dict=test_hercules_dict)
+    _ = WindFarmPowerDistributingController(interface=test_interface, input_dict=test_hercules_dict)
+    _ = WindFarmPowerTrackingController(interface=test_interface, input_dict=test_hercules_dict)
 
 
 def test_LookupBasedWakeSteeringController():
-    test_interface = HerculesADYawInterface(test_hercules_dict)
+    test_interface = HerculesADInterface(test_hercules_dict)
     
     # No lookup table passed; simply passes through wind direction to yaw angles
     test_controller = LookupBasedWakeSteeringController(
@@ -112,7 +118,6 @@ def test_LookupBasedWakeSteeringController():
     assert np.allclose(test_angles, wind_directions - test_offsets)
 
 def test_WindBatteryController():
-    # TODO: possibly clean up HerculesWindBatteryController class
 
     test_interface = HerculesWindBatteryInterface(test_hercules_dict)
     test_controller = WindBatteryController(test_interface, test_hercules_dict)
@@ -140,6 +145,82 @@ def test_WindBatteryController():
     hercules_dict_out = test_controller.step(test_hercules_dict)
     assert hercules_dict_out["setpoints"]["battery"]["signal"] == -500
 
+def test_WindFarmPowerDistributingController():
+    test_interface = HerculesADInterface(test_hercules_dict)
 
-    
+    test_controller = WindFarmPowerDistributingController(
+        interface=test_interface,
+        input_dict=test_hercules_dict
+    )
 
+    # Default behavior when no power reference is given
+    test_hercules_dict["time"] = 20
+    test_hercules_dict["external_signals"] = {}
+    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_power_setpoints = np.array(
+        test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
+    )
+    assert np.allclose(
+        test_power_setpoints,
+        POWER_SETPOINT_DEFAULT/test_hercules_dict["controller"]["num_turbines"]
+    )
+
+    # Test with power reference
+    test_hercules_dict["external_signals"]["wind_power_reference"] = 1000
+    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_power_setpoints = np.array(
+        test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
+    )
+    assert np.allclose(test_power_setpoints, 500)
+
+def test_WindFarmPowerTrackingController():
+    test_interface = HerculesADInterface(test_hercules_dict)
+
+    test_controller = WindFarmPowerTrackingController(
+        interface=test_interface,
+        input_dict=test_hercules_dict
+    )
+
+    # Test no change to power setpoints if producing desired power
+    test_hercules_dict["external_signals"]["wind_power_reference"] = 1000
+    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [500, 500]
+    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_power_setpoints = np.array(
+        test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
+    )
+    assert np.allclose(test_power_setpoints, 500)
+
+    # Test if power exceeds farm reference, power setpoints are reduced
+    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [600, 600]
+    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_power_setpoints = np.array(
+        test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
+    )
+    assert (
+        test_power_setpoints
+        <= test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"]
+    ).all()
+
+    # Test if power is less than farm reference, power setpoints are increased
+    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [550, 400]
+    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_power_setpoints = np.array(
+        test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
+    )
+    assert (
+        test_power_setpoints
+        >= test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"]
+    ).all()
+
+    # Test that more aggressive control leads to faster response
+    test_controller = WindFarmPowerTrackingController(
+        interface=test_interface,
+        input_dict=test_hercules_dict,
+        proportional_gain=2
+    )
+    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [600, 600]
+    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_power_setpoints_a = np.array(
+        test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
+    )
+    assert (test_power_setpoints_a < test_power_setpoints).all()

@@ -59,7 +59,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
         # Handle possible bad data
         wind_directions = self.measurements_dict["wind_directions"]
         wind_speeds = [8.0]*self.n_turbines # TODO: enable extraction of wind speed in Hercules
-        if not wind_directions: # Recieved empty or None
+        if not wind_directions: # Received empty or None
             if self.verbose:
                 print("Bad wind direction measurement received, reverting to previous measurement.")
             wind_directions = self.wd_store
