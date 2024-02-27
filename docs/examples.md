@@ -1,6 +1,6 @@
 # Examples
 
-The `examples` subdirectoy contains a series of examples that can be run to test the functionality
+The `examples` subdirectory contains a series of examples that can be run to test the functionality
 of certain controllers and interfaces.
 
 ### lookup-based_wake_steering_florisstandin
@@ -11,9 +11,9 @@ examples/lookup-based_wake_steering_florisstandin and then run the following.
 python construct_yaw_offsets.py
 ```
 
-Not that, currently, contruct_yaw_offsets.py requires FLORIS version 3, whereas the rest of the 
+Not that, currently, construct_yaw_offsets.py requires FLORIS version 3, whereas the rest of the 
 example requires FLORIS version 4. As a result, we provide the generated offsets in
-yaw_offesets.pkl. To avoid regenerating yaw_offsets.pkl (and therefore avoid the current need for 
+yaw_offsets.pkl. To avoid regenerating yaw_offsets.pkl (and therefore avoid the current need for 
 floris v3), set `optimize_yaw_offsets = False` at the beginning of construct_yaw_offsets.py before
 running.
 

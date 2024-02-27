@@ -3,9 +3,9 @@
 WHOC is _not_ designed to be used as a stand-alone package. Most likely, 
 you'll want to add WHOC to an existing conda environment that contains your
 simulation testbed, such as [Hercules](https://github.com/NREL/hercules). 
-For example, see the [Hercules installation instuctions](\
-https://nrel.github.io/hercules/install_instructions.html) for how to set up
-an appropriate conda environment.
+For example, see the 
+[Hercules installation instructions](https://nrel.github.io/hercules/install_instructions.html)
+for how to set up an appropriate conda environment.
 
 ## General users
 

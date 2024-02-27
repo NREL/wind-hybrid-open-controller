@@ -23,7 +23,7 @@ found in controllers.md.
 The `interface` object handles communications with the plant simulator, 
 allowing WHOC to be used with various simulation platforms (e.g. Hercules, 
 FAST.Farm) while keeping the controllers agnostic to the simulation platform
-and the boilderplate code needed to handle different platforms. `interface` 
+and the boilerplate code needed to handle different platforms. `interface` 
 objects should inherit from `InterfaceBase`. More information can be found in 
 interfaces.md.
 
