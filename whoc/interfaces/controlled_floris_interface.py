@@ -35,21 +35,23 @@ class ControlledFlorisInterface(InterfaceBase):
     
     def load_floris(self, config_path):
         # Load the default example floris object
-        if self.floris_version == 'v4':
-            self.env = FlorisInterface(config_path)  # GCH model matched to the default "legacy_gauss" of V2
-        elif self.floris_version == 'dev':
-            # from floris_dev.tools import FlorisInterface as FlorisInterfaceDev
-            from floris.tools import FlorisInterface as FlorisInterfaceDev
-            self.env = FlorisInterfaceDev(config_path)
+        # if self.floris_version == 'v4':
+        self.env = FlorisInterface(config_path)  # GCH model matched to the default "legacy_gauss" of V2
+        # elif self.floris_version == 'dev':
+        #     # from floris_dev.tools import FlorisInterface as FlorisInterfaceDev
+        #     from floris.tools import FlorisInterface as FlorisInterfaceDev
+        #     self.env = FlorisInterfaceDev(config_path)
         self.n_turbines = self.env.floris.farm.n_turbines
         
         return self
     
     def reset(self, disturbances, init_controls_dict):
         self.env.floris.farm.yaw_angles = disturbances["wind_directions"][0] - np.array(init_controls_dict["yaw_angles"])[np.newaxis, :]
-        # self.env.floris.flow_field.u, self.env.floris.flow_field.v
+        # yaw_angles = disturbances["wind_directions"][0] - np.array(init_controls_dict["yaw_angles"])[np.newaxis, :]
+        self.env.floris.flow_field.u, self.env.floris.flow_field.v
         self.step(disturbances)
-        
+        # self.env.calculate_wake(self.env.floris.farm.yaw_angles, disable_turbines=self.offline_status[np.newaxis, :])
+        # self.env.calculate_wake(yaw_angles, disable_turbines=self.offline_status[np.newaxis, :])
         return disturbances
     
     @classmethod
@@ -75,9 +77,9 @@ class ControlledFlorisInterface(InterfaceBase):
         """ abstract method from Interface class """
         
         u_only_dirs = np.zeros_like(self.env.floris.flow_field.u)
-        u_only_dirs[(self.env.floris.flow_field.v == 0) & (self.env.floris.flow_field.u >= 0)] = 270
-        u_only_dirs[(self.env.floris.flow_field.v == 0) & (self.env.floris.flow_field.u < 0)] = 90
-        u_only_dirs = (u_only_dirs - 180) * (np.pi / 180)
+        u_only_dirs[(self.env.floris.flow_field.v == 0) & (self.env.floris.flow_field.u >= 0)] = 270.
+        u_only_dirs[(self.env.floris.flow_field.v == 0) & (self.env.floris.flow_field.u < 0)] = 90.
+        u_only_dirs = (u_only_dirs - 180.) * (np.pi / 180)
         
         dirs = np.arctan(np.divide(self.env.floris.flow_field.u, self.env.floris.flow_field.v,
                                    out=np.ones_like(self.env.floris.flow_field.u) * np.nan,
@@ -85,21 +87,22 @@ class ControlledFlorisInterface(InterfaceBase):
                          out=u_only_dirs,
                          where=self.env.floris.flow_field.v != 0)
         dirs[dirs < 0] = np.pi + dirs[dirs < 0]
-        dirs = (dirs * (180/np.pi)) + 180
+        dirs = (dirs * (180 / np.pi)) + 180
         # dirs = (np.arctan(dirs) * (180/np.pi)) + 180
         # dirs += u_only_dirs
         dirs = np.squeeze(np.mean(dirs.reshape(*dirs.shape[:2], -1), axis=2))
         
-
         dirs = np.repeat(self.env.floris.flow_field.wind_directions, (self.n_turbines,))
         
         mags = np.sqrt(self.env.floris.flow_field.u**2 + self.env.floris.flow_field.v**2 + self.env.floris.flow_field.w**2)
         mags = np.squeeze(np.mean(mags.reshape(*mags.shape[:2], -1), axis=2))
-        
+
+        offline_mask = np.isclose(self.env.floris.farm.power_setpoints, 0, atol=1e-3)
+        # Note that measured yaw_angles here will not reflect controls_dict from last time-step, because of new wind direction
         measurements = {"time": self.time,
                         "wind_directions": dirs,
                         "wind_speeds": mags,# self.env.turbine_average_velocities,
-                        "powers": np.squeeze(self.env.get_turbine_powers()),
+                        "powers": np.ma.masked_array(np.squeeze(self.env.get_turbine_powers()), offline_mask).filled(0.0),
                         "yaw_angles": np.squeeze(dirs - self.env.floris.farm.yaw_angles)}
         
         return measurements
@@ -112,22 +115,23 @@ class ControlledFlorisInterface(InterfaceBase):
     def step(self, disturbances, seed=None):
         np.random.seed(seed)
         # get factor to multiply ai_factor with based on offline probabilities
-        online_status = np.random.choice([0, 1], size=self.n_turbines, p=[self.offline_probability, 1 - self.offline_probability])
-        online_status = online_status.astype(bool)
+        self.offline_status = np.random.choice([0, 1], size=self.n_turbines, p=[1 - self.offline_probability, self.offline_probability])
+        self.offline_status = self.offline_status.astype(bool)
         # reinitialize floris
-        yaw_angles = self.env.floris.farm.yaw_angles
+        yaw_angles = self.env.floris.farm.yaw_angles # get previously set yaw angles
         self.env.reinitialize(
             wind_directions=disturbances["wind_directions"],
             wind_speeds=disturbances["wind_speeds"]
             # turbulence_intensities=disturbances["turbulence_intensities"]
         )
         
-        self.env.calculate_wake(yaw_angles, disable_turbines=online_status[np.newaxis, :])
-        
+        self.env.calculate_wake(yaw_angles, disable_turbines=self.offline_status[np.newaxis, :])
+        # self.env.get_turbine_powers()
         return disturbances
     def send_controls(self, hercules_dict, **controls):
         """ abstract method from Interface class """
-        self.env.calculate_wake((self.env.floris.flow_field.wind_directions - controls["yaw_angles"])[np.newaxis, :])
+        yaw_offsets = self.env.floris.flow_field.wind_directions - controls["yaw_angles"]
+        self.env.calculate_wake(yaw_offsets[np.newaxis, :], disable_turbines=self.offline_status[np.newaxis, :])
         
         self.time += self.dt
         return controls

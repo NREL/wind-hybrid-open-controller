@@ -8,14 +8,14 @@ FARM_LAYOUT = '9turb'
 if sys.platform == 'darwin':
 	PROJECT_DIR = '/Users/ahenry/Documents/Research/nn_wake_modeling/'
 	FLORIS_DIR = '/Users/ahenry/Documents/toolboxes/floris'
-	EPISODE_MAX_TIME = 60 * 60 * 1  # 60 minutes
+	simulation_max_time = 60 * 60 * 1  # 60 minutes
 	N_CASES = 1
 	STORAGE_DIR = '/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/wind_field_data'
 elif sys.platform == 'linux':
 	STORAGE_DIR = f'/scratch/alpine/aohe7145/nn_wake_modeling/'
 	PROJECT_DIR = '/projects/aohe7145/projects/nn_wake_modeling'
 	FLORIS_DIR = '/projects/aohe7145/toolboxes/floris'
-	EPISODE_MAX_TIME = 60 * 60 * 24  # 1 day
+	simulation_max_time = 60 * 60 * 24  # 1 day
 	N_CASES = 500
 
 DATA_SAVE_DIR = os.path.join(STORAGE_DIR, 'raw_data')
@@ -41,7 +41,7 @@ SAMPLING_TIME_STEP = {'freestream_wind_speed': int(60 // DT),
 				 'yaw_angle': int(60 // DT),
                  'ai_factor': int(1 // DT)}  # interval of DT seconds at which each agent takes a step
 
-EPISODE_MAX_TIME_STEPS = int(EPISODE_MAX_TIME // DT) # number of discrete time-stpes
+simulation_max_time_STEPS = int(simulation_max_time // DT) # number of discrete time-stpes
 N_PREVIEW_STEPS = 600
 
 WIND_SPEED_U_RANGE = (8, 12)
@@ -131,7 +131,7 @@ WIND_FIELD_CONFIG = {
         # 5, # standard deviation of normal turbulence  of wind direction, set to 0 for no turbulence
 		"yaw_angle_turb_std": YAW_ANGLE_TURB_STD,
 		"ai_factor_turb_std": AI_FACTOR_TURB_STD,
-        "episode_max_time_steps": EPISODE_MAX_TIME_STEPS + N_PREVIEW_STEPS,
+        "simulation_max_time_steps": simulation_max_time_STEPS + N_PREVIEW_STEPS,
         # ensure there is enough power reference preview steps left before the full 24 hour mark
         "simulation_sampling_time": DT,
 		"wind_speed_sampling_time_step": SAMPLING_TIME_STEP['freestream_wind_speed'],

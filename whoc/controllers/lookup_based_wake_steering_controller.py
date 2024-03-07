@@ -16,16 +16,29 @@ import numpy as np
 import pandas as pd
 import os
 import re
+import glob
+import yaml
+import matplotlib.pyplot as plt
 
 from flasc.wake_steering.lookup_table_tools import get_yaw_angles_interpolant
+
+import whoc
 from whoc.controllers.controller_base import ControllerBase
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisInterface
+from whoc.wind_field.WindField import generate_multi_wind_ts
+from whoc.controllers.no_yaw_wake_steering_controller import NoYawController
+from whoc.interfaces.hercules_actuator_disk_yaw_interface import HerculesADYawInterface
+from whoc.plotting import plot_power_vs_speed, plot_yaw_vs_dir, plot_power_vs_dir
+
+from hercules.emulator import Emulator
+from hercules.py_sims import PySims
+from hercules.utilities import load_yaml
+from hercules.floris_standin import launch_floris
 
 from scipy.interpolate import LinearNDInterpolator
 from scipy.signal import lfilter
 
 from floris.tools.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
-
 
 class LookupBasedWakeSteeringController(ControllerBase):
     def __init__(self, interface, input_dict, verbose=False, **kwargs):
@@ -36,14 +49,14 @@ class LookupBasedWakeSteeringController(ControllerBase):
         self.turbines = range(self.n_turbines)
         self.historic_measurements = {"wind_directions": np.zeros((0, self.n_turbines)),
                                       "wind_speeds": np.zeros((0, self.n_turbines))}
-        self.ws_lpf_alpha = np.exp(-input_dict["controller"]["ws_lpf_omega_c"] * input_dict["controller"]["lpf_T"])
-        self.wd_lpf_alpha = np.exp(-input_dict["controller"]["wd_lpf_omega_c"] * input_dict["controller"]["lpf_T"])
+        # self.ws_lpf_alpha = np.exp(-input_dict["controller"]["ws_lpf_omega_c"] * input_dict["controller"]["lpf_T"])
+        self.lpf_alpha = np.exp(-(1 / input_dict["controller"]["lpf_time_const"]) * input_dict["wind_dt"])
         self.floris_input_file = input_dict["controller"]["floris_input_file"]
         self.yaw_limits = input_dict["controller"]["yaw_limits"]
         self.yaw_rate = input_dict["controller"]["yaw_rate"]
         self.yaw_increment = input_dict["controller"]["yaw_increment"]
         self.max_workers = kwargs["max_workers"] if "max_workers" in kwargs else 16
-        self.use_filt = input_dict["controller"]["use_filtered_wind_measurements"]
+        self.use_filt = input_dict["controller"]["use_filtered_wind_dir"]
 
         # Handle yaw optimizer object
         if "df_yaw" in kwargs:
@@ -141,8 +154,6 @@ class LookupBasedWakeSteeringController(ControllerBase):
         if self.use_filt:
             self.historic_measurements["wind_directions"] = np.vstack([self.historic_measurements["wind_directions"],
                                                             self.measurements_dict["wind_directions"]])
-            self.historic_measurements["wind_speeds"] = np.vstack([self.historic_measurements["wind_speeds"],
-                                                                self.measurements_dict["wind_speeds"]])
 
         # if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
         if self.measurements_dict["time"] < 60 or not self.use_filt:
@@ -159,11 +170,9 @@ class LookupBasedWakeSteeringController(ControllerBase):
         else:
             # use filtered wind direction and speed
             wind_dirs = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"][:, i],
-                                                                self.wd_lpf_alpha)
+                                                                self.lpf_alpha)
                                         for i in range(self.n_turbines)]).T[-1, 0]
-            wind_speeds = np.array([self._first_ord_filter(self.historic_measurements["wind_speeds"][:, i],
-                                                                self.ws_lpf_alpha)
-                                            for i in range(self.n_turbines)]).T[-1, 0]
+            wind_speeds = 8.0
         
         # TODO shouldn't freestream wind speed/dir also be availalbe in measurements_dict, or just assume first row of turbines?
         # TODO filter wind speed and dir before certain time statpm?
@@ -209,20 +218,6 @@ class LookupBasedWakeSteeringController(ControllerBase):
 
 
 if __name__ == "__main__":
-    from whoc.wind_field.WindField import generate_multi_wind_ts
-    from whoc.plotting import plot_power_vs_speed, plot_yaw_vs_dir, plot_power_vs_dir
-    import glob
-    import matplotlib.pyplot as plt
-    from whoc.config import WIND_FIELD_CONFIG, DATA_SAVE_DIR, N_CASES, EPISODE_MAX_TIME
-
-    from hercules.emulator import Emulator
-    from hercules.py_sims import PySims
-    from hercules.utilities import load_yaml
-    
-    from whoc.controllers.no_yaw_wake_steering_controller import NoYawController
-    from whoc.interfaces.hercules_actuator_disk_yaw_interface import HerculesADYawInterface
-    
-    from hercules.floris_standin import launch_floris
     
     # TODO how to pass controller to floris here
     # # Clear old log files for clarity
@@ -232,6 +227,9 @@ if __name__ == "__main__":
     # python3 hercules_runscript.py hercules_input_000.yaml >> loghercules 2>&1 & # Start the controller center and pass in input file
     # python3 floris_runscript.py amr_input.inp amr_standin_data.csv >> logfloris 2>&1
     
+    with open(os.path.join(os.path.dirname(whoc.__file__), "wind_field", "wind_field_config.yaml")) as fp:
+        wind_field_config = yaml.safe_load(fp)
+
     # Parallel options
     max_workers = 16
 
@@ -265,7 +263,7 @@ if __name__ == "__main__":
     fi_noyaw = ControlledFlorisInterface(max_workers=max_workers, yaw_limits=input_dict["controller"]["yaw_limits"],
                                          dt=input_dict["dt"],
                                          yaw_rate=input_dict["controller"]["yaw_rate"]) \
-        .load_floris(config_path=WIND_FIELD_CONFIG["floris_input_file"])
+        .load_floris(config_path=input_dict["controller"]["floris_input_file"])
     fi_noyaw.env.reinitialize(
         wind_directions=wind_directions_tgt,
         wind_speeds=wind_speeds_tgt        # turbulence_intensity=0.08  # Assume 8% turbulence intensity
@@ -285,10 +283,10 @@ if __name__ == "__main__":
     fi_lut = ControlledFlorisInterface(max_workers=max_workers, yaw_limits=input_dict["controller"]["yaw_limits"],
                                        dt=input_dict["dt"],
                                        yaw_rate=input_dict["controller"]["yaw_rate"]) \
-        .load_floris(config_path=WIND_FIELD_CONFIG["floris_input_file"])
+        .load_floris(config_path=input_dict["controller"]["floris_input_file"])
     
     # instantiate controller, and load lut from csv if it exists
-    input_dict["controller"]["floris_input_file"] = WIND_FIELD_CONFIG["floris_input_file"]
+    input_dict["controller"]["floris_input_file"] = input_dict["controller"]["floris_input_file"]
     ctrl_lut = LookupBasedWakeSteeringController(fi_lut, input_dict=input_dict)
     
     farm_power_lut, farm_aep_lut, farm_energy_lut = ControlledFlorisInterface.compute_aep(fi_lut, ctrl_lut,
@@ -328,28 +326,28 @@ if __name__ == "__main__":
     
     ## Simulate wind farm with interface and controller
     # instantiate wind field if files don't already exist
-    wind_field_filenames = glob(f"{DATA_SAVE_DIR}/case_*.csv")
+    wind_field_filenames = glob(f"{wind_field_config['data_save_dir']}/case_*.csv")
     if not len(wind_field_filenames):
-        generate_multi_wind_ts(WIND_FIELD_CONFIG, N_CASES)
-        wind_field_filenames = [f"case_{i}.csv" for i in range(N_CASES)]
+        generate_multi_wind_ts(wind_field_config)
+        wind_field_filenames = [f"case_{i}.csv" for i in range(wind_field_config["n_wind_field_cases"])]
     
     # if wind field data exists, get it
     wind_field_data = []
-    if os.path.exists(DATA_SAVE_DIR):
+    if os.path.exists(wind_field_config["data_save_dir"]):
         for fn in wind_field_filenames:
-            wind_field_data.append(pd.read_csv(os.path.join(DATA_SAVE_DIR, fn)))
+            wind_field_data.append(pd.read_csv(os.path.join(wind_field_config["data_save_dir"], fn)))
     
     # select wind field case
     case_idx = 0
     time_ts = wind_field_data[case_idx]["Time"].to_numpy()
     wind_mag_ts = wind_field_data[case_idx]["FreestreamWindMag"].to_numpy()
     wind_dir_ts = wind_field_data[case_idx]["FreestreamWindDir"].to_numpy()
-    turbulence_intensity_ts = [0.08] * int(EPISODE_MAX_TIME // input_dict["dt"])
+    turbulence_intensity_ts = [0.08] * int(wind_field_config["simulation_max_time"] // input_dict["dt"])
     yaw_angles_ts = []
     fi_lut.reset(disturbances={"wind_speeds": [wind_mag_ts[0]],
                                "wind_directions": [wind_dir_ts[0]],
                                "turbulence_intensity": turbulence_intensity_ts[0]})
-    for k, t in enumerate(np.arange(0, EPISODE_MAX_TIME - input_dict["dt"], input_dict["dt"])):
+    for k, t in enumerate(np.arange(0, wind_field_config["simulation_max_time"] - input_dict["dt"], input_dict["dt"])):
         print(f'Time = {t}')
         
         # feed interface with new disturbances
@@ -375,15 +373,15 @@ if __name__ == "__main__":
     filt_wind_dir_ts = ctrl_lut._first_ord_filter(wind_dir_ts, ctrl_lut.wd_lpf_alpha)
     filt_wind_speed_ts = ctrl_lut._first_ord_filter(wind_mag_ts, ctrl_lut.ws_lpf_alpha)
     fig, ax = plt.subplots(3, 1)
-    ax[0].plot(time_ts[:int(EPISODE_MAX_TIME // input_dict["dt"])], wind_dir_ts[:int(EPISODE_MAX_TIME // input_dict["dt"])], label='raw')
-    ax[0].plot(time_ts[50:int(EPISODE_MAX_TIME // input_dict["dt"])], filt_wind_dir_ts[50:int(EPISODE_MAX_TIME // input_dict["dt"])], '--',
+    ax[0].plot(time_ts[:int(wind_field_config["simulation_max_time"] // input_dict["dt"])], wind_dir_ts[:int(wind_field_config["simulation_max_time"] // input_dict["dt"])], label='raw')
+    ax[0].plot(time_ts[50:int(wind_field_config["simulation_max_time"] // input_dict["dt"])], filt_wind_dir_ts[50:int(wind_field_config["simulation_max_time"] // input_dict["dt"])], '--',
                label='filtered')
     ax[0].set(title='Wind Direction [deg]', xlabel='Time')
-    ax[1].plot(time_ts[:int(EPISODE_MAX_TIME // input_dict["dt"])], wind_mag_ts[:int(EPISODE_MAX_TIME // input_dict["dt"])], label='raw')
-    ax[1].plot(time_ts[50:int(EPISODE_MAX_TIME // input_dict["dt"])], filt_wind_speed_ts[50:int(EPISODE_MAX_TIME // input_dict["dt"])], '--',
+    ax[1].plot(time_ts[:int(wind_field_config["simulation_max_time"] // input_dict["dt"])], wind_mag_ts[:int(wind_field_config["simulation_max_time"] // input_dict["dt"])], label='raw')
+    ax[1].plot(time_ts[50:int(wind_field_config["simulation_max_time"] // input_dict["dt"])], filt_wind_speed_ts[50:int(wind_field_config["simulation_max_time"] // input_dict["dt"])], '--',
                label='filtered')
     ax[1].set(title='Wind Speed [m/s]', xlabel='Time [s]')
     # ax.set_xlim((time_ts[1], time_ts[-1]))
     ax[0].legend()
-    ax[2].plot(time_ts[:int(EPISODE_MAX_TIME // input_dict["dt"]) - 1], yaw_angles_ts)
+    ax[2].plot(time_ts[:int(wind_field_config["simulation_max_time"] // input_dict["dt"]) - 1], yaw_angles_ts)
     fig.show()

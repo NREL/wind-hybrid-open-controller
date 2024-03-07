@@ -234,12 +234,12 @@ if __name__ == "__main__":
 	time_ts = wind_field_data[case_idx]["Time"].to_numpy()
 	wind_mag_ts = wind_field_data[case_idx]["FreestreamWindMag"].to_numpy()
 	wind_dir_ts = wind_field_data[case_idx]["FreestreamWindDir"].to_numpy()
-	turbulence_intensity_ts = [0.08] * int(EPISODE_MAX_TIME // DT)
+	turbulence_intensity_ts = [0.08] * int(simulation_max_time // DT)
 	yaw_angles_ts = []
 	fi_lut.reset(disturbances={"wind_speeds": [wind_mag_ts[0]],
 		                             "wind_directions": [wind_dir_ts[0]],
 		                             "turbulence_intensity": turbulence_intensity_ts[0]})
-	for k, t in enumerate(np.arange(0, EPISODE_MAX_TIME - DT, DT)):
+	for k, t in enumerate(np.arange(0, simulation_max_time - DT, DT)):
 		print(f'Time = {t}')
 		
 		# feed interface with new disturbances
@@ -265,13 +265,13 @@ if __name__ == "__main__":
 	filt_wind_dir_ts = ctrl_lut._first_ord_filter(wind_dir_ts, ctrl_lut.wd_lpf_alpha)
 	filt_wind_speed_ts = ctrl_lut._first_ord_filter(wind_mag_ts, ctrl_lut.ws_lpf_alpha)
 	fig, ax = plt.subplots(3, 1)
-	ax[0].plot(time_ts[:int(EPISODE_MAX_TIME // DT)], wind_dir_ts[:int(EPISODE_MAX_TIME // DT)], label='raw')
-	ax[0].plot(time_ts[50:int(EPISODE_MAX_TIME // DT)], filt_wind_dir_ts[50:int(EPISODE_MAX_TIME // DT)], '--', label='filtered')
+	ax[0].plot(time_ts[:int(simulation_max_time // DT)], wind_dir_ts[:int(simulation_max_time // DT)], label='raw')
+	ax[0].plot(time_ts[50:int(simulation_max_time // DT)], filt_wind_dir_ts[50:int(simulation_max_time // DT)], '--', label='filtered')
 	ax[0].set(title='Wind Direction [deg]', xlabel='Time')
-	ax[1].plot(time_ts[:int(EPISODE_MAX_TIME // DT)], wind_mag_ts[:int(EPISODE_MAX_TIME // DT)], label='raw')
-	ax[1].plot(time_ts[50:int(EPISODE_MAX_TIME // DT)], filt_wind_speed_ts[50:int(EPISODE_MAX_TIME // DT)], '--', label='filtered')
+	ax[1].plot(time_ts[:int(simulation_max_time // DT)], wind_mag_ts[:int(simulation_max_time // DT)], label='raw')
+	ax[1].plot(time_ts[50:int(simulation_max_time // DT)], filt_wind_speed_ts[50:int(simulation_max_time // DT)], '--', label='filtered')
 	ax[1].set(title='Wind Speed [m/s]', xlabel='Time [s]')
 	# ax.set_xlim((time_ts[1], time_ts[-1]))
 	ax[0].legend()
-	ax[2].plot(time_ts[:int(EPISODE_MAX_TIME // DT)-1], yaw_angles_ts)
+	ax[2].plot(time_ts[:int(simulation_max_time // DT)-1], yaw_angles_ts)
 	fig.show()
