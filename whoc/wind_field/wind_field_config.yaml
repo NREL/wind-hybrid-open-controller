@@ -1,7 +1,7 @@
 # ensure there is enough power reference preview steps left before the full 24 hour mark
 simulation_max_time: 3600
 simulation_sampling_time: 1.0
-wind_speed_preview_time: 600
+# wind_speed_preview_time: 600
 n_turbines: 9
 n_wind_field_cases: 1
 
@@ -14,12 +14,12 @@ offline_probability: 0.0
 wind_speed:
   range: [3.0, 11.0]
   u_range: [6.0, 11.0]
-  v_range: [-2.0, 2.0]
+  v_range: [-3.0, 3.0]
   var: 0.2
   # probability of wind speed/direction changing (1/2 for increase 1/2 for decrease)
   change_probability: 0.25
   turb_std: 1.0
-  sampling_time_step: 60.0
+  sampling_time_step: 1.0
   u_noise_args:
     scale: 1.0
   v_noise_args:
