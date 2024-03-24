@@ -7,7 +7,7 @@ used for physical plants in future.
 
 WHOC will provide simple farm-level (and hybrid plant-level) controls such as
 wake steering control, spatial filtering/consensus, active power control, 
-and coordinated control of hyrbid power plant assets;
+and coordinated control of hybrid power plant assets;
 and create an entry point for the development of more advanced controllers. 
 
 WHOC will interface with various simulation testbeds and lower level 
