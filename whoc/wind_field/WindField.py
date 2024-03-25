@@ -111,7 +111,7 @@ class WindField:
 			[0, 1], size=(self.simulation_max_time_steps, self.n_turbines),
 			p=[self.offline_probability, 1 - self.offline_probability])
 	
-	def _sample_wind_preview(self, current_measurements, n_preview_steps, preview_dt, n_samples, noise_func=np.random.multivariate_normal, noise_args=None):
+	def _sample_wind_preview(self, current_measurements, n_preview_steps, preview_dt, n_samples, noise_func=np.random.multivariate_normal, noise_args=None, return_params=True):
 		"""
 		corr(X) = (diag(Kxx))^(-0.5)Kxx(diag(Kxx))^(-0.5)
 		low variance and high covariance => high correlation
@@ -136,7 +136,7 @@ class WindField:
 		# var_u = np.array([(((self.wind_speed_u_range[1] - self.wind_speed_u_range[0]) * p) / 3)**2 * (1. + j*0.02) for j in range(0, n_preview_steps + preview_dt)])
 		# var_v = np.array([(((self.wind_speed_v_range[1] - self.wind_speed_v_range[0]) * p) / 3)**2 * (1. + j*0.02) for j in range(0, n_preview_steps + preview_dt)])
 		# QUESTION: we want growing uncertainty in prediction further along in the prediction horizon, not growing variation - should variance remain the same?
-		p = 0.5
+		p = 0.4
 		q = 0.000
 		var_u = np.array([(((self.wind_speed_u_range[1] - self.wind_speed_u_range[0]) * p * (2. - np.exp(-q * j))) / 3)**2  for j in range(0, n_preview_steps + preview_dt)])
 		var_v = np.array([(((self.wind_speed_v_range[1] - self.wind_speed_v_range[0]) * p * (2. - np.exp(-q * j))) / 3)**2 for j in range(0, n_preview_steps + preview_dt)])
@@ -162,21 +162,17 @@ class WindField:
 			# b = var_u[:n_preview_steps + preview_dt - i] * p
 			b = np.array([var_u[0]] * (n_preview_steps + preview_dt - i)) * p
 			# x = b * (a - ((i - 1) / (a * (n_preview_steps + preview_dt))))
-			x = b * np.exp(-q * i)
+			x = b * np.exp(-(q / self.simulation_dt) * i) 
 			cov_u += np.diag(x, k=i)
 			cov_u += np.diag(x, k=-i)
 
 			# b = var_v[:n_preview_steps - i + preview_dt] * p
 			# b = var_v[:n_preview_steps + preview_dt - i] * p
 			b = np.array([var_v[0]] * (n_preview_steps + preview_dt - i)) * p
-			x = b * np.exp(-q * i)
+			x = b * np.exp(-(q / self.simulation_dt) * i)
 			# x = b * (a - ((i - 1) / (a * (n_preview_steps + preview_dt))))
 			cov_v += np.diag(x, k=i)
 			cov_v += np.diag(x, k=-i)
-		
-		# np.all(np.triu(np.diff(cov_u, axis=1)) <= 0)
-		# np.all(np.diff(np.vstack(y), axis=0) < 0)
-		# cov = scipy.linalg.block_diag(cov_u, cov_v)
 		
 		if False:
 			# visualize covariance matrix for testing purposes
@@ -202,48 +198,17 @@ class WindField:
 		cond_cov_u = cov_u[1:, 1:] - cov_u[1:, :1] @ np.linalg.inv(cov_u[:1, :1]) @ cov_u[:1, 1:]
 		cond_cov_v = cov_v[1:, 1:] - cov_v[1:, :1] @ np.linalg.inv(cov_v[:1, :1]) @ cov_v[:1, 1:]
 
+		if return_params:
+			return cond_mean_u, cond_mean_v, cond_cov_u, cond_cov_v
+
 		noise_args["mean"] = np.concatenate([cond_mean_u, cond_mean_v])
 		noise_args["cov"] = scipy.linalg.block_diag(cond_cov_u, cond_cov_v)
 		noise_args["size"] = n_samples
 		preview = noise_func(**noise_args)
-		# iters = 0
 
-		# cond = (preview[:, :n_preview_steps + 1] > self.wind_speed_u_range[1]) | (preview[:, :n_preview_steps + 1] < self.wind_speed_u_range[0])
-		# sample_cond = np.any(cond, axis=1)
-		# while np.any(cond):
-		# 	noise_args["size"] = np.sum(sample_cond)
-		# 	preview[sample_cond, :n_preview_steps + 1] = noise_func(**noise_args)[:, :n_preview_steps + 1]
-		# 	cond = (preview[:, :n_preview_steps + 1] > self.wind_speed_u_range[1]) | (preview[:, :n_preview_steps + 1] < self.wind_speed_u_range[0])
-		# 	sample_cond = np.any(cond, axis=1)
-		# 	iters += 1
-
-		# iters = 0
-		# cond = (preview[:, n_preview_steps + 1:] > self.wind_speed_v_range[1]) | (preview[:, n_preview_steps + 1:] < self.wind_speed_v_range[0])
-		# sample_cond = np.any(cond, axis=1)
-		# while np.any(sample_cond):
-		# 	noise_args["size"] = np.sum(sample_cond)
-		# 	preview[sample_cond, n_preview_steps + 1:] = noise_func(**noise_args)[:, n_preview_steps + 1:]
-		# 	cond = (preview[:, n_preview_steps + 1:] > self.wind_speed_v_range[1]) | (preview[:, n_preview_steps + 1:] < self.wind_speed_v_range[0])
-		# 	sample_cond = np.any(cond, axis=1)
-		# 	iters += 1
-		# np.save("mean_true.npy", noise_args["mean"])
-		# np.save("cov_true.npy", noise_args["cov"])
-		# np.save("mean_preview.npy", noise_args["mean"])
-		# np.save("cov_preview.npy", noise_args["cov"])
-		# can't set zero variance for u,v predictions associated with j=0, since it would make a covariance matrix that is not positive definite,
-		# so instead we set the first predictions in the preview to the measured values
-
-		# preview[:, :n_preview_steps + preview_dt] += (current_measurements[0] - preview[:, 0])[:, np.newaxis]
-		# preview[:, n_preview_steps + preview_dt:] += (current_measurements[1] - preview[:, n_preview_steps + preview_dt])[:, np.newaxis]
-		# preview[:, :n_preview_steps + preview_dt] += current_measurements[0]
-		# preview[:, n_preview_steps + preview_dt:] += current_measurements[1]
-
-		preview = np.hstack([np.broadcast_to(current_measurements[0], (n_samples, 1)), preview[:, :n_preview_steps + preview_dt], 
-					   np.broadcast_to(current_measurements[1], (n_samples, 1)), preview[:, n_preview_steps + preview_dt:]])
+		preview = np.hstack([np.broadcast_to(current_measurements[0], (n_samples, 1)), preview[:, :n_preview_steps + preview_dt - 1], 
+					   np.broadcast_to(current_measurements[1], (n_samples, 1)), preview[:, n_preview_steps + preview_dt - 1:]])
 		
-		# can't set first value of preview like this - it violates the correlation principle between adjacent time-steps
-		# preview[:, 0] = current_measurements[0]
-		# preview[:, n_preview_steps + preview_dt] = current_measurements[1]
 		return preview
 	
 	def _generate_change_ts(self, val_range, val_var, change_prob, sample_time_step,
@@ -299,7 +264,7 @@ class WindField:
 		
 		return ts
 	
-	def _generate_stochastic_freestream_wind_speed_ts(self, n_preview_steps, preview_dt, seed=None):
+	def _generate_stochastic_freestream_wind_speed_ts(self, n_preview_steps, preview_dt, seed=None, return_params=False):
 		np.random.seed(seed)
 		# initialize at random wind speed
 		init_val = [
@@ -309,32 +274,34 @@ class WindField:
 		n_time_steps = int(self.simulation_max_time // self.simulation_dt) + n_preview_steps
 		generate_incrementally = False
 
-		# TODO up/down sample to simulation time-step
-
-		if generate_incrementally:
-			
-			full_u_ts = []
-			full_v_ts = []
-			for ts_subset_i in range(int(np.ceil(n_time_steps / n_preview_steps))):
-				i = 0
-				while 1:
-					wind_sample = self._sample_wind_preview(init_val, n_preview_steps, preview_dt, 1, noise_func=np.random.multivariate_normal, noise_args=None)
-					# u_ts, v_ts = wind_sample[0, :n_preview_steps + preview_dt], wind_sample[0, n_preview_steps + preview_dt:]
-					u_ts, v_ts = wind_sample[0, :n_preview_steps + preview_dt], wind_sample[0, n_preview_steps + preview_dt:]
-					if (np.all(u_ts <= self.wind_speed_u_range[1]) and np.all(u_ts >= self.wind_speed_u_range[0]) 
-						and np.all(v_ts <= self.wind_speed_v_range[1]) and np.all(v_ts >= self.wind_speed_v_range[0])):
-						break
-					i += 1
-
-				full_u_ts.append(u_ts)
-				full_v_ts.append(v_ts)
-				init_val = [u_ts[-1], v_ts[-1]]
-
-			full_u_ts = np.concatenate(full_u_ts)[:n_time_steps + preview_dt]
-			full_v_ts = np.concatenate(full_v_ts)[:n_time_steps + preview_dt]
+		if return_params:
+			cond_mean_u, cond_mean_v, cond_cov_u, cond_cov_v = self._sample_wind_preview(init_val, n_time_steps, preview_dt, 1, noise_func=np.random.multivariate_normal, noise_args=None, return_params=return_params)
+			return cond_mean_u, cond_mean_v, cond_cov_u, cond_cov_v
 		else:
-			wind_sample = self._sample_wind_preview(init_val, n_time_steps, preview_dt, 1, noise_func=np.random.multivariate_normal, noise_args=None)
-			full_u_ts, full_v_ts = wind_sample[0, :n_time_steps + preview_dt], wind_sample[0, n_time_steps + preview_dt:]
+			if generate_incrementally:
+				
+				full_u_ts = []
+				full_v_ts = []
+				for ts_subset_i in range(int(np.ceil(n_time_steps / n_preview_steps))):
+					i = 0
+					while 1:
+						wind_sample = self._sample_wind_preview(init_val, n_preview_steps, preview_dt, 1, noise_func=np.random.multivariate_normal, noise_args=None, return_params=return_params)
+						# u_ts, v_ts = wind_sample[0, :n_preview_steps + preview_dt], wind_sample[0, n_preview_steps + preview_dt:]
+						u_ts, v_ts = wind_sample[0, :n_preview_steps + preview_dt], wind_sample[0, n_preview_steps + preview_dt:]
+						if (np.all(u_ts <= self.wind_speed_u_range[1]) and np.all(u_ts >= self.wind_speed_u_range[0]) 
+							and np.all(v_ts <= self.wind_speed_v_range[1]) and np.all(v_ts >= self.wind_speed_v_range[0])):
+							break
+						i += 1
+
+					full_u_ts.append(u_ts)
+					full_v_ts.append(v_ts)
+					init_val = [u_ts[-1], v_ts[-1]]
+
+				full_u_ts = np.concatenate(full_u_ts)[:n_time_steps + preview_dt]
+				full_v_ts = np.concatenate(full_v_ts)[:n_time_steps + preview_dt]
+			else:
+				wind_sample = self._sample_wind_preview(init_val, n_time_steps, preview_dt, 1, noise_func=np.random.multivariate_normal, noise_args=None, return_params=return_params)
+				full_u_ts, full_v_ts = wind_sample[0, :n_time_steps + preview_dt], wind_sample[0, n_time_steps + preview_dt:]
 
 		return full_u_ts, full_v_ts
 
@@ -428,12 +395,12 @@ def plot_ts(df, fig_dir):
 	# fig_ts.show()
 
 
-def generate_wind_ts(config, from_gaussian, case_idx, save_name="", seed=None):
+def generate_wind_ts(config, from_gaussian, case_idx, save_name="", seed=None, return_params=False):
 	wf = WindField(**config)
 	print(f'Simulating case #{case_idx}')
 	# define freestream time series
 	if from_gaussian:
-		freestream_wind_speed_u, freestream_wind_speed_v = wf._generate_stochastic_freestream_wind_speed_ts(config["n_preview_steps"], config["preview_dt"], seed=seed)
+		freestream_wind_speed_u, freestream_wind_speed_v = wf._generate_stochastic_freestream_wind_speed_ts(config["n_preview_steps"], config["preview_dt"], seed=seed, return_params=return_params)
 	else:
 		freestream_wind_speed_u = np.array(wf._generate_freestream_wind_speed_u_ts())
 		freestream_wind_speed_v = np.array(wf._generate_freestream_wind_speed_v_ts())
@@ -472,42 +439,47 @@ def generate_wind_ts(config, from_gaussian, case_idx, save_name="", seed=None):
 	wf.df = wind_field_df
 	return wf
 
-def generate_wind_preview(wind_preview_generator, n_preview_steps, preview_dt, n_samples, current_freestream_measurements, simulation_time):
+def generate_wind_preview(current_freestream_measurements, simulation_time_step, *, wind_preview_generator, n_preview_steps, preview_dt, n_samples, return_params=False):
 	
 	# define noise preview
 	# noise_func = wf._sample_wind_preview(noise_func=np.random.multivariate_normal, noise_args=None)
-	# TODO consider simulation sampling_time
-	
+
 	wind_preview_data = defaultdict(list)
-	noise_preview = wind_preview_generator(current_measurements=current_freestream_measurements, 
-										n_preview_steps=n_preview_steps, preview_dt=preview_dt, n_samples=n_samples)
-	u_preview = noise_preview[:, :n_preview_steps + preview_dt:preview_dt]
-	v_preview = noise_preview[:, n_preview_steps + preview_dt::preview_dt]
-	mag_preview = np.linalg.norm(np.stack([u_preview, v_preview], axis=2), axis=2)
-	
-	# compute directions
-	u_only_dir = np.zeros_like(u_preview)
-	u_only_dir[(v_preview == 0) & (u_preview >= 0)] = 270
-	u_only_dir[(v_preview == 0) & (u_preview < 0)] = 90
-	u_only_dir = (u_only_dir - 180) * (np.pi / 180)
-	
-	dir_preview = np.arctan(np.divide(u_preview, v_preview,
-							  out=np.ones_like(u_preview) * np.nan,
-							  where=v_preview != 0),
-					out=u_only_dir,
-					where=v_preview != 0)
-	dir_preview[dir_preview < 0] = np.pi + dir_preview[dir_preview < 0]
-	dir_preview = (dir_preview * (180 / np.pi)) + 180
-	
-	# dir = np.arctan([u / v for u, v in zip(u_preview, v_preview)]) * (180 / np.pi) + 180
-	
-	for j in range(int((n_preview_steps + preview_dt) // preview_dt)):
-		wind_preview_data[f"FreestreamWindSpeedU_{j}"] += list(u_preview[:, j])
-		wind_preview_data[f"FreestreamWindSpeedV_{j}"] += list(v_preview[:, j])
-		wind_preview_data[f"FreestreamWindMag_{j}"] += list(mag_preview[:, j])
-		wind_preview_data[f"FreestreamWindDir_{j}"] += list(dir_preview[:, j])
-	
-	return wind_preview_data
+
+	if return_params:
+			cond_mean_u, cond_mean_v, cond_cov_u, cond_cov_v = wind_preview_generator(current_measurements=current_freestream_measurements, 
+																			 n_preview_steps=n_preview_steps, preview_dt=preview_dt, n_samples=n_samples, return_params=return_params)
+			return cond_mean_u, cond_mean_v, cond_cov_u, cond_cov_v
+	else:
+		noise_preview = wind_preview_generator(current_measurements=current_freestream_measurements, 
+											n_preview_steps=n_preview_steps, preview_dt=preview_dt, n_samples=n_samples, return_params=return_params)
+		u_preview = noise_preview[:, :n_preview_steps + preview_dt:preview_dt]
+		v_preview = noise_preview[:, n_preview_steps + preview_dt::preview_dt]
+		mag_preview = np.linalg.norm(np.stack([u_preview, v_preview], axis=2), axis=2)
+		
+		# compute directions
+		u_only_dir = np.zeros_like(u_preview)
+		u_only_dir[(v_preview == 0) & (u_preview >= 0)] = 270
+		u_only_dir[(v_preview == 0) & (u_preview < 0)] = 90
+		u_only_dir = (u_only_dir - 180) * (np.pi / 180)
+		
+		dir_preview = np.arctan(np.divide(u_preview, v_preview,
+								out=np.ones_like(u_preview) * np.nan,
+								where=v_preview != 0),
+						out=u_only_dir,
+						where=v_preview != 0)
+		dir_preview[dir_preview < 0] = np.pi + dir_preview[dir_preview < 0]
+		dir_preview = (dir_preview * (180 / np.pi)) + 180
+		
+		# dir = np.arctan([u / v for u, v in zip(u_preview, v_preview)]) * (180 / np.pi) + 180
+		
+		for j in range(int((n_preview_steps + preview_dt) // preview_dt)):
+			wind_preview_data[f"FreestreamWindSpeedU_{j}"] += list(u_preview[:, j])
+			wind_preview_data[f"FreestreamWindSpeedV_{j}"] += list(v_preview[:, j])
+			wind_preview_data[f"FreestreamWindMag_{j}"] += list(mag_preview[:, j])
+			wind_preview_data[f"FreestreamWindDir_{j}"] += list(dir_preview[:, j])
+		
+		return wind_preview_data
 
 
 def generate_wind_preview_ts(config, case_idx, wind_field_data):
@@ -684,16 +656,16 @@ def plot_distribution_ts(wf, n_preview_steps):
 	fig_plot.savefig(os.path.join(wf.fig_dir, f'wind_field_preview_ts2.png'))
 
 
-def generate_multi_wind_ts(config, save_name="", seed=None):
+def generate_multi_wind_ts(config, save_name="", seed=None, return_params=False):
 	if config["n_wind_field_cases"] == 1:
 		wind_field_data = []
 		for i in range(config["n_wind_field_cases"]):
-			wind_field_data.append(generate_wind_ts(config, True, i, save_name, seed))
+			wind_field_data.append(generate_wind_ts(config, True, i, save_name, seed, return_params))
 		plot_ts(wind_field_data[0].df, config["fig_dir"])
 		
 	else:
 		pool = Pool()
-		wind_field_data = pool.map(partial(generate_wind_ts, config=config, from_gaussian=True, save_name=save_name, seed=seed), range(config["n_wind_field_cases"]))
+		wind_field_data = pool.map(partial(generate_wind_ts, config=config, from_gaussian=True, save_name=save_name, seed=seed, return_params=return_params), range(config["n_wind_field_cases"]))
 		pool.close()
 	
 	return wind_field_data
@@ -722,7 +694,7 @@ if __name__ == '__main__':
 	import seaborn as sns
 	sns.set_theme(style="darkgrid")
 
-	regenerate_wind_field = True
+	regenerate_wind_field = False
 	
 	with open(os.path.join(os.path.dirname(whoc.__file__), "wind_field", "wind_field_config.yaml"), "r") as fp:
 		wind_field_config = yaml.safe_load(fp)
@@ -738,7 +710,7 @@ if __name__ == '__main__':
 	if not os.path.exists(wind_field_dir):
 		os.makedirs(wind_field_dir)
 
-	seed = 5
+	seed = 0
 	if not len(wind_field_filenames) or regenerate_wind_field:
 		# generate_multi_wind_ts(wind_field_config, save_name="short_", seed=seed)
 		generate_multi_wind_ts(wind_field_config, save_name="", seed=seed)
@@ -765,10 +737,10 @@ if __name__ == '__main__':
 
 	wf = WindField(**wind_field_config)
 	stochastic_wind_preview_func = partial(generate_wind_preview, 
-								wf._sample_wind_preview, 
-								input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] // input_dict["dt"]),
-								int(input_dict["controller"]["dt"] // input_dict["dt"]),
-								input_dict["controller"]["n_wind_preview_samples"])
+								wind_preview_generator=wf._sample_wind_preview, 
+								n_preview_steps=input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] // input_dict["dt"]),
+								preview_dt=int(input_dict["controller"]["dt"] // input_dict["dt"]),
+								n_samples=input_dict["controller"]["n_wind_preview_samples"])
 			
 	def persistent_wind_preview_func(current_freestream_measurements, time_step):
 		wind_preview_data = defaultdict(list)
@@ -920,6 +892,31 @@ if __name__ == '__main__':
 	h, l = ax.get_legend_handles_labels()
 	ax.legend(h[:5] + h[9:], l[:5] + l[9:])
 	fig.savefig(os.path.join(wf.fig_dir, f'stochastic_preview.png'))
+
+	# seed = 0
+	# mean_u_true, mean_v_true, cov_u_true, cov_v_true = wf._generate_stochastic_freestream_wind_speed_ts(
+	# 	wind_field_config["n_preview_steps"], wind_field_config["preview_dt"], seed=seed, return_params=True)
+	# mean_u_prev, mean_v_prev, cov_u_prev, cov_v_prev = stochastic_wind_preview_func(
+	# 	current_freestream_measurements, return_params=True)
+	
+	# mean_u_true, mean_v_true, cov_u_true, cov_v_true = np.load('mean_u_true.npy'),  np.load('mean_v_true.npy'), np.load('cov_u_true.npy'), np.load('cov_v_true.npy')
+	# mean_u_prev, mean_v_prev, cov_u_prev, cov_v_prev = np.load('mean_u_prev.npy'),  np.load('mean_v_prev.npy'), np.load('cov_u_prev.npy'), np.load('cov_v_prev.npy')
+
+	# np.save('mean_u_true', mean_u_true)
+	# np.save('mean_v_true', mean_v_true)
+	# np.save('cov_u_true', cov_u_true)
+	# np.save('cov_v_true', cov_v_true)
+
+	# np.save('mean_u_prev', mean_u_prev)
+	# np.save('mean_v_prev', mean_v_prev)
+	# np.save('cov_u_prev', cov_u_prev)
+	# np.save('cov_v_prev', cov_v_prev)
+
+	# mean_u_prev - mean_u_true[:len(mean_u_prev)]
+	# mean_v_prev - mean_v_true[:len(mean_v_prev)]
+	# cov_u_prev - cov_u_true[:len(mean_u_prev), :len(mean_u_prev)]
+	# cov_v_prev - cov_v_true[:len(mean_v_prev), :len(mean_v_prev)]
+
 	# labels = ['Wind Component', 'U', 'V', 'Data Type', 'True', 'Preview']
 	# handles = [h[labels.index(label)] for label in labels]
 	# ax.legend(handles, labels)
