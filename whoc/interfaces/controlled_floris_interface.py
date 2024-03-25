@@ -23,15 +23,15 @@ import matplotlib.pyplot as plt
 
 
 class ControlledFlorisInterface(InterfaceBase):
-    def __init__(self, yaw_limits, dt, yaw_rate, offline_probability=0.0, max_workers=16, floris_version='v4'):
+    def __init__(self, yaw_limits, dt, yaw_rate, offline_probability=0.0, floris_version='v4'):
         super().__init__()
-        self.max_workers = max_workers
         self.yaw_limits = yaw_limits
         self.yaw_rate = yaw_rate
         self.time = 0
         self.dt = dt
         self.floris_version = floris_version
         self.offline_probability = offline_probability
+        self.previous_yaw_setpoints = None
     
     def load_floris(self, config_path):
         # Load the default example floris object
@@ -46,10 +46,10 @@ class ControlledFlorisInterface(InterfaceBase):
         return self
     
     def reset(self, disturbances, init_controls_dict):
-        self.env.floris.farm.yaw_angles = disturbances["wind_directions"][0] - np.array(init_controls_dict["yaw_angles"])[np.newaxis, :]
+        # self.env.floris.farm.yaw_angles = disturbances["wind_directions"][:, np.newaxis] - np.array(init_controls_dict["yaw_angles"])[np.newaxis, :]
         # yaw_angles = disturbances["wind_directions"][0] - np.array(init_controls_dict["yaw_angles"])[np.newaxis, :]
-        self.env.floris.flow_field.u, self.env.floris.flow_field.v
-        self.step(disturbances)
+        # self.env.floris.flow_field.u, self.env.floris.flow_field.v
+        self.step(disturbances, init_controls_dict)
         # self.env.calculate_wake(self.env.floris.farm.yaw_angles, disable_turbines=self.offline_status[np.newaxis, :])
         # self.env.calculate_wake(yaw_angles, disable_turbines=self.offline_status[np.newaxis, :])
         return disturbances
@@ -92,19 +92,32 @@ class ControlledFlorisInterface(InterfaceBase):
         # dirs += u_only_dirs
         dirs = np.squeeze(np.mean(dirs.reshape(*dirs.shape[:2], -1), axis=2))
         
-        dirs = np.repeat(self.env.floris.flow_field.wind_directions, (self.n_turbines,))
         
         mags = np.sqrt(self.env.floris.flow_field.u**2 + self.env.floris.flow_field.v**2 + self.env.floris.flow_field.w**2)
         mags = np.squeeze(np.mean(mags.reshape(*mags.shape[:2], -1), axis=2))
 
+        # TODO MISHA QUESTION is it reliable to compute dirs as above - doesn't seem to align with floris wind direction
+        dirs = np.tile(self.env.floris.flow_field.wind_directions[:, np.newaxis], (1, self.n_turbines))
+        mags = self.env.turbine_average_velocities
+
         offline_mask = np.isclose(self.env.floris.farm.power_setpoints, 0, atol=1e-3)
         # Note that measured yaw_angles here will not reflect controls_dict from last time-step, because of new wind direction
-        measurements = {"time": self.time,
-                        "wind_directions": dirs,
+        self.measurements_dt = {"wind_directions": dirs,
                         "wind_speeds": mags,# self.env.turbine_average_velocities,
                         "powers": np.ma.masked_array(np.squeeze(self.env.get_turbine_powers()), offline_mask).filled(0.0),
                         "yaw_angles": np.squeeze(dirs - self.env.floris.farm.yaw_angles)}
+        # measurements = {"time": self.time,
+        #                 "wind_directions": self.measurements_dt["wind_directions"][0, :],
+        #                 "wind_speeds": self.measurements_dt["wind_speeds"][0, :], # self.env.turbine_average_velocities,
+        #                 "powers":  self.measurements_dt["powers"][0, :],
+        #                 "yaw_angles": self.measurements_dt["yaw_angles"][0, :]}
+        measurements = {"time": self.time,
+                "wind_directions": self.measurements_dt["wind_directions"],
+                "wind_speeds": self.measurements_dt["wind_speeds"], # self.env.turbine_average_velocities,
+                "powers":  self.measurements_dt["powers"],
+                "yaw_angles": self.measurements_dt["yaw_angles"]}
         
+        # self.time += 1
         return measurements
     
     def check_controls(self, ctrl_dict):
@@ -112,28 +125,59 @@ class ControlledFlorisInterface(InterfaceBase):
         ctrl_dict["yaw_angles"] = np.float64(ctrl_dict["yaw_angles"])
         return ctrl_dict
 
-    def step(self, disturbances, seed=None):
-        np.random.seed(seed)
+    def step(self, disturbances, ctrl_dict=None, seed=None):
+        np.random.seed(None)
         # get factor to multiply ai_factor with based on offline probabilities
-        self.offline_status = np.random.choice([0, 1], size=self.n_turbines, p=[1 - self.offline_probability, self.offline_probability])
+        self.offline_status = np.random.choice([0, 1], size=(len(disturbances["wind_directions"]), self.n_turbines), p=[1 - self.offline_probability, self.offline_probability])
         self.offline_status = self.offline_status.astype(bool)
+
         # reinitialize floris
-        yaw_angles = self.env.floris.farm.yaw_angles # get previously set yaw angles
+        if ctrl_dict is None:
+            # yaw_offsets = np.tile(self.env.floris.farm.yaw_angles, (disturbances["wind_directions"].shape[0], 1)) # get previously set yaw angles
+            yaw_offsets = self.env.floris.farm.yaw_angles
+        else:
+            yaw_offsets = (np.array(disturbances["wind_directions"])[:, np.newaxis] - ctrl_dict["yaw_angles"])
+            self.previous_yaw_setpoints = ctrl_dict["yaw_angles"]
+
         self.env.reinitialize(
             wind_directions=disturbances["wind_directions"],
             wind_speeds=disturbances["wind_speeds"]
             # turbulence_intensities=disturbances["turbulence_intensities"]
         )
         
-        self.env.calculate_wake(yaw_angles, disable_turbines=self.offline_status[np.newaxis, :])
-        # self.env.get_turbine_powers()
+        # yaw_offsetsd = np.atleast_2d(yaw_offsets)
+        self.env.calculate_wake(yaw_offsets, disable_turbines=self.offline_status)
+
         return disturbances
     def send_controls(self, hercules_dict, **controls):
         """ abstract method from Interface class """
-        yaw_offsets = self.env.floris.flow_field.wind_directions - controls["yaw_angles"]
-        self.env.calculate_wake(yaw_offsets[np.newaxis, :], disable_turbines=self.offline_status[np.newaxis, :])
-        
-        self.time += self.dt
+        # yaw_setpoints = controls["yaw_angles"]
+        # get most recent yaw offsets before applyingnew ones
+        # current_yaw_offsets = self.env.floris.farm.yaw_angles[-1, :]
+        target_yaw_setpoints = controls["yaw_angles"]
+        # target_yaw_offsets = self.env.floris.flow_field.wind_directions[:, np.newaxis] - target_yaw_setpoints
+
+        # compute the direction of the change in yaw offset required at each time-step
+        # yaw_offset_change_dirs = np.sign(np.subtract(target_yaw_offsets, current_yaw_offsets))
+        yaw_setpoint_change_dirs = np.sign(np.subtract(target_yaw_setpoints, self.previous_yaw_setpoints))
+
+        yaw_setpoint_trajectory = np.array([np.clip(
+            self.previous_yaw_setpoints + (self.yaw_rate * self.dt * (k + 1) * yaw_setpoint_change_dirs),
+                              [target_yaw_setpoints[i] if yaw_setpoint_change_dirs[i] < 0 else -np.infty for i in range(self.n_turbines)], 
+                              [target_yaw_setpoints[i] if yaw_setpoint_change_dirs[i] >= 0 else np.infty for i in range(self.n_turbines)]
+                              ) 
+                              for k in range(self.env.floris.flow_field.wind_directions.shape[0])])
+
+        # yaw_offset_trajectory = np.array([np.clip(
+        #     current_yaw_offsets + (self.yaw_rate * self.dt * np.sum(yaw_offset_change_dirs[:k+1, :], axis=0)),
+        #                       [target_yaw_offsets[k, i] if yaw_offset_change_dirs[k, i] < 0 else -np.infty for i in range(self.n_turbines)], 
+        #                       [target_yaw_offsets[k, i] if yaw_offset_change_dirs[k, i] >= 0 else np.infty for i in range(self.n_turbines)]
+        #                       ) 
+        #                       for k in range(self.env.floris.flow_field.wind_directions.shape[0])])
+        yaw_offset_trajectory = self.env.floris.flow_field.wind_directions[:, np.newaxis] - yaw_setpoint_trajectory
+        # yaw_offsets = self.env.floris.flow_field.wind_directions[:, np.newaxis] - controls["yaw_angles"]
+        self.env.calculate_wake(yaw_offset_trajectory, disable_turbines=self.offline_status)
+        self.previous_yaw_setpoints = self.env.floris.flow_field.wind_directions[-1, np.newaxis] - yaw_offset_trajectory[-1, :]
         return controls
     
     @classmethod

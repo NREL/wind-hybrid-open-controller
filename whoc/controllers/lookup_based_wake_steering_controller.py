@@ -43,14 +43,15 @@ from floris.tools.optimization.yaw_optimization.yaw_optimizer_sr import YawOptim
 class LookupBasedWakeSteeringController(ControllerBase):
     def __init__(self, interface, input_dict, verbose=False, **kwargs):
         super().__init__(interface, verbose=verbose)
-
-        self.dt = input_dict["dt"]  # Won't be needed here, but generally good to have
+        self.simulation_dt = input_dict["dt"]
+        self.dt = input_dict["controller"]["dt"]  # Won't be needed here, but generally good to have
         self.n_turbines = input_dict["controller"]["num_turbines"]
         self.turbines = range(self.n_turbines)
         self.historic_measurements = {"wind_directions": np.zeros((0, self.n_turbines)),
                                       "wind_speeds": np.zeros((0, self.n_turbines))}
         # self.ws_lpf_alpha = np.exp(-input_dict["controller"]["ws_lpf_omega_c"] * input_dict["controller"]["lpf_T"])
-        self.lpf_alpha = np.exp(-(1 / input_dict["controller"]["lpf_time_const"]) * input_dict["wind_dt"])
+        self.lpf_time_const = input_dict["controller"]["lpf_time_const"]
+        self.lpf_alpha = np.exp(-(1 / input_dict["controller"]["lpf_time_const"]) * input_dict["dt"])
         self.floris_input_file = input_dict["controller"]["floris_input_file"]
         self.yaw_limits = input_dict["controller"]["yaw_limits"]
         self.yaw_rate = input_dict["controller"]["yaw_rate"]
@@ -150,37 +151,39 @@ class LookupBasedWakeSteeringController(ControllerBase):
         )
     
     def compute_controls(self):
-
+        current_wind_directions = np.atleast_2d(self.measurements_dict["wind_directions"])
         if self.use_filt:
             self.historic_measurements["wind_directions"] = np.vstack([self.historic_measurements["wind_directions"],
-                                                            self.measurements_dict["wind_directions"]])
+                                                            current_wind_directions])[-int((self.lpf_time_const // self.simulation_dt) * 1e3):, :]
 
-        # if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
-        if self.measurements_dict["time"] < 60 or not self.use_filt:
-            wind_dirs = self.measurements_dict["wind_directions"]
-            if len(wind_dirs) == 0:
-                if self.verbose:
-                    print("Bad wind direction measurement received, reverting to previous measurement.")
-                wind_dirs = self.wd_store
+        current_time = np.atleast_1d(self.measurements_dict["time"])[0]
+        if abs(current_time % self.dt) == 0.0:
+            # if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
+            if current_time < 60 or not self.use_filt:
+                
+                if np.size(current_wind_directions) == 0:
+                    if self.verbose:
+                        print("Bad wind direction measurement received, reverting to previous measurement.")
+                    wind_dirs = self.wd_store
+                else:
+                    wind_dirs = current_wind_directions[0, 0] # TODO Misha do we use all turbine wind directions in lut table?
+                    self.wd_store = wind_dirs
+                # wind_speed = self.measurements_dict["wind_speeds"][0]
+                wind_speeds = 8.0 # TODO hercules can't get wind_speeds from measurements_dict
             else:
-                wind_dirs = wind_dirs[0] # TODO Misha do we use all turbine wind directions in lut table?
-                self.wd_store = wind_dirs
-            # wind_speed = self.measurements_dict["wind_speeds"][0]
-            wind_speeds = 8.0 # TODO hercules can't get wind_speeds from measurements_dict
-        else:
-            # use filtered wind direction and speed
-            wind_dirs = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"][:, i],
-                                                                self.lpf_alpha)
-                                        for i in range(self.n_turbines)]).T[-1, 0]
-            wind_speeds = 8.0
-        
-        # TODO shouldn't freestream wind speed/dir also be availalbe in measurements_dict, or just assume first row of turbines?
-        # TODO filter wind speed and dir before certain time statpm?
-        yaw_offsets = self.wake_steering_interpolant(wind_dirs, wind_speeds)
-        yaw_setpoints = np.array(wind_dirs) - yaw_offsets
-        yaw_setpoints = np.clip(yaw_setpoints, yaw_setpoints - self.dt * self.yaw_rate, yaw_setpoints + self.dt * self.yaw_rate)
-        yaw_setpoints = np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
-        self.controls_dict = {"yaw_angles": yaw_setpoints}
+                # use filtered wind direction and speed
+                wind_dirs = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"][:, i],
+                                                                    self.lpf_alpha)
+                                            for i in range(self.n_turbines)]).T[-1, 0]
+                wind_speeds = 8.0
+            
+            # TODO shouldn't freestream wind speed/dir also be availalbe in measurements_dict, or just assume first row of turbines?
+            # TODO filter wind speed and dir before certain time statpm?
+            yaw_offsets = self.wake_steering_interpolant(wind_dirs, wind_speeds)
+            yaw_setpoints = np.array(wind_dirs) - yaw_offsets
+            yaw_setpoints = np.clip(yaw_setpoints, yaw_setpoints - self.dt * self.yaw_rate, yaw_setpoints + self.dt * self.yaw_rate)
+            yaw_setpoints = np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
+            self.controls_dict = {"yaw_angles": yaw_setpoints}
         
         return None
 
@@ -190,8 +193,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
     def wake_steering_angles(self):
         
         # Handle possible bad data
-        # TODO from where are the wind directions measured?
-        wind_directions = self.measurements_dict["wind_directions"]
+        wind_directions = self.measurements_dict["wind_directions"][0, :] if self.measurements_dict["wind_directions"].ndim == 2 else self.measurements_dict["wind_directions"]
         wind_speeds = [8.0]*self.n_turbines # TODO: enable extraction of wind speed in Hercules
         if not wind_directions: # Recieved empty or None
             if self.verbose:

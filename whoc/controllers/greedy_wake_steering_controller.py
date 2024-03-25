@@ -35,11 +35,13 @@ class GreedyController(ControllerBase):
 		self.yaw_limits = input_dict["controller"]["yaw_limits"]
 		self.yaw_rate = input_dict["controller"]["yaw_rate"]
 		self.yaw_increment = input_dict["controller"]["yaw_increment"]
-		self.dt = input_dict["dt"]  # Won't be needed here, but generally good to have
+		self.simulation_dt = input_dict["dt"]
+		self.dt = input_dict["controller"]["dt"]
 		self.turbines = range(self.n_turbines)
 		self.historic_measurements = {"wind_directions": np.zeros((0, self.n_turbines))}
 		
-		self.lpf_alpha = np.exp(-(1 / input_dict["controller"]["lpf_time_const"]) * input_dict["wind_dt"])
+		self.lpf_time_const = input_dict["controller"]["lpf_time_const"]
+		self.lpf_alpha = np.exp(-(1 / input_dict["controller"]["lpf_time_const"]) * input_dict["dt"])
 		self.deadband_thr = input_dict["controller"]["deadband_thr"]
 		self.use_filt = input_dict["controller"]["use_filtered_wind_dir"]
 
@@ -68,43 +70,48 @@ class GreedyController(ControllerBase):
 		return np.array([[[wind_directions[i, j] for t in range(self.n_turbines)] for j in range(wind_directions.shape[1])] for i in range(wind_directions.shape[0])])
 	
 	def compute_controls(self):
-		current_time = self.measurements_dict["time"]
-		
+		current_wind_directions = np.atleast_2d(self.measurements_dict["wind_directions"])
 		if self.use_filt:
-			self.historic_measurements["wind_directions"] = np.vstack([self.historic_measurements["wind_directions"],
-															self.measurements_dict["wind_directions"]])
+			self.historic_measurements["wind_directions"] = np.vstack([
+				self.historic_measurements["wind_directions"],
+				current_wind_directions])[-int((self.lpf_time_const // self.simulation_dt) * 1e3):, :]
 		
-		# if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
-		if self.measurements_dict["time"] < 60 or not self.use_filt:
-			wind_dirs = self.measurements_dict["wind_directions"]
-			if len(wind_dirs) == 0:
-				if self.verbose:
-					print("Bad wind direction measurement received, reverting to previous measurement.")
-				wind_dirs = self.wd_store
-			else:
-				wind_dirs = wind_dirs[0] # TODO Misha do we use all turbine wind directions in lut table?
-				self.wd_store = wind_dirs
-			# wind_speed = self.measurements_dict["wind_speeds"][0]
-			# wind_speeds = 8.0 # TODO hercules can't get wind_speeds from measurements_dict
-		else:
-			# use filtered wind direction and speed
-			wind_dirs = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"][:, i],
-																	self.lpf_alpha)
-											for i in range(self.n_turbines)]).T[-1, 0]
+		current_time = np.atleast_1d(self.measurements_dict["time"])[0]
+		if abs(current_time % self.dt) == 0.0:
 		
-		yaw_setpoints = []
-		for i in range(self.n_turbines):
-			if np.abs([self.measurements_dict["yaw_angles"][i] - wind_dirs[i]]) > self.deadband_thr:
-				# move towards zero offset if the deadband has been superceded
-				yaw_setpoints.append(wind_dirs[i] - 0.0)
+			# if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
+			if current_time < 60. or not self.use_filt:
+				if np.size(current_wind_directions) == 0:
+					if self.verbose:
+						print("Bad wind direction measurement received, reverting to previous measurement.")
+					wind_dirs = self.wd_store
+				else:
+					wind_dirs = current_wind_directions[0, :]
+					self.wd_store = wind_dirs
+					
 			else:
-				# otherwise stay put
-				yaw_setpoints.append(self.measurements_dict["yaw_angles"][i])
+				# use filtered wind direction and speed
+				wind_dirs = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"][:, i])
+												for i in range(self.n_turbines)]).T[-1, :]
 
-		yaw_setpoints = np.clip(yaw_setpoints, yaw_setpoints - self.dt * self.yaw_rate, yaw_setpoints + self.dt * self.yaw_rate)
-		yaw_setpoints = np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
-		self.controls_dict = {"yaw_angles": yaw_setpoints}
-		
+			yaw_setpoints = []
+			for i in range(self.n_turbines):
+				current_yaw_angles = np.atleast_2d(self.measurements_dict["yaw_angles"])[0, :]
+				if np.abs([current_yaw_angles[i] - wind_dirs[i]]) > self.deadband_thr:
+					# move towards zero offset if the deadband has been superceded
+					yaw_setpoints.append(wind_dirs[i] - 0.0)
+				else:
+					# otherwise stay put
+					yaw_setpoints.append(current_yaw_angles[i])
+
+			yaw_setpoints = np.array(yaw_setpoints)
+			yaw_setpoints = np.clip(yaw_setpoints, yaw_setpoints - self.dt * self.yaw_rate, yaw_setpoints + self.dt * self.yaw_rate)
+			yaw_setpoints = np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
+			self.controls_dict = {"yaw_angles": yaw_setpoints}
+
+			if yaw_setpoints.ndim == 2:
+				print("oh no")
+
 		return None
 
 

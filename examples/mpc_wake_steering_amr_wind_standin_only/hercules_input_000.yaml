@@ -5,9 +5,9 @@ name: example_000
 
 ###
 # Describe this emulator setup
-description: Just a solar plant
+description: AMR-wind (Standin) Only
 
-dt: 1.0
+dt: 0.5
 
 hercules_comms:
 
@@ -16,7 +16,6 @@ hercules_comms:
     wind_farm_0:
       type: amr_wind_local #options are amr_wind or amr_wind_local
       amr_wind_input_file: amr_input.inp
-      yaw_simulator_name: yaw_system_0 # can also use "none" (without quotes)
 
   helics:
 
@@ -30,7 +29,7 @@ hercules_comms:
             subscription_topics: [status]
             publication_topics: [control]
             endpoints: []
-            helicsport : 23404
+            helicsport : 32000
         publication_interval: 1
         endpoint_interval: 1
         starttime: 0
@@ -40,19 +39,7 @@ hercules_comms:
 
 py_sims:
 
-  solar_farm_0: # The name of py_sim object 1
-
-    py_sim_type: SimpleSolar
-    capacity: 50 # MW
-    efficiency: 0.5 #Fraction
-
-    initial_conditions:
-
-      power: 25 # MW
-      irradiance: 1000
-
 controller:
-
   controller_type: SimpleYawController # This may not be needed
   num_turbines: 9 # Should match AMR-Wind! Ideally, would come from AMR-wind
   initial_conditions:
@@ -77,3 +64,9 @@ controller:
   offline_probability: 0.0
   state_con_type: extreme
   beta: 0.9
+
+
+
+
+
+
