@@ -12,7 +12,8 @@
 
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 import numpy as np
-import pandas as pd
+
+# import pandas as pd
 from whoc.controllers import (
     LookupBasedWakeSteeringController,
     WindBatteryController,
@@ -92,8 +93,8 @@ def test_controller_instantiation():
 #     )
 #     assert np.allclose(test_angles, wind_directions)
 
-#     # Lookup table that specified 20 degree offset for T000, 10 degree offset for T001 for all wind
-#     # directions
+#     # Lookup table that specified 20 degree offset for T000, 10 degree offset for T001 for all
+#     # wind directions
 #     test_offsets = np.array([20.0, 10.0])
 #     df_opt_test = pd.DataFrame(data={
 #         "wind_direction":[220.0, 320.0, 220.0, 320.0],
