@@ -14,7 +14,7 @@
 
 import numpy as np
 
-from flasc.wake_steering.lookup_table_tools import get_yaw_angles_interpolant
+#from flasc.wake_steering.lookup_table_tools import get_yaw_angles_interpolant
 from whoc.controllers.controller_base import ControllerBase
 
 
@@ -32,7 +32,12 @@ class LookupBasedWakeSteeringController(ControllerBase):
                 print("No offsets received; assuming nominal aligned control.")
             self.wake_steering_interpolant = None
         else:
-            self.wake_steering_interpolant = get_yaw_angles_interpolant(df_yaw)
+            # Temporarily raise an error, until we have FLASC updated and compatible
+            raise NotImplementedError(
+                "The wake steering controller is not currently implemented due to a dependency ",
+                " conflict from FLASC."
+            )
+            # self.wake_steering_interpolant = get_yaw_angles_interpolant(df_yaw)
 
         # Set initial conditions
         yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
