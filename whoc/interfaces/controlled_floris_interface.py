@@ -93,12 +93,13 @@ class ControlledFlorisInterface(InterfaceBase):
         dirs = np.squeeze(np.mean(dirs.reshape(*dirs.shape[:2], -1), axis=2))
         
         
-        mags = np.sqrt(self.env.floris.flow_field.u**2 + self.env.floris.flow_field.v**2 + self.env.floris.flow_field.w**2)
+        # mags = np.sqrt(self.env.floris.flow_field.u**2 + self.env.floris.flow_field.v**2 + self.env.floris.flow_field.w**2)
+        mags = np.sqrt(self.env.floris.flow_field.u**2)
         mags = np.squeeze(np.mean(mags.reshape(*mags.shape[:2], -1), axis=2))
 
         # TODO MISHA QUESTION is it reliable to compute dirs as above - doesn't seem to align with floris wind direction
         dirs = np.tile(self.env.floris.flow_field.wind_directions[:, np.newaxis], (1, self.n_turbines))
-        mags = self.env.turbine_average_velocities
+        # mags = self.env.turbine_average_velocities
 
         offline_mask = np.isclose(self.env.floris.farm.power_setpoints, 0, atol=1e-3)
         # Note that measured yaw_angles here will not reflect controls_dict from last time-step, because of new wind direction
@@ -126,7 +127,7 @@ class ControlledFlorisInterface(InterfaceBase):
         return ctrl_dict
 
     def step(self, disturbances, ctrl_dict=None, seed=None):
-        np.random.seed(None)
+        np.random.seed(seed)
         # get factor to multiply ai_factor with based on offline probabilities
         self.offline_status = np.random.choice([0, 1], size=(len(disturbances["wind_directions"]), self.n_turbines), p=[1 - self.offline_probability, self.offline_probability])
         self.offline_status = self.offline_status.astype(bool)
