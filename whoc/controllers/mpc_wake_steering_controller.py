@@ -1263,18 +1263,22 @@ class MPC(ControllerBase):
             current_yaw_offsets = np.vstack([(self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][m] - yaw_setpoints[j, :]) for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)])
             # np.unique(np.where(np.abs(current_yaw_offsets) > 90)[0])
             # send yaw angles 
-            # TODO MISHA if effective yaw is greater than90, can we set powers to zero?
+            
             self.fi.env.calculate_wake(current_yaw_offsets, disable_turbines=self.offline_status)
             yawed_turbine_powers = self.fi.env.get_turbine_powers()
-            
-            yawed_turbine_powers[np.isnan(yawed_turbine_powers)] = 0.0
-            # yawed_turbine_powers = np.reshape(yawed_turbine_powers, (self.n_wind_preview_samples, self.n_horizon, self.n_turbines))
 
             # greedily yaw directly into wind for normalization constant
             self.fi.env.calculate_wake(np.zeros((self.n_wind_preview_samples * self.n_horizon, self.n_turbines)), disable_turbines=self.offline_status)
             greedy_yaw_turbine_powers = self.fi.env.get_turbine_powers()
             # greedy_yaw_turbine_powers = np.reshape(greedy_yaw_turbine_powers, (self.n_wind_preview_samples, self.n_horizon, self.n_turbines))
             greedy_yaw_turbine_powers = np.max(greedy_yaw_turbine_powers, axis=1)[:, np.newaxis] # choose unwaked turbine for normalization constant
+            
+            # TODO if effective yaw is greater than90, set negative powers, sim to interior point method, gradual penalty above 30deg offsets TEST
+            # TODO add negative power to paper
+            yawed_turbine_powers[(current_yaw_offsets < self.yaw_limits[0])] = -greedy_yaw_turbine_powers * np.exp((self.yaw_limits[0] - current_yaw_offsets[current_yaw_offsets < self.yaw_limits[0]]) / self.yaw_norm_const)
+            yawed_turbine_powers[(current_yaw_offsets > self.yaw_limits[1])] = -greedy_yaw_turbine_powers * np.exp((current_yaw_offsets[current_yaw_offsets > self.yaw_limits[1]] - self.yaw_limits[1]) / self.yaw_norm_const)
+            # yawed_turbine_powers[np.isnan(yawed_turbine_powers)] = 0.0 # add negative power magnitude depends how close offsets are over 30
+            # yawed_turbine_powers = np.reshape(yawed_turbine_powers, (self.n_wind_preview_samples, self.n_horizon, self.n_turbines))
 
             # normalize power by no yaw output
             norm_turbine_powers = np.divide(yawed_turbine_powers, greedy_yaw_turbine_powers,
@@ -1312,6 +1316,10 @@ class MPC(ControllerBase):
                     plus_perturbed_yawed_turbine_powers = self.fi.env.get_turbine_powers()
 
                     plus_perturbed_yawed_turbine_powers[np.isnan(plus_perturbed_yawed_turbine_powers)] = 0.0 # TODO MISHA is this okay
+                    # TODO if effective yaw is greater than90, set negative powers, sim to interior point method, gradual penalty above 30deg offsets TEST
+                    plus_perturbed_yawed_turbine_powers[(plus_yaw_offsets < self.yaw_limits[0])] = -greedy_yaw_turbine_powers * np.exp((self.yaw_limits[0] - plus_yaw_offsets[plus_yaw_offsets < self.yaw_limits[0]]) / self.yaw_norm_const)
+                    plus_perturbed_yawed_turbine_powers[(plus_yaw_offsets > self.yaw_limits[1])] = -greedy_yaw_turbine_powers * np.exp((plus_yaw_offsets[plus_yaw_offsets > self.yaw_limits[1]] - self.yaw_limits[1]) / self.yaw_norm_const)
+            
 
                     norm_turbine_power_diff = np.divide((plus_perturbed_yawed_turbine_powers - yawed_turbine_powers), greedy_yaw_turbine_powers,
                                                         where=greedy_yaw_turbine_powers!=0,
@@ -1343,14 +1351,24 @@ class MPC(ControllerBase):
                         
                         self.fi.env.calculate_wake(plus_yaw_offsets, disable_turbines=self.offline_status)
                         plus_perturbed_yawed_turbine_powers = self.fi.env.get_turbine_powers()
-                        plus_perturbed_yawed_turbine_powers[np.isnan(plus_perturbed_yawed_turbine_powers)] = 0.0 
+
+                        # TODO if effective yaw is greater than90, set negative powers, sim to interior point method, gradual penalty above 30deg offsets TEST
+                        plus_perturbed_yawed_turbine_powers[(plus_yaw_offsets < self.yaw_limits[0])] = -greedy_yaw_turbine_powers * np.exp((self.yaw_limits[0] - plus_yaw_offsets[plus_yaw_offsets < self.yaw_limits[0]]) / self.yaw_norm_const)
+                        plus_perturbed_yawed_turbine_powers[(plus_yaw_offsets > self.yaw_limits[1])] = -greedy_yaw_turbine_powers * np.exp((plus_yaw_offsets[plus_yaw_offsets > self.yaw_limits[1]] - self.yaw_limits[1]) / self.yaw_norm_const)
+            
+                        # plus_perturbed_yawed_turbine_powers[np.isnan(plus_perturbed_yawed_turbine_powers)] = 0.0 
 
                         # we add negative since current_yaw_offsets = wind dir - yaw setpoints
                         neg_yaw_offsets = current_yaw_offsets + mask * self.nu * self.yaw_norm_const
 
                         self.fi.env.calculate_wake(neg_yaw_offsets, disable_turbines=self.offline_status)
                         neg_perturbed_yawed_turbine_powers = self.fi.env.get_turbine_powers()
-                        neg_perturbed_yawed_turbine_powers[np.isnan(neg_perturbed_yawed_turbine_powers)] = 0.0 
+
+                        # TODO if effective yaw is greater than90, set negative powers, sim to interior point method, gradual penalty above 30deg offsets TEST
+                        neg_perturbed_yawed_turbine_powers[(neg_yaw_offsets < self.yaw_limits[0])] = -greedy_yaw_turbine_powers * np.exp((self.yaw_limits[0] - neg_yaw_offsets[neg_yaw_offsets < self.yaw_limits[0]]) / self.yaw_norm_const)
+                        neg_perturbed_yawed_turbine_powers[(neg_yaw_offsets > self.yaw_limits[1])] = -greedy_yaw_turbine_powers * np.exp((neg_yaw_offsets[neg_yaw_offsets > self.yaw_limits[1]] - self.yaw_limits[1]) / self.yaw_norm_const)
+
+                        # neg_perturbed_yawed_turbine_powers[np.isnan(neg_perturbed_yawed_turbine_powers)] = 0.0 
 
                         norm_turbine_power_diff = np.divide((plus_perturbed_yawed_turbine_powers - neg_perturbed_yawed_turbine_powers), greedy_yaw_turbine_powers,
                                                         where=greedy_yaw_turbine_powers!=0,

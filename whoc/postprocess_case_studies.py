@@ -5,20 +5,23 @@ import matplotlib
 import os
 from collections import defaultdict
 
-SMALL_SIZE = 8
-MEDIUM_SIZE = 10
-BIGGER_SIZE = 12
+import seaborn as sns
+sns.set_theme(style="darkgrid")
 
-plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
-plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
-plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
-plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
-plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+# SMALL_SIZE = 8
+# MEDIUM_SIZE = 10
+# BIGGER_SIZE = 12
 
-matplotlib.rc('font', size=SMALL_SIZE)
-matplotlib.rc('axes', titlesize=SMALL_SIZE)
+# plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
+# plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+# plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+# plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+# plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+# plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+# plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+# matplotlib.rc('font', size=SMALL_SIZE)
+# matplotlib.rc('axes', titlesize=SMALL_SIZE)
 
 # TODO better to pass df with all data to plotting functions
 
@@ -34,7 +37,7 @@ def compare_simulations(results_dfs):
         
         yaw_angles_change_ts = results_df[[c for c in results_df.columns if "TurbineYawAngleChange_" in c]]
         turbine_offline_status_ts = results_df[[c for c in results_df.columns if "TurbineOfflineStatus_" in c]]
-
+        
         result_summary_dict["SolverType"].append(case_name)
         # result_summary_dict["YawAngleChangeAbsSum"].append(results_df[[c for c in results_df.columns if "YawAngleChange" in c]].abs().sum().to_numpy().sum())
         result_summary_dict["YawAngleChangeAbsMean"].append(yaw_angles_change_ts.abs().sum().to_numpy().mean())
@@ -48,6 +51,7 @@ def compare_simulations(results_dfs):
         # result_summary_dict["OptimizationConvergenceTimeSum"].append(results_df["OptimizationConvergenceTime"].sum())
     
     result_summary_df = pd.DataFrame(result_summary_dict)
+    return result_summary_df
 
 def plot_wind_field_ts(data_df, save_path):
     fig_wind, ax_wind = plt.subplots(2, 1, sharex=True)
@@ -174,6 +178,30 @@ def barplot_opt_cost(data_summary_df, save_dir, relative=False):
 
     fig.savefig(os.path.join(save_dir, f'opt_cost_comparison.png'))
     # fig.show()
+
+def plot_cost_function_pareto_curve(data_summary_df, save_dir):
+   
+    """
+    plot mean farm level power vs mean sum of absolute yaw changes for different values of alpha
+    """
+    fig, ax = plt.subplots(1)
+    sub_df = data_summary_df.loc["alpha_" in data_summary_df["SolverType"].str, :]
+
+    # Plot "RelativeFarmPowerMean" vs. "RelativeYawAngleChangeAbsMean" for all "SolverType" == "cost_func_tuning"
+    sns.scatterplot(data=sub_df, x="YawAngleChangeAbsMean", y="FarmPowerMean", size="SolverType", ax=ax)
+    fig.savefig(os.path.join(save_dir, "cost_function_pareto_curve.png"))
+
+def plot_breakdown_robustness(data_summary_df, save_dir):
+    # TODO could also make countplot and plot all time-step data points for different values of probability
+    """
+    plot mean relative farm level power vs mean relative sum of absolute yaw changes for different values of breakdown probability
+    """
+    fig, ax = plt.subplots(1)
+    sub_df = data_summary_df.loc["Breakdown" in data_summary_df["SolverType"].str, :]
+
+    # Plot "RelativeFarmPowerMean" vs. "RelativeYawAngleChangeAbsMean" for all "SolverType" == "cost_func_tuning"
+    sns.scatterplot(data=sub_df, x="YawAngleChangeAbsMean", y="FarmPowerMean", size="SolverType", ax=ax)
+    fig.savefig(os.path.join(save_dir, "breakdown_robustness.png"))
 
 if __name__ == '__main__':
     pass

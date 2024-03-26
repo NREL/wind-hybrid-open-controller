@@ -43,7 +43,7 @@ if not os.path.exists(wind_field_dir):
     os.makedirs(wind_field_dir)
 
 # TODO make sure this is the same as the wind field from amr_standin_data
-# TODO how can we make hercules wait for controller response?s
+# TODO how can we make hercules wait for controller responses
 seed = 0
 wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
 wind_field_config["preview_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"])
