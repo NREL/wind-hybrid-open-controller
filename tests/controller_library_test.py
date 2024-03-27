@@ -55,7 +55,7 @@ test_hercules_dict = {
             }
         }
     },
-    "py_sims": {"test_battery": {"outputs": 10.0}},
+    "py_sims": {"test_battery": {"outputs": 10.0}, "inputs": {}},
     "external_signals": {"wind_power_reference": 1000.0},
 }
 
@@ -139,11 +139,11 @@ def test_WindBatteryController():
     # We will need to change these cases when the wind_battery_controller has more general behavior
     test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [450, 450]
     hercules_dict_out = test_controller.step(test_hercules_dict)
-    assert hercules_dict_out["setpoints"]["battery"]["signal"] == 900
+    assert hercules_dict_out["py_sims"]["inputs"]["battery_signal"] == 900
 
     test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [550, 550]
     hercules_dict_out = test_controller.step(test_hercules_dict)
-    assert hercules_dict_out["setpoints"]["battery"]["signal"] == -500
+    assert hercules_dict_out["py_sims"]["inputs"]["battery_signal"] == -500
 
 
 def test_WindFarmPowerDistributingController():
