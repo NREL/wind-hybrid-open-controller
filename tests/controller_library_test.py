@@ -20,12 +20,8 @@ from whoc.controllers import (
     WindFarmPowerDistributingController,
     WindFarmPowerTrackingController,
 )
-<<<<<<< HEAD
 from whoc.controllers.wind_farm_power_tracking_controller import POWER_SETPOINT_DEFAULT
 from whoc.interfaces import HerculesADInterface, HerculesWindBatteryInterface
-=======
-from whoc.interfaces import HerculesADYawInterface, HerculesWindBatteryInterface
->>>>>>> 07a6ed6 (hercules_wind_battery_controller test)
 from whoc.interfaces.interface_base import InterfaceBase
 
 
@@ -79,7 +75,7 @@ def test_controller_instantiation():
 
 # def test_LookupBasedWakeSteeringController():
 #     test_interface = HerculesADInterface(test_hercules_dict)
-    
+
 #     # No lookup table passed; simply passes through wind direction to yaw angles
 #     test_controller = LookupBasedWakeSteeringController(
 #         interface=test_interface,
@@ -103,7 +99,7 @@ def test_controller_instantiation():
 #     df_opt_test = pd.DataFrame(data={
 #         "wind_direction":[220.0, 320.0, 220.0, 320.0],
 #         "wind_speed":[0.0, 0.0, 20.0, 20.0],
-#         "yaw_angles_opt":[test_offsets]*4, 
+#         "yaw_angles_opt":[test_offsets]*4,
 #         "turbulence_intensity":[0.06]*4
 #     })
 #     test_controller = LookupBasedWakeSteeringController(
@@ -122,28 +118,19 @@ def test_controller_instantiation():
 #     )
 #     assert np.allclose(test_angles, wind_directions - test_offsets)
 
-<<<<<<< HEAD
-def test_WindBatteryController():
 
+def test_WindBatteryController():
     test_interface = HerculesWindBatteryInterface(test_hercules_dict)
     test_controller = WindBatteryController(test_interface, test_hercules_dict)
-=======
-def test_HerculesWindBatteryController():
-    # TODO: possibly clean up HerculesWindBatteryController class
-
-    test_interface = HerculesWindBatteryInterface(test_hercules_dict)
-    test_controller = HerculesWindBatteryController(test_interface, test_hercules_dict)
->>>>>>> 07a6ed6 (hercules_wind_battery_controller test)
-    
 
     # Check the low level methods behave as expected
     test_controller._receive_measurements(test_hercules_dict)
 
     wind_setpoints = test_controller.calc_wind_setpoints()
-    assert not wind_setpoints # wind setpoints should be empty
+    assert not wind_setpoints  # wind setpoints should be empty
 
     battery_setpoints = test_controller.calc_battery_setpoints()
-    assert battery_setpoints["signal"] == -500 # battery setpoints should not be empty
+    assert battery_setpoints["signal"] == -500  # battery setpoints should not be empty
 
     test_controller.compute_controls()
     assert test_controller.setpoints_dict == {"wind": wind_setpoints, "battery": battery_setpoints}
@@ -158,13 +145,12 @@ def test_HerculesWindBatteryController():
     hercules_dict_out = test_controller.step(test_hercules_dict)
     assert hercules_dict_out["setpoints"]["battery"]["signal"] == -500
 
-<<<<<<< HEAD
+
 def test_WindFarmPowerDistributingController():
     test_interface = HerculesADInterface(test_hercules_dict)
 
     test_controller = WindFarmPowerDistributingController(
-        interface=test_interface,
-        input_dict=test_hercules_dict
+        interface=test_interface, input_dict=test_hercules_dict
     )
 
     # Default behavior when no power reference is given
@@ -176,7 +162,7 @@ def test_WindFarmPowerDistributingController():
     )
     assert np.allclose(
         test_power_setpoints,
-        POWER_SETPOINT_DEFAULT/test_hercules_dict["controller"]["num_turbines"]
+        POWER_SETPOINT_DEFAULT / test_hercules_dict["controller"]["num_turbines"],
     )
 
     # Test with power reference
@@ -187,12 +173,12 @@ def test_WindFarmPowerDistributingController():
     )
     assert np.allclose(test_power_setpoints, 500)
 
+
 def test_WindFarmPowerTrackingController():
     test_interface = HerculesADInterface(test_hercules_dict)
 
     test_controller = WindFarmPowerTrackingController(
-        interface=test_interface,
-        input_dict=test_hercules_dict
+        interface=test_interface, input_dict=test_hercules_dict
     )
 
     # Test no change to power setpoints if producing desired power
@@ -228,9 +214,7 @@ def test_WindFarmPowerTrackingController():
 
     # Test that more aggressive control leads to faster response
     test_controller = WindFarmPowerTrackingController(
-        interface=test_interface,
-        input_dict=test_hercules_dict,
-        proportional_gain=2
+        interface=test_interface, input_dict=test_hercules_dict, proportional_gain=2
     )
     test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [600, 600]
     test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
@@ -238,8 +222,3 @@ def test_WindFarmPowerTrackingController():
         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
     )
     assert (test_power_setpoints_a < test_power_setpoints).all()
-=======
-
-    
-
->>>>>>> 07a6ed6 (hercules_wind_battery_controller test)
