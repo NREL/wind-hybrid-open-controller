@@ -30,7 +30,7 @@ test_hercules_dict = {
             }
         }
     },
-    "py_sims": {"test_battery": {"outputs": 10.0}},
+    "py_sims": {"test_battery": {"outputs": 10.0}, "inputs": {}},
     "external_signals": {"wind_power_reference": 1000.0},
 }
 
@@ -125,9 +125,12 @@ def test_HerculesWindBatteryInterface():
     # check_controls is pass-through
 
     # Test send_controls()
-    controls_dict = {"test": 0}
+    controls_dict = {"battery": {"signal": 0}}
     test_hercules_dict_out = interface.send_controls(
         hercules_dict=test_hercules_dict, controls_dict=controls_dict
     )
 
-    assert test_hercules_dict_out["setpoints"] == controls_dict
+    assert (
+        test_hercules_dict_out["py_sims"]["inputs"]["battery_signal"]
+        == controls_dict["battery"]["signal"]
+    )

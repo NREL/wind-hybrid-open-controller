@@ -45,5 +45,7 @@ class HerculesWindBatteryInterface(InterfaceBase):
         return controls
 
     def send_controls(self, hercules_dict, controls_dict=None):
-        hercules_dict.update({"setpoints": controls_dict})
+        hercules_dict["py_sims"]["inputs"].update(
+            {"battery_signal": controls_dict["battery"]["signal"]}
+        )
         return hercules_dict
