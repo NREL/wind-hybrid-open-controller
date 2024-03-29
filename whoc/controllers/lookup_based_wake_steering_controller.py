@@ -13,6 +13,7 @@
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
 import numpy as np
+<<<<<<< HEAD
 import pandas as pd
 import os
 import re
@@ -71,12 +72,46 @@ class LookupBasedWakeSteeringController(ControllerBase):
         if hasattr(self.yaw_IC, "__len__"):
             if len(self.yaw_IC) == self.n_turbines:
                 self.controls_dict = {"yaw_angles": self.yaw_IC}
+=======
+
+#from flasc.wake_steering.lookup_table_tools import get_yaw_angles_interpolant
+from whoc.controllers.controller_base import ControllerBase
+
+
+class LookupBasedWakeSteeringController(ControllerBase):
+    def __init__(self, interface, input_dict, df_yaw=None, verbose=False):
+        super().__init__(interface, verbose=verbose)
+
+        self.dt = input_dict["dt"]  # Won't be needed here, but generally good to have
+        self.n_turbines = input_dict["controller"]["num_turbines"]
+        self.turbines = range(self.n_turbines)
+
+        # Handle yaw optimizer object
+        if df_yaw is None:
+            if self.verbose:
+                print("No offsets received; assuming nominal aligned control.")
+            self.wake_steering_interpolant = None
+        else:
+            # Temporarily raise an error, until we have FLASC updated and compatible
+            raise NotImplementedError(
+                "The wake steering controller is not currently implemented due to a dependency ",
+                " conflict from FLASC."
+            )
+            # self.wake_steering_interpolant = get_yaw_angles_interpolant(df_yaw)
+
+        # Set initial conditions
+        yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
+        if hasattr(yaw_IC, "__len__"):
+            if len(yaw_IC) == self.n_turbines:
+                self.controls_dict = {"yaw_angles": yaw_IC}
+>>>>>>> 3caa5f54c338e875c21730507adab5c4c0aec824
             else:
                 raise TypeError(
                     "yaw initial condition should be a float or "
                     + "a list of floats of length num_turbines."
                 )
         else:
+<<<<<<< HEAD
             self.controls_dict = {"yaw_angles": [self.yaw_IC] * self.n_turbines}
 
         # For startup
@@ -188,20 +223,39 @@ class LookupBasedWakeSteeringController(ControllerBase):
         return None
 
     def compute_controls_old(self):
+=======
+            self.controls_dict = {"yaw_angles": [yaw_IC] * self.n_turbines}
+
+        # For startup
+        self.wd_store = [270.]*self.n_turbines # TODO: update this?
+
+
+    def compute_controls(self):
+>>>>>>> 3caa5f54c338e875c21730507adab5c4c0aec824
         self.wake_steering_angles()
 
     def wake_steering_angles(self):
         
         # Handle possible bad data
+<<<<<<< HEAD
         wind_directions = self.measurements_dict["wind_directions"][0, :] if self.measurements_dict["wind_directions"].ndim == 2 else self.measurements_dict["wind_directions"]
         wind_speeds = [8.0]*self.n_turbines # TODO: enable extraction of wind speed in Hercules
         if not wind_directions: # Recieved empty or None
+=======
+        wind_directions = self.measurements_dict["wind_directions"]
+        wind_speeds = [8.0]*self.n_turbines # TODO: enable extraction of wind speed in Hercules
+        if not wind_directions: # Received empty or None
+>>>>>>> 3caa5f54c338e875c21730507adab5c4c0aec824
             if self.verbose:
                 print("Bad wind direction measurement received, reverting to previous measurement.")
             wind_directions = self.wd_store
         else:
             self.wd_store = wind_directions
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> 3caa5f54c338e875c21730507adab5c4c0aec824
         # look up wind direction
         if self.wake_steering_interpolant is None:
             yaw_setpoint = wind_directions
@@ -217,6 +271,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
         self.controls_dict = {"yaw_angles": yaw_setpoint}
 
         return None
+<<<<<<< HEAD
 
 
 if __name__ == "__main__":
@@ -387,3 +442,5 @@ if __name__ == "__main__":
     ax[0].legend()
     ax[2].plot(time_ts[:int(wind_field_config["simulation_max_time"] // input_dict["dt"]) - 1], yaw_angles_ts)
     fig.show()
+=======
+>>>>>>> 3caa5f54c338e875c21730507adab5c4c0aec824

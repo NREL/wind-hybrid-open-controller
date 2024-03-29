@@ -10,11 +10,14 @@ slices
 # Data files
 *.csv
 *.log
-examples/*/logstandin
-examples/*/loghercules
-examples/wind_field_data/*
-examples/*.csv
-examples/*/logfloris
+examples/*/logstandin*
+examples/*/loghercules*
+examples/*/logfloris*
+
+# Exceptions
+!examples/lookup-based_wake_steering_florisstandin/amr_standin_data.csv
+!examples/wind_farm_power_tracking_florisstandin/amr_standin_data.csv
+!examples/wind_farm_power_tracking_florisstandin/wind_power_reference_data.csv
 
 # macOS files
 .DS_Store

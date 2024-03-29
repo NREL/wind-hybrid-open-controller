@@ -14,7 +14,7 @@
 
 import pytest
 from whoc.interfaces import (
-    HerculesADYawInterface,
+    HerculesADInterface,
     HerculesWindBatteryInterface,
 )
 
@@ -30,7 +30,8 @@ test_hercules_dict = {
             }
         }
     },
-    "py_sims": {"test_battery": {"outputs": 10.0}},
+    "py_sims": {"test_battery": {"outputs": 10.0}, "inputs": {}},
+    "external_signals": {"wind_power_reference": 1000.0},
 }
 
 
@@ -40,13 +41,13 @@ def test_interface_instantiation():
     each implement the required methods specified by InterfaceBase.
     """
 
-    _ = HerculesADYawInterface(hercules_dict=test_hercules_dict)
+    _ = HerculesADInterface(hercules_dict=test_hercules_dict)
     _ = HerculesWindBatteryInterface(hercules_dict=test_hercules_dict)
     # _ = ROSCO_ZMQInterface()
 
 
-def test_HerculesADYawInterface():
-    interface = HerculesADYawInterface(hercules_dict=test_hercules_dict)
+def test_HerculesADInterface():
+    interface = HerculesADInterface(hercules_dict=test_hercules_dict)
 
     # Test get_measurements()
     measurements = interface.get_measurements(hercules_dict=test_hercules_dict)
@@ -63,13 +64,19 @@ def test_HerculesADYawInterface():
 
     # Test check_controls()
     controls_dict = {"yaw_angles": [270.0, 278.9]}
-    interface.check_controls(controls_dict)  # Should not raise an error
+    controls_dict2 = {
+        "yaw_angles": [270.0, 268.9],
+        "power_setpoints": [3000.0, 3000.0],
+    }
+    interface.check_controls(controls_dict)
+    interface.check_controls(controls_dict2)
 
     bad_controls_dict1 = {"yaw_angels": [270.0, 268.9]}  # Misspelling
     bad_controls_dict2 = {
         "yaw_angles": [270.0, 268.9],
         "power_setpoints": [3000.0, 3000.0],
-    }  # Unavailable control
+        "unavailable_control": [0.0, 0.0],
+    }
     bad_controls_dict3 = {"yaw_angles": [270.0, 268.9, 270.0]}  # Mismatched number of turbines
 
     with pytest.raises(ValueError):
@@ -118,9 +125,12 @@ def test_HerculesWindBatteryInterface():
     # check_controls is pass-through
 
     # Test send_controls()
-    controls_dict = {"test": 0}
+    controls_dict = {"battery": {"signal": 0}}
     test_hercules_dict_out = interface.send_controls(
         hercules_dict=test_hercules_dict, controls_dict=controls_dict
     )
 
-    assert test_hercules_dict_out["setpoints"] == controls_dict
+    assert (
+        test_hercules_dict_out["py_sims"]["inputs"]["battery_signal"]
+        == controls_dict["battery"]["signal"]
+    )

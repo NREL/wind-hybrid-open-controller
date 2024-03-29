@@ -1,0 +1,78 @@
+# Input YAML for emy_python
+
+# Name
+name: example_000
+
+###
+# Describe this emulator setup
+description: Just a solar plant
+
+dt: 60
+
+hercules_comms:
+
+  amr_wind:
+
+    wind_farm_0:
+      type: amr_wind_local #options are amr_wind or amr_wind_local
+      amr_wind_input_file: amr_input_3.inp
+      yaw_simulator_name: yaw_system_0 # can also use "none" (without quotes)
+
+  helics:
+
+    config:
+        name: hercules # What is the purpose of this name
+        use_dash_frontend: False
+        KAFKA: False
+        KAFKA_topics: EMUV1py
+        helics: 
+            # deltat: 1 # This will be assigned in software
+            subscription_topics: [status]
+            publication_topics: [control]
+            endpoints: []
+            helicsport : 32000
+        publication_interval: 1
+        endpoint_interval: 1
+        starttime: 0
+        stoptime: 3720
+        
+        Agent: ControlCenter
+
+py_sims:
+
+  solar_farm_0: # The name of py_sim object 1
+
+    py_sim_type: SimpleSolar
+    capacity: 50 # MW
+    efficiency: 0.5 #Fraction
+
+    initial_conditions:
+
+      power: 25 # MW
+      irradiance: 1000
+
+controller:
+
+  controller_type: SimpleYawController # This may not be needed
+  num_turbines: 3 # Should match AMR-Wind! Ideally, would come from AMR-wind
+  initial_conditions:
+      yaw: 270.0 # degrees (same for all turbines) (will this work?)
+  yaw_limits: [-30, 30]
+  yaw_rate: 0.5
+  yaw_increment: 0.25
+  ws_lpf_omega_c: 0.005
+  wd_lpf_omega_c: 0.005
+  lpf_T: 60
+  lpf_omega_c: 0.005
+  deadband_thr: 8
+  dt: 60
+  n_horizon: 10
+  alpha: 0.5
+  control_input_domain: continuous
+  wind_preview_type: stochastic # wind preview type asumed in MPC: persistent (assumes that current freestream measurements will stay constant over horizon), stochastic (sample from Gaussian model of preview), perfect (preview known)
+  warm_start: lut # may equal 'previous' to warm-start with time-shifted previous solution,  "lut" to warm-start with lookup table solution, or "none"
+  nu: 0.001 # step size to add/subtract from yaw angles for stochastic gradient estimate
+  use_filtered_wind_measurements: False
+  floris_input_file: /Users/ahenry/Documents/toolboxes/floris/examples/inputs/gch.yaml
+  solver: floris # may equal floris, pyopt, sequential_pyopt, or zsgd
+  basin_hop: False

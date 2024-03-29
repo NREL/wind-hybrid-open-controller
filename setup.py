@@ -36,7 +36,11 @@ REQUIRES_PYTHON = ">=3.6.0"
 # What packages are required for this module to be executed?
 REQUIRED = [
     "numpy~=1.20",
+<<<<<<< HEAD
     "flasc",
+=======
+    # "flasc",
+>>>>>>> 3caa5f54c338e875c21730507adab5c4c0aec824
     # "matplotlib~=3.0",
     # "pandas~=2.0",
     # "dash>=2.0.0",
@@ -57,11 +61,11 @@ REQUIRED = [
 # What packages are optional?
 EXTRAS = {
     "docs": {
-        "jupyter-book<=0.13.3",
+        "jupyter-book",
         "sphinx-book-theme",
-        "sphinx-autodoc-typehints",
-        "sphinxcontrib-autoyaml",
-        "sphinxcontrib.mermaid",
+        # "sphinx-autodoc-typehints",
+        # "sphinxcontrib-autoyaml",
+        # "sphinxcontrib.mermaid",
     },
     "develop": {
         "pytest",
