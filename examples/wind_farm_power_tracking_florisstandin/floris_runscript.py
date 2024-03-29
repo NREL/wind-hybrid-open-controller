@@ -16,8 +16,4 @@ if len(sys.argv) > 2:
 else:
     amr_standin_data_file = None
 
-<<<<<<< HEAD
 launch_floris(amr_input_file, amr_standin_data_file)
-=======
-launch_floris(amr_input_file, amr_standin_data_file)
->>>>>>> 3caa5f54c338e875c21730507adab5c4c0aec824
