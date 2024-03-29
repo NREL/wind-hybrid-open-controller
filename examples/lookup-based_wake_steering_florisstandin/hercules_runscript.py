@@ -13,22 +13,35 @@
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
 import sys
+import yaml
+import os
 
-import pandas as pd
 from hercules.emulator import Emulator
 from hercules.py_sims import PySims
 from hercules.utilities import load_yaml
+
+import whoc
 from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
-from whoc.interfaces.hercules_actuator_disk_yaw_interface import HerculesADYawInterface
+from whoc.interfaces.hercules_actuator_disk_interface import HerculesADInterface
+from whoc.wind_field.generate_freestream_wind import generate_freestream_wind
+
+regenerate_wind_field = False
+case_idx = 0
 
 input_dict = load_yaml(sys.argv[1])
+
+with open(os.path.join(os.path.dirname(whoc.__file__), "wind_field", "wind_field_config.yaml"), "r") as fp:
+    wind_field_config = yaml.safe_load(fp)
+
+amr_standin_data = generate_freestream_wind(".", regenerate_wind_field)[case_idx]
 
 # Load the optimal yaw angle lookup table for controller us
 # df_opt = pd.read_csv("lut.csv", index_col=0)
 # df_opt_pk = pd.read_pickle("yaw_offsets.pkl", index_col=0)
 
-interface = HerculesADYawInterface(input_dict)
-controller = LookupBasedWakeSteeringController(interface, input_dict, lut_path="lut.csv")
+interface = HerculesADInterface(input_dict)
+controller = LookupBasedWakeSteeringController(interface, input_dict, 
+                                               lut_path=f"lut_{input_dict['controller']['num_turbines']}.csv", generate_lut=False)
 
 py_sims = PySims(input_dict)
 
