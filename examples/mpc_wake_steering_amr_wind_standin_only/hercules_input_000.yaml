@@ -59,7 +59,7 @@ controller:
   nu: 0.001 # step size to add/subtract from yaw angles for stochastic gradient estimate
   use_filtered_wind_dir: True
   floris_input_file: /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml
-  solver: sequential_slsqp # may equal serial_refine, slsqp, sequential_slsqp, or zsgd
+  solver: slsqp # may equal serial_refine, slsqp, sequential_slsqp, or zsgd
   basin_hop: False
   offline_probability: 0.0
   state_con_type: extreme

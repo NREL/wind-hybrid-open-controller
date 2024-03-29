@@ -6,8 +6,7 @@ import os
 from collections import defaultdict
 
 import seaborn as sns
-sns.set_theme(style="darkgrid")
-
+sns.set_theme(style="darkgrid", rc={'figure.figsize':(4,4)})
 # SMALL_SIZE = 8
 # MEDIUM_SIZE = 10
 # BIGGER_SIZE = 12
@@ -35,16 +34,17 @@ def compare_simulations(results_dfs):
         #                      TotalOptimizationCostSum=results_df["TotalOptimizationCost"].sum(),
         #                      ConvergenceTimeSum=results_df["ConvergenceTime"].sum())
         
-        yaw_angles_change_ts = results_df[[c for c in results_df.columns if "TurbineYawAngleChange_" in c]]
-        turbine_offline_status_ts = results_df[[c for c in results_df.columns if "TurbineOfflineStatus_" in c]]
+        yaw_angles_change_ts = results_df[sorted(list([c for c in results_df.columns if "TurbineYawAngleChange_" in c]))]
+        turbine_offline_status_ts = results_df[sorted(list([c for c in results_df.columns if "TurbineOfflineStatus_" in c]))]
+        turbine_power_ts = results_df[sorted(list([c for c in results_df.columns if "TurbinePower_" in c]))]
         
         result_summary_dict["SolverType"].append(case_name)
         # result_summary_dict["YawAngleChangeAbsSum"].append(results_df[[c for c in results_df.columns if "YawAngleChange" in c]].abs().sum().to_numpy().sum())
-        result_summary_dict["YawAngleChangeAbsMean"].append(yaw_angles_change_ts.abs().sum().to_numpy().mean())
-        result_summary_dict["RelativeYawAngleChangeAbsMean"].append(((yaw_angles_change_ts.abs() * ~turbine_offline_status_ts).sum()) / ((~turbine_offline_status_ts).sum()).to_numpy().mean())
+        result_summary_dict["YawAngleChangeAbsMean"].append(yaw_angles_change_ts.abs().sum(axis=1).mean())
+        result_summary_dict["RelativeYawAngleChangeAbsMean"].append(((yaw_angles_change_ts.abs().to_numpy() * np.logical_not(turbine_offline_status_ts)).sum(axis=1) / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean())
         # result_summary_dict["FarmPowerSum"].append(results_df["FarmPower"].sum())
-        result_summary_dict["FarmPowerMean"].append(results_df["FarmPower"].mean())
-        result_summary_dict["RelativeFarmPowerMean"].append(results_df["RelativeFarmPower"].mean())
+        result_summary_dict["FarmPowerMean"].append(turbine_power_ts.sum(axis=1).mean())
+        result_summary_dict["RelativeFarmPowerMean"].append(((turbine_power_ts.to_numpy() * np.logical_not(turbine_offline_status_ts)).sum(axis=1) / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean())
         # result_summary_dict["TotalRunningOptimizationCostSum"].append(results_df["TotalRunningOptimizationCost"].sum())
         result_summary_dict["TotalRunningOptimizationCostMean"].append(results_df["TotalRunningOptimizationCost"].mean())
         result_summary_dict["OptimizationConvergenceTimeMean"].append(results_df["OptimizationConvergenceTime"].mean())
@@ -179,7 +179,7 @@ def barplot_opt_cost(data_summary_df, save_dir, relative=False):
     fig.savefig(os.path.join(save_dir, f'opt_cost_comparison.png'))
     # fig.show()
 
-def plot_cost_function_pareto_curve(data_summary_df, save_dir):
+def plot_cost_function_pareto_curve(data_summary_df, case_studies, save_dir):
    
     """
     plot mean farm level power vs mean sum of absolute yaw changes for different values of alpha
@@ -191,16 +191,20 @@ def plot_cost_function_pareto_curve(data_summary_df, save_dir):
     sns.scatterplot(data=sub_df, x="YawAngleChangeAbsMean", y="FarmPowerMean", size="SolverType", ax=ax)
     fig.savefig(os.path.join(save_dir, "cost_function_pareto_curve.png"))
 
-def plot_breakdown_robustness(data_summary_df, save_dir):
+def plot_breakdown_robustness(data_summary_df, case_studies, save_dir):
     # TODO could also make countplot and plot all time-step data points for different values of probability
     """
     plot mean relative farm level power vs mean relative sum of absolute yaw changes for different values of breakdown probability
     """
-    fig, ax = plt.subplots(1)
-    sub_df = data_summary_df.loc["Breakdown" in data_summary_df["SolverType"].str, :]
+    
+    sub_df = data_summary_df.loc[data_summary_df["SolverType"].str.contains("breakdown_robustness"), :]
+    
+    sub_df["SolverType"] = [case_studies["breakdown_robustness"]["case_names"]["vals"][int(solver_type.split("_")[-1])] for solver_type in sub_df["SolverType"]]
 
     # Plot "RelativeFarmPowerMean" vs. "RelativeYawAngleChangeAbsMean" for all "SolverType" == "cost_func_tuning"
-    sns.scatterplot(data=sub_df, x="YawAngleChangeAbsMean", y="FarmPowerMean", size="SolverType", ax=ax)
+    fig, ax = plt.subplots(1)
+    sns.scatterplot(data=sub_df, x="RelativeYawAngleChangeAbsMean", y="RelativeFarmPowerMean", size="SolverType", 
+                    size_order=case_studies["breakdown_robustness"]["case_names"]["vals"], ax=ax)
     fig.savefig(os.path.join(save_dir, "breakdown_robustness.png"))
 
 if __name__ == '__main__':

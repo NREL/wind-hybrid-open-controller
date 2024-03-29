@@ -6,7 +6,8 @@ conda activate whoc
 
 # Set the helics port to use: 
 export HELICS_PORT=32000
-export NUM_TURBINES=3
+export NUM_TURBINES=25
+export WIND_CASE_IDX=0
 
 #make sure you use the same port number in the amr_input.inp and hercules_input_000.yaml files. 
 
@@ -19,9 +20,9 @@ helics_broker -t zmq  -f 2 --loglevel="debug" --local_port=$HELICS_PORT &
 
 # Need to set this to your hercules folder
 # cd /home/pfleming/hercules/hercules
-python hercules_runscript.py hercules_input_$NUM_TURBINES.yaml 0 >> loghercules 2>&1 & # Start the controller center and pass in input file
+python hercules_runscript.py hercules_input_001.yaml 0 >> loghercules 2>&1 & # Start the controller center and pass in input file
 
-python floris_runscript.py amr_input_$NUM_TURBINES.inp amr_standin_data_$NUM_TURBINES.csv >> logfloris 2>&1
+python floris_runscript.py amr_input_$NUM_TURBINES.inp amr_standin_data_$WIND_CASE_IDX.csv >> logfloris 2>&1
 # Now go back to scratch folder and launch the job
 
 # cd /scratch/pfleming/c2c/example_sim_02
