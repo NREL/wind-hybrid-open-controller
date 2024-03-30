@@ -58,13 +58,8 @@ class HerculesADInterface(InterfaceBase):
         return measurements
 
     def check_controls(self, controls_dict):
-<<<<<<< HEAD:whoc/interfaces/hercules_actuator_disk_yaw_interface.py
-        available_controls = ["yaw_angles"]
-        # print(controls_dict)
-=======
         available_controls = ["yaw_angles", "power_setpoints"]
 
->>>>>>> 3caa5f54c338e875c21730507adab5c4c0aec824:whoc/interfaces/hercules_actuator_disk_interface.py
         for k in controls_dict.keys():
             if k not in available_controls:
                 raise ValueError("Setpoint " + k + " is not available in this configuration.")

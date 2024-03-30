@@ -36,11 +36,7 @@ REQUIRES_PYTHON = ">=3.6.0"
 # What packages are required for this module to be executed?
 REQUIRED = [
     "numpy~=1.20",
-<<<<<<< HEAD
-    "flasc",
-=======
     # "flasc",
->>>>>>> 3caa5f54c338e875c21730507adab5c4c0aec824
     # "matplotlib~=3.0",
     # "pandas~=2.0",
     # "dash>=2.0.0",

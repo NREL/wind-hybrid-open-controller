@@ -13,59 +13,17 @@
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
 import sys
-import yaml
 import os
-
-from hercules.emulator import Emulator
-from hercules.py_sims import PySims
 from hercules.utilities import load_yaml
-<<<<<<<< HEAD:examples/mpc_wake_steering_florisstandin/hercules_runscript.py
-
-import whoc
-from whoc.controllers.mpc_wake_steering_controller import MPC
-from whoc.interfaces.hercules_actuator_disk_yaw_interface import HerculesADYawInterface
-from whoc.wind_field.generate_freestream_wind import generate_freestream_wind
-
-regenerate_wind_field = False
-case_idx = 0
-========
 from whoc.controllers.wind_farm_power_tracking_controller import WindFarmPowerTrackingController
 from whoc.interfaces.hercules_actuator_disk_interface import HerculesADInterface
->>>>>>>> 3caa5f54c338e875c21730507adab5c4c0aec824:examples/wind_farm_power_tracking_florisstandin/hercules_runscript_CLcontrol.py
 
 input_dict = load_yaml(sys.argv[1])
 input_dict["output_file"] = "hercules_output_cl.csv"
 
-<<<<<<<< HEAD:examples/mpc_wake_steering_florisstandin/hercules_runscript.py
-with open(os.path.join(os.path.dirname(whoc.__file__), "wind_field", "wind_field_config.yaml"), "r") as fp:
-    wind_field_config = yaml.safe_load(fp)
-
-amr_standin_data = generate_freestream_wind(".", regenerate_wind_field)[case_idx]
-
-interface = HerculesADYawInterface(input_dict)
-
-seed = 0
-controller = MPC(interface, input_dict, 
-                 wind_mag_ts=amr_standin_data["amr_wind_speed"], wind_dir_ts=amr_standin_data["amr_wind_direction"], 
-                 lut_path=os.path.join(os.path.dirname(whoc.__file__), f"../examples/mpc_wake_steering_florisstandin/lut_{25}.csv"), 
-                 generate_lut=False, 
-                 seed=seed,
-                 wind_field_config=wind_field_config)
-========
 interface = HerculesADInterface(input_dict)
 
 print("Running closed-loop controller...")
 controller = WindFarmPowerTrackingController(interface, input_dict)
->>>>>>>> 3caa5f54c338e875c21730507adab5c4c0aec824:examples/wind_farm_power_tracking_florisstandin/hercules_runscript_CLcontrol.py
 
-py_sims = PySims(input_dict)
-
-emulator = Emulator(controller, py_sims, input_dict)
-emulator.run_helics_setup()
-emulator.enter_execution(function_targets=[], function_arguments=[[]])
-
-<<<<<<<< HEAD:examples/mpc_wake_steering_florisstandin/hercules_runscript.py
-print("runscript complete.")
-========
 print("Finished running closed-loop controller.")
->>>>>>>> 3caa5f54c338e875c21730507adab5c4c0aec824:examples/wind_farm_power_tracking_florisstandin/hercules_runscript_CLcontrol.py

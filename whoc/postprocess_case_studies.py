@@ -185,10 +185,13 @@ def plot_cost_function_pareto_curve(data_summary_df, case_studies, save_dir):
     plot mean farm level power vs mean sum of absolute yaw changes for different values of alpha
     """
     fig, ax = plt.subplots(1)
-    sub_df = data_summary_df.loc["alpha_" in data_summary_df["SolverType"].str, :]
+    sub_df = data_summary_df.loc[data_summary_df["SolverType"].str.contains("cost_func_tuning_"), :]
+    # sub_df.loc[:, "SolverType"] = [f"\alpha = {float(case_name.split('_')[-1]):.2f}" for case_name in case_studies["cost_func_tuning"]["case_names"]["vals"]]
+
 
     # Plot "RelativeFarmPowerMean" vs. "RelativeYawAngleChangeAbsMean" for all "SolverType" == "cost_func_tuning"
-    sns.scatterplot(data=sub_df, x="YawAngleChangeAbsMean", y="FarmPowerMean", size="SolverType", ax=ax)
+    sns.scatterplot(data=sub_df, x="YawAngleChangeAbsMean", y="FarmPowerMean",
+                    size="SolverType", size_order=reversed(sub_df["SolverType"].to_numpy()), ax=ax)
     fig.savefig(os.path.join(save_dir, "cost_function_pareto_curve.png"))
 
 def plot_breakdown_robustness(data_summary_df, case_studies, save_dir):
@@ -204,7 +207,7 @@ def plot_breakdown_robustness(data_summary_df, case_studies, save_dir):
     # Plot "RelativeFarmPowerMean" vs. "RelativeYawAngleChangeAbsMean" for all "SolverType" == "cost_func_tuning"
     fig, ax = plt.subplots(1)
     sns.scatterplot(data=sub_df, x="RelativeYawAngleChangeAbsMean", y="RelativeFarmPowerMean", size="SolverType", 
-                    size_order=case_studies["breakdown_robustness"]["case_names"]["vals"], ax=ax)
+                    size_order=reversed(sub_df["SolverType"]), ax=ax)
     fig.savefig(os.path.join(save_dir, "breakdown_robustness.png"))
 
 if __name__ == '__main__':
