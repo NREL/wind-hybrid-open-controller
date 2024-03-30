@@ -20,7 +20,7 @@ from hercules.emulator import Emulator
 from hercules.py_sims import PySims
 from hercules.utilities import load_yaml
 
-import whoc
+from whoc import __file__ as whoc_file
 from whoc.controllers.greedy_wake_steering_controller import GreedyController
 from whoc.interfaces.hercules_actuator_disk_interface import HerculesADInterface
 from whoc.wind_field.generate_freestream_wind import generate_freestream_wind
@@ -30,7 +30,7 @@ case_idx = 0
 
 input_dict = load_yaml(sys.argv[1])
 
-with open(os.path.join(os.path.dirname(whoc.__file__), "wind_field", "wind_field_config.yaml"), "r") as fp:
+with open(os.path.join(os.path.dirname(whoc_file), "wind_field", "wind_field_config.yaml"), "r") as fp:
     wind_field_config = yaml.safe_load(fp)
 
 amr_standin_data = generate_freestream_wind(".", regenerate_wind_field)[case_idx]

@@ -70,6 +70,7 @@ class GreedyController(ControllerBase):
 		return np.array([[[wind_directions[i, j] for t in range(self.n_turbines)] for j in range(wind_directions.shape[1])] for i in range(wind_directions.shape[0])])
 	
 	def compute_controls(self):
+		print(self.measurements_dict["time"], self.measurements_dict["wind_directions"])
 		current_wind_directions = np.atleast_2d(self.measurements_dict["wind_directions"])
 		if self.use_filt:
 			self.historic_measurements["wind_directions"] = np.vstack([

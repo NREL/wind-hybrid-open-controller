@@ -12,12 +12,6 @@
 
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 import numpy as np
-<<<<<<< HEAD
-import pandas as pd
-from whoc.controllers import (
-    HerculesWindBatteryController,
-    LookupBasedWakeSteeringController,
-=======
 
 # import pandas as pd
 from whoc.controllers import (
@@ -25,7 +19,6 @@ from whoc.controllers import (
     WindBatteryController,
     WindFarmPowerDistributingController,
     WindFarmPowerTrackingController,
->>>>>>> 3caa5f54c338e875c21730507adab5c4c0aec824
 )
 from whoc.controllers.wind_farm_power_tracking_controller import POWER_SETPOINT_DEFAULT
 from whoc.interfaces import HerculesADInterface, HerculesWindBatteryInterface
@@ -75,55 +68,6 @@ def test_controller_instantiation():
     test_interface = StandinInterface()
 
     _ = LookupBasedWakeSteeringController(interface=test_interface, input_dict=test_hercules_dict)
-<<<<<<< HEAD
-    _ = HerculesWindBatteryController(interface=test_interface, input_dict=test_hercules_dict)
-
-
-def test_LookupBasedWakeSteeringController():
-    test_interface = HerculesADYawInterface(test_hercules_dict)
-    
-    # No lookup table passed; simply passes through wind direction to yaw angles
-    test_controller = LookupBasedWakeSteeringController(
-        interface=test_interface,
-        input_dict=test_hercules_dict
-    )
-
-    # Check that the controller can be stepped
-    test_hercules_dict["time"] = 20
-    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
-    test_angles = np.array(
-        test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_yaw_angles"]
-    )
-    wind_directions = np.array(
-        test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_wind_directions"]
-    )
-    assert np.allclose(test_angles, wind_directions)
-
-    # Lookup table that specified 20 degree offset for T000, 10 degree offset for T001 for all wind
-    # directions
-    test_offsets = np.array([20.0, 10.0])
-    df_opt_test = pd.DataFrame(data={
-        "wind_direction":[220.0, 320.0, 220.0, 320.0],
-        "wind_speed":[0.0, 0.0, 20.0, 20.0],
-        "yaw_angles_opt":[test_offsets]*4, 
-        "turbulence_intensity":[0.06]*4
-    })
-    test_controller = LookupBasedWakeSteeringController(
-        interface=test_interface,
-        input_dict=test_hercules_dict,
-        df_yaw=df_opt_test
-    )
-
-    test_hercules_dict["time"] = 20
-    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
-    test_angles = np.array(
-        test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_yaw_angles"]
-    )
-    wind_directions = np.array(
-        test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_wind_directions"]
-    )
-    assert np.allclose(test_angles, wind_directions - test_offsets)
-=======
     _ = WindBatteryController(interface=test_interface, input_dict=test_hercules_dict)
     _ = WindFarmPowerDistributingController(interface=test_interface, input_dict=test_hercules_dict)
     _ = WindFarmPowerTrackingController(interface=test_interface, input_dict=test_hercules_dict)
@@ -220,7 +164,6 @@ def test_WindFarmPowerDistributingController():
         test_power_setpoints,
         POWER_SETPOINT_DEFAULT / test_hercules_dict["controller"]["num_turbines"],
     )
->>>>>>> 3caa5f54c338e875c21730507adab5c4c0aec824
 
     # Test with power reference
     test_hercules_dict["external_signals"]["wind_power_reference"] = 1000

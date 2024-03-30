@@ -12,11 +12,7 @@ method of `ControllerBase`.
 
 ### LookupBasedWakeSteeringController
 Yaw controller that implements wake steering based on a lookup table. 
-<<<<<<< HEAD
-Requires a df_opt object produced by a FLORIS yaw optimization routine. See example 
-=======
 Requires a `df_opt` object produced by a FLORIS yaw optimization routine. See example 
->>>>>>> 3caa5f54c338e875c21730507adab5c4c0aec824
 lookup-based_wake_steering_florisstandin for example usage.
 
 Currently, yaw angles are set based purely on the (local turbine) wind direction. The lookup table
@@ -24,12 +20,6 @@ is sampled at a hardcoded wind speed of 8 m/s. This will be updated in future wh
 developed for a simulator that provides wind turbine wind speeds also.
 
 ### WakeSteeringROSCOStandin
-<<<<<<< HEAD
-May be combined into a universal simple wake steeringcontroller.
-
-### HerculesWindBatteryController
-TO WRITE
-=======
 Not yet developed. May be combined into a universal simple LookupBasedWakeSteeringController.
 
 ### WindBatteryController
@@ -58,4 +48,3 @@ Integral action, as well as gain scheduling based on turbine saturation, has bee
 simple proportional control appears sufficient currently. However, these may be enabled at a 
 later date if needed. The `proportional_gain` for the controller may be provided on instantiation,
 and defaults to `proportional_gain = 1`.
->>>>>>> 3caa5f54c338e875c21730507adab5c4c0aec824
