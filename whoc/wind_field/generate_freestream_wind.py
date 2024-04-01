@@ -7,7 +7,6 @@ import pandas as pd
 from hercules.utilities import load_yaml
 
 import whoc
-from whoc.controllers.mpc_wake_steering_controller import MPC
 from whoc.wind_field.WindField import generate_multi_wind_ts
 
 

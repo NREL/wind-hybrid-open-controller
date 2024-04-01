@@ -29,4 +29,6 @@ examples/*/logfloris*
 # Outputs
 *echo
 
-whoc/case_studies
+whoc/case_studies/*/*.csv
+whoc/case_studies/*/*.yaml
+

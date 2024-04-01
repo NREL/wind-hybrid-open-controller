@@ -15,7 +15,6 @@ from functools import partial
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import numpy as np
-from floris import tools as wfct
 import pandas as pd
 from multiprocessing import Pool
 import scipy
@@ -25,7 +24,7 @@ import os
 # from whoc.config import *
 import yaml
 from array import array
-from scipy.interpolate import interp1d, LinearNDInterpolator
+from scipy.interpolate import interp1d
 from collections import defaultdict
 from itertools import cycle, chain
 from glob import glob

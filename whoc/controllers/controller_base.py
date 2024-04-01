@@ -13,11 +13,7 @@
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
 from abc import ABCMeta, abstractmethod
-import numpy as np
-import pandas as pd
-from time import time
 
-from whoc.interfaces.controlled_floris_interface import ControlledFlorisInterface
 
 class ControllerBase(metaclass=ABCMeta):
     def __init__(self, interface, verbose=True):
@@ -52,26 +48,25 @@ class ControllerBase(metaclass=ABCMeta):
         # Initialize controls to send
         self.controls_dict = None
 
-    def _receive_measurements(self, hercules_dict=None):
+    def _receive_measurements(self, dict=None):
         # May need to eventually loop here, depending on server set up.
-        self.measurements_dict = self._s.get_measurements(hercules_dict)
+        self.measurements_dict = self._s.get_measurements(dict)
 
         return None
 
-    def _send_controls(self, hercules_dict=None) -> dict:
-        
+    def _send_controls(self, dict=None):
         self._s.check_controls(self.controls_dict)
-        controller_output = self._s.send_controls(hercules_dict, **self.controls_dict)
+        dict = self._s.send_controls(dict, **self.controls_dict)
 
-        return controller_output  # or main_dict, or what?
+        return dict  # or main_dict, or what?
 
     def step(self, hercules_dict=None):
         # If not running with direct hercules integration,
         # hercules_dict may simply be None throughout this method.
         self._receive_measurements(hercules_dict)
 
-        self.compute_controls() # set self.controls_dict
-        
+        self.compute_controls()
+
         hercules_dict = self._send_controls(hercules_dict)
 
         return hercules_dict  # May simply be None.
