@@ -20,12 +20,12 @@ import re
 from flasc.wake_steering.lookup_table_tools import get_yaw_angles_interpolant
 
 from whoc.controllers.controller_base import ControllerBase
-from whoc.interfaces.controlled_floris_interface import ControlledFlorisInterface
+from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 
 from scipy.interpolate import LinearNDInterpolator
 from scipy.signal import lfilter
 
-from floris.tools.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
+from floris.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
 
 class LookupBasedWakeSteeringController(ControllerBase):
     def __init__(self, interface, input_dict, verbose=False, **kwargs):
@@ -90,7 +90,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
             
             # Load a FLORIS object for yaw optimization
             
-            fi_lut = ControlledFlorisInterface(max_workers=self.max_workers, yaw_limits=self.yaw_limits, dt=self.dt,
+            fi_lut = ControlledFlorisModel(max_workers=self.max_workers, yaw_limits=self.yaw_limits, dt=self.dt,
                                                yaw_rate=self.yaw_rate, floris_version='dev') \
                 .load_floris(config_path=self.floris_input_file)
             
@@ -144,7 +144,10 @@ class LookupBasedWakeSteeringController(ControllerBase):
                                                             current_wind_directions])[-int((self.lpf_time_const // self.simulation_dt) * 1e3):, :]
 
         current_time = np.atleast_1d(self.measurements_dict["time"])[0]
-        if abs(current_time % self.dt) == 0.0:
+        if current_time < 2 * self.simulation_dt:
+            pass # will be set to initial values
+        # TODO MISHA this is a patch up for AMR wind initialization problem
+        elif (abs(current_time % self.dt) == 0.0) or (current_time == self.simulation_dt * 2):
             # if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
             if current_time < 60 or not self.use_filt:
                 
@@ -244,13 +247,13 @@ class LookupBasedWakeSteeringController(ControllerBase):
     
 #     # Load a dataframe containing the wind rose information
 #     df_windrose, windrose_interpolant \
-#         = ControlledFlorisInterface.load_windrose(
+#         = ControlledFlorisModel.load_windrose(
 #         windrose_path='/Users/aoifework/Documents/toolboxes/floris/examples/inputs/wind_rose.csv')
     
 #     ## First, get baseline AEP, without wake steering
     
 #     # Load a FLORIS object for AEP calculations
-#     fi_noyaw = ControlledFlorisInterface(max_workers=max_workers, yaw_limits=input_dict["controller"]["yaw_limits"],
+#     fi_noyaw = ControlledFlorisModel(max_workers=max_workers, yaw_limits=input_dict["controller"]["yaw_limits"],
 #                                          dt=input_dict["dt"],
 #                                          yaw_rate=input_dict["controller"]["yaw_rate"]) \
 #         .load_floris(config_path=input_dict["controller"]["floris_input_file"])
@@ -264,13 +267,13 @@ class LookupBasedWakeSteeringController(ControllerBase):
     
 #     ctrl_noyaw = NoYawController(fi_noyaw, input_dict=input_dict)
     
-#     farm_power_noyaw, farm_aep_noyaw, farm_energy_noyaw = ControlledFlorisInterface.compute_aep(fi_noyaw, ctrl_noyaw,
+#     farm_power_noyaw, farm_aep_noyaw, farm_energy_noyaw = ControlledFlorisModel.compute_aep(fi_noyaw, ctrl_noyaw,
 #                                                                                                 windrose_interpolant,
 #                                                                                                 wind_directions_tgt,
 #                                                                                                 wind_speeds_tgt)
     
 #     # instantiate interface
-#     fi_lut = ControlledFlorisInterface(max_workers=max_workers, yaw_limits=input_dict["controller"]["yaw_limits"],
+#     fi_lut = ControlledFlorisModel(max_workers=max_workers, yaw_limits=input_dict["controller"]["yaw_limits"],
 #                                        dt=input_dict["dt"],
 #                                        yaw_rate=input_dict["controller"]["yaw_rate"]) \
 #         .load_floris(config_path=input_dict["controller"]["floris_input_file"])
@@ -279,7 +282,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 #     input_dict["controller"]["floris_input_file"] = input_dict["controller"]["floris_input_file"]
 #     ctrl_lut = LookupBasedWakeSteeringController(fi_lut, input_dict=input_dict)
     
-#     farm_power_lut, farm_aep_lut, farm_energy_lut = ControlledFlorisInterface.compute_aep(fi_lut, ctrl_lut,
+#     farm_power_lut, farm_aep_lut, farm_energy_lut = ControlledFlorisModel.compute_aep(fi_lut, ctrl_lut,
 #                                                                                           windrose_interpolant,
 #                                                                                           wind_directions_tgt,
 #                                                                                           wind_speeds_tgt)

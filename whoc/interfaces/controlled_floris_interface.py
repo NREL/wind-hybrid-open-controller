@@ -14,15 +14,15 @@
 
 from whoc.interfaces.interface_base import InterfaceBase
 import numpy as np
-from floris.tools import FlorisInterface, ParallelComputingInterface
+from floris.floris_model import FlorisModel
 import pandas as pd
 from scipy.interpolate import LinearNDInterpolator
-import floris.tools.visualization as wakeviz
+import floris.flow_visualization as wakeviz
 import matplotlib.pyplot as plt
 
 
 
-class ControlledFlorisInterface(InterfaceBase):
+class ControlledFlorisModel(InterfaceBase):
     def __init__(self, yaw_limits, dt, yaw_rate, offline_probability=0.0, floris_version='v4'):
         super().__init__()
         self.yaw_limits = yaw_limits
@@ -36,11 +36,11 @@ class ControlledFlorisInterface(InterfaceBase):
     def load_floris(self, config_path):
         # Load the default example floris object
         # if self.floris_version == 'v4':
-        self.env = FlorisInterface(config_path)  # GCH model matched to the default "legacy_gauss" of V2
+        self.env = FlorisModel(config_path)  # GCH model matched to the default "legacy_gauss" of V2
         # elif self.floris_version == 'dev':
-        #     # from floris_dev.tools import FlorisInterface as FlorisInterfaceDev
-        #     from floris.tools import FlorisInterface as FlorisInterfaceDev
-        #     self.env = FlorisInterfaceDev(config_path)
+        #     # from floris_dev.tools import FlorisModel as FlorisModelDev
+        #     from floris.tools import FlorisModel as FlorisModelDev
+        #     self.env = FlorisModelDev(config_path)
         self.n_turbines = self.env.floris.farm.n_turbines
         
         return self
@@ -140,7 +140,7 @@ class ControlledFlorisInterface(InterfaceBase):
             yaw_offsets = (np.array(disturbances["wind_directions"])[:, np.newaxis] - ctrl_dict["yaw_angles"])
             self.previous_yaw_setpoints = ctrl_dict["yaw_angles"]
 
-        self.env.reinitialize(
+        self.env.set(
             wind_directions=disturbances["wind_directions"],
             wind_speeds=disturbances["wind_speeds"]
             # turbulence_intensities=disturbances["turbulence_intensities"]
@@ -198,7 +198,7 @@ class ControlledFlorisInterface(InterfaceBase):
         # # else:
         # # yaw_angles = controller.step()
         
-        fi.env.reinitialize(
+        fi.env.set(
             wind_directions=wind_rose.wd_flat,
             wind_speeds=wind_rose.ws_flat
             # turbulence_intensity=0.08  # Assume 8% turbulence intensity
@@ -242,11 +242,11 @@ if __name__ == '__main__':
     
     # Load a dataframe containing the wind rose information
     df_windrose, windrose_interpolant \
-        = ControlledFlorisInterface.load_windrose(
+        = ControlledFlorisModel.load_windrose(
         windrose_path='/Users/aoifework/Documents/toolboxes/floris/examples/inputs/wind_rose.csv')
     
     # Load a FLORIS object for AEP calculations
-    fi_greedy = ControlledFlorisInterface(max_workers=max_workers, yaw_limits=yaw_limits)\
+    fi_greedy = ControlledFlorisModel(max_workers=max_workers, yaw_limits=yaw_limits)\
         .load_floris(config_path='/Users/aoifework/Documents/toolboxes/floris/examples/inputs/emgauss.yaml',
                      wind_directions=wind_directions_tgt, wind_speeds=wind_speeds_tgt,
                      turbulence_intensity=turbulence_intensity)

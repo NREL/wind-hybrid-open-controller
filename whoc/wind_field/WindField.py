@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import numpy as np
 import pandas as pd
-from multiprocessing import Pool
+from concurrent.futures import ProcessPoolExecutor, wait
 import scipy
 import os
 # from CaseGen_General import CaseGen_General
@@ -161,14 +161,14 @@ class WindField:
 			# b = var_u[:n_preview_steps + preview_dt - i] * p
 			b = np.array([var_u[0]] * (n_preview_steps + preview_dt - i)) * p
 			# x = b * (a - ((i - 1) / (a * (n_preview_steps + preview_dt))))
-			x = b * np.exp(-(q / self.simulation_dt) * i) 
+			x = b * np.exp(-q * (i * self.simulation_dt)) 
 			cov_u += np.diag(x, k=i)
 			cov_u += np.diag(x, k=-i)
 
 			# b = var_v[:n_preview_steps - i + preview_dt] * p
 			# b = var_v[:n_preview_steps + preview_dt - i] * p
 			b = np.array([var_v[0]] * (n_preview_steps + preview_dt - i)) * p
-			x = b * np.exp(-(q / self.simulation_dt) * i)
+			x = b * np.exp(-q * (i * self.simulation_dt))
 			# x = b * (a - ((i - 1) / (a * (n_preview_steps + preview_dt))))
 			cov_v += np.diag(x, k=i)
 			cov_v += np.diag(x, k=-i)
@@ -655,17 +655,21 @@ def plot_distribution_ts(wf, n_preview_steps):
 	fig_plot.savefig(os.path.join(wf.fig_dir, f'wind_field_preview_ts2.png'))
 
 
-def generate_multi_wind_ts(config, save_name="", seed=None, return_params=False):
+def generate_multi_wind_ts(config, save_name="", seeds=None, return_params=False):
 	if config["n_wind_field_cases"] == 1:
 		wind_field_data = []
 		for i in range(config["n_wind_field_cases"]):
-			wind_field_data.append(generate_wind_ts(config, True, i, save_name, seed, return_params))
+			wind_field_data.append(generate_wind_ts(config=config, from_gaussian=True, case_idx=i, save_name=save_name, seed=seeds[i], return_params=return_params))
 		plot_ts(wind_field_data[0].df, config["fig_dir"])
 		
 	else:
-		pool = Pool()
-		wind_field_data = pool.map(partial(generate_wind_ts, config=config, from_gaussian=True, save_name=save_name, seed=seed, return_params=return_params), range(config["n_wind_field_cases"]))
-		pool.close()
+		with ProcessPoolExecutor() as generate_wind_fields:
+			futures = [generate_wind_fields.submit(generate_wind_ts, 
+                                              config=config, from_gaussian=True, save_name=save_name, return_params=return_params, 
+											  case_idx=case_idx, seed=seeds[case_idx]) 
+                       for case_idx in range(config["n_wind_field_cases"])]
+		wait(futures)
+		wind_field_data = [fut.result() for fut in futures]
 	
 	return wind_field_data
 
@@ -679,9 +683,14 @@ def generate_multi_wind_preview_ts(config, wind_field_data):
 		return wind_field_preview_data
 	
 	else:
-		pool = Pool()
-		res = pool.map(partial(generate_wind_preview_ts, config, wind_field_data), range(config["n_wind_field_cases"]))
-		pool.close()
+		with ProcessPoolExecutor() as generate_wind_fields:
+			futures = [generate_wind_fields.submit(generate_wind_preview_ts, 
+                                              config=config, 
+											  wind_field_data=wind_field_data,
+											  case_idx=case_idx) 
+                       for case_idx in range(config["n_wind_field_cases"])]
+		wait(futures)
+		wind_field_data = [fut.result() for fut in futures]
 
 
 if __name__ == '__main__':
