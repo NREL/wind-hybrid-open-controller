@@ -55,15 +55,19 @@ class GreedyController(ControllerBase):
 		return np.array([[[wind_directions[i, j] for t in range(self.n_turbines)] for j in range(wind_directions.shape[1])] for i in range(wind_directions.shape[0])])
 	
 	def compute_controls(self):
-		current_wind_directions = np.atleast_2d(self.measurements_dict["wind_directions"])
-		if self.use_filt:
-			self.historic_measurements["wind_directions"] = np.vstack([
-				self.historic_measurements["wind_directions"],
-				current_wind_directions])[-int((self.lpf_time_const // self.simulation_dt) * 1e3):, :]
-		
+		# TODO MISHA should we check this at every simulation step rather than every 60, for threshold changes?
 		current_time = np.atleast_1d(self.measurements_dict["time"])[0]
-		if abs(current_time % self.dt) == 0.0:
-			
+		if current_time < 2 * self.simulation_dt:
+			pass # will be set to initial values
+		# TODO MISHA this is a patch up for AMR wind initialization problem
+		elif (abs(current_time % self.simulation_dt) == 0.0) or (current_time == self.simulation_dt * 2):
+		
+			current_wind_directions = np.atleast_2d(self.measurements_dict["wind_directions"])
+			if self.use_filt:
+				self.historic_measurements["wind_directions"] = np.vstack([
+					self.historic_measurements["wind_directions"],
+					current_wind_directions])[-int((self.lpf_time_const // self.simulation_dt) * 1e3):, :]
+				
 			# if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
 			if current_time < 60. or not self.use_filt:
 				if np.size(current_wind_directions) == 0:
@@ -96,9 +100,9 @@ class GreedyController(ControllerBase):
 					yaw_setpoints.append(current_yaw_setpoints[i])
 
 			yaw_setpoints = np.array(yaw_setpoints)
-			yaw_setpoints = np.clip(yaw_setpoints, current_yaw_setpoints - self.dt * self.yaw_rate, current_yaw_setpoints + self.dt * self.yaw_rate)
+			yaw_setpoints = np.clip(yaw_setpoints, current_yaw_setpoints - self.simulation_dt * self.yaw_rate, current_yaw_setpoints + self.simulation_dt * self.yaw_rate)
 			yaw_setpoints = np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
-			print(f"GREEDY CONTROLLER, 99, {list(yaw_setpoints)}")
+			print(f"GREEDY CONTROLLER, new_yaw_setpoints={list(yaw_setpoints)}")
 			self.controls_dict = {"yaw_angles": list(yaw_setpoints)}
 
 		return None
@@ -121,7 +125,7 @@ class GreedyController(ControllerBase):
 # 	# Load a dataframe containing the wind rose information
 # 	# import floris
 # 	# df_windrose, windrose_interpolant \
-# 	# 	= ControlledFlorisInterface.load_windrose(
+# 	# 	= ControlledFlorisModel.load_windrose(
 # 	# 	windrose_path=os.path.join(os.path.dirname(floris.__file__), "../examples/inputs/wind_rose.csv"))
 	
 # 	# Read in the wind rose using the class
@@ -138,7 +142,7 @@ class GreedyController(ControllerBase):
 # 	## First, get baseline AEP, without wake steering
 	
 # 	# Load a FLORIS object for AEP calculations 
-# 	fi_noyaw = ControlledFlorisInterface(max_workers=max_workers,
+# 	fi_noyaw = ControlledFlorisModel(max_workers=max_workers,
 # 										 yaw_limits=input_dict["controller"]["yaw_limits"],
 # 										 dt=input_dict["dt"],
 # 										 yaw_rate=input_dict["controller"]["yaw_rate"]) \
@@ -155,17 +159,17 @@ class GreedyController(ControllerBase):
 # 	# instantiate controller
 # 	ctrl_noyaw = NoYawController(fi_noyaw, input_dict)
 	
-# 	farm_power_noyaw, farm_aep_noyaw, farm_energy_noyaw = ControlledFlorisInterface.compute_aep(fi_noyaw, ctrl_noyaw, wind_rose)
+# 	farm_power_noyaw, farm_aep_noyaw, farm_energy_noyaw = ControlledFlorisModel.compute_aep(fi_noyaw, ctrl_noyaw, wind_rose)
 	
 # 	# Load a FLORIS object for AEP calculations
-# 	fi_greedy = ControlledFlorisInterface(max_workers=max_workers, yaw_limits=input_dict["controller"]["yaw_limits"],
+# 	fi_greedy = ControlledFlorisModel(max_workers=max_workers, yaw_limits=input_dict["controller"]["yaw_limits"],
 # 										  dt=input_dict["dt"],
 # 										  yaw_rate=input_dict["controller"]["yaw_rate"]) \
 # 		.load_floris(config_path=input_dict["controller"]["floris_input_file"])
 	
 # 	# instantiate controller
 # 	ctrl_greedy = GreedyController(fi_greedy, input_dict)
-# 	farm_power_lut, farm_aep_lut, farm_energy_lut = ControlledFlorisInterface.compute_aep(fi_greedy, ctrl_greedy, wind_rose)
+# 	farm_power_lut, farm_aep_lut, farm_energy_lut = ControlledFlorisModel.compute_aep(fi_greedy, ctrl_greedy, wind_rose)
 # 	aep_uplift = 100.0 * (farm_aep_lut / farm_aep_noyaw - 1)
 	
 # 	print(" ")

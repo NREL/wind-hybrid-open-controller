@@ -17,15 +17,15 @@ from scipy.stats import norm
 
 import whoc
 from whoc.controllers.controller_base import ControllerBase
-from whoc.interfaces.controlled_floris_interface import ControlledFlorisInterface
+from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
 from whoc.wind_field.WindField import generate_multi_wind_ts, WindField, generate_wind_preview
 
 from hercules.utilities import load_yaml
 
-from floris.tools.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
+from floris.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
 
-# from floris_dev.tools import FlorisInterface as FlorisInterfaceDev
+# from floris_dev.tools import FlorisModel as FlorisModelDev
 # from floris_dev.tools.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
 
 # TODO change constraints to be probabilistic and use freestream wind speed
@@ -52,7 +52,7 @@ class YawOptimizationSRRHC(YawOptimizationSR):
         verify_convergence=False,
     ):
         """
-        Instantiate YawOptimizationSR object with a FlorisInterface object
+        Instantiate YawOptimizationSR object with a FlorisModel object
         and assign parameter values.
         """
 
@@ -120,7 +120,7 @@ class YawOptimizationSRRHC(YawOptimizationSR):
 
         # Calculate solutions
         # turbine_powers = np.zeros_like(yaw_angles[:, 0, :])
-        fi_subset.reinitialize(wind_directions=wd_array, wind_speeds=ws_array, turbulence_intensities=ti_array)
+        fi_subset.set(wind_directions=wd_array, wind_speeds=ws_array, turbulence_intensities=ti_array)
         fi_subset.calculate_wake(yaw_angles=yaw_angles, disable_turbines=current_offline_status)
         turbine_powers = fi_subset.get_turbine_powers()
 
@@ -510,7 +510,7 @@ class MPC(ControllerBase):
         self.warm_start = input_dict["controller"]["warm_start"]
 
         if self.warm_start == "lut":
-            fi_lut = ControlledFlorisInterface(yaw_limits=input_dict["controller"]["yaw_limits"],
+            fi_lut = ControlledFlorisModel(yaw_limits=input_dict["controller"]["yaw_limits"],
                                         dt=input_dict["dt"],
                                         yaw_rate=input_dict["controller"]["yaw_rate"]) \
                         .load_floris(config_path=input_dict["controller"]["floris_input_file"])
@@ -579,11 +579,11 @@ class MPC(ControllerBase):
         
         self.wind_ti = 0.08
 
-        self.fi = ControlledFlorisInterface(yaw_limits=self.yaw_limits, dt=self.dt, yaw_rate=self.yaw_rate) \
+        self.fi = ControlledFlorisModel(yaw_limits=self.yaw_limits, dt=self.dt, yaw_rate=self.yaw_rate) \
             .load_floris(config_path=input_dict["controller"]["floris_input_file"])
         
         if self.solver == "serial_refine":
-            # self.fi_opt = FlorisInterfaceDev(input_dict["controller"]["floris_input_file"]) #.replace("floris", "floris_dev"))
+            # self.fi_opt = FlorisModelDev(input_dict["controller"]["floris_input_file"]) #.replace("floris", "floris_dev"))
             if self.warm_start == "lut":
                 print("Can't warm-start FLORIS SR solver, setting self.warm_start to none")
                 # self.warm_start = "greedy"
@@ -764,13 +764,17 @@ class MPC(ControllerBase):
         solve OCP to minimize objective over future horizon
         """
         current_time = np.atleast_1d(self.measurements_dict["time"])[0]
-        if abs(current_time % self.dt) == 0.0:
+        if current_time < 2 * self.simulation_dt:
+            pass # will be set to initial values
+        # TODO MISHA this is a patch up for AMR wind initialization problem
+        elif (abs(current_time % self.dt) == 0.0) or (current_time == self.simulation_dt * 2):
             # get current time-step
             # current_time_step = int(current_time[0] // self.dt) # TODO this gets the controller time-step, what is it doing for wind_preview_samples
             
             if current_time > 0.:
                 # update initial state self.mi_model.initial_state
-                current_yaw_angles = np.atleast_2d(self.measurements_dict["yaw_angles"])[0, :]
+                # TODO should be able to get this from measurements dict
+                current_yaw_angles = np.atleast_2d(self.controls_dict["yaw_angles"])[0, :]
                 self.initial_state = current_yaw_angles / self.yaw_norm_const # scaled by yaw limits
             
             if self.current_freestream_measurements is None:
@@ -785,7 +789,7 @@ class MPC(ControllerBase):
                                                                int(current_time // self.simulation_dt))
 
             # reinitialize floris with the wind speed samples from the future horizon (excluding current one)
-            self.fi.env.reinitialize(
+            self.fi.env.set(
                 wind_directions=[self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][m] for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)],
                 wind_speeds=[self.wind_preview_samples[f"FreestreamWindMag_{j + 1}"][m] for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)]
             )
@@ -1029,11 +1033,12 @@ class MPC(ControllerBase):
         self.opt_cost_terms = opt_cost_terms
 
         return np.rint(opt_yaw_setpoints[0, :] / self.yaw_increment) * self.yaw_increment
-            # reinitialize the floris object with the predicted wind magnitude and direction at this time-step in the horizon
+            # set the floris object with the predicted wind magnitude and direction at this time-step in the horizon
 
     def warm_start_opt_vars(self):
         self.init_sol = {"states": [], "control_inputs": []}
-        current_yaw_setpoints = np.atleast_2d(self.measurements_dict["yaw_angles"])[0, :]
+        # TODO should be able to get this from measurements_dict
+        current_yaw_setpoints = np.atleast_2d(self.controls_dict["yaw_angles"])[0, :]
         
         if self.warm_start == "previous":
             current_time = np.atleast_1d(self.measurements_dict["time"])[0]
@@ -1532,7 +1537,7 @@ class MPC(ControllerBase):
 # if __name__ == "__main__":
 
 
-    # fi = ControlledFlorisInterface(yaw_limits=input_dict["controller"]["yaw_limits"],
+    # fi = ControlledFlorisModel(yaw_limits=input_dict["controller"]["yaw_limits"],
     #                                     offline_probability=input_dict["controller"]["offline_probability"],
     #                                     dt=input_dict["dt"],
     #                                     yaw_rate=input_dict["controller"]["yaw_rate"]) \

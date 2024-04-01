@@ -14,7 +14,7 @@ from scipy.signal import lfilter
 
 from controller_base import ControllerBase
 
-from whoc.interfaces.controlled_floris_interface import ControlledFlorisInterface
+from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 from whoc.config import *
 from whoc.wind_field.WindField import generate_multi_wind_ts
 from whoc.plotting import plot_power_vs_speed, plot_yaw_vs_dir, plot_power_vs_dir
@@ -67,7 +67,7 @@ class LUTController(ControllerBase):
 			## Get optimized AEP, with wake steering
 			
 			# Load a FLORIS object for yaw optimization
-			fi_lut = ControlledFlorisInterface(max_workers=max_workers, yaw_limits=YAW_ANGLE_RANGE, dt=DT, yaw_rate=YAW_RATE) \
+			fi_lut = ControlledFlorisModel(max_workers=max_workers, yaw_limits=YAW_ANGLE_RANGE, dt=DT, yaw_rate=YAW_RATE) \
 				.load_floris(config_path=WIND_FIELD_CONFIG["floris_input_file"])
 			
 			fi_lut.env.reinitialize(
@@ -145,13 +145,13 @@ if __name__ == "__main__":
 	
 	# Load a dataframe containing the wind rose information
 	df_windrose, windrose_interpolant \
-		= ControlledFlorisInterface.load_windrose(
+		= ControlledFlorisModel.load_windrose(
 		windrose_path='/Users/aoifework/Documents/toolboxes/floris/examples/inputs/wind_rose.csv')
 	
 	## First, get baseline AEP, without wake steering
 	
 	# Load a FLORIS object for AEP calculations
-	fi_noyaw = ControlledFlorisInterface(max_workers=max_workers, yaw_limits=YAW_ANGLE_RANGE, dt=DT, yaw_rate=YAW_RATE) \
+	fi_noyaw = ControlledFlorisModel(max_workers=max_workers, yaw_limits=YAW_ANGLE_RANGE, dt=DT, yaw_rate=YAW_RATE) \
 		.load_floris(config_path=WIND_FIELD_CONFIG["floris_input_file"])
 	fi_noyaw.env.reinitialize(
 		wind_directions=wind_directions_tgt,
@@ -172,18 +172,18 @@ if __name__ == "__main__":
 		}}}
 	ctrl_noyaw = NoYawController(fi_noyaw, input_dict=input_dict)
 	
-	farm_power_noyaw, farm_aep_noyaw, farm_energy_noyaw = ControlledFlorisInterface.compute_aep(fi_noyaw, ctrl_noyaw, windrose_interpolant,
+	farm_power_noyaw, farm_aep_noyaw, farm_energy_noyaw = ControlledFlorisModel.compute_aep(fi_noyaw, ctrl_noyaw, windrose_interpolant,
 	                                                                     wind_directions_tgt, wind_speeds_tgt)
 	
 	# instantiate interface
-	fi_lut = ControlledFlorisInterface(max_workers=max_workers, yaw_limits=YAW_ANGLE_RANGE, dt=DT, yaw_rate=YAW_RATE) \
+	fi_lut = ControlledFlorisModel(max_workers=max_workers, yaw_limits=YAW_ANGLE_RANGE, dt=DT, yaw_rate=YAW_RATE) \
 		.load_floris(config_path=WIND_FIELD_CONFIG["floris_input_file"])
 	
 	# instantiate controller, and load lut from csv if it exists
 	
 	ctrl_lut = LUTController(fi_lut, input_dict=input_dict)
 	
-	farm_power_lut, farm_aep_lut, farm_energy_lut = ControlledFlorisInterface.compute_aep(fi_lut, ctrl_lut, windrose_interpolant,
+	farm_power_lut, farm_aep_lut, farm_energy_lut = ControlledFlorisModel.compute_aep(fi_lut, ctrl_lut, windrose_interpolant,
 	                                                       wind_directions_tgt, wind_speeds_tgt)
 	aep_uplift = 100.0 * (farm_aep_lut / farm_aep_noyaw - 1)
 
