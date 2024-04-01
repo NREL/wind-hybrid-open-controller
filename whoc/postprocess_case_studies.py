@@ -190,8 +190,11 @@ def plot_cost_function_pareto_curve(data_summary_df, case_studies, save_dir):
 
 
     # Plot "RelativeFarmPowerMean" vs. "RelativeYawAngleChangeAbsMean" for all "SolverType" == "cost_func_tuning"
-    sns.scatterplot(data=sub_df, x="YawAngleChangeAbsMean", y="FarmPowerMean",
-                    size="SolverType", size_order=reversed(sub_df["SolverType"].to_numpy()), ax=ax)
+    ax = sns.scatterplot(data=sub_df, x="YawAngleChangeAbsMean", y="FarmPowerMean",
+                    size="SolverType", size_order=reversed(sub_df["SolverType"].to_numpy()),
+                    ax=ax)
+    ax.collections[0].set_sizes(ax.collections[0].get_sizes() * 5)
+    ax.legend([], [], frameon=False)
     fig.savefig(os.path.join(save_dir, "cost_function_pareto_curve.png"))
 
 def plot_breakdown_robustness(data_summary_df, case_studies, save_dir):

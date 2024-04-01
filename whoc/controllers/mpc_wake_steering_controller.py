@@ -833,7 +833,7 @@ class MPC(ControllerBase):
             if not state_con_bools: # this can sometimes not be satisfied if the iteration limit is exceeded
                 print(state_con_bools)
 
-            self.controls_dict = {"yaw_angles": yaw_star}
+            self.controls_dict = {"yaw_angles": list(yaw_star)}
             # [c1 == c2 for c1, c2 in zip(self.pyopt_sol_obj.constraints["state_cons"].value, state_cons)]
 
     def zsgd_solve(self):
