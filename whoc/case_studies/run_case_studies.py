@@ -23,9 +23,8 @@ from hercules.utilities import load_yaml
 # from warnings import simplefilter
 # simplefilter('error')
 
-# TODO should also run for 6 seeds here?
 N_SEEDS = 6
-REGENERATE_WIND_FIELD = True
+REGENERATE_WIND_FIELD = False
 PARALLEL = True
 # sequential_pyopt is best solver, stochastic is best preview type
 case_studies = {
