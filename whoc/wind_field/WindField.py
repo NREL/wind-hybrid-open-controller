@@ -448,7 +448,7 @@ def generate_wind_preview(current_freestream_measurements, simulation_time_step,
 	if return_params:
 			cond_mean_u, cond_mean_v, cond_cov_u, cond_cov_v = wind_preview_generator(current_measurements=current_freestream_measurements, 
 																			 n_preview_steps=n_preview_steps, preview_dt=preview_dt, n_samples=n_samples, return_params=return_params)
-			return cond_mean_u, cond_mean_v, cond_cov_u, cond_cov_v
+			return cond_mean_u[:n_preview_steps:preview_dt], cond_mean_v[:n_preview_steps:preview_dt], cond_cov_u[:n_preview_steps:preview_dt, :n_preview_steps:preview_dt], cond_cov_v[:n_preview_steps:preview_dt, :n_preview_steps:preview_dt]
 	else:
 		noise_preview = wind_preview_generator(current_measurements=current_freestream_measurements, 
 											n_preview_steps=n_preview_steps, preview_dt=preview_dt, n_samples=n_samples, return_params=return_params)

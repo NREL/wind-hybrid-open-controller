@@ -57,7 +57,8 @@ class GreedyController(ControllerBase):
 	def compute_controls(self):
 		# TODO MISHA should we check this at every simulation step rather than every 60, for threshold changes?
 		current_time = np.atleast_1d(self.measurements_dict["time"])[0]
-		if current_time < 2 * self.simulation_dt:
+		# if current_time < 2 * self.simulation_dt:
+		if np.all(self.measurements_dict["wind_speeds"] == 0):
 			pass # will be set to initial values
 		# TODO MISHA this is a patch up for AMR wind initialization problem
 		elif (abs(current_time % self.simulation_dt) == 0.0) or (current_time == self.simulation_dt * 2):
