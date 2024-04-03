@@ -593,7 +593,7 @@ def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD
                                               controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
                                        wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
                                        lut_path=case_lists[c]["lut_path"], generate_lut=case_lists[c]["generate_lut"], seed=case_lists[c]["seed"],
-                                       wind_field_config=wind_field_config, verbose=True) 
+                                       wind_field_config=wind_field_config, verbose=False) 
                        for c, d in enumerate(input_dicts)]
         wait(futures)
         results = [fut.result() for fut in futures]
@@ -604,7 +604,7 @@ def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD
             results.append(simulate_controller(controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
                                                wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
                                                lut_path=case_lists[c]["lut_path"], generate_lut=case_lists[c]["generate_lut"], seed=case_lists[c]["seed"],
-                                               wind_field_config=wind_field_config, verbose=True))
+                                               wind_field_config=wind_field_config, verbose=False))
 
     # unpack rsults for each case
     results_dfs = {}
@@ -701,7 +701,7 @@ def plot_simulations(results_dirs):
 if __name__ == '__main__':
 
     # MISHA QUESTION how to make AMR-Wind wait for control solution?
-    # run_simulations(["slsqp_solver"], REGENERATE_WIND_FIELD)
+    # run_simulations(["solver_type", "wind_preview_type"], REGENERATE_WIND_FIELD)
     run_simulations(["baseline_controllers", "solver_type",
                      "wind_preview_type", "warm_start", 
                      "horizon_length", "breakdown_robustness",
