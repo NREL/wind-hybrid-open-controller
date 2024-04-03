@@ -35,6 +35,9 @@ class HerculesADInterface(InterfaceBase):
         wind_directions = hercules_dict["hercules_comms"]["amr_wind"][self.wf_name][
             "turbine_wind_directions"
         ]
+        # wind_speeds = hercules_dict["hercules_comms"]["amr_wind"][self.wf_name][
+        #     "turbine_wind_speeds"
+        # ]
         # yaw_angles = hercules_dict["hercules_comms"]["amr_wind"][self.wf_name][
         #     "turbine_yaw_angles"
         # ]
@@ -53,6 +56,8 @@ class HerculesADInterface(InterfaceBase):
         # TODO MISHA problem
         measurements = {
             "time": time,
+            "amr_wind_speed": hercules_dict["hercules_comms"]["amr_wind"][self.wf_name]["amr_wind_speed"],
+            "amr_wind_direction": hercules_dict["hercules_comms"]["amr_wind"][self.wf_name]["amr_wind_direction"],
             "wind_directions": wind_directions,
             "yaw_angles": None,
             # "wind_speeds":wind_speeds,

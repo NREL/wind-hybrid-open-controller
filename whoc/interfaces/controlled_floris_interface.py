@@ -92,9 +92,10 @@ class ControlledFlorisModel(InterfaceBase):
 
         offline_mask = np.isclose(self.env.core.farm.power_setpoints, 0, atol=1e-3)
         # Note that measured yaw_angles here will not reflect controls_dict from last time-step, because of new wind direction
-        self.measurements_dt = {"wind_directions": dirs,
+        self.measurements_dt = {
+                    "wind_directions": dirs,
                         "wind_speeds": mags,# self.env.turbine_average_velocities,
-                        "powers": np.ma.masked_array(np.squeeze(self.env.get_turbine_powers()), offline_mask).filled(0.0),
+                        "turbine_powers": np.ma.masked_array(np.squeeze(self.env.get_turbine_powers()), offline_mask).filled(0.0),
                         "yaw_angles": np.squeeze(dirs - self.env.core.farm.yaw_angles)}
         # measurements = {"time": self.time,
         #                 "wind_directions": self.measurements_dt["wind_directions"][0, :],
@@ -102,9 +103,11 @@ class ControlledFlorisModel(InterfaceBase):
         #                 "powers":  self.measurements_dt["powers"][0, :],
         #                 "yaw_angles": self.measurements_dt["yaw_angles"][0, :]}
         measurements = {"time": self.time,
+                        "amr_wind_speed": self.env.core.flow_field.wind_speeds,
+                        "amr_wind_direction": self.env.core.flow_field.wind_directions,
                 "wind_directions": self.measurements_dt["wind_directions"],
                 "wind_speeds": self.measurements_dt["wind_speeds"], # self.env.turbine_average_velocities,
-                "powers":  self.measurements_dt["powers"],
+                "turbine_powers":  self.measurements_dt["turbine_powers"],
                 "yaw_angles": self.measurements_dt["yaw_angles"]}
         
         # self.time += 1

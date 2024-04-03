@@ -58,7 +58,7 @@ class GreedyController(ControllerBase):
 		# TODO MISHA should we check this at every simulation step rather than every 60, for threshold changes?
 		current_time = np.atleast_1d(self.measurements_dict["time"])[0]
 		# if current_time < 2 * self.simulation_dt:
-		if np.all(self.measurements_dict["wind_speeds"] == 0):
+		if np.all(self.measurements_dict["wind_directions"] == 0):
 			pass # will be set to initial values
 		# TODO MISHA this is a patch up for AMR wind initialization problem
 		elif (abs(current_time % self.simulation_dt) == 0.0) or (current_time == self.simulation_dt * 2):
@@ -75,21 +75,20 @@ class GreedyController(ControllerBase):
 					if self.verbose:
 						print("Bad wind direction measurement received, reverting to previous measurement.")
 					wind_dirs = self.wd_store
-					print(f"GREEDY CONTROL, wind_dirs {wind_dirs}")
 				else:
 					wind_dirs = current_wind_directions[0, :]
 					self.wd_store = list(wind_dirs)
-					print(f"GREEDY CONTROL, wind_dirs = {wind_dirs}")
+					
 					
 			else:
 				# use filtered wind direction and speed
 				wind_dirs = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"][:, i])
 												for i in range(self.n_turbines)]).T[-1, :]
-				print(f"GREEDY CONTROLLER, wind dirs = {wind_dirs}")
+				
 			# TODO MISHA can't rely on receiving yaw_angles from measurements?
 			yaw_setpoints = []
 			current_yaw_setpoints = np.atleast_2d(self.controls_dict["yaw_angles"])[0, :]
-			print(f"GREEDY CONTROL current_yaw_setpoints={current_yaw_setpoints}")
+			
 			for i in range(self.n_turbines):
 				
 				# current_yaw_angles = np.atleast_2d(self.measurements_dict["yaw_angles"])[0, :]
@@ -103,7 +102,7 @@ class GreedyController(ControllerBase):
 			yaw_setpoints = np.array(yaw_setpoints)
 			yaw_setpoints = np.clip(yaw_setpoints, current_yaw_setpoints - self.simulation_dt * self.yaw_rate, current_yaw_setpoints + self.simulation_dt * self.yaw_rate)
 			yaw_setpoints = np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
-			print(f"GREEDY CONTROLLER, new_yaw_setpoints={list(yaw_setpoints)}")
+			
 			self.controls_dict = {"yaw_angles": list(yaw_setpoints)}
 
 		return None

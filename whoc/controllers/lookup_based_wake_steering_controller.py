@@ -88,14 +88,15 @@ class LookupBasedWakeSteeringController(ControllerBase):
             
             # Load a FLORIS object for yaw optimization
             
-            fi_lut = ControlledFlorisModel(max_workers=self.max_workers, yaw_limits=self.yaw_limits, dt=self.dt,
+            fi_lut = ControlledFlorisModel(yaw_limits=self.yaw_limits, dt=self.dt,
                                                yaw_rate=self.yaw_rate, floris_version='dev') \
                 .load_floris(config_path=self.floris_input_file)
             
             wd_grid, ws_grid = np.meshgrid(wind_directions_lut, wind_speeds_lut, indexing="ij")
-            fi_lut.env.reinitialize(
+            fi_lut.env.set(
                 wind_directions=wd_grid.flatten(),
-                wind_speeds=ws_grid.flatten()
+                wind_speeds=ws_grid.flatten(),
+                turbulence_intensities=[fi_lut.env.core.flow_field.turbulence_intensities[0]] * len(ws_grid.flatten())
             )
             
             # Pour this into a parallel computing interface
@@ -143,7 +144,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 
         current_time = np.atleast_1d(self.measurements_dict["time"])[0]
         # if current_time < 2 * self.simulation_dt:
-        if np.all(self.measurements_dict["wind_speeds"] == 0):
+        if np.all(self.measurements_dict["wind_directions"] == 0):
             pass # will be set to initial values
         # TODO MISHA this is a patch up for AMR wind initialization problem
         elif (abs(current_time % self.dt) == 0.0) or (current_time == self.simulation_dt * 2):

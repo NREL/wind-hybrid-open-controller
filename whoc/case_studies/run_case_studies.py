@@ -23,7 +23,7 @@ from hercules.utilities import load_yaml
 # from warnings import simplefilter
 # simplefilter('error')
 
-N_SEEDS = 6
+N_SEEDS = 1
 REGENERATE_WIND_FIELD = False
 PARALLEL = True
 # sequential_pyopt is best solver, stochastic is best preview type
@@ -33,7 +33,7 @@ case_studies = {
                                 "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
                                 "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
                              "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
-                                                                        f"../../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                              "generate_lut": {"group": 0, "vals": [False]},
                              "num_turbines": {"group": 0, "vals": [9]}, 
                                 "wind_preview_type": {"group": 0, "vals": ["stochastic"]}, 
@@ -44,7 +44,7 @@ case_studies = {
                                 "case_names": {"group": 1, "vals": ["Greedy"]},
                                 "controller_class": {"group": 1, "vals": ["GreedyController"]},
                              "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
-                                                                        f"../../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                              "generate_lut": {"group": 0, "vals": [False]},
                              "num_turbines": {"group": 0, "vals": [9]}, 
                                 "wind_preview_type": {"group": 0, "vals": ["stochastic"]}, 
@@ -54,7 +54,7 @@ case_studies = {
                      "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
                     "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
-                                                                        f"../../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                     "generate_lut": {"group": 0, "vals": [False]},
                     "num_turbines": {"group": 0, "vals": [9]}, 
                           "n_horizon": {"group": 0, "vals": [10]}, 
@@ -69,7 +69,7 @@ case_studies = {
                                 "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
                     "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
-                                                                        f"../../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                              "generate_lut": {"group": 0, "vals": [False]},
                     "num_turbines": {"group": 0, "vals": [9]}, 
                           "n_horizon": {"group": 0, "vals": [5]}, 
@@ -84,7 +84,7 @@ case_studies = {
                              "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
                     "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
-                                                                        f"../../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                              "generate_lut": {"group": 0, "vals": [False]},
                     "num_turbines": {"group": 0, "vals": [9]}, 
                           "n_horizon": {"group": 0, "vals": [10]}, 
@@ -99,7 +99,7 @@ case_studies = {
                     "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
                     "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
-                                                                        f"../../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                              "generate_lut": {"group": 0, "vals": [False]},
                     "num_turbines": {"group": 0, "vals": [9]}, 
                           "n_horizon": {"group": 0, "vals": [10]}, 
@@ -115,7 +115,7 @@ case_studies = {
                              "num_turbines": {"group": 0, "vals": [9]}, 
                           "controller_class": {"group": 0, "vals": ["MPC"]},
                           "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
-                                                                        f"../../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                              "generate_lut": {"group": 0, "vals": [False]},
                           "n_horizon": {"group": 0, "vals": [10]}, 
                           "alpha": {"group": 0, "vals": [0.5]}, 
@@ -130,7 +130,7 @@ case_studies = {
                              "num_turbines": {"group": 0, "vals": [9]}, 
                    "controller_class": {"group": 0, "vals": ["MPC"]},
                    "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
-                                                                        f"../../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                    "generate_lut": {"group": 0, "vals": [False]},
                    "n_horizon": {"group": 0, "vals": [10]}, 
                    "alpha": {"group": 0, "vals": [0.5]}, 
@@ -145,7 +145,7 @@ case_studies = {
                              "num_turbines": {"group": 0, "vals": [9]}, 
                    "controller_class": {"group": 0, "vals": ["MPC"]},
                    "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
-                                                                        f"../../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                    "generate_lut": {"group": 0, "vals": [False]},
                    "n_horizon": {"group": 0, "vals": [10]}, 
                    "alpha": {"group": 0, "vals": [0.5]}, 
@@ -160,7 +160,7 @@ case_studies = {
                          "num_turbines": {"group": 0, "vals": [9]}, 
                          "controller_class": {"group": 0, "vals": ["MPC"]},
                          "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
-                                                                        f"../../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                          "generate_lut": {"group": 0, "vals": [False]},
                          "n_horizon": {"group": 0, "vals": [10]}, 
                          "case_names": {"group": 1, "vals": [f"alpha_{f}" for f in list(np.linspace(0, 1.0, 101))]},
@@ -175,7 +175,7 @@ case_studies = {
                     "num_turbines": {"group": 1, "vals": [3, 9, 25, 100]},
                     "controller_class": {"group": 0, "vals": ["MPC"]},
                     "lut_path": {"group": 1, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
-                                                                        f"../../examples/mpc_wake_steering_florisstandin/lut_{nturb}.csv") for nturb in [3, 9, 25, 100]]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{nturb}.csv") for nturb in [3, 9, 25, 100]]},
                     "generate_lut": {"group": 0, "vals": [False]},
                     "n_horizon": {"group": 0, "vals": [10]}, 
                     "alpha": {"group": 0, "vals": [0.5]}, 
@@ -191,7 +191,7 @@ case_studies = {
                              "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]}, 
                        "controller_class": {"group": 0, "vals": ["MPC"]},
                        "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
-                                                                        f"../../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                              "generate_lut": {"group": 0, "vals": [False]},
                              "case_names": {"group": 1, "vals": [f"N_p = {n}" for n in [6, 8, 10, 12, 14]]},
                    "n_horizon": {"group": 1, "vals": [6, 8, 10, 12, 14]}, 
@@ -399,7 +399,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
         yaw_angles_ts += list(ctrl.measurements_dict["yaw_angles"])
 
         # Note these are results from previous time step
-        turbine_powers_ts += list(ctrl.measurements_dict["powers"])
+        turbine_powers_ts += list(ctrl.measurements_dict["turbine_powers"])
 
         # Note these are results from previous time step
         turbine_wind_mag_ts += list(ctrl.measurements_dict["wind_speeds"])
@@ -418,7 +418,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
             f"Measured Turbine Wind Directions = {ctrl.measurements_dict['wind_directions'][0, :] if ctrl.measurements_dict['wind_directions'].ndim == 2 else ctrl.measurements_dict['wind_directions']}",
             f"Measured Turbine Wind Magnitudes = {ctrl.measurements_dict['wind_speeds'][0, :] if ctrl.measurements_dict['wind_speeds'].ndim == 2 else ctrl.measurements_dict['wind_speeds']}",
             f"Measured Yaw Angles = {ctrl.measurements_dict['yaw_angles'][0, :] if ctrl.measurements_dict['yaw_angles'].ndim == 2 else ctrl.measurements_dict['yaw_angles']}",
-            f"Measured Turbine Powers = {ctrl.measurements_dict['powers'][0, :] if ctrl.measurements_dict['powers'].ndim == 2 else ctrl.measurements_dict['powers']}",
+            f"Measured Turbine Powers = {ctrl.measurements_dict['turbine_powers'][0, :] if ctrl.measurements_dict['turbine_powers'].ndim == 2 else ctrl.measurements_dict['turbine_powers']}",
             f"Distance from Initial Yaw Angle Solution = {np.linalg.norm(ctrl.controls_dict['yaw_angles'] - init_states[:ctrl.n_turbines])}",
             f"Distance from Initial Yaw Angle Change Solution = {np.linalg.norm((ctrl.controls_dict['yaw_angles'] - yaw_angles_ts[-(n_future_steps + 1)]) - init_ctrl_inputs[:ctrl.n_turbines])}",
             # f"Optimizer Output = {ctrl.opt_code['text']}",
@@ -440,7 +440,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
         yaw_angles_change_ts = yaw_angles_change_ts[n_future_steps:, :]
         yaw_angles_ts = yaw_angles_ts[n_future_steps + 1:, :]
 
-        turbine_powers_ts = np.vstack([turbine_powers_ts, last_measurements["powers"]])
+        turbine_powers_ts = np.vstack([turbine_powers_ts, last_measurements["turbine_powers"]])
         turbine_powers_ts = turbine_powers_ts[n_future_steps + 1:, :]
 
         turbine_wind_mag_ts = np.vstack([turbine_wind_mag_ts, last_measurements["wind_speeds"]])
@@ -532,11 +532,12 @@ def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD
     
     # if wind field data exists, get it
     WIND_TYPE = "stochastic"
+    wind_field_fig_dir = os.path.join('../../examples/wind_field_data/figs') 
     wind_field_data = []
     if os.path.exists(wind_field_dir):
         for fn in wind_field_filenames:
             wind_field_data.append(pd.read_csv(fn))
-            plot_wind_field_ts(wind_field_data[-1], os.path.join(wind_field_dir, fn.split(".")[0]))
+            plot_wind_field_ts(wind_field_data[-1], os.path.join(wind_field_fig_dir, fn.split(".")[0]))
 
             if WIND_TYPE == "step":
                 # n_rows = len(wind_field_data[-1].index)
@@ -547,7 +548,7 @@ def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD
     
     # true wind disturbance time-series
     wind_mag_ts = [wind_field_data[case_idx]["FreestreamWindMag"].to_numpy() for case_idx in range(n_seeds)]
-    wind_dir_ts =[ wind_field_data[case_idx]["FreestreamWindDir"].to_numpy() for case_idx in range(n_seeds)]
+    wind_dir_ts = [wind_field_data[case_idx]["FreestreamWindDir"].to_numpy() for case_idx in range(n_seeds)]
 
     assert np.all([np.isclose(wind_field_data[case_idx]["Time"].iloc[1] - wind_field_data[case_idx]["Time"].iloc[0], input_dict["dt"]) for case_idx in range(n_seeds)]), "sampling time of wind field should be equal to simulation sampling time"
 
@@ -700,11 +701,11 @@ def plot_simulations(results_dirs):
 if __name__ == '__main__':
 
     # MISHA QUESTION how to make AMR-Wind wait for control solution?
-    run_simulations(["slsqp_solver"], REGENERATE_WIND_FIELD)
-    # run_simulations(["baseline_controllers", "solver_type",
-    #                  "wind_preview_type", "warm_start", 
-    #                  "horizon_length", "breakdown_robustness",
-    #                  "scalability", "cost_func_tuning"], REGENERATE_WIND_FIELD)
+    # run_simulations(["slsqp_solver"], REGENERATE_WIND_FIELD)
+    run_simulations(["baseline_controllers", "solver_type",
+                     "wind_preview_type", "warm_start", 
+                     "horizon_length", "breakdown_robustness",
+                     "scalability", "cost_func_tuning"], REGENERATE_WIND_FIELD)
 
     results_dirs = [os.path.join(os.path.dirname(whoc.__file__), "case_studies", case_key) for case_key in ["baseline_controllers", "solver_type",
                                                                                                             "wind_preview_type", "warm_start", "scalability", "cost_func_tuning",
