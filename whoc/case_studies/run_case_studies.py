@@ -526,7 +526,7 @@ def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD
     if not os.path.exists(wind_field_dir):
         os.makedirs(wind_field_dir)
 
-    wind_field_config["simulation_max_time"] = input_dict["helics"]["config"]["stoptime"]
+    wind_field_config["simulation_max_time"] = input_dict["hercules_comms"]["helics"]["config"]["stoptime"]
     wind_field_config["num_turbines"] = input_dict["controller"]["num_turbines"]
     wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
     wind_field_config["preview_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"])
