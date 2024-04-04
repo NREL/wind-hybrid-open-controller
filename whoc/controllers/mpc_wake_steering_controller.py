@@ -480,8 +480,34 @@ class MPC(ControllerBase):
                                     n_samples=input_dict["controller"]["n_wind_preview_samples"],
                                     return_params=True)
                     wind_preview_data = defaultdict(list)
-                    wind_preview_data[f"FreestreamWindMag_{0}"] += [np.linalg.norm([current_freestream_measurements[0], current_freestream_measurements[1]])] * 3
-                    wind_preview_data[f"FreestreamWindDir_{0}"] += [(np.arctan(current_freestream_measurements[0] / current_freestream_measurements[1]) + np.pi) * (180 / np.pi)] * 3
+
+                    x = np.linalg.norm([current_freestream_measurements[0], current_freestream_measurements[1]])
+                    wind_preview_data[f"FreestreamWindMag_{0}"] = {"mean": x, "min": x, "max": x}
+
+                    x = np.arctan(current_freestream_measurements[0] / current_freestream_measurements[1])
+                    if current_freestream_measurements[1] != 0.0:
+                        x = np.arctan((abs(current_freestream_measurements[0]) / abs(current_freestream_measurements[1])))
+                    elif current_freestream_measurements[0] > 0:
+                        x = np.pi / 2
+                    else:
+                        x = np.pi
+                    
+                    if current_freestream_measurements[1] >= 0 and current_freestream_measurements[0] >= 0:
+                        # first quadrant
+                        angle = x
+                    elif current_freestream_measurements[1] < 0 and current_freestream_measurements[0] >= 0:
+                        # second quadrant
+                        angle = np.pi - x
+                    elif current_freestream_measurements[1] < 0 and current_freestream_measurements[0] < 0:
+                        # third quadrant
+                        angle = np.pi + x
+                    else:
+                        # fourth quadrant
+                        angle = 2*np.pi - x
+
+                    angle = (angle + np.pi) * (180 / np.pi)
+
+                    wind_preview_data[f"FreestreamWindDir_{0}"] = {"mean": angle, "min": angle, "max": angle}
                     
                     dev_u = 2 * np.sqrt(np.diag(distribution_params[2]))
                     dev_v = 2 * np.sqrt(np.diag(distribution_params[3]))
@@ -519,6 +545,7 @@ class MPC(ControllerBase):
                             for v in [min_pos_v, max_pos_v, min_neg_v, max_neg_v]:
                                 if v[j] is None:
                                     continue
+
                                 if v[j] != 0.0:
                                     alpha = np.arctan((abs(u[j]) / abs(v[j])))
                                 elif u[j] > 0:
@@ -542,12 +569,37 @@ class MPC(ControllerBase):
                                 all_dirs[-1].append((angle + np.pi) * (180 / np.pi) % 360.0)
 
                     min_dirs = [min(all_dirs[j]) for j in range(self.n_horizon)]
-                    mean_dirs = (np.arctan((distribution_params[0] / distribution_params[1])) + np.pi) * (180 / np.pi)
                     max_dirs = [max(all_dirs[j]) for j in range(self.n_horizon)]
 
-                    for j in range(1, input_dict["controller"]["n_horizon"] + 1):
-                        wind_preview_data[f"FreestreamWindMag_{j}"] = {"mean": mean_mags[j - 1], "min": min_mags[j - 1], "max": max_mags[j - 1]}
-                        wind_preview_data[f"FreestreamWindDir_{j}"] = {"mean": mean_dirs[j - 1], "min": min_dirs[j - 1], "max": max_dirs[j - 1]}
+                    mean_dirs = []
+                    for u, v in zip(distribution_params[0], distribution_params[1]):
+                        if v != 0.0:
+                            alpha = np.arctan((abs(u) / abs(v)))
+                        elif u > 0:
+                            alpha = np.pi / 2
+                        else:
+                            alpha = np.pi
+                        
+                        if v >= 0 and u >= 0:
+                            # first quadrant
+                            angle = alpha
+                        elif v < 0 and u >= 0:
+                            # second quadrant
+                            angle = np.pi - alpha
+                        elif v < 0 and u < 0:
+                            # third quadrant
+                            angle = np.pi + alpha
+                        else:
+                            # fourth quadrant
+                            angle = 2*np.pi - alpha
+
+                        mean_dirs.append((angle + np.pi) * (180 / np.pi) % 360.0)
+
+                    for j in range(input_dict["controller"]["n_horizon"]):
+                        wind_preview_data[f"FreestreamWindMag_{j + 1}"] = {"mean": mean_mags[j], "min": min_mags[j], "max": max_mags[j]}
+                        wind_preview_data[f"FreestreamWindDir_{j + 1}"] = {"mean": mean_dirs[j], "min": min_dirs[j], "max": max_dirs[j]}
+                    if np.any(np.concatenate([list(wind_preview_data[f"FreestreamWindDir_{j}"].values()) for j in range(self.n_horizon + 1)]) < 180.0):
+                        print("oh no")
 
                 else:
                     return generate_wind_preview(current_freestream_measurements, time_step,
@@ -556,7 +608,6 @@ class MPC(ControllerBase):
  								preview_dt=int(input_dict["controller"]["dt"] // input_dict["dt"]),
  								n_samples=input_dict["controller"]["n_wind_preview_samples"], return_params=False)
                 
-                    
                 return wind_preview_data
         
         elif input_dict["controller"]["wind_preview_type"] == "persistent":
@@ -580,7 +631,7 @@ class MPC(ControllerBase):
                     for j in range(input_dict["controller"]["n_horizon"] + 1):
                         delta_k = j * int(input_dict["controller"]["dt"] // input_dict["dt"])
                         wind_preview_data[f"FreestreamWindMag_{j}"] = {"mean": kwargs["wind_mag_ts"][time_step + delta_k], "min": kwargs["wind_mag_ts"][time_step + delta_k], "max": kwargs["wind_mag_ts"][time_step + delta_k]}
-                        wind_preview_data[f"FreestreamWindDir_{j}"] = {"mean": kwargs["wind_mag_ts"][time_step + delta_k], "min": kwargs["wind_mag_ts"][time_step + delta_k], "max": kwargs["wind_mag_ts"][time_step + delta_k]}
+                        wind_preview_data[f"FreestreamWindDir_{j}"] = {"mean": kwargs["wind_dir_ts"][time_step + delta_k], "min": kwargs["wind_dir_ts"][time_step + delta_k], "max": kwargs["wind_dir_ts"][time_step + delta_k]}
                 else:
                     wind_preview_data = defaultdict(list)
                     for j in range(input_dict["controller"]["n_horizon"] + 1):
@@ -593,7 +644,7 @@ class MPC(ControllerBase):
 
         self.wind_preview_type = input_dict["controller"]["wind_preview_type"]
         if self.wind_preview_type == "stochastic":
-            self.n_wind_preview_samples = input_dict["controller"]["n_wind_preview_samples"]
+            self.n_wind_preview_samples = input_dict["controller"]["n_wind_preview_samples"] + 1 # add one for the mean value
             # self.n_wind_preview_samples = 3 # min, mean, max
         else:
             self.n_wind_preview_samples = 1
@@ -616,9 +667,9 @@ class MPC(ControllerBase):
                                                     generate_lut=False)
             def warm_start_func(measurements: dict):
                 # feed interface with new disturbances
-                fi_lut.step(disturbances={"wind_speeds": [measurements["wind_speeds"][0]],# TODO it would be better if this was freestream
-                                        "wind_directions": [measurements["wind_directions"][0]],
-                                        "turbulence_intensities": [fi_lut.env.core.flow_field.turbulence_intensities[0]]},
+                fi_lut.step(disturbances={"wind_speeds": self.wind_preview_samples[f"FreestreamWindMag_{0}"][:1],
+                                        "wind_directions": self.wind_preview_samples[f"FreestreamWindDir_{0}"][:1],
+                                        "turbulence_intensities": fi_lut.env.core.flow_field.turbulence_intensities[:1]},
                                         seed=self.seed,
                                         ctrl_dict=None if fi_lut.time > 0 else {"yaw_angles": [ctrl_lut.yaw_IC] * ctrl_lut.n_turbines})
                 
@@ -893,16 +944,10 @@ class MPC(ControllerBase):
             
             if self.wind_preview_type == "stochastic":
                 # include mean value to compute cost function with
-                for j in range(self.n_horizon):
-                    self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"].append(self.wind_preview_stats[f"FreestreamWindDir_{j + 1}"]["mean"])
-                    self.wind_preview_samples[f"FreestreamWindMag_{j + 1}"].append(self.wind_preview_stats[f"FreestreamWindMag_{j + 1}"]["mean"])
-                
-                self.n_wind_preview_samples += 1
+                for j in range(self.n_horizon + 1):
+                    self.wind_preview_samples[f"FreestreamWindDir_{j}"].append(self.wind_preview_stats[f"FreestreamWindDir_{j}"]["mean"])
+                    self.wind_preview_samples[f"FreestreamWindMag_{j}"].append(self.wind_preview_stats[f"FreestreamWindMag_{j}"]["mean"])
 
-            # reinitialize floris with the wind speed samples from the future horizon (excluding current one)
-            # m=0 is location of mean sample
-            # TODO only need samples to compute gradient
-            
             self.fi.env.set(
                 wind_directions=[self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][m] for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)],
                 wind_speeds=[self.wind_preview_samples[f"FreestreamWindMag_{j + 1}"][m] for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)],
@@ -1043,7 +1088,7 @@ class MPC(ControllerBase):
                                     + (self.yaw_rate * self.dt * np.sum(self.opt_sol["control_inputs"][i:(self.n_turbines * j) + i:self.n_turbines])))
                                     for i in range(self.n_turbines)] for j in range(self.n_horizon)])
             
-            current_yaw_offsets = np.array(self.wind_preview_samples[f"FreestreamWindDir_{0}"])[:, np.newaxis] - yaw_setpoints[0, :]
+            current_yaw_offsets = (np.array(self.wind_preview_samples[f"FreestreamWindDir_{0}"][0]) - yaw_setpoints[0, :][np.newaxis, :])
         
             # optimize yaw angles
             yaw_offset_opt = YawOptimizationSRRHC(self.fi.env, 
@@ -1063,27 +1108,30 @@ class MPC(ControllerBase):
             # opt_yaw_setpoints = np.vstack([np.mean(self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"]) - opt_yaw_offsets_df["yaw_angles_opt"].iloc[j] for j in range(self.n_horizon)])\
             # mean value
             opt_yaw_setpoints = np.vstack([self.wind_preview_stats[f"FreestreamWindDir_{j + 1}"]["mean"] - opt_yaw_offsets_df["yaw_angles_opt"].iloc[j] for j in range(self.n_horizon)])
-            
-            for j in range(self.n_horizon):
-                opt_yaw_setpoints[j, :] = np.clip(opt_yaw_setpoints[j, :],
-                                        self.wind_preview_stats[f"FreestreamWindDir_{j + 1}"]["max"] - self.yaw_limits[1],
-                                        self.wind_preview_stats[f"FreestreamWindDir_{j + 1}"]["min"] - self.yaw_limits[0],
-                                        )
+            # opt_yaw_setpoints_tmp = np.zeros_like(opt_yaw_setpoints)
+            # for j in range(self.n_horizon):
+            #     opt_yaw_setpoints_tmp[j, :] = np.clip(opt_yaw_setpoints[j, :],
+            #                             self.wind_preview_stats[f"FreestreamWindDir_{j + 1}"]["max"] - self.yaw_limits[1],
+            #                             self.wind_preview_stats[f"FreestreamWindDir_{j + 1}"]["min"] - self.yaw_limits[0],
+            #                             )
             
             assert np.all(np.isclose(self.fi.env.core.flow_field.wind_directions - np.array([self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][m] for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)]), 0.0))
             opt_cost = opt_yaw_offsets_df["cost"].to_numpy()
             opt_cost_terms[:, 0] = opt_yaw_offsets_df["cost_states"].to_numpy()
             opt_cost_terms[:, 1] = opt_yaw_offsets_df["cost_control_inputs"].to_numpy()
 
-            # TODO check that all yaw offsets are within limits, possible issue above
+            # check that all yaw offsets are within limits, possible issue above
             assert np.all(np.vstack(opt_yaw_offsets_df["yaw_angles_opt"].to_numpy()) <= self.yaw_limits[1]) and np.all(np.vstack(opt_yaw_offsets_df["yaw_angles_opt"].to_numpy()) >= self.yaw_limits[0])
             
             # assert np.all(
             #     (((self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][m] - opt_yaw_setpoints[j, :]) <= self.yaw_limits[1]) 
             #       and ((self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][m] - opt_yaw_setpoints[j, :]) >= self.yaw_limits[0]))
             #         for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)
-            assert np.all([(self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][m] - opt_yaw_setpoints[j, :]) <= self.yaw_limits[1] + 1e-12 for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)])
-            assert np.all([(self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][m] - opt_yaw_setpoints[j, :]) >= self.yaw_limits[0] - 1e-12 for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)])
+            
+            assert np.all([(self.wind_preview_stats[f"FreestreamWindDir_{j + 1}"]["mean"] - opt_yaw_setpoints[j, :]) <= self.yaw_limits[1] + 1e-12 for j in range(self.n_horizon)])
+
+            # assert np.all([(self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][m] - opt_yaw_setpoints[j, :]) <= self.yaw_limits[1] + 1e-12 for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)])
+            assert np.all([(self.wind_preview_stats[f"FreestreamWindDir_{j + 1}"]["mean"] - opt_yaw_setpoints[j, :]) >= self.yaw_limits[0] - 1e-12 for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)])
             # check if solution adheres to dynamic state equaion
             # ensure that the rate of change is not greater than yaw_rate
             # clipped_opt_yaw_setpoints = np.zeros_like(opt_yaw_setpoints)
@@ -1348,16 +1396,7 @@ class MPC(ControllerBase):
                 yaw_setpoints = np.array([[((self.initial_state[i] * self.yaw_norm_const) 
                                         + (self.yaw_rate * self.dt * np.sum(control_inputs[i:(self.n_turbines * (j + 1)) + i:self.n_turbines])))
                                         for i in range(self.n_turbines)] for j in range(self.n_horizon)])
-                # yaw_setpoints = np.array(self.opt_sol["states"])
-                # yaw_setpoints[self.solve_turbine_id::self.n_turbines] = opt_var_dict["states"]
-                # yaw_setpoints *= self.yaw_norm_const
-                # yaw_setpoints = np.reshape(yaw_setpoints, (self.n_horizon, self.n_turbines))
-                
-                # assert np.all(np.isclose(np.array([opt_var_dict["states"][j] - (opt_var_dict["states"][j - 1] if j > 0 else self.initial_state[self.solve_turbine_id]) for j in range(self.n_horizon)]) * (self.yaw_norm_const / (self.yaw_rate * self.dt)),
-                #                          opt_var_dict["control_inputs"]))
             
-                # assert np.all(np.isclose(yaw_setpoints[:, self.solve_turbine_id].flatten(), opt_var_dict["states"] * self.yaw_norm_const))
-
             else:
                 # the yaw setpoints for the future horizon (current/iniital state is known and not an optimization variable)
                 yaw_setpoints = np.array([[((self.initial_state[i] * self.yaw_norm_const) 
@@ -1397,8 +1436,8 @@ class MPC(ControllerBase):
             # greedy_yaw_turbine_powers = np.reshape(greedy_yaw_turbine_powers, (self.n_wind_preview_samples, self.n_horizon, self.n_turbines))
             greedy_yaw_turbine_powers = np.max(all_greedy_yaw_turbine_powers, axis=1)[:, np.newaxis] # choose unwaked turbine for normalization constant
             
-            # TODO if effective yaw is greater than90, set negative powers, sim to interior point method, gradual penalty above 30deg offsets TEST
-            # TODO add negative power to paper
+            # if effective yaw is greater than90, set negative powers, sim to interior point method, gradual penalty above 30deg offsets TEST
+            
             current_yaw_offsets = np.vstack([(self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][m] - yaw_setpoints[j, :]) for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)])
             # current_yaw_offsets = np.vstack([(self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][0] - yaw_setpoints[j, :]) for j in range(self.n_horizon)])
             
@@ -1413,6 +1452,7 @@ class MPC(ControllerBase):
             self.fi.env.run()
             yawed_turbine_powers = self.fi.env.get_turbine_powers()
 
+            # TODO add negative power to paper
             decay_factor = -np.log(1e-6) / ((90 - np.max(np.abs(self.yaw_limits))) / self.yaw_norm_const)
             neg_decay = np.exp(-decay_factor * (self.yaw_limits[0] - current_yaw_offsets[current_yaw_offsets < self.yaw_limits[0]]) / self.yaw_norm_const)
             pos_decay = np.exp(-decay_factor * (current_yaw_offsets[current_yaw_offsets > self.yaw_limits[1]] - self.yaw_limits[1]) / self.yaw_norm_const)
