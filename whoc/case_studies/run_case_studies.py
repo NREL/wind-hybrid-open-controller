@@ -9,8 +9,9 @@ from time import perf_counter
 from itertools import product
 import copy
 import io
+import re
 
-import whoc
+from whoc import __file__ as whoc_file
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 from whoc.controllers.mpc_wake_steering_controller import MPC
 from whoc.controllers.greedy_wake_steering_controller import GreedyController
@@ -32,10 +33,10 @@ case_studies = {
                              "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                                 "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
                                 "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
-                             "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
+                                "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
-                             "generate_lut": {"group": 0, "vals": [False]},
-                             "num_turbines": {"group": 0, "vals": [9]}, 
+                                "generate_lut": {"group": 0, "vals": [False]},
+                                "num_turbines": {"group": 0, "vals": [9]}, 
                                 "wind_preview_type": {"group": 0, "vals": ["stochastic"]}, 
                                 "floris_input_file": {"group": 0, "vals": ["../../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml"]}
                           },
@@ -43,7 +44,7 @@ case_studies = {
                "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                                 "case_names": {"group": 1, "vals": ["Greedy"]},
                                 "controller_class": {"group": 1, "vals": ["GreedyController"]},
-                             "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
+                             "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                              "generate_lut": {"group": 0, "vals": [False]},
                              "num_turbines": {"group": 0, "vals": [9]}, 
@@ -53,7 +54,7 @@ case_studies = {
     "slsqp_solver": {"seed": {"group": 0, "vals": [0]},
                      "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
-                    "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
+                    "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                     "generate_lut": {"group": 0, "vals": [False]},
                     "num_turbines": {"group": 0, "vals": [9]}, 
@@ -68,7 +69,7 @@ case_studies = {
     "sequential_slsqp_solver": {"seed": {"group": 0, "vals": [0]},
                                 "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
-                    "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
+                    "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                              "generate_lut": {"group": 0, "vals": [False]},
                     "num_turbines": {"group": 0, "vals": [9]}, 
@@ -83,7 +84,7 @@ case_studies = {
     "serial_refine_solver": {"seed": {"group": 0, "vals": [0]},
                              "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
-                    "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
+                    "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                              "generate_lut": {"group": 0, "vals": [False]},
                     "num_turbines": {"group": 0, "vals": [9]}, 
@@ -98,7 +99,7 @@ case_studies = {
     "solver_type": {"seed": {"group": 0, "vals": [0]},
                     "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
-                    "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
+                    "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                              "generate_lut": {"group": 0, "vals": [False]},
                     "num_turbines": {"group": 0, "vals": [9]}, 
@@ -114,7 +115,7 @@ case_studies = {
                           "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "num_turbines": {"group": 0, "vals": [9]}, 
                           "controller_class": {"group": 0, "vals": ["MPC"]},
-                          "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
+                          "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                              "generate_lut": {"group": 0, "vals": [False]},
                           "n_horizon": {"group": 0, "vals": [10]}, 
@@ -129,7 +130,7 @@ case_studies = {
                        "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "num_turbines": {"group": 0, "vals": [9]}, 
                    "controller_class": {"group": 0, "vals": ["MPC"]},
-                   "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
+                   "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                    "generate_lut": {"group": 0, "vals": [False]},
                    "n_horizon": {"group": 0, "vals": [10]}, 
@@ -144,7 +145,7 @@ case_studies = {
                    "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "num_turbines": {"group": 0, "vals": [9]}, 
                    "controller_class": {"group": 0, "vals": ["MPC"]},
-                   "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
+                   "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                    "generate_lut": {"group": 0, "vals": [False]},
                    "n_horizon": {"group": 0, "vals": [10]}, 
@@ -159,7 +160,7 @@ case_studies = {
                          "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                          "num_turbines": {"group": 0, "vals": [9]}, 
                          "controller_class": {"group": 0, "vals": ["MPC"]},
-                         "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
+                         "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                          "generate_lut": {"group": 0, "vals": [False]},
                          "n_horizon": {"group": 0, "vals": [10]}, 
@@ -174,7 +175,7 @@ case_studies = {
                     "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                     "num_turbines": {"group": 1, "vals": [3, 9, 25, 100]},
                     "controller_class": {"group": 0, "vals": ["MPC"]},
-                    "lut_path": {"group": 1, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
+                    "lut_path": {"group": 1, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{nturb}.csv") for nturb in [3, 9, 25, 100]]},
                     "generate_lut": {"group": 0, "vals": [False]},
                     "n_horizon": {"group": 0, "vals": [10]}, 
@@ -190,7 +191,7 @@ case_studies = {
                              "num_turbines": {"group": 0, "vals": [9]},
                              "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]}, 
                        "controller_class": {"group": 0, "vals": ["MPC"]},
-                       "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
+                       "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                              "generate_lut": {"group": 0, "vals": [False]},
                              "case_names": {"group": 1, "vals": [f"N_p = {n}" for n in [6, 8, 10, 12, 14]]},
@@ -206,7 +207,7 @@ case_studies = {
          "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
          "num_turbines": {"group": 0, "vals": [25]}, 
          "controller_class": {"group": 0, "vals": ["MPC"]},
-         "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc.__file__), 
+         "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../../examples/mpc_wake_steering_florisstandin/lut_{25}.csv")]},
                              "generate_lut": {"group": 0, "vals": [False]},
           "n_horizon": {"group": 0, "vals": [10]}, 
@@ -303,7 +304,7 @@ def CaseGen_General(case_inputs, namebase=''):
     return case_list, case_name
 
 def simulate_controller(controller_class, input_dict, **kwargs):
-    print(f"Running instance of {controller_class.__name__}")
+    print(f"Running instance of {controller_class.__name__} with wind seed {kwargs['wind_case_idx']}")
     # Load a FLORIS object for AEP calculations
     greedy_fi = ControlledFlorisModel(yaw_limits=input_dict["controller"]["yaw_limits"],
                                           offline_probability=input_dict["controller"]["offline_probability"],
@@ -470,6 +471,8 @@ def simulate_controller(controller_class, input_dict, **kwargs):
     running_opt_cost_terms_ts[:, 1] = np.sum(np.stack([0.5 * (norm_yaw_angle_changes[:, i])**2 * R for i in range(ctrl.n_turbines)], axis=1), axis=1)
 
     results_df = pd.DataFrame(data={
+        "CaseName": [kwargs["case_name"]] *  int(kwargs["wind_field_config"]["simulation_max_time"] // input_dict["dt"]),
+        "WindSeed": [kwargs["wind_case_idx"]] * int(kwargs["wind_field_config"]["simulation_max_time"] // input_dict["dt"]),
         "Time": np.arange(0, kwargs["wind_field_config"]["simulation_max_time"], input_dict["dt"]),
         "FreestreamWindMag": kwargs["wind_mag_ts"][:yaw_angles_ts.shape[0]],
         "FreestreamWindDir": kwargs["wind_dir_ts"][:yaw_angles_ts.shape[0]],
@@ -510,9 +513,9 @@ def simulate_controller(controller_class, input_dict, **kwargs):
 
 def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS):
 
-    input_dict = load_yaml(os.path.join(os.path.dirname(whoc.__file__), "../examples/hercules_input_001.yaml"))
+    input_dict = load_yaml(os.path.join(os.path.dirname(whoc_file), "../examples/hercules_input_001.yaml"))
 
-    with open(os.path.join(os.path.dirname(whoc.__file__), "wind_field", "wind_field_config.yaml"), "r") as fp:
+    with open(os.path.join(os.path.dirname(whoc_file), "wind_field", "wind_field_config.yaml"), "r") as fp:
         wind_field_config = yaml.safe_load(fp)
 
     # instantiate wind field if files don't already exist
@@ -564,7 +567,7 @@ def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD
         n_cases_list.append(len(case_list))
 
         # make save directory
-        results_dir = os.path.join(os.path.dirname(whoc.__file__), "case_studies", case_study_key)
+        results_dir = os.path.join(os.path.dirname(whoc_file), "case_studies", case_study_key)
         
         if os.path.exists(results_dir):
             shutil.rmtree(results_dir)
@@ -591,9 +594,10 @@ def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD
         with ProcessPoolExecutor() as run_simulations:
             futures = [run_simulations.submit(simulate_controller, 
                                               controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
-                                       wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
-                                       lut_path=case_lists[c]["lut_path"], generate_lut=case_lists[c]["generate_lut"], seed=case_lists[c]["seed"],
-                                       wind_field_config=wind_field_config, verbose=False) 
+                                              wind_case_idx=case_lists[c]["wind_case_idx"], wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
+                                              case_name=case_lists[c]["case_names"],
+                                              lut_path=case_lists[c]["lut_path"], generate_lut=case_lists[c]["generate_lut"], seed=case_lists[c]["seed"],
+                                              wind_field_config=wind_field_config, verbose=False) 
                        for c, d in enumerate(input_dicts)]
         wait(futures)
         results = [fut.result() for fut in futures]
@@ -602,7 +606,8 @@ def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD
         results = []
         for c, d in enumerate(input_dicts):
             results.append(simulate_controller(controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
-                                               wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
+                                               wind_case_idx=case_lists[c]["wind_case_idx"], wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
+                                               case_name=case_lists[c]["case_names"],
                                                lut_path=case_lists[c]["lut_path"], generate_lut=case_lists[c]["generate_lut"], seed=case_lists[c]["seed"],
                                                wind_field_config=wind_field_config, verbose=False))
 
@@ -612,12 +617,12 @@ def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD
     for r, res in enumerate(results):
         results_dfs[case_name_lists[r]] = res
 
-        results_dir = os.path.join(os.path.dirname(whoc.__file__), "case_studies", "_".join(case_name_lists[r].split('_')[:-1]))
+        results_dir = os.path.join(os.path.dirname(whoc_file), "case_studies", "_".join(case_name_lists[r].split('_')[:-1]))
 
         if not os.path.exists(results_dir):
             os.makedirs(results_dir)
 
-        results_dfs[case_name_lists[r]].to_csv(os.path.join(results_dir, f"time_series_results_case_{r}.csv"))
+        results_dfs[case_name_lists[r]].to_csv(os.path.join(results_dir, f"time_series_results_case_{case_lists[r]['case_names']}_seed_{case_lists[r]['wind_case_idx']}.csv"))
 
         # fi.calculate_wake(wind_dir_ts[:-2, np.newaxis] - results_dfs[case_name_lists[f]][[f"TurbineYawAngle_{i}" for i in range(9)]].to_numpy())
         # turbine_powers = fi.get_turbine_powers()
@@ -625,18 +630,28 @@ def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD
 
 def get_results_data(results_dirs):
     results_dfs = {}
-    for r, results_dir in enumerate(results_dirs):
+    for results_dir in results_dirs:
         for f, fn in enumerate([fn for fn in os.listdir(results_dir) if ".csv" in fn]):
-            results_dfs[f"{os.path.split(os.path.basename(results_dir))[-1]}_{f}"] = pd.read_csv(os.path.join(results_dir, fn), index_col=0)
+            seed = int(re.findall(r"(?<=seed\_)(\d*)", fn)[0])
+            case_name = re.findall(r"(?<=case_)(.*)(?=_seed)", fn)[0]
+
+            df = pd.read_csv(os.path.join(results_dir, fn), index_col=0)
+
+            # df["WindSeed"] = [0] * len(df.index)
+            # df.to_csv(os.path.join(results_dir, f"time_series_results_case_{r}.csv"))
+            case_tag = f"{os.path.split(os.path.basename(results_dir))[-1]}_{case_name}"
+            if case_tag not in results_dfs:
+                results_dfs[case_tag] = df
+            else:
+                results_dfs[case_tag] = pd.concat([results_dfs[case_tag], df])
     return results_dfs
 
 def process_simulations(results_dirs):
     results_dfs = get_results_data(results_dirs)
     compare_results_df = compare_simulations(results_dfs)
-    compare_results_df.to_csv(os.path.join(os.path.dirname(whoc.__file__), "case_studies", f"comparison_time_series_results.csv"))
-
-    plot_breakdown_robustness(compare_results_df, case_studies, os.path.join(os.path.dirname(whoc.__file__), "case_studies"))
-    plot_cost_function_pareto_curve(compare_results_df, case_studies, os.path.join(os.path.dirname(whoc.__file__), "case_studies"))
+    
+    plot_breakdown_robustness(compare_results_df, case_studies, os.path.join(os.path.dirname(whoc_file), "case_studies"))
+    plot_cost_function_pareto_curve(compare_results_df, case_studies, os.path.join(os.path.dirname(whoc_file), "case_studies"))
 
     # TODO generate results table in tex
     
@@ -668,7 +683,7 @@ def process_simulations(results_dirs):
     # f"&                                                                  $20\%$                   & ${0}$ & ${0}$ & ${0}$  \n"
     # f"\end{{tabular}}"
     # )
-    # with open(os.path.join(os.path.dirname(whoc.__file__), "case_studies", "comparison_time_series_results_table.txt"), "w") as fp:
+    # with open(os.path.join(os.path.dirname(whoc_file), "case_studies", "comparison_time_series_results_table.txt"), "w") as fp:
     #     fp.write(compare_results_latex)
     
 
@@ -695,21 +710,22 @@ def plot_simulations(results_dirs):
         
             plot_power_ts(df, os.path.join(results_dir, f"yaw_power_ts_{f}.png"))
     
-    summary_df = pd.read_csv(os.path.join(os.path.dirname(whoc.__file__), "case_studies", f"comparison_time_series_results.csv"), index_col=0)
-    barplot_opt_cost(summary_df, os.path.join(os.path.dirname(whoc.__file__), "case_studies"), relative=True)
+    summary_df = pd.read_csv(os.path.join(os.path.dirname(whoc_file), "case_studies", f"comparison_time_series_results.csv"), index_col=0)
+    barplot_opt_cost(summary_df, os.path.join(os.path.dirname(whoc_file), "case_studies"), relative=True)
 
 if __name__ == '__main__':
 
     # MISHA QUESTION how to make AMR-Wind wait for control solution?
-    # run_simulations(["solver_type", "wind_preview_type"], REGENERATE_WIND_FIELD)
+    # run_simulations(["baseline_controllers"], REGENERATE_WIND_FIELD)
     run_simulations(["baseline_controllers", "solver_type",
                      "wind_preview_type", "warm_start", 
                      "horizon_length", "breakdown_robustness",
                      "scalability", "cost_func_tuning"], REGENERATE_WIND_FIELD)
-
-    results_dirs = [os.path.join(os.path.dirname(whoc.__file__), "case_studies", case_key) for case_key in ["baseline_controllers", "solver_type",
-                                                                                                            "wind_preview_type", "warm_start", "scalability", "cost_func_tuning",
-                                                                                                            "horizon_length", "breakdown_robustness"]]
+    results_dirs = [os.path.join(os.path.dirname(whoc_file), "case_studies", case_key) for case_key in ["baseline_controllers"]]
+    # results_dirs = [os.path.join(os.path.dirname(whoc_file), "case_studies", case_key) for case_key in ["baseline_controllers", "solver_type",
+    #                                                                                                         "wind_preview_type", "warm_start", "scalability", "cost_func_tuning",
+    #                                                                                                         "horizon_length", "breakdown_robustness"]]
+    # TODO compute stats over all seeds
     # process_simulations(results_dirs)
     
     # plot_simulations(results_dirs)

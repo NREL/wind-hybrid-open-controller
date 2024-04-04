@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import os
 from collections import defaultdict
+from whoc import __file__ as whoc_file
 
 import seaborn as sns
 sns.set_theme(style="darkgrid", rc={'figure.figsize':(4,4)})
@@ -27,30 +28,39 @@ sns.set_theme(style="darkgrid", rc={'figure.figsize':(4,4)})
 def compare_simulations(results_dfs):
     result_summary_dict = defaultdict(list)
 
-    for case_name, results_df in results_dfs.items():
+    for df_name, results_df in results_dfs.items():
 
         # res = ResultsSummary(YawAngleChangeAbsSum=results_df[[c for c in results_df.columns if "YawAngleChange" in c]].abs().sum().to_numpy().sum(),
         #                      FarmPowerSum=results_df["FarmPower"].sum(),
         #                      TotalOptimizationCostSum=results_df["TotalOptimizationCost"].sum(),
         #                      ConvergenceTimeSum=results_df["ConvergenceTime"].sum())
         
-        yaw_angles_change_ts = results_df[sorted(list([c for c in results_df.columns if "TurbineYawAngleChange_" in c]))]
-        turbine_offline_status_ts = results_df[sorted(list([c for c in results_df.columns if "TurbineOfflineStatus_" in c]))]
-        turbine_power_ts = results_df[sorted(list([c for c in results_df.columns if "TurbinePower_" in c]))]
-        
-        result_summary_dict["SolverType"].append(case_name)
-        # result_summary_dict["YawAngleChangeAbsSum"].append(results_df[[c for c in results_df.columns if "YawAngleChange" in c]].abs().sum().to_numpy().sum())
-        result_summary_dict["YawAngleChangeAbsMean"].append(yaw_angles_change_ts.abs().sum(axis=1).mean())
-        result_summary_dict["RelativeYawAngleChangeAbsMean"].append(((yaw_angles_change_ts.abs().to_numpy() * np.logical_not(turbine_offline_status_ts)).sum(axis=1) / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean())
-        # result_summary_dict["FarmPowerSum"].append(results_df["FarmPower"].sum())
-        result_summary_dict["FarmPowerMean"].append(turbine_power_ts.sum(axis=1).mean())
-        result_summary_dict["RelativeFarmPowerMean"].append(((turbine_power_ts.to_numpy() * np.logical_not(turbine_offline_status_ts)).sum(axis=1) / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean())
-        # result_summary_dict["TotalRunningOptimizationCostSum"].append(results_df["TotalRunningOptimizationCost"].sum())
-        result_summary_dict["TotalRunningOptimizationCostMean"].append(results_df["TotalRunningOptimizationCost"].mean())
-        result_summary_dict["OptimizationConvergenceTimeMean"].append(results_df["OptimizationConvergenceTime"].mean())
+        for seed in pd.unique(results_df["WindSeed"]):
+            seed_df = results_df.loc[results_df["WindSeed"] == seed, :]
+            
+            yaw_angles_change_ts = seed_df[sorted(list([c for c in results_df.columns if "TurbineYawAngleChange_" in c]))]
+            turbine_offline_status_ts = seed_df[sorted(list([c for c in results_df.columns if "TurbineOfflineStatus_" in c]))]
+            turbine_power_ts = seed_df[sorted(list([c for c in results_df.columns if "TurbinePower_" in c]))]
+
+            result_summary_dict["CaseFamily"].append("_".join(df_name.split("_")[:-1]))
+            result_summary_dict["CaseName"].append(seed_df["CaseName"].iloc[0])
+            result_summary_dict["WindSeed"].append(seed)
+            # result_summary_dict["YawAngleChangeAbsSum"].append(results_df[[c for c in results_df.columns if "YawAngleChange" in c]].abs().sum().to_numpy().sum())
+            result_summary_dict["YawAngleChangeAbsMean"].append(yaw_angles_change_ts.abs().sum(axis=1).mean())
+            result_summary_dict["RelativeYawAngleChangeAbsMean"].append(((yaw_angles_change_ts.abs().to_numpy() * np.logical_not(turbine_offline_status_ts)).sum(axis=1) / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean())
+            # result_summary_dict["FarmPowerSum"].append(results_df["FarmPower"].sum())
+            result_summary_dict["FarmPowerMean"].append(turbine_power_ts.sum(axis=1).mean())
+            result_summary_dict["RelativeFarmPowerMean"].append(((turbine_power_ts.to_numpy() * np.logical_not(turbine_offline_status_ts)).sum(axis=1) / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean())
+            # result_summary_dict["TotalRunningOptimizationCostSum"].append(results_df["TotalRunningOptimizationCost"].sum())
+            result_summary_dict["TotalRunningOptimizationCostMean"].append(seed_df["TotalRunningOptimizationCost"].mean())
+            result_summary_dict["OptimizationConvergenceTimeMean"].append(seed_df["OptimizationConvergenceTime"].mean())
         # result_summary_dict["OptimizationConvergenceTimeSum"].append(results_df["OptimizationConvergenceTime"].sum())
     
     result_summary_df = pd.DataFrame(result_summary_dict)
+    result_summary_df = result_summary_df.groupby(by=["CaseFamily", "CaseName"])[[col for col in result_summary_df.columns if col not in ["CaseFamily", "CaseName", "WindSeed"]]].agg(["min", "max", "mean"])
+    
+    result_summary_df.to_csv(os.path.join(os.path.dirname(whoc_file), "case_studies", f"comparison_time_series_results.csv"))
+
     return result_summary_df
 
 def plot_wind_field_ts(data_df, save_path):
@@ -184,14 +194,16 @@ def plot_cost_function_pareto_curve(data_summary_df, case_studies, save_dir):
     """
     plot mean farm level power vs mean sum of absolute yaw changes for different values of alpha
     """
+    # TODO update based on new data_summary_df format
+
     fig, ax = plt.subplots(1)
-    sub_df = data_summary_df.loc[data_summary_df["SolverType"].str.contains("cost_func_tuning_"), :]
+    sub_df = data_summary_df.loc[data_summary_df["CaseFamily"] == "cost_func_tuning", :]
     # sub_df.loc[:, "SolverType"] = [f"\alpha = {float(case_name.split('_')[-1]):.2f}" for case_name in case_studies["cost_func_tuning"]["case_names"]["vals"]]
 
 
     # Plot "RelativeFarmPowerMean" vs. "RelativeYawAngleChangeAbsMean" for all "SolverType" == "cost_func_tuning"
     ax = sns.scatterplot(data=sub_df, x="YawAngleChangeAbsMean", y="FarmPowerMean",
-                    size="SolverType", size_order=reversed(sub_df["SolverType"].to_numpy()),
+                    size="CaseName", size_order=reversed(sub_df["CaseName"].to_numpy()),
                     ax=ax)
     ax.collections[0].set_sizes(ax.collections[0].get_sizes() * 5)
     ax.legend([], [], frameon=False)
@@ -199,18 +211,19 @@ def plot_cost_function_pareto_curve(data_summary_df, case_studies, save_dir):
 
 def plot_breakdown_robustness(data_summary_df, case_studies, save_dir):
     # TODO could also make countplot and plot all time-step data points for different values of probability
+    # TODO update based on new data_summary_df format
     """
     plot mean relative farm level power vs mean relative sum of absolute yaw changes for different values of breakdown probability
     """
     
-    sub_df = data_summary_df.loc[data_summary_df["SolverType"].str.contains("breakdown_robustness"), :]
+    sub_df = data_summary_df.loc[data_summary_df["CaseFamily"] == "breakdown_robustness", :]
     
-    sub_df["SolverType"] = [case_studies["breakdown_robustness"]["case_names"]["vals"][int(solver_type.split("_")[-1])] for solver_type in sub_df["SolverType"]]
+    sub_df["CaseName"] = [case_studies["breakdown_robustness"]["case_names"]["vals"][int(solver_type.split("_")[-1])] for solver_type in sub_df["SolverType"]]
 
     # Plot "RelativeFarmPowerMean" vs. "RelativeYawAngleChangeAbsMean" for all "SolverType" == "cost_func_tuning"
     fig, ax = plt.subplots(1)
-    sns.scatterplot(data=sub_df, x="RelativeYawAngleChangeAbsMean", y="RelativeFarmPowerMean", size="SolverType", 
-                    size_order=reversed(sub_df["SolverType"]), ax=ax)
+    sns.scatterplot(data=sub_df, x="RelativeYawAngleChangeAbsMean", y="RelativeFarmPowerMean", size="CaseName", 
+                    size_order=reversed(sub_df["CaseName"]), ax=ax)
     fig.savefig(os.path.join(save_dir, "breakdown_robustness.png"))
 
 if __name__ == '__main__':
