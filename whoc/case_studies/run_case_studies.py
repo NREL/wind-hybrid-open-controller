@@ -23,7 +23,7 @@ from hercules.utilities import load_yaml
 # from warnings import simplefilter
 # simplefilter('error')
 
-N_SEEDS = 1
+N_SEEDS = 6
 REGENERATE_WIND_FIELD = False
 PARALLEL = True
 # sequential_pyopt is best solver, stochastic is best preview type
