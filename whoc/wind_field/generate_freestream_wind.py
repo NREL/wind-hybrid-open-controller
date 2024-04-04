@@ -10,7 +10,7 @@ import whoc
 from whoc.wind_field.WindField import generate_multi_wind_ts
 
 
-def generate_freestream_wind(save_path, regenerate_wind_field=False):
+def generate_freestream_wind(save_path, n_seeds, regenerate_wind_field=False):
 
     input_dict = load_yaml(sys.argv[1])
 
@@ -18,20 +18,24 @@ def generate_freestream_wind(save_path, regenerate_wind_field=False):
         wind_field_config = yaml.safe_load(fp)
 
     # instantiate wind field if files don't already exist
-    wind_field_dir = os.path.join('/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/wind_field_data/raw_data')        
+    wind_field_dir = os.path.join('../../examples/wind_field_data/raw_data')        
     wind_field_filenames = glob(f"{wind_field_dir}/case_*.csv")
-    n_wind_field_cases = 1
+    
     if not os.path.exists(wind_field_dir):
         os.makedirs(wind_field_dir)
-
-    # TODO make sure this is the same as the wind field from amr_standin_data
-    # TODO how can we make hercules wait for controller response?s
+        
     seed = 0
     wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * input_dict["controller"]["dt"]
     wind_field_config["preview_dt"] = input_dict["controller"]["dt"]
-    if not len(wind_field_filenames) or regenerate_wind_field:
-        generate_multi_wind_ts(wind_field_config, seed=seed)
-        wind_field_filenames = [f"case_{i}.csv" for i in range(n_wind_field_cases)]
+    wind_field_config["simulation_max_time"] = input_dict["helics"]["config"]["stoptime"]
+    wind_field_config["num_turbines"] = input_dict["controller"]["num_turbines"]
+    wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
+    wind_field_config["preview_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"])
+    wind_field_config["simulation_sampling_time"] = input_dict["dt"]
+
+    if len(wind_field_filenames) < n_seeds or regenerate_wind_field:
+        generate_multi_wind_ts(wind_field_config, seeds=[seed + i for i in range(n_seeds)])
+        wind_field_filenames = [f"case_{i}.csv" for i in range(n_seeds)]
         regenerate_wind_field = True
 
     # if wind field data exists, get it

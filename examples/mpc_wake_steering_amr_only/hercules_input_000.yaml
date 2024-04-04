@@ -1,0 +1,70 @@
+# Input YAML for emy_python
+
+# Name
+name: example_000
+
+###
+# Describe this emulator setup
+description: AMR Wind Only
+
+dt: 0.5
+
+hercules_comms:
+
+  amr_wind:
+
+    wind_farm_0:
+      type: amr_wind_local #options are amr_wind or amr_wind_local
+      amr_wind_input_file: amr_input.inp
+
+  helics:
+
+    config:
+        name: hercules # What is the purpose of this name
+        use_dash_frontend: False
+        KAFKA: False
+        KAFKA_topics: EMUV1py
+        helics: 
+            # deltat: 1 # This will be assigned in software
+            subscription_topics: [status]
+            publication_topics: [control]
+            endpoints: []
+            helicsport: 32000
+        publication_interval: 1
+        endpoint_interval: 1
+        starttime: 0
+        stoptime: 3600
+        Agent: ControlCenter
+
+py_sims:
+
+controller:
+  controller_type: SimpleYawController # This may not be needed
+  num_turbines: 25 # Should match AMR-Wind! Ideally, would come from AMR-wind
+  initial_conditions:
+      yaw: 270.0 # degrees (same for all turbines) (will this work?)
+  yaw_limits: [-30, 30]
+  yaw_rate: 0.3
+  yaw_increment: 0.25
+  lpf_time_const: 35
+  deadband_thr: 8
+  dt: 60
+  n_horizon: 10
+  alpha: 0.1 # WARNING: if you choose this to be small and set the initial values of the control inputs to 0, solver may get stuck at initial solution
+  control_input_domain: continuous
+  wind_preview_type: stochastic # wind preview type asumed in MPC: persistent (assumes that current freestream measurements will stay constant over horizon), stochastic (sample from Gaussian model of preview), perfect (preview known)
+  n_wind_preview_samples: 3
+  warm_start: greedy # may equal 'previous' to warm-start with time-shifted previous solution,  "lut" to warm-start with lookup table solution, or "random" #TODO
+  nu: 0.001 # step size to add/subtract from yaw angles for stochastic gradient estimate
+  use_filtered_wind_dir: True
+  floris_input_file: /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml
+  solver: sequential_slsqp # may equal serial_refine, slsqp, sequential_slsqp, or zsgd
+  basin_hop: False
+  offline_probability: 0.0
+  state_con_type: extreme
+  beta: 0.9
+
+
+
+
+

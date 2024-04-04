@@ -24,6 +24,8 @@ from hercules.utilities import load_yaml
 # from warnings import simplefilter
 # simplefilter('error')
 
+# TODO edit wind_field_config st simulation_time, n_seeds, num_turbines, dt are based on hercules input_file
+
 N_SEEDS = 6
 REGENERATE_WIND_FIELD = False
 PARALLEL = True
@@ -524,9 +526,12 @@ def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD
     if not os.path.exists(wind_field_dir):
         os.makedirs(wind_field_dir)
 
+    wind_field_config["simulation_max_time"] = input_dict["helics"]["config"]["stoptime"]
+    wind_field_config["num_turbines"] = input_dict["controller"]["num_turbines"]
     wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
     wind_field_config["preview_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"])
     wind_field_config["simulation_sampling_time"] = input_dict["dt"]
+
     seed = 0
     if len(wind_field_filenames) < n_seeds or regenerate_wind_field:
         generate_multi_wind_ts(wind_field_config, seeds=[seed + i for i in range(n_seeds)])
