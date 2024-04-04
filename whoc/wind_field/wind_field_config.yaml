@@ -1,8 +1,8 @@
 # ensure there is enough power reference preview steps left before the full 24 hour mark
-simulation_max_time: 3600
-simulation_sampling_time: 1.0
+simulation_max_time: 60
+simulation_sampling_time: 0.5
 # wind_speed_preview_time: 600
-n_turbines: 9
+num_turbines: 9
 n_wind_field_cases: 6
 
 data_save_dir: /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/wind_field_data/raw_data
@@ -19,7 +19,7 @@ wind_speed:
   # probability of wind speed/direction changing (1/2 for increase 1/2 for decrease)
   change_probability: 0.25
   turb_std: 1.0
-  sampling_time_step: 1.0
+  sampling_time_step: 0.5
   u_noise_args:
     scale: 1.0
   v_noise_args:
@@ -47,4 +47,4 @@ ai_factors:
   var: 0.01
   change_probability: 0.0
   turb_std: 0.0
-  sampling_time_step: 1.0
+  sampling_time_step: 0.5

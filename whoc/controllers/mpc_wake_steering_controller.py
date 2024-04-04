@@ -442,7 +442,7 @@ class MPC(ControllerBase):
         self.dt = input_dict["controller"]["dt"]
         self.simulation_dt = input_dict["dt"]
         self.n_turbines = input_dict["controller"]["num_turbines"]
-        assert self.n_turbines == interface.n_turbines
+        # assert self.n_turbines == interface.n_turbines
         self.turbines = range(self.n_turbines)
         self.yaw_limits = input_dict["controller"]["yaw_limits"]
         self.yaw_rate = input_dict["controller"]["yaw_rate"]
@@ -467,7 +467,6 @@ class MPC(ControllerBase):
         wf = WindField(**wind_field_config)
         # wind_preview_generator = wf._sample_wind_preview(noise_func=np.random.multivariate_normal, noise_args=None)
         
-        # TODO update paper with mean value for expected value and 2*std values for constraints
         if input_dict["controller"]["wind_preview_type"] == "stochastic":
             def wind_preview_func(current_freestream_measurements, time_step, return_statistical_values=False): 
                 # returns cond_mean_u, cond_mean_v, cond_cov_u, cond_cov_v

@@ -57,7 +57,7 @@ class WindField:
 		
 		self.simulation_dt = config["simulation_sampling_time"]
 
-		self.n_turbines = config["n_turbines"]
+		self.num_turbines = config["num_turbines"]
 		
 		# set wind speed/dir change probabilities and variability parameters
 		self.wind_speed_change_probability = config["wind_speed"]["change_probability"]  # 0.1
@@ -92,22 +92,14 @@ class WindField:
 		self.wind_speed_v_noise_args = config["wind_speed"]["v_noise_args"]
 		
 		self.simulation_max_time = config["simulation_max_time"]
-		# self.wind_speed_sampling_time_step = config["wind_speed"]["sampling_time_step"]
-		# self.wind_dir_sampling_time_step = config["wind_dir"]["sampling_time_step"]
-		# self.yaw_angle_sampling_time_step = config["yaw_angles"]["sampling_time_step"]
-		# self.ai_factor_sampling_time_step = config["ai_factors"]["sampling_time_step"]
 		
 		self.yaw_rate = config["yaw_angles"]["roc"]
-		
-		# self.wind_speed_preview_time = config["wind_speed_preview_time"]
-		
-		# self.n_preview_steps = int(self.wind_speed_preview_time // self.wind_speed_sampling_time_step)
-		# self.preview_dt = int((self.wind_speed_preview_time) // self.wind_speed_sampling_time_step)
+
 		self.simulation_max_time_steps = int(self.simulation_max_time // self.simulation_dt)
 	
 	def _generate_online_bools_ts(self):
 		return np.random.choice(
-			[0, 1], size=(self.simulation_max_time_steps, self.n_turbines),
+			[0, 1], size=(self.simulation_max_time_steps, self.num_turbines),
 			p=[self.offline_probability, 1 - self.offline_probability])
 	
 	def _sample_wind_preview(self, current_measurements, n_preview_steps, preview_dt, n_samples, noise_func=np.random.multivariate_normal, noise_args=None, return_params=True):
@@ -116,9 +108,7 @@ class WindField:
 		low variance and high covariance => high correlation
 		"""
 		noise_args = {}
-		# noise_args["mean"] = [current_measurements[0] for j in range(n_preview_steps + preview_dt)] \
-		# 					+ [current_measurements[1] for j in range(n_preview_steps + preview_dt)]
-		# mean = [0] * ((n_preview_steps + preview_dt) * 2)
+		
 		mean_u = [self.wind_speed_u_range[0] + ((self.wind_speed_u_range[1] - self.wind_speed_u_range[0]) / 2)] * (n_preview_steps + preview_dt)
 		mean_v = [self.wind_speed_v_range[0] + ((self.wind_speed_v_range[1] - self.wind_speed_v_range[0]) / 2)] * (n_preview_steps + preview_dt)
 
@@ -335,7 +325,7 @@ class WindField:
 												 self.yaw_angle_turb_std,
 												 self.yaw_angle_sampling_time_step,
 												 roc=self.yaw_rate)
-						for i in range(self.n_turbines)]
+						for i in range(self.num_turbines)]
 		yaw_angle_ts = np.array(yaw_angle_ts).T
 		
 		return yaw_angle_ts
@@ -347,13 +337,13 @@ class WindField:
 													 self.ai_factor_change_probability,
 													 self.ai_factor_var,
 													 self.ai_factor_sampling_time_step)
-							for _ in range(self.n_turbines)]
+							for _ in range(self.num_turbines)]
 		set_ai_factor_ts = np.array(set_ai_factor_ts).T
 		
 		effective_ai_factor_ts = np.array(
 			[
 				[set_ai_factor_ts[i][t] if online_bool_ts[i][t] else 0.0
-				 for t in range(self.n_turbines)]
+				 for t in range(self.num_turbines)]
 				for i in range(self.simulation_max_time_steps)
 			]
 		)
@@ -655,22 +645,21 @@ def plot_distribution_ts(wf, n_preview_steps):
 	fig_plot.savefig(os.path.join(wf.fig_dir, f'wind_field_preview_ts2.png'))
 
 
-def generate_multi_wind_ts(config, save_name="", seeds=None, return_params=False):
-	if config["n_wind_field_cases"] == 1:
-		wind_field_data = []
-		for i in range(config["n_wind_field_cases"]):
-			wind_field_data.append(generate_wind_ts(config=config, from_gaussian=True, case_idx=i, save_name=save_name, seed=seeds[i], return_params=return_params))
-		plot_ts(wind_field_data[0].df, config["fig_dir"])
-		
-	else:
+def generate_multi_wind_ts(config, save_name="", seeds=None, return_params=False, parallel=True):
+	if parallel:
 		with ProcessPoolExecutor() as generate_wind_fields:
 			futures = [generate_wind_fields.submit(generate_wind_ts, 
                                               config=config, from_gaussian=True, save_name=save_name, return_params=return_params, 
 											  case_idx=case_idx, seed=seeds[case_idx]) 
-                       for case_idx in range(config["n_wind_field_cases"])]
+                       for case_idx in range(len(seeds))]
 		wait(futures)
 		wind_field_data = [fut.result() for fut in futures]
-	
+	else:
+		wind_field_data = []
+		for i, seed in enumerate(seeds):
+			wind_field_data.append(generate_wind_ts(config=config, from_gaussian=True, case_idx=i, save_name=save_name, seed=seed, return_params=return_params))
+		plot_ts(wind_field_data[0].df, config["fig_dir"])
+		
 	return wind_field_data
 
 
