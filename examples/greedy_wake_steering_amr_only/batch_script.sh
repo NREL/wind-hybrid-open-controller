@@ -7,19 +7,17 @@
 # #SBATCH --qos=high
 
 # A lot of modules and conda stuff
-source /nopt/nrel/apps/anaconda/5.3/etc/profile.d/conda.sh
-module use /not/nrel/apps/modules/default/modulefiles
+# source /nopt/nrel/apps/anaconda/5.3/etc/profile.d/conda.sh
+# module use /not/nrel/apps/modules/default/modulefiles
 module purge
 module load conda
-export PREFIX=~/.conda-envs/hercules
+export PREFIX=~/.conda-envs/whoc
 export PATH=$PREFIX/bin:$PATH
 export FI_PROVIDER_PATH=$PREFIX/lib/libfabric/prov
 export LD_LIBRARY_PATH=$PREFIX/lib/libfabric:$PREFIX/lib/release_mt:$LD_LIBRARY_PATH
-source activate hercules
-module load helics/helics-3.1.0_openmpi
-module load netcdf-c/4.7.3/gcc-mpi
-
-conda activate whoc
+source activate whoc # unsure if this is right, should it be hercules?
+module load helics/3.4.0-cray-mpich-intel # unsure if this is right
+module load netcdf-c/4.9.2-cray-mpich-intel # unsure if this is right
 
 # Set the helics port to use: 
 export HELICS_PORT=32000
