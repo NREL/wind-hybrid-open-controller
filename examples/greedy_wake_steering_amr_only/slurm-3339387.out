@@ -1,0 +1,5 @@
+[2024-04-05 10:35:34.980] [console] [info] 2685645-2DVkR-q1tq0-8q6oC-rO4FS (0)[connecting]::connecting
+[2024-04-05 10:35:34.983] [console] [info] 2685645-2DVkR-q1tq0-8q6oC-rO4FS::Broker 2685645-2DVkR-q1tq0-8q6oC-rO4FS connected on tcp://127.0.0.1:32000
+[2024-04-05 10:35:38.909] [console] [info] 2685645-2DVkR-q1tq0-8q6oC-rO4FS (1)[connected]::registering broker Test receiver Federate_core_peZqvZ(1879048192) on route 1
+[2024-04-05 10:35:39.010] [console] [info] 2685645-2DVkR-q1tq0-8q6oC-rO4FS (1)[connected]::registering federate Test receiver Federate(131072) on route 1
+slurmstepd: error: *** JOB 3339387 ON x1008c1s2b1n0 CANCELLED AT 2024-04-05T11:01:13 ***
