@@ -614,8 +614,8 @@ def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD
     # instantiate controller and run_simulations simulation
     print("run_simulations line 613")
     if PARALLEL:
-        with ProcessPoolExecutor() as run_simulations_exec:
-            print("run_simulations line 618")
+        with ProcessPoolExecutor(max_workers=mp.cpu_count()) as run_simulations_exec:
+            print(f"run_simulations line 618 with {run_simulations_exec._max_workers} workers")
             futures = [run_simulations_exec.submit(simulate_controller, 
                                               controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
                                               wind_case_idx=case_lists[c]["wind_case_idx"], wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
