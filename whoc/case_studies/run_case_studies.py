@@ -1,4 +1,6 @@
 from concurrent.futures import ProcessPoolExecutor, wait
+import multiprocessing as mp
+
 import pandas as pd
 import numpy as np
 import os
@@ -613,6 +615,7 @@ def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD
     print("run_simulations line 613")
     if PARALLEL:
         with ProcessPoolExecutor() as run_simulations_exec:
+            print("run_simulations line 618")
             futures = [run_simulations_exec.submit(simulate_controller, 
                                               controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
                                               wind_case_idx=case_lists[c]["wind_case_idx"], wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
@@ -620,8 +623,11 @@ def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD
                                               lut_path=case_lists[c]["lut_path"], generate_lut=case_lists[c]["generate_lut"], seed=case_lists[c]["seed"],
                                               wind_field_config=wind_field_config, verbose=False) 
                        for c, d in enumerate(input_dicts)]
+        print("run_simulations line 626")
         wait(futures)
+        print("run_simulations line 628")
         results = [fut.result() for fut in futures]
+        print("run_simulations line 630")
 
     else:
         results = []
@@ -738,6 +744,7 @@ if __name__ == '__main__':
 
     # MISHA QUESTION how to make AMR-Wind wait for control solution?
     # run_simulations(["baseline_controllers"], REGENERATE_WIND_FIELD)
+    mp.set_start_method('fork')
     run_simulations(["baseline_controllers", "solver_type",
                      "wind_preview_type", "warm_start", 
                      "horizon_length", "breakdown_robustness",
