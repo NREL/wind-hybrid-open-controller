@@ -34,7 +34,7 @@ hercules_comms:
         publication_interval: 1
         endpoint_interval: 1
         starttime: 0
-        stoptime: 300
+        stoptime: 3600
         
         Agent: ControlCenter
 
