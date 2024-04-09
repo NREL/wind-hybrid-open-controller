@@ -1,12 +1,15 @@
 #!/bin/bash
 #SBATCH --job-name=floris_case_studies.py
-#SBATCH --time=6:00:00
-#SBATCH --nodes=7
-#SBATCH --ntasks-per-node=104
+#SBATCH --time=12:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=104
 #SBATCH --account=ssc
 
 module purge
 module load conda
+module load openmpi/4.0.0
 conda activate whoc
 
-python3 run_case_studies.py
+mpirun -np $SLURM_NTASKS python -m mpi4py.futures
+# srun python run_case_studies.py
