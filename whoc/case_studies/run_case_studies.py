@@ -594,10 +594,10 @@ def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD
 
     if os.system() == "linux":
         input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = 3600
-        N_SEEDS = 6
+        n_seeds = 6
     elif os.system() == "darwin":
         input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = 300
-        N_SEEDS = 2
+        n_seeds = 2
     else:
         raise ValueError("system.os() does not return 'linux' or 'darwin'")
 
