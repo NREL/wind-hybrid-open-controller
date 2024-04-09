@@ -23,8 +23,6 @@ sns.set_theme(style="darkgrid", rc={'figure.figsize':(4,4)})
 # matplotlib.rc('font', size=SMALL_SIZE)
 # matplotlib.rc('axes', titlesize=SMALL_SIZE)
 
-# TODO better to pass df with all data to plotting functions
-
 def compare_simulations(results_dfs):
     result_summary_dict = defaultdict(list)
 
@@ -196,15 +194,17 @@ def plot_cost_function_pareto_curve(data_summary_df, case_studies, save_dir):
     """
     # TODO update based on new data_summary_df format
 
-    fig, ax = plt.subplots(1)
-    sub_df = data_summary_df.loc[data_summary_df["CaseFamily"] == "cost_func_tuning", :]
-    # sub_df.loc[:, "SolverType"] = [f"\alpha = {float(case_name.split('_')[-1]):.2f}" for case_name in case_studies["cost_func_tuning"]["case_names"]["vals"]]
+    fig, ax = plt.subplots(1, figsize=(10.29,  5.5))
+    sub_df = data_summary_df.loc[data_summary_df.index.get_level_values("CaseFamily") == "cost_func_tuning_alpha", :]
+    sub_df.reset_index(level="CaseName", inplace=True)
+    sub_df.loc[:, "CaseName"] = [float(x[-1]) for x in sub_df["CaseName"].str.split("_")]
 
 
     # Plot "RelativeFarmPowerMean" vs. "RelativeYawAngleChangeAbsMean" for all "SolverType" == "cost_func_tuning"
-    ax = sns.scatterplot(data=sub_df, x="YawAngleChangeAbsMean", y="FarmPowerMean",
+    ax = sns.scatterplot(data=sub_df, x=("RelativeYawAngleChangeAbsMean", "mean"), y=("RelativeFarmPowerMean", "mean"),
                     size="CaseName", size_order=reversed(sub_df["CaseName"].to_numpy()),
                     ax=ax)
+    ax.set(xlabel="Mean Absolute Relative Yaw Angle Change", ylabel="Mean Relative Farm Power")
     ax.collections[0].set_sizes(ax.collections[0].get_sizes() * 5)
     ax.legend([], [], frameon=False)
     fig.savefig(os.path.join(save_dir, "cost_function_pareto_curve.png"))
@@ -216,14 +216,24 @@ def plot_breakdown_robustness(data_summary_df, case_studies, save_dir):
     plot mean relative farm level power vs mean relative sum of absolute yaw changes for different values of breakdown probability
     """
     
-    sub_df = data_summary_df.loc[data_summary_df["CaseFamily"] == "breakdown_robustness", :]
-    
-    sub_df["CaseName"] = [case_studies["breakdown_robustness"]["case_names"]["vals"][int(solver_type.split("_")[-1])] for solver_type in sub_df["SolverType"]]
+    sub_df = data_summary_df.loc[data_summary_df.index.get_level_values("CaseFamily") == "breakdown_robustness", :]
+    sub_df.reset_index(level="CaseName", inplace=True)
+    # sub_df["CaseName"] = [case_studies["breakdown_robustness"]["case_names"]["vals"][int(solver_type.split("_")[-1])] for solver_type in sub_df["SolverType"]]
 
     # Plot "RelativeFarmPowerMean" vs. "RelativeYawAngleChangeAbsMean" for all "SolverType" == "cost_func_tuning"
-    fig, ax = plt.subplots(1)
-    sns.scatterplot(data=sub_df, x="RelativeYawAngleChangeAbsMean", y="RelativeFarmPowerMean", size="CaseName", 
+    fig, ax = plt.subplots(1, figsize=(10.29,  5.5))
+    sns.scatterplot(data=sub_df, x=("RelativeYawAngleChangeAbsMean", "mean"), y=("RelativeFarmPowerMean", "mean"), size="CaseName", 
                     size_order=reversed(sub_df["CaseName"]), ax=ax)
+    ax.set(xlabel="Mean Absolute Relative Yaw Angle Change", ylabel="Mean Relative Farm Power")
+    ax.legend_.set_title("Chance of Breakdown")
+    ax.collections[0].set_sizes(ax.collections[0].get_sizes() * 5)
+    
+    ax.legend_.texts[0].set_text("50%")
+    ax.legend_.texts[1].set_text("20%")
+    ax.legend_.texts[2].set_text("5%")
+    ax.legend_.texts[3].set_text("2.5%")
+    ax.legend_.texts[4].set_text("0%")
+
     fig.savefig(os.path.join(save_dir, "breakdown_robustness.png"))
 
 if __name__ == '__main__':
