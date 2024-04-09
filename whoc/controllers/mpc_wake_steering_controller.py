@@ -453,7 +453,6 @@ class MPC(ControllerBase):
         self.wind_mag_ts = kwargs["wind_mag_ts"]
         self.wind_dir_ts = kwargs["wind_dir_ts"]
 
-        self.state_con_type = (input_dict["controller"]["wind_preview_type"] != "stochastic") or input_dict["controller"]["state_con_type"].lower()
         if input_dict["controller"]["wind_preview_type"] != "stochastic":
             self.state_con_type = "check_all_samples"
         elif input_dict["controller"]["state_con_type"].lower() in ["check_all_samples", "extreme", "probabilistic"]:
@@ -816,7 +815,7 @@ class MPC(ControllerBase):
     def state_rules(self, opt_var_dict, disturbance_dict, yaw_setpoints, solve_turbine_ids):
         # define constraints
         state_cons = []
-        n_solve_turbines = len(solve_turbine_ids)
+        # n_solve_turbines = len(solve_turbine_ids)
         if self.state_con_type == "check_all_samples":
             for m in range(self.n_wind_preview_samples):
                 for j in range(self.n_horizon):

@@ -1,0 +1,26 @@
+\begin{tabular}{l|llll}
+\textbf{Case Family} & \textbf{Case Name} & \thead{\textbf{Relative Mean} \\ \textbf{Farm Power [MW]}} & \thead{\textbf{Relative Mean Absolute} \\ \textbf{Yaw Angle Change [deg]}} & \thead{\textbf{Mean} \\ \textbf{Convergence Time [s]}} \\ \hline 
+\multirow{3}{*}{\textbf{Solver}} & SLSQP                                  & $1.184e+06$ & $0.378$ & $298$ \\ 
+&                                          Sequential SLSQP                       & $1.176e+06$ & $0.378$ & $329$ \\ 
+&                                          Serial Refine                          & $1.164e+06$ & $0.380$ & $453$  \\ \hline 
+\multirow{3}{*}{\textbf{Wind Preview Model}} & Perfect                    & $1.249e+06$ & $0.377$ & $66$ \\ 
+&                                                      Persistent                 & $1.259e+06$ & $0.378$ & $79$ \\ 
+&                                                      Stochastic                 & $1.184e+06$ & $0.378$ & $290$ \\ \hline 
+\multirow{3}{*}{\textbf{Warm-Starting Method}} & Greedy                   & $1.184e+06$ & $0.378$ & $282$ \\ 
+&                                                        LUT                      & $1.246e+06$ & $0.380$ & $453$ \\ 
+&                                                        Previous Solution        & $1.200e+06$ & $0.377$ & $354$ \\ \hline 
+\multirow{4}{*}{\textbf{Wind Farm Size}}       & $3 \times 1$             & $1.211e+06$ & $0.379$ & $231$ \\ 
+&                                                        $3 \times 3$             & $1.184e+06$ & $0.378$ & $272$ \\ 
+&                                                        $5 \times 5$             & $1.117e+06$ & $0.380$ & $561$ \\ 
+&                                                        $10 \times 10$           & $1.035e+06$ & $0.382$ & $1508$ \\  \\ \hline 
+\multirow{5}{*}{\textbf{Horizon Length}}       & $6$                      & $1.192e+06$ & $0.378$ & $155$ \\ 
+&                                                        $8$                      & $1.195e+06$ & $0.378$ & $229$ \\ 
+&                                                        $10$                     & $1.184e+06$ & $0.378$ & $309$ \\ 
+&                                                        $12$                     & $1.198e+06$ & $0.380$ & $413$ \\ 
+&                                                        $14$                     & $1.188e+06$ & $0.379$ & $526$ \\ \hline 
+\multirow{5}{*}{\textbf{Probability of Turbine Failure}} & $0\%$          & $1.117e+06$ & $0.380$ & $662$ \\ 
+&                                                                  $1\%$          & $1.081e+06$ & $0.696$ & $662$ \\ 
+&                                                                  $5\%$          & $1.046e+06$ & $0.963$ & $625$ \\ 
+&                                                                  $10\%$         & $8.903e+05$ & $2.208$ & $556$ \\ 
+&                                                                  $20\%$         & $6.189e+05$ & $2.609$ & $545$ 
+\end{tabular}

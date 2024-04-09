@@ -1,4 +1,8 @@
+# from concurrent.futures import ProcessPoolExecutor, wait
+from mpi4py.futures import MPIPoolExecutor
+from mpi4py.futures import wait as mpi_wait
 from concurrent.futures import ProcessPoolExecutor, wait
+from concurrent.futures import wait as cf_wait
 import multiprocessing as mp
 
 import pandas as pd
@@ -12,6 +16,7 @@ from itertools import product
 import copy
 import io
 import re
+from sys import platform
 
 from whoc import __file__ as whoc_file
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
@@ -26,9 +31,8 @@ from hercules.utilities import load_yaml
 # from warnings import simplefilter
 # simplefilter('error')
 
-# TODO edit wind_field_config st simulation_time, n_seeds, num_turbines, dt are based on hercules input_file
 
-N_SEEDS = 6
+N_SEEDS = 2
 REGENERATE_WIND_FIELD = False
 PARALLEL = True
 # sequential_pyopt is best solver, stochastic is best preview type
@@ -68,7 +72,7 @@ case_studies = {
                           "alpha": {"group": 0, "vals": [0.5]}, 
                           "wind_preview_type": {"group": 0, "vals": ["stochastic"]}, 
                           "warm_start": {"group": 0, "vals": ["greedy"]}, 
-                          "case_names": {"group": 1, "vals": ["SLSQP"]},
+                          "case_names": {"group": 1, "vals": ['SLSQP']},
                            "solver": {"group": 1, "vals": ["slsqp"]},
                           "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
@@ -116,8 +120,56 @@ case_studies = {
                           "alpha": {"group": 0, "vals": [0.5]}, 
                           "wind_preview_type": {"group": 0, "vals": ["stochastic"]}, 
                           "warm_start": {"group": 0, "vals": ["greedy"]}, 
-                          "case_names": {"group": 1, "vals": ["SLSQP", "Sequential SLSQP", "Sequential Refine"]},
+                          "case_names": {"group": 1, "vals": ['SLSQP', "Sequential SLSQP", "Sequential Refine"]},
                            "solver": {"group": 1, "vals": ["slsqp", "sequential_slsqp", "serial_refine"]},
+                          "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
+                          },
+    "stochastic_preview_type": {"seed": {"group": 0, "vals": [0]},
+                          "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
+                             "num_turbines": {"group": 0, "vals": [9]}, 
+                          "controller_class": {"group": 0, "vals": ["MPC"]},
+                          "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
+                             "generate_lut": {"group": 0, "vals": [False]},
+                          "n_horizon": {"group": 0, "vals": [10]}, 
+                          "alpha": {"group": 0, "vals": [0.5]}, 
+                          "case_names": {"group": 1, "vals": ["Stochastic"]},
+                          "wind_preview_type": {"group": 1, "vals": ["stochastic"]}, 
+                          "warm_start": {"group": 0, "vals": ["greedy"]}, 
+                          "solver": {"group": 0, "vals": ["slsqp"]},
+                          "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
+                          },
+    "persistent_preview_type": {"seed": {"group": 0, "vals": [0]},
+                          "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
+                             "num_turbines": {"group": 0, "vals": [9]}, 
+                          "controller_class": {"group": 0, "vals": ["MPC"]},
+                          "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
+                             "generate_lut": {"group": 0, "vals": [False]},
+                          "n_horizon": {"group": 0, "vals": [10]}, 
+                          "alpha": {"group": 0, "vals": [0.5]}, 
+                          "case_names": {"group": 1, "vals": ["Persistent"]},
+                          "wind_preview_type": {"group": 1, "vals": ["persistent"]}, 
+                          "warm_start": {"group": 0, "vals": ["greedy"]}, 
+                          "solver": {"group": 0, "vals": ["slsqp"]},
+                          "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
+                          },
+    "perfect_preview_type": {"seed": {"group": 0, "vals": [0]},
+                          "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
+                             "num_turbines": {"group": 0, "vals": [9]}, 
+                          "controller_class": {"group": 0, "vals": ["MPC"]},
+                          "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
+                             "generate_lut": {"group": 0, "vals": [False]},
+                          "n_horizon": {"group": 0, "vals": [10]}, 
+                          "alpha": {"group": 0, "vals": [0.5]}, 
+                          "case_names": {"group": 1, "vals": ["Perfect"]},
+                          "wind_preview_type": {"group": 1, "vals": ["perfect"]}, 
+                          "warm_start": {"group": 0, "vals": ["greedy"]}, 
+                          "solver": {"group": 0, "vals": ["slsqp"]},
                           "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
                           },
@@ -130,7 +182,7 @@ case_studies = {
                              "generate_lut": {"group": 0, "vals": [False]},
                           "n_horizon": {"group": 0, "vals": [10]}, 
                           "alpha": {"group": 0, "vals": [0.5]}, 
-                          "case_names": {"group": 1, "vals": ["Perfect", "Preview", "Stochastic"]},
+                          "case_names": {"group": 1, "vals": ["Perfect", "Persistent", "Stochastic"]},
                           "wind_preview_type": {"group": 1, "vals": ["perfect", "persistent", "stochastic"]}, 
                           "warm_start": {"group": 0, "vals": ["greedy"]}, 
                           "solver": {"group": 0, "vals": ["slsqp"]},
@@ -178,7 +230,7 @@ case_studies = {
                          "generate_lut": {"group": 0, "vals": [False]},
                          "n_horizon": {"group": 0, "vals": [10]}, 
                          "case_names": {"group": 1, "vals": [f"alpha_{f}" for f in list(np.linspace(0, 1.0, 101))]},
-                         "alpha": {"group": 1, "vals": list(np.linspace(0, 1.0, 11))}, 
+                         "alpha": {"group": 1, "vals": list(np.linspace(0, 1.0, 101))}, 
                           "wind_preview_type": {"group": 0, "vals": ["stochastic"]}, 
                           "warm_start": {"group": 0, "vals": ["greedy"]}, 
                           "solver": {"group": 0, "vals": ["slsqp"]},
@@ -547,7 +599,7 @@ def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD
     wind_field_config["simulation_sampling_time"] = input_dict["dt"]
     
     print("run_simulations line 546")
-
+    # TODO check that wind field has same dt or interpolate...
     seed = 0
     if len(wind_field_filenames) < n_seeds or regenerate_wind_field:
         generate_multi_wind_ts(wind_field_config, seeds=[seed + i for i in range(n_seeds)])
@@ -614,17 +666,26 @@ def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD
     # instantiate controller and run_simulations simulation
     print("run_simulations line 613")
     if PARALLEL:
-        with ProcessPoolExecutor(max_workers=mp.cpu_count()) as run_simulations_exec:
+        if platform == "linux":
+            executor = MPIPoolExecutor(max_workers=mp.cpu_count())
+        elif platform == "darwin":
+            executor = ProcessPoolExecutor()
+
+        with executor as run_simulations_exec:
             print(f"run_simulations line 618 with {run_simulations_exec._max_workers} workers")
             futures = [run_simulations_exec.submit(simulate_controller, 
-                                              controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
-                                              wind_case_idx=case_lists[c]["wind_case_idx"], wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
-                                              case_name=case_lists[c]["case_names"],
-                                              lut_path=case_lists[c]["lut_path"], generate_lut=case_lists[c]["generate_lut"], seed=case_lists[c]["seed"],
-                                              wind_field_config=wind_field_config, verbose=False) 
-                       for c, d in enumerate(input_dicts)]
+                                            controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
+                                            wind_case_idx=case_lists[c]["wind_case_idx"], wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
+                                            case_name=case_lists[c]["case_names"],
+                                            lut_path=case_lists[c]["lut_path"], generate_lut=case_lists[c]["generate_lut"], seed=case_lists[c]["seed"],
+                                            wind_field_config=wind_field_config, verbose=False) 
+                    for c, d in enumerate(input_dicts)]
+
         print("run_simulations line 626")
-        wait(futures)
+        if platform == "linux":
+            mpi_wait(futures)
+        elif platform == "darwin":
+            cf_wait(futures)
         print("run_simulations line 628")
         results = [fut.result() for fut in futures]
         print("run_simulations line 630")
@@ -681,37 +742,50 @@ def process_simulations(results_dirs):
     plot_cost_function_pareto_curve(compare_results_df, case_studies, os.path.join(os.path.dirname(whoc_file), "case_studies"))
 
     # TODO generate results table in tex
-    
-    # compare_results_latex = (
-    # f"\begin{{tabular}}{{l|llll}}\n"
-    # f"\textbf{{Parameter Name}} & \textbf{{Parameter Value}} & \textbf{{Mean Farm Power [MW]}} & \textbf{{Mean Absolute Yaw Angle Change [deg]}} & \textbf{{Mean Convergence Time [s]}} \\ \hline \n"
-    # f"\multirow{{3}}{{*}}{{\textbf{{Solver}}}} & SLSQP                    & ${0}$ & ${0}$ & ${0}$ \\ \n"
-    # f"&                                          Sequential SLSQP         & ${0}$ & ${0}$ & ${0}$  \\ \n"
-    # f"&                                          Serial Refine            & ${0}$ & ${0}$ & ${0}$  \\ \hline \n"
-    # f"\multirow{{3}}{{*}}{{\textbf{{Wind Preview Model}}}} & Perfect                  & ${0}$ & ${0}$ & ${0}$  \\ \n"
-    # f"&                                                      Persistent               & ${0}$ & ${0}$ & ${0}$  \\ \n"
-    # f"&                                                      Stochastic               & ${0}$ & ${0}$ & ${0}$  \\ \hline \n"
-    # f"\multirow{{3}}{{*}}{{\textbf{{Warm-Starting Method}}}} & Greedy                   & ${0}$ & ${0}$ & ${0}$  \\ \n"
-    # f"&                                                        LUT                      & ${0}$ & ${0}$ & ${0}$  \\ \n"
-    # f"&                                                        Previous Solution        & ${0}$ & ${0}$ & ${0}$  \\ \hline \n"
-    # f"\multirow{{4}}{{*}}{{\textbf{{Wind Farm Size}}}}       & $3 \times 1$             & ${0}$ & ${0}$ & ${0}$  \\ \n"
-    # f"&                                                        $3 \times 3$             & ${0}$ & ${0}$ & ${0}$  \\ \n"
-    # f"&                                                        $5 \times 5$             & ${0}$ & ${0}$ & ${0}$  \\ \n"
-    # f"&                                                        $10 \times 10$           & ${0}$ & ${0}$ & ${0}$  \\ \hline \n"
-    # f"\multirow{{5}}{{*}}{{\textbf{{Horizon Length}}}}       & $6$                      & ${0}$ & ${0}$ & ${0}$  \\ \n"
-    # f"&                                                        $8$                      & ${0}$ & ${0}$ & ${0}$  \\ \n"
-    # f"&                                                        $10$                     & ${0}$ & ${0}$ & ${0}$  \\ \n"
-    # f"&                                                        $12$                     & ${0}$ & ${0}$ & ${0}$  \\ \n"
-    # f"&                                                        $14$                     & ${0}$ & ${0}$ & ${0}$  \\ \hline \n"
-    # f"\multirow{{5}}{{*}}{{\textbf{{Probability of Turbine Failure}}}} & $0\%$                    & ${0}$ & ${0}$ & ${0}$  \\ \n"
-    # f"&                                                                  $1\%$                    & ${0}$ & ${0}$ & ${0}$  \\ \n"
-    # f"&                                                                  $5\%$                    & ${0}$ & ${0}$ & ${0}$  \\ \n"
-    # f"&                                                                  $10\%$                   & ${0}$ & ${0}$ & ${0}$  \\ \n"
-    # f"&                                                                  $20\%$                   & ${0}$ & ${0}$ & ${0}$  \n"
-    # f"\end{{tabular}}"
-    # )
-    # with open(os.path.join(os.path.dirname(whoc_file), "case_studies", "comparison_time_series_results_table.txt"), "w") as fp:
-    #     fp.write(compare_results_latex)
+    # solver_type_df = compare_results_df.loc[compare_results_df.index.get_level_values("CaseFamily") == "solver_type", :].reset_index("CaseName")
+    # solver_type_df.loc[solver_type_df.CaseName == 'SLSQP', ("RelativeYawAngleChangeAbsMean", "mean")]
+
+    x = compare_results_df.loc[(compare_results_df.index.get_level_values("CaseFamily") != "scalability") & (compare_results_df.index.get_level_values("CaseFamily") != "breakdown_robustness"), :]
+    # x = x.loc[:, x.columns.get_level_values(1) == "mean"]
+    x = x.loc[:, ("TotalRunningOptimizationCostMean", "mean")]
+    x = x.groupby("CaseFamily", group_keys=False).nsmallest(3)
+    # Set alpha to 0.1, n_horizon to 12, solver to SLSQP, warm-start to LUT
+
+    get_result = lambda case_family, case_name, parameter: compare_results_df.loc[(compare_results_df.index.get_level_values("CaseFamily") == case_family) & (compare_results_df.index.get_level_values("CaseName") == case_name), (parameter, "mean")].iloc[0]
+    # get_result('solver_type', 'SLSQP', 'RelativeYawAngleChangeAbsMean')
+    # get_result('solver_type', 'SLSQP', 'RelativeFarmPowerMean')
+    # get_result('solver_type', 'SLSQP', 'TotalRunningOptimizationCostMean')
+    # get_result('solver_type', 'SLSQP', 'OptimizationConvergenceTimeMean')
+    compare_results_latex = (
+    f"\\begin{{tabular}}{{l|llll}}\n"
+    f"\\textbf{{Case Family}} & \\textbf{{Case Name}} & \\thead{{\\textbf{{Relative Mean}} \\\\ \\textbf{{Farm Power [MW]}}}} & \\thead{{\\textbf{{Relative Mean Absolute}} \\\\ \\textbf{{Yaw Angle Change [deg]}}}} & \\thead{{\\textbf{{Mean}} \\\\ \\textbf{{Convergence Time [s]}}}} \\\\ \hline \n"
+    f"\multirow{{3}}{{*}}{{\\textbf{{Solver}}}} & SLSQP                                  & ${get_result('solver_type', 'SLSQP', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('solver_type', 'SLSQP', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('solver_type', 'SLSQP', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                          Sequential SLSQP                       & ${get_result('solver_type', 'Sequential SLSQP', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('solver_type', 'Sequential SLSQP', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('solver_type', 'Sequential SLSQP', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                          Serial Refine                          & ${get_result('solver_type', 'Sequential Refine', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('solver_type', 'Sequential Refine', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('solver_type', 'Sequential Refine', 'OptimizationConvergenceTimeMean')):d}$  \\\\ \hline \n"
+    f"\multirow{{3}}{{*}}{{\\textbf{{Wind Preview Model}}}} & Perfect                    & ${get_result('wind_preview_type', 'Perfect', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('wind_preview_type', 'Perfect', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('wind_preview_type', 'Perfect', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                      Persistent                 & ${get_result('wind_preview_type', 'Preview', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('wind_preview_type', 'Preview', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('wind_preview_type', 'Preview', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                      Stochastic                 & ${get_result('wind_preview_type', 'Stochastic', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('wind_preview_type', 'Stochastic', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('wind_preview_type', 'Stochastic', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \hline \n"
+    f"\multirow{{3}}{{*}}{{\\textbf{{Warm-Starting Method}}}} & Greedy                   & ${get_result('warm_start', 'Greedy', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('warm_start', 'Greedy', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('warm_start', 'Greedy', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                        LUT                      & ${get_result('warm_start', 'LUT', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('warm_start', 'LUT', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('warm_start', 'LUT', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                        Previous Solution        & ${get_result('warm_start', 'Previous', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('warm_start', 'Previous', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('warm_start', 'Previous', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \hline \n"
+    f"\multirow{{4}}{{*}}{{\\textbf{{Wind Farm Size}}}}       & $3 \\times 1$             & ${get_result('scalability', '3 Turbines', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('scalability', '3 Turbines', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('scalability', '3 Turbines', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                        $3 \\times 3$             & ${get_result('scalability', '9 Turbines', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('scalability', '9 Turbines', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('scalability', '9 Turbines', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                        $5 \\times 5$             & ${get_result('scalability', '25 Turbines', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('scalability', '25 Turbines', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('scalability', '25 Turbines', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                        $10 \\times 10$           & ${get_result('scalability', '100 Turbines', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('scalability', '100 Turbines', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('scalability', '100 Turbines', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \hline \n"
+    f"\multirow{{5}}{{*}}{{\\textbf{{Horizon Length}}}}       & $6$                      & ${get_result('horizon_length_N', 'N_p = 6', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('horizon_length_N', 'N_p = 6', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('horizon_length_N', 'N_p = 6', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                        $8$                      & ${get_result('horizon_length_N', 'N_p = 8', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('horizon_length_N', 'N_p = 8', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('horizon_length_N', 'N_p = 8', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                        $10$                     & ${get_result('horizon_length_N', 'N_p = 10', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('horizon_length_N', 'N_p = 10', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('horizon_length_N', 'N_p = 10', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                        $12$                     & ${get_result('horizon_length_N', 'N_p = 12', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('horizon_length_N', 'N_p = 12', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('horizon_length_N', 'N_p = 12', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                        $14$                     & ${get_result('horizon_length_N', 'N_p = 14', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('horizon_length_N', 'N_p = 14', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('horizon_length_N', 'N_p = 14', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \hline \n"
+    f"\multirow{{5}}{{*}}{{\\textbf{{Probability of Turbine Failure}}}} & $0\%$          & ${get_result('breakdown_robustness', '00.0% Chance of Breakdown', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('breakdown_robustness', '00.0% Chance of Breakdown', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('breakdown_robustness', '00.0% Chance of Breakdown', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                                  $1\%$          & ${get_result('breakdown_robustness', '02.5% Chance of Breakdown', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('breakdown_robustness', '02.5% Chance of Breakdown', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('breakdown_robustness', '02.5% Chance of Breakdown', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                                  $5\%$          & ${get_result('breakdown_robustness', '05.0% Chance of Breakdown', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('breakdown_robustness', '05.0% Chance of Breakdown', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('breakdown_robustness', '05.0% Chance of Breakdown', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                                  $10\%$         & ${get_result('breakdown_robustness', '20.0% Chance of Breakdown', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('breakdown_robustness', '20.0% Chance of Breakdown', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('breakdown_robustness', '20.0% Chance of Breakdown', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                                  $20\%$         & ${get_result('breakdown_robustness', '50.0% Chance of Breakdown', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('breakdown_robustness', '50.0% Chance of Breakdown', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('breakdown_robustness', '50.0% Chance of Breakdown', 'OptimizationConvergenceTimeMean')):d}$ \n"
+    f"\end{{tabular}}"
+    )
+    with open(os.path.join(os.path.dirname(whoc_file), "case_studies", "comparison_time_series_results_table.tex"), "w") as fp:
+        fp.write(compare_results_latex)
     
 
 def plot_simulations(results_dirs):
@@ -744,16 +818,22 @@ if __name__ == '__main__':
 
     # MISHA QUESTION how to make AMR-Wind wait for control solution?
     # run_simulations(["baseline_controllers"], REGENERATE_WIND_FIELD)
-    mp.set_start_method('fork')
-    run_simulations(["baseline_controllers", "solver_type",
-                     "wind_preview_type", "warm_start", 
-                     "horizon_length", "breakdown_robustness",
-                     "scalability", "cost_func_tuning"], REGENERATE_WIND_FIELD)
-    results_dirs = [os.path.join(os.path.dirname(whoc_file), "case_studies", case_key) for case_key in ["baseline_controllers"]]
+    # mp.set_start_method('fork')
+    os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "true"
+    # run_simulations(["perfect_preview_type"], REGENERATE_WIND_FIELD)
+    # run_simulations(["baseline_controllers", "solver_type",
+    #                  "wind_preview_type", "warm_start", 
+    #                  "horizon_length", "breakdown_robustness",
+    #                  "scalability", "cost_func_tuning"], REGENERATE_WIND_FIELD)
+    results_dirs = [os.path.join(os.path.dirname(whoc_file), "case_studies", case_key) 
+                    for case_key in ["baseline_controllers", "solver_type",
+                                     "wind_preview_type", "warm_start", 
+                                     "horizon_length", "breakdown_robustness",
+                                     "scalability", "cost_func_tuning"]]
     # results_dirs = [os.path.join(os.path.dirname(whoc_file), "case_studies", case_key) for case_key in ["baseline_controllers", "solver_type",
     #                                                                                                         "wind_preview_type", "warm_start", "scalability", "cost_func_tuning",
     #                                                                                                         "horizon_length", "breakdown_robustness"]]
-    # TODO compute stats over all seeds
-    # process_simulations(results_dirs)
+    # compute stats over all seeds
+    process_simulations(results_dirs)
     
     # plot_simulations(results_dirs)
