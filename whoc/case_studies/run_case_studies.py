@@ -592,6 +592,15 @@ def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD
     if not os.path.exists(wind_field_dir):
         os.makedirs(wind_field_dir)
 
+    if os.system() == "linux":
+        input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = 3600
+        N_SEEDS = 6
+    elif os.system() == "darwin":
+        input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = 300
+        N_SEEDS = 2
+    else:
+        raise ValueError("system.os() does not return 'linux' or 'darwin'")
+
     wind_field_config["simulation_max_time"] = input_dict["hercules_comms"]["helics"]["config"]["stoptime"]
     wind_field_config["num_turbines"] = input_dict["controller"]["num_turbines"]
     wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
