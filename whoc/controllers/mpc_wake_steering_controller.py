@@ -115,7 +115,7 @@ class YawOptimizationSRRHC(YawOptimizationSR):
         # Calculate solutions
         # turbine_powers = np.zeros_like(yaw_angles[:, 0, :])
         # fmodel_subset.core.farm.set_yaw_angles(fmodel_subset.core.farm.yaw_angles)
-        # fmodel_subset._set_operation(
+        # fmodel_subset.set_operation(
         #     yaw_angles=yaw_angles,
         #     disable_turbines=self.offline_status,
         # )
@@ -1424,8 +1424,7 @@ class MPC(ControllerBase):
 
             # greedily yaw directly into wind for normalization constant
             yaw_offsets = np.zeros((self.n_wind_preview_samples * self.n_horizon, self.n_turbines))
-            self.fi.env.core.farm.set_yaw_angles(self.fi.env.core.farm.yaw_angles)
-            self.fi.env._set_operation(
+            self.fi.env.set_operation(
                 yaw_angles=yaw_offsets,
                 disable_turbines=self.offline_status,
             )
@@ -1440,8 +1439,7 @@ class MPC(ControllerBase):
             # current_yaw_offsets = np.vstack([(self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][0] - yaw_setpoints[j, :]) for j in range(self.n_horizon)])
             
             yaw_offsets = np.clip(current_yaw_offsets, *self.yaw_limits)
-            self.fi.env.core.farm.set_yaw_angles(self.fi.env.core.farm.yaw_angles)
-            self.fi.env._set_operation(
+            self.fi.env.set_operation(
                 yaw_angles=yaw_offsets,
                 disable_turbines=self.offline_status,
             )
@@ -1504,8 +1502,7 @@ class MPC(ControllerBase):
                     
                     # self.fi.env.set(yaw_angles=, disable_turbines=self.offline_status)
                     yaw_offsets = np.clip(plus_yaw_offsets, *self.yaw_limits)
-                    self.fi.env.core.farm.set_yaw_angles(self.fi.env.core.farm.yaw_angles)
-                    self.fi.env._set_operation(
+                    self.fi.env.set_operation(
                         yaw_angles=yaw_offsets,
                         disable_turbines=self.offline_status,
                     )
@@ -1550,8 +1547,7 @@ class MPC(ControllerBase):
                         
                         yaw_offsets = np.clip(plus_yaw_offsets, *self.yaw_limits)
                         # self.fi.env.set(yaw_angles=np.clip(plus_yaw_offsets, *self.yaw_limits), disable_turbines=self.offline_status)
-                        self.fi.env.core.farm.set_yaw_angles(self.fi.env.core.farm.yaw_angles)
-                        self.fi.env._set_operation(
+                        self.fi.env.set_operation(
                             yaw_angles=yaw_offsets,
                             disable_turbines=self.offline_status,
                         )
@@ -1570,8 +1566,8 @@ class MPC(ControllerBase):
                         # we add negative since current_yaw_offsets = wind dir - yaw setpoints
                         neg_yaw_offsets = current_yaw_offsets + mask * self.nu * self.yaw_norm_const
                         yaw_offsets = np.clip(neg_yaw_offsets, *self.yaw_limits)
-                        self.fi.env.core.farm.set_yaw_angles(self.fi.env.core.farm.yaw_angles)
-                        self.fi.env._set_operation(
+                        # self.fi.env.core.farm.set_yaw_angles(self.fi.env.core.farm.yaw_angles)
+                        self.fi.env.set_operation(
                             yaw_angles=yaw_offsets,
                             disable_turbines=self.offline_status,
                         )

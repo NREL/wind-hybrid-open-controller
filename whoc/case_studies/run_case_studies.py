@@ -1,7 +1,7 @@
 # from concurrent.futures import ProcessPoolExecutor, wait
 from mpi4py.futures import MPIPoolExecutor
 from mpi4py.futures import wait as mpi_wait
-from concurrent.futures import ProcessPoolExecutor, wait
+from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import wait as cf_wait
 import multiprocessing as mp
 

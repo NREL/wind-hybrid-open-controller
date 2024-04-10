@@ -23,7 +23,6 @@ class GreedyController(ControllerBase):
 		self.simulation_dt = input_dict["dt"]
 		self.dt = input_dict["controller"]["dt"]
 		self.turbines = range(self.n_turbines)
-		print(self.n_turbines)
 		self.historic_measurements = {"wind_directions": np.zeros((0, self.n_turbines))}
 		
 		self.lpf_time_const = input_dict["controller"]["lpf_time_const"]
