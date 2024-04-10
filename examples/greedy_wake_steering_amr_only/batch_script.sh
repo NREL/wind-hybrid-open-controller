@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=whoc
+#SBATCH --job-name=greedy_wake_steering_amr_only
 #SBATCH --time=04:00:00
 #SBATCH --nodes=2
 #SBATCH --ntasks-per-node=36
@@ -22,8 +22,6 @@ spack load amr-wind+helics+openfast
 
 module load conda
 conda activate whoc
-
-cd /home/ahenry/toolboxes/whoc_env/wind-hybrid-open-controller/examples/greedy_wake_steering_amr_only
 
 echo "Starting AMR-Wind job at: " $(date)
 

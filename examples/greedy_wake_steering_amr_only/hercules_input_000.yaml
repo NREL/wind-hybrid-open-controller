@@ -32,8 +32,8 @@ hercules_comms:
             helicsport: 32000
         publication_interval: 1
         endpoint_interval: 1
-        starttime: 0
-        stoptime: 3600
+        starttime: 7200
+        stoptime: 10800
         Agent: ControlCenter
 
 py_sims:

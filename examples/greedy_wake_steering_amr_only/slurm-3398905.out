@@ -1,6 +1,0 @@
-+ spack-start
-+ spack env activate -p -d .
-rm: cannot remove 'logamr': No such file or directory
-rm: cannot remove 'loghercules': No such file or directory
-[2024-04-10 10:17:59.080] [console] [info] 300205-rg1DW-Ym76v-2ly9g-m6k40 (0)[connecting]::connecting
-[2024-04-10 10:17:59.083] [console] [info] 300205-rg1DW-Ym76v-2ly9g-m6k40::Broker 300205-rg1DW-Ym76v-2ly9g-m6k40 connected on tcp://127.0.0.1:32000
