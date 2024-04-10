@@ -17,6 +17,7 @@ regenerate_wind_field = False
 input_dict = load_yaml(sys.argv[1])
 case_idx = int(sys.argv[2])
 
+# TODO ensure that time.stop_time in amr_input matches stop_time in hercules input
 input_dict["controller"]["floris_input_file"] = "/home/ahenry/toolboxes/whoc_env/wind-hybrid-open-controller/examples/mpc_wake_steering_florisstandin/floris_gch_25.yaml"
 input_dict["controller"]["num_turbines"] = 25
 
