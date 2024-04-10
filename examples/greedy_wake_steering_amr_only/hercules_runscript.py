@@ -18,7 +18,7 @@ input_dict = load_yaml(sys.argv[1])
 case_idx = int(sys.argv[2])
 
 input_dict["controller"]["floris_input_file"] = "/home/ahenry/toolboxes/whoc_env/wind-hybrid-open-controller/examples/mpc_wake_steering_florisstandin/floris_gch_25.yaml"
-
+input_dict["controller"]["num_turbines"] = 25
 
 print(os.path.join(os.path.dirname(whoc.__file__), "wind_field", "wind_field_config.yaml"))
 with open(os.path.join(os.path.dirname(whoc.__file__), "wind_field", "wind_field_config.yaml"), "r") as fp:

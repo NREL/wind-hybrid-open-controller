@@ -40,7 +40,7 @@ py_sims:
 
 controller:
   controller_type: SimpleYawController # This may not be needed
-  num_turbines: 9 # Should match AMR-Wind! Ideally, would come from AMR-wind
+  num_turbines: 25 # Should match AMR-Wind! Ideally, would come from AMR-wind
   initial_conditions:
       yaw: 270.0 # degrees (same for all turbines) (will this work?)
   yaw_limits: [-30, 30]
