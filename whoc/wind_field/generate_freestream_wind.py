@@ -45,7 +45,7 @@ def generate_freestream_wind(save_path, n_seeds, regenerate_wind_field=False):
     wind_field_data = []
     if os.path.exists(wind_field_dir):
         for fn in wind_field_filenames:
-            wind_field_data.append(pd.read_csv(os.path.join(wind_field_dir, fn)))
+            wind_field_data.append(pd.read_csv(fn))
 
     # true wind disturbance time-series
     amr_standin_data = []
