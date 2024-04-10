@@ -58,11 +58,13 @@ class GreedyController(ControllerBase):
 		# TODO MISHA should we check this at every simulation step rather than every 60, for threshold changes?
 		current_time = np.atleast_1d(self.measurements_dict["time"])[0]
 		# if current_time < 2 * self.simulation_dt:
+		
 		if np.all(self.measurements_dict["wind_directions"] == 0):
+			print("GREEDY CONTROL 63")
 			pass # will be set to initial values
 		# TODO MISHA this is a patch up for AMR wind initialization problem
 		elif (abs(current_time % self.simulation_dt) == 0.0) or (current_time == self.simulation_dt * 2):
-		
+			print("GREEDY CONTROL 67")
 			current_wind_directions = np.atleast_2d(self.measurements_dict["wind_directions"])
 			if self.use_filt:
 				self.historic_measurements["wind_directions"] = np.vstack([
@@ -78,7 +80,6 @@ class GreedyController(ControllerBase):
 				else:
 					wind_dirs = current_wind_directions[0, :]
 					self.wd_store = list(wind_dirs)
-					
 					
 			else:
 				# use filtered wind direction and speed
