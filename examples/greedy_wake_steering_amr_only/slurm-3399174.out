@@ -1,0 +1,121 @@
++ spack-start
++ spack env activate -p -d /home/ahenry/toolboxes/whoc_env
+Starting AMR-Wind job at:  Wed Apr 10 11:38:15 MDT 2024
+[2024-04-10 11:38:15.560] [console] [info] 166757-WdHdI-busKV-6Ke2B-gUktH (0)[connecting]::connecting
+[2024-04-10 11:38:15.562] [console] [info] 166757-WdHdI-busKV-6Ke2B-gUktH::Broker 166757-WdHdI-busKV-6Ke2B-gUktH connected on tcp://127.0.0.1:32000
+[2024-04-10 11:38:16.894] [console] [info] 166757-WdHdI-busKV-6Ke2B-gUktH (1)[connected]::registering broker 0_hercules(1879048192) on route 1
+[2024-04-10 11:38:16.994] [console] [info] 166757-WdHdI-busKV-6Ke2B-gUktH (1)[connected]::registering federate 0_hercules(131072) on route 1
+[2024-04-10 11:38:19.177] [console] [info] 166757-WdHdI-busKV-6Ke2B-gUktH (1)[connected]::registering broker Test receiver Federate_core_ymZ7Qc(1879048193) on route 2
+[2024-04-10 11:38:19.278] [console] [info] 166757-WdHdI-busKV-6Ke2B-gUktH (1)[connected]::registering federate Test receiver Federate(131073) on route 2
+[2024-04-10 11:38:19.278] [console] [debug] root (1)[connected]::entering initialization mode
+[2024-04-10 11:38:19.278] [console] [info] root (1)[connected]::{
+   "attributes" : 
+   {
+      "id" : 1,
+      "name" : "166757-WdHdI-busKV-6Ke2B-gUktH",
+      "parent" : 0
+   },
+   "summary" : 
+   {
+      "allowed_brokers" : [ 0, 2147483647 ],
+      "allowed_federates" : [ 2, 2147483647 ],
+      "brokers" : 0,
+      "cores" : 2,
+      "countable_federates" : 2,
+      "endpoints" : 0,
+      "federates" : 2,
+      "filters" : 0,
+      "inputs" : 0,
+      "publications" : 2,
+      "translators" : 0
+   }
+}
+[2024-04-10 11:38:25.560] [console] [info] 166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]:: broker tick
+[2024-04-10 11:38:29.465] [console] [info] 166757-WdHdI-busKV-6Ke2B-gUktH::got disconnect from Test receiver Federate_core_ymZ7Qc(1879048193)
+[2024-04-10 11:38:29.466] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 630 at 0.5 to 131073
+[2024-04-10 11:38:29.469] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 605 at 1 to 131073
+[2024-04-10 11:38:29.471] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 630 at 1.5 to 131073
+[2024-04-10 11:38:29.472] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 605 at 2 to 131073
+[2024-04-10 11:38:29.474] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 630 at 2.5 to 131073
+[2024-04-10 11:38:29.475] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 605 at 3 to 131073
+[2024-04-10 11:38:29.477] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 630 at 3.5 to 131073
+[2024-04-10 11:38:29.478] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 605 at 4 to 131073
+[2024-04-10 11:38:29.481] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 630 at 4.5 to 131073
+[2024-04-10 11:38:29.482] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 605 at 5 to 131073
+[2024-04-10 11:38:29.484] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 630 at 5.5 to 131073
+[2024-04-10 11:38:29.510] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 605 at 6 to 131073
+[2024-04-10 11:38:29.511] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 630 at 6.5 to 131073
+[2024-04-10 11:38:29.515] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 605 at 7 to 131073
+[2024-04-10 11:38:29.517] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 630 at 7.5 to 131073
+[2024-04-10 11:38:29.518] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 605 at 8 to 131073
+[2024-04-10 11:38:29.520] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 630 at 8.5 to 131073
+[2024-04-10 11:38:29.522] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 605 at 9 to 131073
+[2024-04-10 11:38:29.523] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 630 at 9.5 to 131073
+[2024-04-10 11:38:29.526] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 10 to 131073
+[2024-04-10 11:38:29.527] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 10.5 to 131073
+[2024-04-10 11:38:29.529] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 11 to 131073
+[2024-04-10 11:38:29.530] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 11.5 to 131073
+[2024-04-10 11:38:29.532] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 12 to 131073
+[2024-04-10 11:38:29.533] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 12.5 to 131073
+[2024-04-10 11:38:29.535] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 13 to 131073
+[2024-04-10 11:38:29.536] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 13.5 to 131073
+[2024-04-10 11:38:29.538] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 14 to 131073
+[2024-04-10 11:38:29.539] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 14.5 to 131073
+[2024-04-10 11:38:29.540] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 15 to 131073
+[2024-04-10 11:38:29.542] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 15.5 to 131073
+[2024-04-10 11:38:29.556] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 16 to 131073
+[2024-04-10 11:38:29.558] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 16.5 to 131073
+[2024-04-10 11:38:29.559] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 17 to 131073
+[2024-04-10 11:38:29.561] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 17.5 to 131073
+[2024-04-10 11:38:29.563] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 18 to 131073
+[2024-04-10 11:38:29.564] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 18.5 to 131073
+[2024-04-10 11:38:29.566] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 19 to 131073
+[2024-04-10 11:38:29.568] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 19.5 to 131073
+[2024-04-10 11:38:29.569] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 20 to 131073
+[2024-04-10 11:38:29.571] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 20.5 to 131073
+[2024-04-10 11:38:29.572] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 21 to 131073
+[2024-04-10 11:38:29.574] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 21.5 to 131073
+[2024-04-10 11:38:29.575] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 22 to 131073
+[2024-04-10 11:38:29.577] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 22.5 to 131073
+[2024-04-10 11:38:29.578] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 23 to 131073
+[2024-04-10 11:38:29.580] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 23.5 to 131073
+[2024-04-10 11:38:29.581] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 24 to 131073
+[2024-04-10 11:38:29.583] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 24.5 to 131073
+[2024-04-10 11:38:29.584] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 25 to 131073
+[2024-04-10 11:38:29.585] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 25.5 to 131073
+[2024-04-10 11:38:29.587] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 26 to 131073
+[2024-04-10 11:38:29.588] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 26.5 to 131073
+[2024-04-10 11:38:29.590] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 27 to 131073
+[2024-04-10 11:38:29.591] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 27.5 to 131073
+[2024-04-10 11:38:29.593] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 28 to 131073
+[2024-04-10 11:38:29.594] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 28.5 to 131073
+[2024-04-10 11:38:29.596] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 29 to 131073
+[2024-04-10 11:38:29.597] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 29.5 to 131073
+[2024-04-10 11:38:29.598] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 30 to 131073
+[2024-04-10 11:38:29.600] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 30.5 to 131073
+[2024-04-10 11:38:29.601] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 31 to 131073
+[2024-04-10 11:38:29.603] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 31.5 to 131073
+[2024-04-10 11:38:29.604] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 32 to 131073
+[2024-04-10 11:38:29.606] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 32.5 to 131073
+[2024-04-10 11:38:29.607] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 33 to 131073
+[2024-04-10 11:38:29.608] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 33.5 to 131073
+[2024-04-10 11:38:29.610] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 34 to 131073
+[2024-04-10 11:38:29.611] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 34.5 to 131073
+[2024-04-10 11:38:29.612] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 35 to 131073
+[2024-04-10 11:38:29.614] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 35.5 to 131073
+[2024-04-10 11:38:29.615] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 36 to 131073
+[2024-04-10 11:38:29.616] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 36.5 to 131073
+[2024-04-10 11:38:29.618] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 37 to 131073
+[2024-04-10 11:38:29.619] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 37.5 to 131073
+[2024-04-10 11:38:29.621] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 38 to 131073
+[2024-04-10 11:38:29.622] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 38.5 to 131073
+[2024-04-10 11:38:29.623] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 39 to 131073
+[2024-04-10 11:38:29.624] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 39.5 to 131073
+[2024-04-10 11:38:29.626] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 40 to 131073
+[2024-04-10 11:38:29.627] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 40.5 to 131073
+[2024-04-10 11:38:29.629] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 41 to 131073
+[2024-04-10 11:38:29.630] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 41.5 to 131073
+[2024-04-10 11:38:29.631] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 42 to 131073
+[2024-04-10 11:38:29.633] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 632 at 42.5 to 131073
+Finished AMR-Wind job at:  Wed Apr 10 11:38:29 MDT 2024
+[2024-04-10 11:38:29.634] [console] [warning] commWarning||166757-WdHdI-busKV-6Ke2B-gUktH (1)[operating]::unknown route and no broker, dropping message pub:From (131072) handle(0) size 607 at 43 to 131073
