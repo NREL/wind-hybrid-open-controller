@@ -20,7 +20,6 @@ def generate_freestream_wind(save_path, n_seeds, regenerate_wind_field=False):
     # instantiate wind field if files don't already exist
     wind_field_dir = os.path.join('../../examples/wind_field_data/raw_data')        
     wind_field_filenames = glob(f"{wind_field_dir}/case_*.csv")
-    print(f"1 wind_field_filenames = {wind_field_filenames}")
     
     if not os.path.exists(wind_field_dir):
         os.makedirs(wind_field_dir)
@@ -38,8 +37,6 @@ def generate_freestream_wind(save_path, n_seeds, regenerate_wind_field=False):
         generate_multi_wind_ts(wind_field_config, seeds=[seed + i for i in range(n_seeds)])
         wind_field_filenames = [f"case_{i}.csv" for i in range(n_seeds)]
         regenerate_wind_field = True
-
-    print(f"2 wind_field_filenames = {wind_field_filenames}")
 
     # if wind field data exists, get it
     wind_field_data = []
