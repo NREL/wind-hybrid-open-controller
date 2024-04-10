@@ -13,8 +13,11 @@ slices
 examples/*/logstandin*
 examples/*/loghercules*
 examples/*/logfloris*
+examples/*/logamr*
 examples/*/*.png
 examples/*/*.jpeg
+examples/*/*/*.nc
+examples/*/*.csv
 
 # Exceptions
 !examples/lookup-based_wake_steering_florisstandin/amr_standin_data.csv
