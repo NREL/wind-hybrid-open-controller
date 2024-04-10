@@ -14,10 +14,11 @@ from whoc.wind_field.generate_freestream_wind import generate_freestream_wind
 
 n_seeds = 6
 regenerate_wind_field = False
-
+print(sys.argv)
 input_dict = load_yaml(sys.argv[1])
 case_idx = int(sys.argv[2])
 
+print(os.path.join(os.path.dirname(whoc.__file__), "wind_field", "wind_field_config.yaml"))
 with open(os.path.join(os.path.dirname(whoc.__file__), "wind_field", "wind_field_config.yaml"), "r") as fp:
     wind_field_config = yaml.safe_load(fp)
 

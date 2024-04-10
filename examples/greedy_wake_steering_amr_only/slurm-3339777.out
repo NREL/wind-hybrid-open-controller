@@ -1,4 +1,0 @@
-[2024-04-05 11:02:32.419] [console] [info] 4095354-fWPTp-CiEGy-9Xqs6-9bJiG (0)[connecting]::connecting
-[2024-04-05 11:02:32.423] [console] [info] 4095354-fWPTp-CiEGy-9Xqs6-9bJiG::Broker 4095354-fWPTp-CiEGy-9Xqs6-9bJiG connected on tcp://127.0.0.1:32000
-[2024-04-05 11:02:37.922] [console] [info] 4095354-fWPTp-CiEGy-9Xqs6-9bJiG (1)[connected]::registering broker Test receiver Federate_core_H9F9WR(1879048192) on route 1
-[2024-04-05 11:02:38.023] [console] [info] 4095354-fWPTp-CiEGy-9Xqs6-9bJiG (1)[connected]::registering federate Test receiver Federate(131072) on route 1
