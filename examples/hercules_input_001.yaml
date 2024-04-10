@@ -71,7 +71,7 @@ controller:
   warm_start: lut # may equal 'previous' to warm-start with time-shifted previous solution,  "lut" to warm-start with lookup table solution, or "random" #TODO
   nu: 0.001 # step size to add/subtract from yaw angles for stochastic gradient estimate
   use_filtered_wind_dir: True
-  floris_input_file: /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml
+  floris_input_file: ../../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml
   solver: slsqp # may equal serial_refine, slsqp, sequential_slsqp, or zsgd
   basin_hop: False
   offline_probability: 0.0
