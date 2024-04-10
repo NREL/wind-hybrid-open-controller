@@ -23,6 +23,7 @@ class GreedyController(ControllerBase):
 		self.simulation_dt = input_dict["dt"]
 		self.dt = input_dict["controller"]["dt"]
 		self.turbines = range(self.n_turbines)
+		print(self.n_turbines)
 		self.historic_measurements = {"wind_directions": np.zeros((0, self.n_turbines))}
 		
 		self.lpf_time_const = input_dict["controller"]["lpf_time_const"]
@@ -60,7 +61,7 @@ class GreedyController(ControllerBase):
 		# if current_time < 2 * self.simulation_dt:
 		
 		if np.all(self.measurements_dict["wind_directions"] == 0):
-			print("GREEDY CONTROL 63")
+			print(f"GREEDY CONTROL 63, ")
 			pass # will be set to initial values
 		# TODO MISHA this is a patch up for AMR wind initialization problem
 		elif (abs(current_time % self.simulation_dt) == 0.0) or (current_time == self.simulation_dt * 2):
