@@ -37,4 +37,4 @@ python hercules_runscript.py hercules_input_000.yaml $WIND_CASE_IDX >> loghercul
 
 # Now go back to scratch folder and launch the job
 # cd /scratch/pfleming/c2c/example_sim_02
-mpirun -n 72 /home/ahenry/toolboxes/whoc_env/amr-wind/spack-build-rgit2iv/amr_wind amr_input.inp >> logamr 2>&1 
+mpirun -n 72 /home/ahenry/toolboxes/whoc_env/amr-wind/spack-build-bmx2pfy/amr_wind amr_input.inp >> logamr 2>&1 
