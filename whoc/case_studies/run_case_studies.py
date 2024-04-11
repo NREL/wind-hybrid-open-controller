@@ -842,6 +842,7 @@ if __name__ == '__main__':
     # mp.set_start_method('fork')
     os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "true"
     # run_simulations(["perfect_preview_type"], REGENERATE_WIND_FIELD)
+    print([case_families[i] for i in CASE_FAMILY_IDX])
     run_simulations([case_families[i] for i in CASE_FAMILY_IDX], REGENERATE_WIND_FIELD)
     # results_dirs = [os.path.join(os.path.dirname(whoc_file), "case_studies", case_key) 
     #                 for case_key in ["baseline_controllers", "solver_type",
