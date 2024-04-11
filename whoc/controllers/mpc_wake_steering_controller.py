@@ -7,7 +7,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from pyoptsparse import Optimization, SLSQP
+from pyoptsparse import Optimization, SLSQP, SNOPT
 from scipy.optimize import linprog, basinhopping
 from scipy.integrate import dblquad
 
@@ -435,9 +435,12 @@ class MPC(ControllerBase):
         super().__init__(interface, verbose=verbose)
         
         self.optimizer_idx = optimizer_idx
+        # TODO set time-limit
         self.optimizer = SLSQP(options={"IPRINT": 0 if verbose else -1, 
                                         "MAXIT": kwargs["max_iter"] if "max_iter" in kwargs else MPC.max_iter, 
                                         "ACC": kwargs["acc"] if "acc" in kwargs else MPC.acc})
+        # self.optimizer = SNOPT(options={"iPrint": 1 if verbose else 0, 
+        #                                 "Time limit": input_dict["controller"]["dt"]})
 
         self.dt = input_dict["controller"]["dt"]
         self.simulation_dt = input_dict["dt"]
@@ -1344,7 +1347,7 @@ class MPC(ControllerBase):
                 
         # dyn_state_jac, state_jac = self.con_sens_rules(self.n_turbines)
         # sens_rules = self.generate_sens_rules(np.arange(self.n_turbines), dyn_state_jac, state_jac)
-        sol = self.optimizer(self.pyopt_prob) #, sens=sens_rules) #, sensMode='pgc')
+        sol = self.optimizer(self.pyopt_prob, timeLimit=self.dt) #, sens=sens_rules) #, sensMode='pgc')
         # sol = MPC.optimizers[self.optimizer_idx](self.pyopt_prob, sens="FD")
         self.pyopt_sol_obj = sol
         self.opt_sol = {k: v[:] for k, v in sol.xStar.items()}
@@ -1376,7 +1379,7 @@ class MPC(ControllerBase):
                     = self.init_sol["control_inputs"][(j * self.n_turbines) + solve_turbine_idx]
         
         # solve problem based on self.opt_sol
-        sol = self.optimizer(pyopt_prob) #, sens=sens_rules) #, sensMode='pgc')
+        sol = self.optimizer(pyopt_prob, timeLimit=self.dt) #, sens=sens_rules) #, sensMode='pgc')
         return sol
 
     def generate_opt_rules(self, solve_turbine_ids):
