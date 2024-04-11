@@ -577,7 +577,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
 
     return results_df
 
-def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_parallel):
+def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_parallel, use_mpi):
 
     input_dict = load_yaml(os.path.join(os.path.dirname(whoc_file), "../examples/hercules_input_001.yaml"))
 
@@ -669,9 +669,11 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
     # instantiate controller and run_simulations simulation
     print("run_simulations line 613")
     if run_parallel:
-        if platform == "linux" or True:
+        # if platform == "linux":
+        if use_mpi:
             executor = MPIPoolExecutor(max_workers=mp.cpu_count())
-        elif platform == "darwin":
+        # elif platform == "darwin":
+        else:
             executor = ProcessPoolExecutor()
 
         with executor as run_simulations_exec:
@@ -688,7 +690,8 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
         print("run_simulations line 626")
         # if platform == "linux":
         #     mpi_wait(futures)
-        if platform == "darwin" or False:
+        # if platform == "darwin":
+        if not use_mpi:
             cf_wait(futures)
         print("run_simulations line 628")
         results = [fut.result() for fut in futures]
@@ -829,8 +832,9 @@ if __name__ == '__main__':
                         "scalability", "cost_func_tuning"]
 
     DEBUG = sys.argv[1].lower() == "debug"
-    if len(sys.argv) > 2:
-        CASE_FAMILY_IDX = [int(i) for i in sys.argv[2:]]
+    USE_MPI = sys.argv[2].lower() == "mpi"
+    if len(sys.argv) > 3:
+        CASE_FAMILY_IDX = [int(i) for i in sys.argv[3:]]
     else:
         CASE_FAMILY_IDX = list(range(len(case_families)))
 
@@ -848,7 +852,7 @@ if __name__ == '__main__':
     os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "true"
     # run_simulations(["perfect_preview_type"], REGENERATE_WIND_FIELD)
     print([case_families[i] for i in CASE_FAMILY_IDX])
-    run_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS, run_parallel=PARALLEL)
+    run_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS, run_parallel=PARALLEL, use_mpi=USE_MPI)
     # results_dirs = [os.path.join(os.path.dirname(whoc_file), "case_studies", case_key) 
     #                 for case_key in ["baseline_controllers", "solver_type",
     #                                  "wind_preview_type", "warm_start", 
