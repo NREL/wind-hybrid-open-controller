@@ -35,7 +35,16 @@ from hercules.utilities import load_yaml
 REGENERATE_WIND_FIELD = False
 PARALLEL = True
 
+case_families = ["baseline_controllers", "solver_type",
+                     "wind_preview_type", "warm_start", 
+                     "horizon_length", "breakdown_robustness",
+                     "scalability", "cost_func_tuning"]
+
 DEBUG = sys.argv[1].lower() == "debug"
+if len(sys.argv) > 2:
+    CASE_FAMILY_IDX = [int(i) for i in sys.argv[2:]]
+else:
+    CASE_FAMILY_IDX = list(range(len(case_families)))
 
 if DEBUG:
     N_SEEDS = 2
@@ -379,7 +388,7 @@ def CaseGen_General(case_inputs, namebase=''):
     return case_list, case_name
 
 def simulate_controller(controller_class, input_dict, **kwargs):
-    print(f"Running instance of {controller_class.__name__} with wind seed {kwargs['wind_case_idx']}")
+    print(f"Running instance of {controller_class.__name__} - {kwargs['case_name']} with wind seed {kwargs['wind_case_idx']}")
     # Load a FLORIS object for AEP calculations
     greedy_fi = ControlledFlorisModel(yaw_limits=input_dict["controller"]["yaw_limits"],
                                           offline_probability=input_dict["controller"]["offline_probability"],
@@ -833,19 +842,16 @@ if __name__ == '__main__':
     # mp.set_start_method('fork')
     os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "true"
     # run_simulations(["perfect_preview_type"], REGENERATE_WIND_FIELD)
-    run_simulations(["baseline_controllers", "solver_type",
-                     "wind_preview_type", "warm_start", 
-                     "horizon_length", "breakdown_robustness",
-                     "scalability", "cost_func_tuning"], REGENERATE_WIND_FIELD)
-    results_dirs = [os.path.join(os.path.dirname(whoc_file), "case_studies", case_key) 
-                    for case_key in ["baseline_controllers", "solver_type",
-                                     "wind_preview_type", "warm_start", 
-                                     "horizon_length", "breakdown_robustness",
-                                     "scalability", "cost_func_tuning"]]
+    run_simulations([case_families[i] for i in CASE_FAMILY_IDX], REGENERATE_WIND_FIELD)
+    # results_dirs = [os.path.join(os.path.dirname(whoc_file), "case_studies", case_key) 
+    #                 for case_key in ["baseline_controllers", "solver_type",
+    #                                  "wind_preview_type", "warm_start", 
+    #                                  "horizon_length", "breakdown_robustness",
+    #                                  "scalability", "cost_func_tuning"]]
     # results_dirs = [os.path.join(os.path.dirname(whoc_file), "case_studies", case_key) for case_key in ["baseline_controllers", "solver_type",
     #                                                                                                         "wind_preview_type", "warm_start", "scalability", "cost_func_tuning",
     #                                                                                                         "horizon_length", "breakdown_robustness"]]
     # compute stats over all seeds
-    process_simulations(results_dirs)
+    # process_simulations(results_dirs)
     
     # plot_simulations(results_dirs)
