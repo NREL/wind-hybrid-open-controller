@@ -32,29 +32,11 @@ from hercules.utilities import load_yaml
 # from warnings import simplefilter
 # simplefilter('error')
 
-REGENERATE_WIND_FIELD = False
-PARALLEL = True
-
-case_families = ["baseline_controllers", "solver_type",
-                     "wind_preview_type", "warm_start", 
-                     "horizon_length", "breakdown_robustness",
-                     "scalability", "cost_func_tuning"]
-
-DEBUG = sys.argv[1].lower() == "debug"
-if len(sys.argv) > 2:
-    CASE_FAMILY_IDX = [int(i) for i in sys.argv[2:]]
-else:
-    CASE_FAMILY_IDX = list(range(len(case_families)))
-
-if DEBUG:
-    N_SEEDS = 2
-else:
-    N_SEEDS = 6
-
 # sequential_pyopt is best solver, stochastic is best preview type
+
 case_studies = {
     "baseline_controllers": {"seed": {"group": 0, "vals": [0]},
-                             "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
+                            #  "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                                 "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
                                 "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
                                 "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -66,7 +48,7 @@ case_studies = {
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
                           },
     "greedy": {"seed": {"group": 0, "vals": [0]},
-               "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
+            #    "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                                 "case_names": {"group": 1, "vals": ["Greedy"]},
                                 "controller_class": {"group": 1, "vals": ["GreedyController"]},
                              "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -78,7 +60,7 @@ case_studies = {
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
                           },
     "slsqp_solver": {"seed": {"group": 0, "vals": [0]},
-                     "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
+                    #  "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
                     "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
@@ -94,7 +76,7 @@ case_studies = {
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
                           },
     "sequential_slsqp_solver": {"seed": {"group": 0, "vals": [0]},
-                                "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
+                                # "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
                     "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
@@ -110,7 +92,7 @@ case_studies = {
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
                           },
     "serial_refine_solver": {"seed": {"group": 0, "vals": [0]},
-                             "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
+                            #  "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
                     "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
@@ -126,7 +108,7 @@ case_studies = {
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
                           },
     "solver_type": {"seed": {"group": 0, "vals": [0]},
-                    "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
+                    # "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
                     "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
@@ -142,7 +124,7 @@ case_studies = {
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
                           },
     "stochastic_preview_type": {"seed": {"group": 0, "vals": [0]},
-                          "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
+                        #   "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "num_turbines": {"group": 0, "vals": [9]}, 
                           "controller_class": {"group": 0, "vals": ["MPC"]},
                           "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -158,7 +140,7 @@ case_studies = {
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
                           },
     "persistent_preview_type": {"seed": {"group": 0, "vals": [0]},
-                          "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
+                        #   "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "num_turbines": {"group": 0, "vals": [9]}, 
                           "controller_class": {"group": 0, "vals": ["MPC"]},
                           "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -174,7 +156,7 @@ case_studies = {
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
                           },
     "perfect_preview_type": {"seed": {"group": 0, "vals": [0]},
-                          "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
+                        #   "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "num_turbines": {"group": 0, "vals": [9]}, 
                           "controller_class": {"group": 0, "vals": ["MPC"]},
                           "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -190,7 +172,7 @@ case_studies = {
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
                           },
     "wind_preview_type": {"seed": {"group": 0, "vals": [0]},
-                          "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
+                        #   "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "num_turbines": {"group": 0, "vals": [9]}, 
                           "controller_class": {"group": 0, "vals": ["MPC"]},
                           "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -206,7 +188,7 @@ case_studies = {
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
                           },
     "lut_warm_start": {"seed": {"group": 0, "vals": [0]},
-                       "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
+                    #    "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "num_turbines": {"group": 0, "vals": [9]}, 
                    "controller_class": {"group": 0, "vals": ["MPC"]},
                    "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -222,7 +204,7 @@ case_studies = {
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
                    },
     "warm_start": {"seed": {"group": 0, "vals": [0]},
-                   "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
+                #    "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "num_turbines": {"group": 0, "vals": [9]}, 
                    "controller_class": {"group": 0, "vals": ["MPC"]},
                    "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -238,7 +220,7 @@ case_studies = {
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
                    },
     "cost_func_tuning": {"seed": {"group": 0, "vals": [0]},
-                         "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
+                        #  "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                          "num_turbines": {"group": 0, "vals": [9]}, 
                          "controller_class": {"group": 0, "vals": ["MPC"]},
                          "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -254,7 +236,7 @@ case_studies = {
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
                           },
     "scalability": {"seed": {"group": 0, "vals": [0]},
-                    "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
+                    # "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                     "num_turbines": {"group": 1, "vals": [3, 9, 25, 100]},
                     "controller_class": {"group": 0, "vals": ["MPC"]},
                     "lut_path": {"group": 1, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -271,7 +253,7 @@ case_studies = {
     },
     "horizon_length": {"seed": {"group": 0, "vals": [0]},
                              "num_turbines": {"group": 0, "vals": [9]},
-                             "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]}, 
+                            #  "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]}, 
                        "controller_class": {"group": 0, "vals": ["MPC"]},
                        "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
@@ -287,7 +269,7 @@ case_studies = {
                           },
     "breakdown_robustness": 
         {"seed": {"group": 0, "vals": [0]},
-         "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
+        #  "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
          "num_turbines": {"group": 0, "vals": [25]}, 
          "controller_class": {"group": 0, "vals": ["MPC"]},
          "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -595,7 +577,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
 
     return results_df
 
-def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS):
+def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_parallel):
 
     input_dict = load_yaml(os.path.join(os.path.dirname(whoc_file), "../examples/hercules_input_001.yaml"))
 
@@ -686,14 +668,15 @@ def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD
 
     # instantiate controller and run_simulations simulation
     print("run_simulations line 613")
-    if PARALLEL:
-        if platform == "linux":
+    if run_parallel:
+        if platform == "linux" or True:
             executor = MPIPoolExecutor(max_workers=mp.cpu_count())
         elif platform == "darwin":
             executor = ProcessPoolExecutor()
 
         with executor as run_simulations_exec:
             print(f"run_simulations line 618 with {run_simulations_exec._max_workers} workers")
+            # for MPIPool executor, (waiting as if shutdown() were called with wait set to True)
             futures = [run_simulations_exec.submit(simulate_controller, 
                                             controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
                                             wind_case_idx=case_lists[c]["wind_case_idx"], wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
@@ -703,9 +686,9 @@ def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD
                     for c, d in enumerate(input_dicts)]
 
         print("run_simulations line 626")
-        if platform == "linux":
-            mpi_wait(futures)
-        elif platform == "darwin":
+        # if platform == "linux":
+        #     mpi_wait(futures)
+        if platform == "darwin" or False:
             cf_wait(futures)
         print("run_simulations line 628")
         results = [fut.result() for fut in futures]
@@ -837,13 +820,35 @@ def plot_simulations(results_dirs):
 
 if __name__ == '__main__':
 
+    REGENERATE_WIND_FIELD = False
+    PARALLEL = True
+
+    case_families = ["baseline_controllers", "solver_type",
+                        "wind_preview_type", "warm_start", 
+                        "horizon_length", "breakdown_robustness",
+                        "scalability", "cost_func_tuning"]
+
+    DEBUG = sys.argv[1].lower() == "debug"
+    if len(sys.argv) > 2:
+        CASE_FAMILY_IDX = [int(i) for i in sys.argv[2:]]
+    else:
+        CASE_FAMILY_IDX = list(range(len(case_families)))
+
+    if DEBUG:
+        N_SEEDS = 2
+    else:
+        N_SEEDS = 6
+
+    for case_family in case_families:
+        case_studies[case_family]["wind_case_idx"] = {"group": 2, "vals": [i for i in range(N_SEEDS)]}
+
     # MISHA QUESTION how to make AMR-Wind wait for control solution?
     # run_simulations(["baseline_controllers"], REGENERATE_WIND_FIELD)
     # mp.set_start_method('fork')
     os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "true"
     # run_simulations(["perfect_preview_type"], REGENERATE_WIND_FIELD)
     print([case_families[i] for i in CASE_FAMILY_IDX])
-    run_simulations([case_families[i] for i in CASE_FAMILY_IDX], REGENERATE_WIND_FIELD)
+    run_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS, run_parallel=PARALLEL)
     # results_dirs = [os.path.join(os.path.dirname(whoc_file), "case_studies", case_key) 
     #                 for case_key in ["baseline_controllers", "solver_type",
     #                                  "wind_preview_type", "warm_start", 
