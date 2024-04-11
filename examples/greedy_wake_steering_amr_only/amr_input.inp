@@ -1,7 +1,7 @@
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
 #            SIMULATION STOP            #
 #.......................................#
-time.stop_time               =   3600.0     # Max (simulated) time to evolve
+time.stop_time               =   10800.0     # Max (simulated) time to evolve
 time.max_step                =   -1          # Max number of time steps
 
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
@@ -13,9 +13,9 @@ time.cfl              =   0.95               # CFL factor
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
 #            INPUT AND OUTPUT           #
 #.......................................#
-time.plot_interval            =  60        # Steps between plot files
-time.checkpoint_interval      =  60        # Steps between checkpoint files
-io.restart_file = "/projects/ssc/amr_precursors/b_abl_neutral_lowTI_redo/chk14400"
+time.plot_interval            =  3600        # Steps between plot files
+time.checkpoint_interval      =  3600        # Steps between checkpoint files
+# io.restart_file = "/projects/ssc/amr_precursors/b_abl_neutral_lowTI_redo/chk14400"
 
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
 #               PHYSICS                 #
