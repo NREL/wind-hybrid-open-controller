@@ -54,11 +54,11 @@ class ControllerBase(metaclass=ABCMeta):
 
         return None
 
-    def _send_controls(self, dict=None):
+    def _send_controls(self, hercules_dict=None):
         self._s.check_controls(self.controls_dict)
-        dict = self._s.send_controls(dict, **self.controls_dict)
+        hercules_dict = self._s.send_controls(hercules_dict, **self.controls_dict)
 
-        return dict  # or main_dict, or what?
+        return hercules_dict  # or main_dict, or what?
 
     def step(self, hercules_dict=None):
         # If not running with direct hercules integration,

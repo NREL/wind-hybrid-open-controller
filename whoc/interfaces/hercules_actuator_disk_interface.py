@@ -59,7 +59,7 @@ class HerculesADInterface(InterfaceBase):
             "amr_wind_speed": hercules_dict["hercules_comms"]["amr_wind"][self.wf_name]["amr_wind_speed"],
             "amr_wind_direction": hercules_dict["hercules_comms"]["amr_wind"][self.wf_name]["amr_wind_direction"],
             "wind_directions": wind_directions,
-            "yaw_angles": None,
+            # "yaw_angles": None,
             # "wind_speeds":wind_speeds,
             "turbine_powers": turbine_powers,
             "wind_power_reference": wind_power_reference,
@@ -85,8 +85,6 @@ class HerculesADInterface(InterfaceBase):
             power_setpoints = [POWER_SETPOINT_DEFAULT] * self.n_turbines
 
         hercules_dict["hercules_comms"]["amr_wind"][self.wf_name]["turbine_yaw_angles"] = yaw_angles
-        hercules_dict["hercules_comms"]["amr_wind"][self.wf_name][
-            "turbine_power_setpoints"
-        ] = power_setpoints
+        hercules_dict["hercules_comms"]["amr_wind"][self.wf_name]["turbine_power_setpoints"] = power_setpoints
 
         return hercules_dict

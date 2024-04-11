@@ -17,6 +17,7 @@ import copy
 import io
 import re
 from sys import platform
+import sys
 
 from whoc import __file__ as whoc_file
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
@@ -34,12 +35,12 @@ from hercules.utilities import load_yaml
 REGENERATE_WIND_FIELD = False
 PARALLEL = True
 
-if platform == "linux":
-    N_SEEDS = 6
-elif platform == "darwin":
+DEBUG = sys.argv[1].lower() == "debug"
+
+if DEBUG:
     N_SEEDS = 2
 else:
-    raise ValueError("sys.platform does not return 'linux' or 'darwin'")
+    N_SEEDS = 6
 
 # sequential_pyopt is best solver, stochastic is best preview type
 case_studies = {
@@ -598,12 +599,10 @@ def run_simulations(case_study_keys, regenerate_wind_field=REGENERATE_WIND_FIELD
     if not os.path.exists(wind_field_dir):
         os.makedirs(wind_field_dir)
 
-    if platform == "linux":
-        input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = 3600
-    elif platform == "darwin":
+    if DEBUG:
         input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = 300
     else:
-        raise ValueError("sys.platform does not return 'linux' or 'darwin'")
+        input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = 3600
 
     wind_field_config["simulation_max_time"] = input_dict["hercules_comms"]["helics"]["config"]["stoptime"]
     wind_field_config["num_turbines"] = input_dict["controller"]["num_turbines"]
