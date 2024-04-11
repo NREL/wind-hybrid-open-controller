@@ -36,4 +36,4 @@ examples/*/*.csv
 
 whoc/case_studies/*/*.csv
 whoc/case_studies/*/*.yaml
-
+whoc/case_studies/*.out
