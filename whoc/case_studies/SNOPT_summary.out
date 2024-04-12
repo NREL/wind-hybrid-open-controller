@@ -19,34 +19,31 @@
  
 
  Major Minors     Step   nCon Feasible  Optimal  MeritFunction     nS Penalty
-     0    170               1  4.1E-01  5.0E-02  1.0851434E+01     66           r
-     1     18  5.5E-01      2  2.2E-02  6.6E-02  2.0986996E+02     79 5.8E+03   rl
-     2    102  1.0E+00      3  1.0E-01  5.3E-01 -4.5803309E+01     58 2.1E+02 s
-     3     52  3.6E-01     11  6.6E-02  3.3E-01 -1.3551448E+01     50 9.0E+02
-     4    306  5.2E-13     20  6.6E-02  7.6E-01 -1.1405010E+01     92 1.1E+03   R i
-     5    147  1.0E+00     22  6.6E-02  7.0E+03  1.4754900E+06     31 1.9E+08 sM
-     6    163  1.0E+00     23 (3.4E-07) 9.0E-01  4.2042543E+00     36 1.9E+08
-     7    153  1.0E+00     24 (6.6E-15) 3.7E-01  3.1407991E+00     21 6.1E+04
-     8    178  4.7E-01     26 (6.0E-15) 3.3E-01 -5.9114615E+00     24 6.1E+04
-     9    194  3.3E-01     28 (6.0E-15) 1.9E-01 -8.4761951E+00     39 6.1E+04
+     0    279               1  1.2E-01  6.8E-02  4.9736396E+00     81           r
+     1      1  1.0E+00      2  5.3E-02  1.3E-01 -3.9677358E+00     81 9.7E+02   r
+     2     10  1.0E+00      3 (3.3E-16) 1.4E-01  4.5975608E-01     90 8.8E+02 s
+     3      1  1.0E+00      4 (4.4E-16) 1.2E-03  1.6102977E-05     90 8.8E+02
+     4      1  1.0E+00      5 (4.4E-16) 6.9E-05  5.1625519E-08     90 8.8E+02
+     5      1  1.0E+00      6 (4.4E-16)(6.0E-07) 5.4783314E-12     90 8.8E+02
+ 
+ SNOPTC EXIT   0 -- finished successfully
+ SNOPTC INFO   1 -- optimality conditions satisfied
 
- Major Minors     Step   nCon Feasible  Optimal  MeritFunction     nS Penalty
-    10    118  2.1E-01     30 (6.0E-15) 3.8E-01 -9.0571352E+00     42 6.1E+04
-    11    128  1.7E-01     32 (6.0E-15) 4.6E-01 -9.2145042E+00     44 6.1E+04
-    12    173  5.8E-02     35 (6.1E-15) 2.4E-01 -9.2669487E+00     39 6.1E+04
-    13    133  4.0E-02     38 (6.0E-15) 3.9E-01 -9.3054597E+00     43 6.1E+04
-    14    139  5.8E-02     41 (6.0E-15) 3.0E-01 -9.3509664E+00     36 6.1E+04
-    15     70  4.3E-02     44 (6.0E-15) 4.9E-01 -9.3892393E+00     86 6.1E+04   R
-    15    129  1.5E-01     48 (3.1E-15) 3.7E-01 -9.3070959E+00     60 3.6E+04
-    16     42  1.8E-01     50 (3.1E-15) 7.4E-01 -9.3873283E+00     84 3.6E+04   R
-    17      9  2.6E-01     52 (3.0E-15) 6.9E-01 -9.6279676E+00     90 3.6E+04 s
-    18      2  4.2E-01     54 (3.1E-15) 5.2E-01 -9.6817021E+00     89 3.6E+04
-    19      5  2.7E-01     56 (3.2E-15) 3.5E-01 -9.7046855E+00     85 3.6E+04
+ Problem name                 Wake Ste
+ No. of iterations                 293   Objective            5.4783314077E-12
+ No. of major iterations             5   Linear    obj. term  0.0000000000E+00
+ Penalty parameter           8.839E+02   Nonlinear obj. term  5.4783314077E-12
+ User function calls (total)         7
+ No. of superbasics                 90   No. of basic nonlinears           144
+ No. of degenerate steps             0   Percentage                       0.00
+ Max x                      79 7.5E-01   Max pi                      8 1.5E-07
+ Max Primal infeas         196 4.4E-16   Max Dual infeas           177 6.0E-07
+ Nonlinear constraint violn    4.4E-16
 
- Major Minors     Step   nCon Feasible  Optimal  MeritFunction     nS Penalty
-    20      6  6.3E-02     59 (3.2E-15) 3.2E-01 -9.7062759E+00     90 3.6E+04
-   0.00 seconds
- Time for solving problem                      60.00 seconds
+ Solution not printed
+ 
+ Time for MPS input                             0.00 seconds
+ Time for solving problem                       7.75 seconds
  Time for solution output                       0.00 seconds
- Time for constraint functions                 59.88 seconds
+ Time for constraint functions                  7.75 seconds
  Time for objective function                    0.00 seconds

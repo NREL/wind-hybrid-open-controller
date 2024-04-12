@@ -1347,7 +1347,7 @@ class MPC(ControllerBase):
                 
         # dyn_state_jac, state_jac = self.con_sens_rules(self.n_turbines)
         # sens_rules = self.generate_sens_rules(np.arange(self.n_turbines), dyn_state_jac, state_jac)
-        sol = self.optimizer(self.pyopt_prob, timeLimit=self.dt) #, sens=sens_rules) #, sensMode='pgc')
+        sol = self.optimizer(self.pyopt_prob,) # timeLimit=self.dt) #, sens=sens_rules) #, sensMode='pgc')
         # sol = MPC.optimizers[self.optimizer_idx](self.pyopt_prob, sens="FD")
         self.pyopt_sol_obj = sol
         self.opt_sol = {k: v[:] for k, v in sol.xStar.items()}
