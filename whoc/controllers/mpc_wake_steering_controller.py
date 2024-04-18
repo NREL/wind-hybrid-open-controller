@@ -484,11 +484,11 @@ class MPC(ControllerBase):
 
                     x = np.linalg.norm([current_freestream_measurements[0], current_freestream_measurements[1]])
                     wind_preview_data[f"FreestreamWindMag_{0}"] = {"mean": x, "min": x, "max": x}
-
-                    x = np.arctan(current_freestream_measurements[0] / current_freestream_measurements[1])
+                    
+                    # compute angle of arctan(u/v)
                     if current_freestream_measurements[1] != 0.0:
                         x = np.arctan((abs(current_freestream_measurements[0]) / abs(current_freestream_measurements[1])))
-                    elif current_freestream_measurements[0] > 0:
+                    elif current_freestream_measurements[0] >= 0:
                         x = np.pi / 2
                     else:
                         x = np.pi
@@ -505,7 +505,7 @@ class MPC(ControllerBase):
                     else:
                         # fourth quadrant
                         angle = 2*np.pi - x
-
+                    # compute freestream wind direction angle from above, clockwise from north
                     angle = (angle + np.pi) * (180 / np.pi)
 
                     wind_preview_data[f"FreestreamWindDir_{0}"] = {"mean": angle, "min": angle, "max": angle}
@@ -530,13 +530,27 @@ class MPC(ControllerBase):
                     min_neg_v = [max_v[j] if max_v[j] < 0 else (0.0 if min_v[j] < 0 else None) for j in range(self.n_horizon)]
                     max_neg_u = [min_u[j] if min_u[j] < 0 else None for j in range(self.n_horizon)]
                     max_neg_v = [min_v[j] if min_v[j] < 0 else None for j in range(self.n_horizon)]
-                    
-                    # np.arctan(min_pos_u[0] / max_neg_v[0]) * 180/np.pi
+                    # TODO vectorize
+#                     u_vals = np.vstack([min_pos_u, max_pos_u, min_neg_u, max_neg_u]).T
+#                     v_vals = np.vstack([min_pos_v, max_pos_v, min_neg_v, max_neg_v]).T
+#                     u_vals, v_vals = np.meshgrid(u_vals, v_vals)
+#                     # compute directions
+#                     u_only_dir = np.zeros_like(u_vals)
+#                     u_only_dir[(v_vala == 0) & (u_preview >= 0)] = (np.pi / 2)
+#                     u_only_dir[(v_preview == 0) & (u_preview < 0)] = np.pi
+#                     # TODO below does not capture all quadrants of angle...
+# å
+#                     dir_preview = np.arctan(np.divide(abs(u_preview), abs(v_preview),
+#                                             out=np.ones_like(u_preview) * np.nan,
+#                                             where=v_preview != 0),
+#                                     out=u_only_dir,
+#                                     where=v_preview != 0)
+#                     dir_preview[dir_preview < 0] = np.pi + dir_preview[dir_preview < 0]
+#                     # dir_preview[(u_preview >= 0) & (v_preview >= 0)] = dir_preview[(u_preview >= 0) & (v_preview >= 0)] # first quadrant
+#                     dir_preview[(u_preview >= 0) & (v_preview < 0)] = np.pi - dir_preview[(u_preview >= 0) & (v_preview < 0)] # second quadrant
+#                     dir_preview[(u_preview < 0) & (v_preview < 0)] = np.pi + dir_preview[(u_preview < 0) & (v_preview < 0)] # third quadrant
+#                     dir_preview[(u_preview < 0) & (v_preview >= 0)] = 2*np.pi - dir_preview[(u_preview < 0) & (v_preview >= 0)] # fourth quadrant
 
-                    # all_dirs = np.array([(np.array([np.arctan((u[j] / v[j])) if v[j] != 0.0 else ((3*np.pi/2) if u[j] > 0 else np.pi/2)
-                    #                       for u in [min_pos_u, max_pos_u, min_neg_u, max_neg_u]
-                    #                       for v in [min_pos_v, max_pos_v, min_neg_v, max_neg_v] 
-                    #                       if u[j] is not None and v[j] is not None]) + np.pi) * (180 / np.pi) for j in range(self.n_horizon)]) % 360.0
                     all_dirs = []
                     for j in range(self.n_horizon):
                         all_dirs.append([])
@@ -599,8 +613,6 @@ class MPC(ControllerBase):
                     for j in range(input_dict["controller"]["n_horizon"]):
                         wind_preview_data[f"FreestreamWindMag_{j + 1}"] = {"mean": mean_mags[j], "min": min_mags[j], "max": max_mags[j]}
                         wind_preview_data[f"FreestreamWindDir_{j + 1}"] = {"mean": mean_dirs[j], "min": min_dirs[j], "max": max_dirs[j]}
-                    if np.any(np.concatenate([list(wind_preview_data[f"FreestreamWindDir_{j}"].values()) for j in range(self.n_horizon + 1)]) < 180.0):
-                        print("oh no")
 
                 else:
                     return generate_wind_preview(current_freestream_measurements, time_step,
@@ -892,8 +904,10 @@ class MPC(ControllerBase):
                         #   jac=jac)
         if self.state_con_type == "check_all_samples":
             pyopt_prob.addConGroup("state_cons", n_solve_states * self.n_wind_preview_samples, lower=self.yaw_limits[0] / self.yaw_norm_const, upper=self.yaw_limits[1] / self.yaw_norm_const)
+            
         elif self.state_con_type == "extreme":
             pyopt_prob.addConGroup("state_cons", n_solve_states * 2, lower=self.yaw_limits[0] / self.yaw_norm_const, upper=self.yaw_limits[1] / self.yaw_norm_const)
+            
         elif self.state_con_type == "probabilistic":
             pyopt_prob.addConGroup("state_cons", self.n_horizon, lower=self.beta, upper=None)
 
@@ -902,7 +916,7 @@ class MPC(ControllerBase):
         
         # add objective function
         pyopt_prob.addObj("cost")
-        
+        # pyopt_prob.constraints["state_cons"].ncon
         return pyopt_prob
     
     def compute_controls(self):
@@ -1379,7 +1393,7 @@ class MPC(ControllerBase):
                     = self.init_sol["control_inputs"][(j * self.n_turbines) + solve_turbine_idx]
         
         # solve problem based on self.opt_sol
-        sol = self.optimizer(pyopt_prob, timeLimit=self.dt) #, sens=sens_rules) #, sensMode='pgc')
+        sol = self.optimizer(pyopt_prob) #, timeLimit=self.dt) #, sens=sens_rules) #, sensMode='pgc')
         return sol
 
     def generate_opt_rules(self, solve_turbine_ids):
@@ -1419,6 +1433,9 @@ class MPC(ControllerBase):
                                                             "wind_direction": [self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][m] 
                                                                             for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)]
                                                             }, yaw_setpoints, solve_turbine_ids)
+                    
+                # if len(funcs["state_cons"]) == 90:
+                #     print("oh")
                 
                 funcs["dyn_state_cons"] = self.dyn_state_rules(opt_var_dict, solve_turbine_ids)
 
