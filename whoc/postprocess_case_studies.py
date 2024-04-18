@@ -5,6 +5,7 @@ import matplotlib
 import os
 from collections import defaultdict
 from whoc import __file__ as whoc_file
+from hercules.utilities import load_yaml
 
 import seaborn as sns
 sns.set_theme(style="darkgrid", rc={'figure.figsize':(4,4)})
@@ -22,6 +23,132 @@ sns.set_theme(style="darkgrid", rc={'figure.figsize':(4,4)})
 
 # matplotlib.rc('font', size=SMALL_SIZE)
 # matplotlib.rc('axes', titlesize=SMALL_SIZE)
+
+def read_amr_outputs(results_paths, hercules_dict):
+    dfs = []
+    for controller_class, seed, results_path in results_paths:
+        df = pd.read_csv(results_path)
+        df["ControllerClass"] = controller_class #os.path.basename(results_dir).split("_")[0]
+        df["WindSeed"] = seed
+        df["Time"] = np.cumsum(df["dt"]) - df["dt"].iloc[0]
+        yaw_angle_cols = [col for col in df.columns if f"turbine_yaw_angles" in col]
+        df[[f"TurbineYawAngleChange_{int(col.split('.')[-1])}" for col in yaw_angle_cols]] \
+            = np.vstack([df.iloc[0][yaw_angle_cols] - hercules_dict["controller"]["initial_conditions"]["yaw"], df[yaw_angle_cols].diff().iloc[1:]])
+        df[[f"AbsoluteTurbineYawAngleChange_{int(col.split('.')[-1])}" for col in yaw_angle_cols]] = df[[f"TurbineYawAngleChange_{int(col.split('.')[-1])}" for col in yaw_angle_cols]].abs()
+        dfs.append(df)
+
+    df = pd.concat(dfs)
+
+    # select important column names, rename columns
+    # hercules_comms.amr_wind.wind_farm_0.turbine_yaw_angles.003
+    cols = []
+    new_cols = []
+    for c in range(len(df.columns)):
+        col = df.columns[c]
+        if not ("turbine_powers" in col or "turbine_yaw_angles" in col):
+            continue
+        cols.append(col)
+        if "." in col:
+            parts = col.split(".")
+            new_col = f"{parts[-2]}_{int(parts[-1])}"
+        else:
+            new_col = col
+        new_cols.append(new_col)
+
+    cols += ["Time", "ControllerClass", "WindSeed"] + [col for col in df.columns if "YawAngleChange" in col]
+    new_cols += ["Time", "ControllerClass", "WindSeed"] + [col for col in df.columns if "YawAngleChange" in col]
+    df = df[cols]
+    df.rename(columns={col: new_col for col, new_col in zip(cols, new_cols)}, inplace=True)
+
+    # remove rows corresponding to all zero turbine powers
+    df = df.loc[~(df[[col for col in df.columns if f"turbine_powers" in col]] == 0).all(axis="columns"), :]
+    df.rename(columns={col: f"TurbinePower_{col.split('_')[-1]}" for col in df.columns if "turbine_powers" in col}, inplace=True)
+    df.rename(columns={col: f"TurbineYawAngle_{col.split('_')[-1]}" for col in df.columns if "turbine_yaw_angles" in col}, inplace=True)
+    df.loc[:, "Time"] = df["Time"] - df.iloc[0]["Time"]
+
+    df["ControllerClass"] = pd.Categorical(df["ControllerClass"], ["Greedy", "LUT", "MPC"])
+    df.sort_values(by=["ControllerClass", "Time"], inplace=True)
+
+    df["FarmAbsoluteYawAngleChange"] = df[[col for col in df.columns if "TurbineYawAngleChange_" in col]].abs().sum(axis=1)
+    df["FarmPower"] = df[[col for col in df.columns if "TurbinePower_" in col]].sum(axis=1)
+
+    return df
+
+def plot_yaw_power_ts(data_df, turbine_indices, save_path, seed=0):
+    """
+    For each controller class (different lineplots), and for a select few turbine_indices (different subplots), plot their angle changes and powers vs time with a combo plot for each turbine.
+    """
+    n_rows = int(np.floor(np.sqrt(len(turbine_indices))))
+    if np.sqrt(len(turbine_indices)) % 1.0 == 0:
+        fig1, ax1 = plt.subplots(n_rows, n_rows, sharex=True, sharey=True)
+    else:
+        fig1, ax1 = plt.subplots(n_rows, n_rows + 1, sharex=True, sharey=True)
+    ax1 = ax1.flatten()
+    
+    # data_df = data_df.melt()
+
+    for i in range(len(turbine_indices)):
+        ax1[i] = sns.lineplot(x="Time", y=f"TurbineYawAngleChange_{turbine_indices[i]}", hue="ControllerClass", data=data_df.loc[data_df["WindSeed"] == seed], 
+                              color=sns.color_palette()[0],
+                              ax=ax1[i], sort=False, legend=i==0)
+        ax1[i].xaxis.label.set_text(f"Time [s]")
+        ax1[i].title.set_text(f"Turbine {turbine_indices[i]}Absolute Yaw Angle Change [$^\circ$]")
+        # ax1[i].yaxis.label.set_color(ax1[i].get_lines()[0].get_color())
+        # ax1[i].tick_params(axis="y", color=ax1[i].get_lines()[0].get_color())
+    ax1[0].legend(loc="upper right")
+    # ax2 = []
+    # for i in range(len(turbine_indices)):
+    #     ax2.append(ax1[i].twinx())
+
+    if np.sqrt(len(turbine_indices)) % 1.0 == 0:
+        fig2, ax2 = plt.subplots(n_rows, n_rows, sharex=True, sharey=True)
+    else:
+        fig2, ax2 = plt.subplots(n_rows, n_rows + 1, sharex=True, sharey=True)
+    ax2 = ax2.flatten()
+
+    for i in range(len(turbine_indices)):
+        ax2[i] = sns.lineplot(x="Time", y=f"TurbinePower_{turbine_indices[i]}", hue="ControllerClass", data=data_df.loc[data_df["WindSeed"] == seed], 
+                              color=sns.color_palette()[1],
+                              ax=ax2[i], sort=False, legend=i==0)
+        ax2[i].xaxis.label.set_text(f"Time [s]")
+        ax2[i].title.set_text(f"Turbine {turbine_indices[i]} Power [MW]")
+        # ax2[i].yaxis.label.set_color(ax2[i].get_lines()[0].get_color())
+        # ax2[i].tick_params(axis="y", color=ax2[i].get_lines()[0].get_color())
+
+    ax2[0].legend(loc="upper right")
+
+    fig1.set_size_inches((11.2, 4.8))
+    fig1.show()
+    fig1.savefig(save_path.replace(".png", "_abs_yaw_change.png"))
+
+    fig2.set_size_inches((11.2, 4.8))
+    fig2.show()
+    fig2.savefig(save_path.replace(".png", "_power.png"))
+
+
+def plot_yaw_power_distribution(data_df, save_path):
+    """
+    For each controller class (categorical, along x-axis), plot the distribution of total farm powers and total absolute yaw angle changes over all time-steps and seeds (different subplots), plot their angle changes and powers vs time with a combo plot for each turbine.
+    """
+    plt.figure(1)
+    ax1 = sns.catplot(x="ControllerClass", y="FarmAbsoluteYawAngleChange", data=data_df, kind="boxen")
+    ax1.ax.xaxis.label.set_text("Controller")
+    ax1.ax.title.set_text("Farm Absolute Yaw Angle Change [$^\circ$]")
+    ax1.ax.yaxis.label.set_text("")
+    plt.show()
+    plt.savefig(save_path.replace(".png", "_abs_yaw_change.png"))
+
+    plt.figure(2)
+    ax2 = sns.catplot(x="ControllerClass", y="FarmPower", data=data_df, kind="boxen")
+    ax2.ax.xaxis.label.set_text("Controller")
+    ax2.ax.title.set_text("Farm Power [MW]")
+    ax2.ax.yaxis.label.set_text("")
+    ax2.ax.set_yticklabels(ax2.ax.get_yticks() / 1e3)
+    plt.show()
+    plt.savefig(save_path.replace(".png", "_power.png"))
+
+    # fig1.set_size_inches((11.2, 4.8))
+    # fig2.set_size_inches((11.2, 4.8))
 
 def compare_simulations(results_dfs):
     result_summary_dict = defaultdict(list)
@@ -237,4 +364,17 @@ def plot_breakdown_robustness(data_summary_df, case_studies, save_dir):
     fig.savefig(os.path.join(save_dir, "breakdown_robustness.png"))
 
 if __name__ == '__main__':
-    pass
+    results_path = os.path.join(os.path.dirname(whoc_file), "..", "examples")
+    # TODO how to find particular seed
+    results_dirs = [(controller_class, 0, os.path.join(results_path, controller_dir, "outputs", "hercules_output.csv"))
+                    # for seed in range(6)
+                    for controller_class, controller_dir in [("Greedy", "greedy_wake_steering_florisstandin"), 
+                                                             ("LUT", "lookup-based_wake_steering_florisstandin"), 
+                                                             ("MPC", "mpc_wake_steering_florisstandin")]]
+    input_dict = load_yaml(os.path.join(os.path.dirname(whoc_file), "../examples/hercules_input_001.yaml"))
+    data_df = read_amr_outputs(results_dirs, input_dict)
+    
+    turbine_indices = [0, 1, 5, 6]
+    wind_field_fig_dir = os.path.join(os.path.dirname(whoc_file), '../examples/wind_field_data/figs') 
+    plot_yaw_power_ts(data_df, turbine_indices, os.path.join(wind_field_fig_dir, "amr_yaw_power_ts.png"))
+    plot_yaw_power_distribution(data_df,  os.path.join(wind_field_fig_dir, "amr_yaw_power_dist.png"))

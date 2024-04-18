@@ -9,6 +9,7 @@ Need csv containing 'true' wake characteristics at each turbine (variables) at e
 # ssh ahenry@eagle.hpc.nrel.gov
 # cd ...
 # sbatch ...
+import pickle
 
 import whoc
 from functools import partial
@@ -102,66 +103,74 @@ class WindField:
 			[0, 1], size=(self.simulation_max_time_steps, self.num_turbines),
 			p=[self.offline_probability, 1 - self.offline_probability])
 	
-	def _sample_wind_preview(self, current_measurements, n_preview_steps, preview_dt, n_samples, noise_func=np.random.multivariate_normal, noise_args=None, return_params=True):
-		"""
-		corr(X) = (diag(Kxx))^(-0.5)Kxx(diag(Kxx))^(-0.5)
-		low variance and high covariance => high correlation
-		"""
-		noise_args = {}
-		
-		mean_u = [self.wind_speed_u_range[0] + ((self.wind_speed_u_range[1] - self.wind_speed_u_range[0]) / 2)] * (n_preview_steps + preview_dt)
-		mean_v = [self.wind_speed_v_range[0] + ((self.wind_speed_v_range[1] - self.wind_speed_v_range[0]) / 2)] * (n_preview_steps + preview_dt)
+	def _generate_wind_preview_distribution_params(self, n_preview_steps, preview_dt, regenerate_params=False):
+		save_path = os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "wind_field_data", "wind_preview_distribution_params.pkl")
+		if os.path.exists(save_path) and not regenerate_params:
+			with open(save_path, "rb") as fp:
+				wind_preview_distribution_params = pickle.load(fp)
 
-		# noise_args["mean"] = [(self.wind_speed_u_range[1] - self.wind_speed_u_range[0]) / 2 for j in range(n_preview_steps + preview_dt)] \
-		# 					+ [(self.wind_speed_v_range[1] - self.wind_speed_v_range[0]) / 2 for j in range(n_preview_steps + preview_dt)]
+			for key in wind_preview_distribution_params:
+				wind_preview_distribution_params[key] = wind_preview_distribution_params[key][:(n_preview_steps + preview_dt)]
+
+		if not os.path.exists(save_path) or regenerate_params or len(wind_preview_distribution_params["mean_u"]) < (n_preview_steps + preview_dt):
+			# compute mean, variance, covariance ahead of time
+			mean_u = [self.wind_speed_u_range[0] + ((self.wind_speed_u_range[1] - self.wind_speed_u_range[0]) / 2)] * (n_preview_steps + preview_dt)
+			mean_v = [self.wind_speed_v_range[0] + ((self.wind_speed_v_range[1] - self.wind_speed_v_range[0]) / 2)] * (n_preview_steps + preview_dt)
+
+			# noise_args["mean"] = [(self.wind_speed_u_range[1] - self.wind_speed_u_range[0]) / 2 for j in range(n_preview_steps + preview_dt)] \
+			# 					+ [(self.wind_speed_v_range[1] - self.wind_speed_v_range[0]) / 2 for j in range(n_preview_steps + preview_dt)]
 
 
-		# variance of u[j], and v[j], grows over the course of the prediction horizon (by 1+j*0.05, or 5% for each step), and has an initial variance of 0.25 the value of the current measurement
-		# prepend 0 variance values for the deterministic measurements at the current (0) time-step
-		# o = 0.2
-		# we want it to be very unlikely (3 * standard deviations) that the value will stray outside of the desired range
-		
-		# p = 0.1
-		# var_u = np.array([(((self.wind_speed_u_range[1] - self.wind_speed_u_range[0]) * p) / 3)**2 * (1. + j*0.02) for j in range(0, n_preview_steps + preview_dt)])
-		# var_v = np.array([(((self.wind_speed_v_range[1] - self.wind_speed_v_range[0]) * p) / 3)**2 * (1. + j*0.02) for j in range(0, n_preview_steps + preview_dt)])
-		# QUESTION: we want growing uncertainty in prediction further along in the prediction horizon, not growing variation - should variance remain the same?
-		p = 0.4
-		q = 0.000
-		var_u = np.array([(((self.wind_speed_u_range[1] - self.wind_speed_u_range[0]) * p * (2. - np.exp(-q * j))) / 3)**2  for j in range(0, n_preview_steps + preview_dt)])
-		var_v = np.array([(((self.wind_speed_v_range[1] - self.wind_speed_v_range[0]) * p * (2. - np.exp(-q * j))) / 3)**2 for j in range(0, n_preview_steps + preview_dt)])
+			# variance of u[j], and v[j], grows over the course of the prediction horizon (by 1+j*0.05, or 5% for each step), and has an initial variance of 0.25 the value of the current measurement
+			# prepend 0 variance values for the deterministic measurements at the current (0) time-step
+			# o = 0.2
+			# we want it to be very unlikely (3 * standard deviations) that the value will stray outside of the desired range
+			
+			# p = 0.1
+			# var_u = np.array([(((self.wind_speed_u_range[1] - self.wind_speed_u_range[0]) * p) / 3)**2 * (1. + j*0.02) for j in range(0, n_preview_steps + preview_dt)])
+			# var_v = np.array([(((self.wind_speed_v_range[1] - self.wind_speed_v_range[0]) * p) / 3)**2 * (1. + j*0.02) for j in range(0, n_preview_steps + preview_dt)])
+			# QUESTION: we want growing uncertainty in prediction further along in the prediction horizon, not growing variation - should variance remain the same?
+			p = 0.4
+			q = 0.000
+			var_u = np.array([(((self.wind_speed_u_range[1] - self.wind_speed_u_range[0]) * p * (2. - np.exp(-q * j))) / 3)**2  for j in range(0, n_preview_steps + preview_dt)])
+			var_v = np.array([(((self.wind_speed_v_range[1] - self.wind_speed_v_range[0]) * p * (2. - np.exp(-q * j))) / 3)**2 for j in range(0, n_preview_steps + preview_dt)])
 
-		# cov = np.diag(np.concatenate([var_u, var_v]))
-		
-		cov_u = np.diag(var_u)
-		cov_v = np.diag(var_v)
-		# covariance of u[j], v[j] 
-		# is zero for u and v elements (no correlation),
-		# positive and greater for adjacent elements u[j], u[j +/- 1], and v[j], v[j +/- 1] 
-		# more off-diagonal covariance elements are farther apart in time over the prediction horizon (i.e. the row number is farther from the column number)
-		# for the covariance matrix to be positive definite, off-diagonal elements should be less than diagonal elements, so p should be a fraction
-		# requirement on the variance such that covariance does not become negative, (plus safety factor of 5%)
-		# greater multiple leads to greater changes between time-steps
-		p = 1.0
-		q = 0.005
-		# a = 1.0 * (1 - (1 / (n_preview_steps)))**0.5
-		for i in range(1, n_preview_steps + preview_dt):
-		# for i in range(1, n_preview_steps):
-			# off-diagonal elements
-			# b = var_u[:n_preview_steps - i + preview_dt] * p
-			# b = var_u[:n_preview_steps + preview_dt - i] * p
-			b = np.array([var_u[0]] * (n_preview_steps + preview_dt - i)) * p
-			# x = b * (a - ((i - 1) / (a * (n_preview_steps + preview_dt))))
-			x = b * np.exp(-q * (i * self.simulation_dt)) 
-			cov_u += np.diag(x, k=i)
-			cov_u += np.diag(x, k=-i)
+			# cov = np.diag(np.concatenate([var_u, var_v]))
+			
+			cov_u = np.diag(var_u)
+			cov_v = np.diag(var_v)
+			# covariance of u[j], v[j] 
+			# is zero for u and v elements (no correlation),
+			# positive and greater for adjacent elements u[j], u[j +/- 1], and v[j], v[j +/- 1] 
+			# more off-diagonal covariance elements are farther apart in time over the prediction horizon (i.e. the row number is farther from the column number)
+			# for the covariance matrix to be positive definite, off-diagonal elements should be less than diagonal elements, so p should be a fraction
+			# requirement on the variance such that covariance does not become negative, (plus safety factor of 5%)
+			# greater multiple leads to greater changes between time-steps
+			p = 1.0
+			q = 0.005
+			# a = 1.0 * (1 - (1 / (n_preview_steps)))**0.5
+			for i in range(1, n_preview_steps + preview_dt):
+			# for i in range(1, n_preview_steps):
+				# off-diagonal elements
+				# b = var_u[:n_preview_steps - i + preview_dt] * p
+				# b = var_u[:n_preview_steps + preview_dt - i] * p
+				b = np.array([var_u[0]] * (n_preview_steps + preview_dt - i)) * p
+				# x = b * (a - ((i - 1) / (a * (n_preview_steps + preview_dt))))
+				x = b * np.exp(-q * (i * self.simulation_dt)) 
+				cov_u += np.diag(x, k=i)
+				cov_u += np.diag(x, k=-i)
 
-			# b = var_v[:n_preview_steps - i + preview_dt] * p
-			# b = var_v[:n_preview_steps + preview_dt - i] * p
-			b = np.array([var_v[0]] * (n_preview_steps + preview_dt - i)) * p
-			x = b * np.exp(-q * (i * self.simulation_dt))
-			# x = b * (a - ((i - 1) / (a * (n_preview_steps + preview_dt))))
-			cov_v += np.diag(x, k=i)
-			cov_v += np.diag(x, k=-i)
+				# b = var_v[:n_preview_steps - i + preview_dt] * p
+				# b = var_v[:n_preview_steps + preview_dt - i] * p
+				b = np.array([var_v[0]] * (n_preview_steps + preview_dt - i)) * p
+				x = b * np.exp(-q * (i * self.simulation_dt))
+				# x = b * (a - ((i - 1) / (a * (n_preview_steps + preview_dt))))
+				cov_v += np.diag(x, k=i)
+				cov_v += np.diag(x, k=-i)
+
+			wind_preview_distribution_params = {"mean_u": mean_u, "mean_v": mean_v, "cov_u": cov_u, "cov_v": cov_v}
+			with open(save_path, "wb") as fp:
+					pickle.dump(wind_preview_distribution_params, fp)
 		
 		if False:
 			# visualize covariance matrix for testing purposes
@@ -181,6 +190,19 @@ class WindField:
 			# ax.yaxis.set_ticklabels(class_names,rotation=0, fontsize = 10)
 			plt.show()
 		
+		return wind_preview_distribution_params
+	
+	def _sample_wind_preview(self, current_measurements, n_preview_steps, preview_dt, n_samples, noise_func=np.random.multivariate_normal, noise_args=None, return_params=True):
+		"""
+		corr(X) = (diag(Kxx))^(-0.5)Kxx(diag(Kxx))^(-0.5)
+		low variance and high covariance => high correlation
+		"""
+		wind_preview_distribution_params = self._generate_wind_preview_distribution_params(n_preview_steps, preview_dt, regenerate_params=False)
+		mean_u = wind_preview_distribution_params["mean_u"]
+		mean_v = wind_preview_distribution_params["mean_v"]
+		cov_u = wind_preview_distribution_params["cov_u"]
+		cov_v = wind_preview_distribution_params["cov_v"]
+
 		cond_mean_u = mean_u[1:] + cov_u[1:, :1] @ np.linalg.inv(cov_u[:1, :1]) @ (current_measurements[0] - mean_u[:1])
 		cond_mean_v = mean_v[1:] + cov_v[1:, :1] @ np.linalg.inv(cov_v[:1, :1]) @ (current_measurements[1] - mean_v[:1])
 
@@ -190,6 +212,7 @@ class WindField:
 		if return_params:
 			return cond_mean_u, cond_mean_v, cond_cov_u, cond_cov_v
 
+		noise_args = {}
 		noise_args["mean"] = np.concatenate([cond_mean_u, cond_mean_v])
 		noise_args["cov"] = scipy.linalg.block_diag(cond_cov_u, cond_cov_v)
 		noise_args["size"] = n_samples
@@ -384,8 +407,8 @@ def plot_ts(df, fig_dir):
 	# fig_ts.show()
 
 
-def generate_wind_ts(config, from_gaussian, case_idx, save_name="", seed=None, return_params=False):
-	wf = WindField(**config)
+def generate_wind_ts(wf, config, from_gaussian, case_idx, save_name="", seed=None, return_params=False):
+	
 	print(f'Simulating case #{case_idx}')
 	# define freestream time series
 	if from_gaussian:
@@ -448,17 +471,24 @@ def generate_wind_preview(current_freestream_measurements, simulation_time_step,
 		
 		# compute directions
 		u_only_dir = np.zeros_like(u_preview)
-		u_only_dir[(v_preview == 0) & (u_preview >= 0)] = 270
-		u_only_dir[(v_preview == 0) & (u_preview < 0)] = 90
-		u_only_dir = (u_only_dir - 180) * (np.pi / 180)
-		
-		dir_preview = np.arctan(np.divide(u_preview, v_preview,
+		u_only_dir[(v_preview == 0) & (u_preview >= 0)] = (np.pi / 2)
+		u_only_dir[(v_preview == 0) & (u_preview < 0)] = np.pi
+		# TODO below does not capture all quadrants of angle...
+
+		dir_preview = np.arctan(np.divide(abs(u_preview), abs(v_preview),
 								out=np.ones_like(u_preview) * np.nan,
 								where=v_preview != 0),
 						out=u_only_dir,
 						where=v_preview != 0)
 		dir_preview[dir_preview < 0] = np.pi + dir_preview[dir_preview < 0]
-		dir_preview = (dir_preview * (180 / np.pi)) + 180
+		# dir_preview[(u_preview >= 0) & (v_preview >= 0)] = dir_preview[(u_preview >= 0) & (v_preview >= 0)] # first quadrant
+		dir_preview[(u_preview >= 0) & (v_preview < 0)] = np.pi - dir_preview[(u_preview >= 0) & (v_preview < 0)] # second quadrant
+		dir_preview[(u_preview < 0) & (v_preview < 0)] = np.pi + dir_preview[(u_preview < 0) & (v_preview < 0)] # third quadrant
+		dir_preview[(u_preview < 0) & (v_preview >= 0)] = 2*np.pi - dir_preview[(u_preview < 0) & (v_preview >= 0)] # fourth quadrant
+
+		# compute freestream wind direction angle from above, clockwise from north
+		dir_preview = (dir_preview + np.pi) * (180 / np.pi)
+
 		
 		# dir = np.arctan([u / v for u, v in zip(u_preview, v_preview)]) * (180 / np.pi) + 180
 		
@@ -645,11 +675,12 @@ def plot_distribution_ts(wf, n_preview_steps):
 	fig_plot.savefig(os.path.join(wf.fig_dir, f'wind_field_preview_ts2.png'))
 
 
-def generate_multi_wind_ts(config, save_name="", seeds=None, return_params=False, parallel=True):
-	if parallel:
+def generate_multi_wind_ts(wf, config, save_name="", seeds=None, return_params=False, parallel=True):
+
+	if parallel:		
 		with ProcessPoolExecutor() as generate_wind_fields:
 			futures = [generate_wind_fields.submit(generate_wind_ts, 
-                                              config=config, from_gaussian=True, save_name=save_name, return_params=return_params, 
+                                              wf=wf, config=config, from_gaussian=True, save_name=save_name, return_params=return_params, 
 											  case_idx=case_idx, seed=seeds[case_idx]) 
                        for case_idx in range(len(seeds))]
 		wait(futures)
@@ -657,7 +688,7 @@ def generate_multi_wind_ts(config, save_name="", seeds=None, return_params=False
 	else:
 		wind_field_data = []
 		for i, seed in enumerate(seeds):
-			wind_field_data.append(generate_wind_ts(config=config, from_gaussian=True, case_idx=i, save_name=save_name, seed=seed, return_params=return_params))
+			wind_field_data.append(generate_wind_ts(wf=wf, config=config, from_gaussian=True, case_idx=i, save_name=save_name, seed=seed, return_params=return_params))
 		plot_ts(wind_field_data[0].df, config["fig_dir"])
 		
 	return wind_field_data

@@ -33,7 +33,6 @@ from hercules.utilities import load_yaml
 # simplefilter('error')
 
 # sequential_pyopt is best solver, stochastic is best preview type
-
 case_studies = {
     "baseline_controllers": {"seed": {"group": 0, "vals": [0]},
                             #  "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
