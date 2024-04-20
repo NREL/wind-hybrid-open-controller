@@ -24,14 +24,14 @@ from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 from whoc.controllers.mpc_wake_steering_controller import MPC
 from whoc.controllers.greedy_wake_steering_controller import GreedyController
 from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
-from whoc.wind_field.WindField import generate_multi_wind_ts
+from whoc.wind_field.WindField import generate_multi_wind_ts, WindField
 from whoc.postprocess_case_studies import plot_wind_field_ts, plot_opt_var_ts, plot_opt_cost_ts, plot_power_ts, barplot_opt_cost, compare_simulations, plot_cost_function_pareto_curve, plot_breakdown_robustness
 
 from hercules.utilities import load_yaml
 
 # from warnings import simplefilter
 # simplefilter('error')
-
+N_COST_FUNC_TUNINGS = 101
 # sequential_pyopt is best solver, stochastic is best preview type
 case_studies = {
     "baseline_controllers": {"seed": {"group": 0, "vals": [0]},
@@ -226,8 +226,8 @@ case_studies = {
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                          "generate_lut": {"group": 0, "vals": [False]},
                          "n_horizon": {"group": 0, "vals": [10]}, 
-                         "case_names": {"group": 1, "vals": [f"alpha_{f}" for f in list(np.linspace(0, 1.0, 101))]},
-                         "alpha": {"group": 1, "vals": list(np.linspace(0, 1.0, 101))}, 
+                         "case_names": {"group": 1, "vals": [f"alpha_{f}" for f in list(np.linspace(0, 1.0, N_COST_FUNC_TUNINGS))]},
+                         "alpha": {"group": 1, "vals": list(np.linspace(0, 1.0, N_COST_FUNC_TUNINGS))}, 
                           "wind_preview_type": {"group": 0, "vals": ["stochastic"]}, 
                           "warm_start": {"group": 0, "vals": ["greedy"]}, 
                           "solver": {"group": 0, "vals": ["slsqp"]},
@@ -599,13 +599,20 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
     wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
     wind_field_config["preview_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"])
     wind_field_config["simulation_sampling_time"] = input_dict["dt"]
-    
+    wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
+    wind_field_config["n_samples_per_init_seed"] = 1
+    wind_field_config["regenerate_distribution_params"] = False
+    wind_field_config["distribution_params_path"] = os.path.join(os.path.dirname(whoc_file), "..", "examples", "wind_field_data", "wind_preview_distribution_params.pkl")  
+    wind_field_config["time_series_dt"] = input_dict["dt"]
+
     print("run_simulations line 546")
     # TODO check that wind field has same dt or interpolate...
     seed = 0
     if len(wind_field_filenames) < n_seeds or regenerate_wind_field:
-        generate_multi_wind_ts(wind_field_config, seeds=[seed + i for i in range(n_seeds)])
-        wind_field_filenames = [f"case_{i}.csv" for i in range(n_seeds)]
+        wind_field_config["regenerate_distribution_params"] = True
+        full_wf = WindField(**wind_field_config)
+        generate_multi_wind_ts(full_wf, init_seeds=[seed + i for i in range(n_seeds)])
+        wind_field_filenames = [os.path.join(wind_field_dir, f"case_{i}.csv") for i in range(n_seeds)]
         regenerate_wind_field = True
     
     print("run_simulations line 555")
@@ -667,6 +674,11 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
 
     # instantiate controller and run_simulations simulation
     print("run_simulations line 613")
+    wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
+    wind_field_config["n_samples_per_init_seed"] = input_dict["controller"]["n_wind_preview_samples"]
+    wind_field_config["regenerate_distribution_params"] = False
+    wind_field_config["time_series_dt"] = int(input_dict["controller"]["dt"] // input_dict["dt"])
+
     if run_parallel:
         # if platform == "linux":
         if use_mpi:

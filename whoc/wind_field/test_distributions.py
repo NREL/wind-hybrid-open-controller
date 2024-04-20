@@ -18,16 +18,13 @@ from hercules.utilities import load_yaml
 
 
 # for each time-step in freestream time-series, for each seed generate the preview
-def generate_preview(wf, input_dict, wind_field_data, seed, time_step):
+def generate_preview(wf, input_dict, wind_field_data, time_step, seed):
     print(f"generating preview for seed {seed} time-step {time_step}")
-    current_freestream_measurements = wind_field_data[seed].iloc[time_step][["FreestreamWindSpeedU", "FreestreamWindSpeedV"]].to_numpy()
+    current_freestream_measurements = wind_field_data[seed].loc[(wind_field_data[seed]["Time"] // input_dict["dt"] == time_step) & (wind_field_data[seed]["Sample"] == 0), ["FreestreamWindSpeedU", "FreestreamWindSpeedV"]].to_numpy()[0, :]
     preview_dt = int(input_dict["controller"]["dt"] // input_dict["dt"])
     n_preview_steps = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] // input_dict["dt"])
-    preview = generate_wind_preview(current_freestream_measurements, time_step,
-                    wind_preview_generator=wf._sample_wind_preview, 
-                    n_preview_steps=n_preview_steps,
-                    preview_dt=preview_dt,
-                    n_samples=input_dict["controller"]["n_wind_preview_samples"], return_params=False)
+    preview = generate_wind_preview(wf, current_freestream_measurements, time_step,
+                    wind_preview_generator=wf._sample_wind_preview, return_params=False)
     
     # preview_params = generate_wind_preview( 
     #                     current_freestream_measurements, k,
@@ -36,8 +33,12 @@ def generate_preview(wf, input_dict, wind_field_data, seed, time_step):
     #                     preview_dt=int(input_dict["controller"]["dt"] // input_dict["dt"]),
     #                     n_samples=input_dict["controller"]["n_wind_preview_samples"],
     #                     return_params=True)
-    freestream_samples = wind_field_data[seed].iloc[time_step:time_step + n_preview_steps + preview_dt:int(input_dict["controller"]["dt"] // input_dict["dt"])][["FreestreamWindSpeedU", "FreestreamWindSpeedV"]].to_numpy()
-    preview_samples = np.vstack([[preview[f"FreestreamWindSpeedU_{k}"][m], preview[f"FreestreamWindSpeedV_{k}"][m]] for m in range(input_dict["controller"]["n_wind_preview_samples"]) for k in range(input_dict["controller"]["n_horizon"] + 1)])
+    freestream_samples = wind_field_data[seed].loc[(wind_field_data[seed]["Time"] // input_dict["dt"]).isin(np.arange(time_step, time_step + n_preview_steps + preview_dt, int(input_dict["controller"]["dt"] // input_dict["dt"]))), ["Time", "Sample", "FreestreamWindSpeedU", "FreestreamWindSpeedV"]]
+    freestream_samples = np.hstack([
+        freestream_samples[["Time", "Sample", "FreestreamWindSpeedU"]].pivot(index="Sample", columns="Time", values="FreestreamWindSpeedU").to_numpy(),
+        freestream_samples[["Time", "Sample", "FreestreamWindSpeedV"]].pivot(index="Sample", columns="Time", values="FreestreamWindSpeedV").to_numpy()])
+    # .to_numpy().T.flatten()
+    preview_samples = np.vstack([np.vstack([[preview[f"FreestreamWindSpeedU_{k}"][m], preview[f"FreestreamWindSpeedV_{k}"][m]] for k in range(input_dict["controller"]["n_horizon"] + 1)]).T.flatten() for m in range(wf.n_samples_per_init_seed)])
     return freestream_samples, preview_samples
 
 if __name__ == "__main__":
@@ -97,7 +98,7 @@ if __name__ == "__main__":
 
     if 1:
         # generate 6 seeds of freestream wind time series
-        n_seeds = 6
+        n_seeds = 1
         regenerate_wind_field = False
         input_dict = load_yaml(os.path.join(os.path.dirname(whoc.__file__), "../examples/hercules_input_001.yaml"))
 
@@ -106,27 +107,32 @@ if __name__ == "__main__":
 
         # instantiate wind field if files don't already exist
         wind_field_dir = os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "wind_field_data", "raw_data")        
-        wind_field_filenames = glob(os.path.join(f"{wind_field_dir}", "case_*.csv"))
+        wind_field_filenames = glob(os.path.join(wind_field_dir, "debug_case_*.csv"))
         distribution_params_path = os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "wind_field_data", "wind_preview_distribution_params.pkl")    
         
         if not os.path.exists(wind_field_dir):
             os.makedirs(wind_field_dir)
 
         seed = 0
-        wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * input_dict["controller"]["dt"]
-        wind_field_config["simulation_max_time"] = input_dict["hercules_comms"]["helics"]["config"]["stoptime"]
+        # wind_field_config["simulation_max_time"] = input_dict["hercules_comms"]["helics"]["config"]["stoptime"]
+        # wind_field_config["simulation_max_time"] = 1
         wind_field_config["num_turbines"] = input_dict["controller"]["num_turbines"]
-        wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
+        wind_field_config["n_preview_steps"] = int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] / input_dict["dt"]) + input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
+        # wind_field_config["n_preview_steps"] = 0 + input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
         wind_field_config["preview_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"])
         wind_field_config["simulation_sampling_time"] = input_dict["dt"]
+        wind_field_config["distribution_params_path"] = os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "wind_field_data", "wind_preview_distribution_params.pkl")    
+        wind_field_config["n_samples_per_init_seed"] = 5
 
-        wf = WindField(**wind_field_config)
-        if not os.path.exists(distribution_params_path):
-            wind_preview_distribution_params = wf._generate_wind_preview_distribution_params(int(wind_field_config["simulation_max_time"] // wind_field_config["simulation_sampling_time"]) + wind_field_config["n_preview_steps"], wind_field_config["preview_dt"], regenerate_params=False)
+        # if not os.path.exists(distribution_params_path):
+        #     wind_preview_distribution_params = full_wf._generate_wind_preview_distribution_params(regenerate_params=False)
 
         if len(wind_field_filenames) < n_seeds or regenerate_wind_field:
-            generate_multi_wind_ts(wf, wind_field_config, seeds=[seed + i for i in range(n_seeds)])
-            wind_field_filenames = [f"case_{i}.csv" for i in range(n_seeds)]
+            # generate_multi_wind_ts(wf, wind_field_config, seeds=[seed + i for i in range(n_seeds)], save_name="short_")
+            wind_field_config["regenerate_distribution_params"] = True
+            full_wf = WindField(**wind_field_config)
+            generate_multi_wind_ts(full_wf, init_seeds=range(n_seeds), save_name="debug_")
+            wind_field_filenames = [os.path.join(wind_field_dir, f"debug_case_{i}.csv") for i in range(n_seeds)]
             regenerate_wind_field = True
         
         wind_field_data = []
@@ -134,30 +140,42 @@ if __name__ == "__main__":
             for fn in wind_field_filenames:
                 wind_field_data.append(pd.read_csv(fn, index_col=0))
 
-        freestream_samples = []
-        preview_samples = []
-
         # set significance level - probability of rejecting null hypotheisis (no significant different between distributions) when it is true
         alpha = 0.05
-
+        wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
+        # wind_field_config["n_samples"] = input_dict["controller"]["n_wind_preview_samples"]
+        wind_field_config["n_samples_per_init_seed"] = 500
+        wind_field_config["regenerate_distribution_params"] = False
+        preview_wf = WindField(**wind_field_config)
         with ProcessPoolExecutor() as generate_previews_exec:
             # for MPIPool executor, (waiting as if shutdown() were called with wait set to True)
-            futures = [generate_previews_exec.submit(generate_preview, wf=wf, input_dict=input_dict, wind_field_data=wind_field_data, seed=s, time_step=k) 
-                for k in range(0, int(wind_field_config["simulation_max_time"] // wind_field_config["simulation_sampling_time"]), int(input_dict["controller"]["dt"] / input_dict["dt"])) for s in range(n_seeds)]
+            futures = [generate_previews_exec.submit(generate_preview, wf=preview_wf, input_dict=input_dict, wind_field_data=wind_field_data, time_step=k, seed=s) 
+                # for k in range(0, int(wind_field_config["simulation_max_time"] // wind_field_config["simulation_sampling_time"]), int(input_dict["controller"]["dt"] / input_dict["dt"])) for s in range(n_seeds)]
+                for k in range(1) for s in range(n_seeds)]
         cf_wait(futures)
         results = [fut.result() for fut in futures]
 
+        # np.cov(preview_samples, rowvar=False).shape
+
+        ttest_stats = []
+        for res in results:
+            ttest_stats.append(multivariate_ttest(res[0], res[1], paired=False))
+
+        ttest_stats = pd.concat(ttest_stats)
+        
         freestream_samples = np.vstack([res[0] for res in results])
         preview_samples = np.vstack([res[1] for res in results])
+        np.save(os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "wind_field_data", "freestream_samples.npy"), freestream_samples)
+        np.save(os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "wind_field_data", "preview_samples.npy"), preview_samples)
 
-        ttest_stats = multivariate_ttest(freestream_samples, preview_samples, paired=False)
+        # ttest_stats = multivariate_ttest(freestream_samples, preview_samples, paired=False)
 
         # compare the windows of data from the freestream time-series to the preview in a statistical t-test
         # p-value = probability of obtaining a t-stat as extreme or more exptreme than the observed value, assuming that the null hypothesis is true
         # t_stat, p_value = ttest_1samp()
 
         # Interpret the results
-        if ttest_stats["p-value"] < alpha:
+        if np.any(ttest_stats["pval"] < alpha):
             print("Reject the null hypothesis; there is a significant difference between the sample mean and the hypothesized population mean.")
         else:
             print("Fail to reject the null hypothesis; there is no significant difference between the sample mean and the hypothesized population mean.")
