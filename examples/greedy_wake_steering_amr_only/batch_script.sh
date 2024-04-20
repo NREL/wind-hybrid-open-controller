@@ -1,6 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=greedy_wake_steering_amr_only
-#SBATCH --time=04:00:00
+#SBATCH --time=01:00:00
+#SBATCH --partition=debug
 #SBATCH --nodes=2
 #SBATCH --ntasks-per-node=36
 #SBATCH --account=ssc

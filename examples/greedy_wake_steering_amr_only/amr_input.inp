@@ -15,14 +15,14 @@ time.cfl              =   0.95               # CFL factor
 #.......................................#
 time.plot_interval            =  3600        # Steps between plot files
 time.checkpoint_interval      =  3600        # Steps between checkpoint files
-# io.restart_file = "/projects/ssc/amr_precursors/b_abl_neutral_lowTI_redo/chk14400"
+#io.restart_file = "/projects/ssc/amr_precursors/b_abl_neutral_lowTI_redo/chk14400"
 
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
 #               PHYSICS                 #
 #.......................................#
 incflo.gravity          =   0.  0. -9.81     # Gravitational force (3D)
 incflo.density             = 1.0             # Reference density 
-
+incflo.velocity            = 8.0 0.0 0.0
 incflo.use_godunov = 1
 incflo.godunov_type = weno_z
 incflo.diffusion_type = 1
@@ -60,8 +60,8 @@ ABL.stats_output_frequency                  = 1
 ABL.surface_temp_flux                       = 0.00
 ABL.wall_shear_stress_type                  = "Moeng"
 
-ABL.bndry_file = "/projects/ssc/amr_precursors/b_abl_neutral_lowTI_redo/bndry_files"
-ABL.bndry_io_mode = 1 #Input mode
+#ABL.bndry_file = "/projects/ssc/amr_precursors/b_abl_neutral_lowTI_redo/bndry_files"
+#ABL.bndry_io_mode = 1 #Input mode
 ABL.bndry_planes = ylo xlo # I'm (Paul) adding this but not sure if I have to
 ABL.bndry_var_names = velocity temperature tke
 
@@ -167,7 +167,7 @@ Actuator.JoukowskyDisk.rpm = 5.500000000399841 5.7503730274604 6.924733009169061
 Actuator.JoukowskyDisk.thrust_coeff = 0.795419507524108 0.8163759621542088 0.8163759621542089 0.8163759621542088 0.8163759621542088 0.8163759621542093 0.8163759621542093 0.816375962154209 0.8163759621542089 0.816375962154209 0.8163759621542089 0.8163759621542088 0.8163759621542088 0.7816497292837605 0.6881024487256834 0.5960935792514858 0.5110705883010171 0.48169007343985104 0.3992418445397665 0.301726241148816 0.23137184415660814 0.17948146484830918 0.1408250546606467 0.11178366795199553 0.08975645587417404 0.07310080594700819 0.060299514659720915 0.0504505646442757 0.04286514300370846 0.03692885272686376
    
 
-Actuator.JoukowskyDisk.yaw = 240.0
+Actuator.JoukowskyDisk.yaw = 270.0
 
 Actuator.T00.base_position = 0.0 0.0 0.0
 Actuator.T01.base_position = 0.0 756.0 0.0
