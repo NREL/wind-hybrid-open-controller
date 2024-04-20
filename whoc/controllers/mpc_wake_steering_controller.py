@@ -474,41 +474,41 @@ class MPC(ControllerBase):
                 # returns cond_mean_u, cond_mean_v, cond_cov_u, cond_cov_v
                 if return_statistical_values:
                     distribution_params = generate_wind_preview( 
-                                    current_freestream_measurements, time_step,
+                                    wf, current_freestream_measurements, time_step,
                                     wind_preview_generator=wf._sample_wind_preview, 
-                                    n_preview_steps=input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] // input_dict["dt"]),
-                                    preview_dt=int(input_dict["controller"]["dt"] // input_dict["dt"]),
-                                    n_samples=input_dict["controller"]["n_wind_preview_samples"],
+                                    # n_preview_steps=input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] // input_dict["dt"]),
+                                    # preview_dt=int(input_dict["controller"]["dt"] // input_dict["dt"]),
+                                    # n_samples=input_dict["controller"]["n_wind_preview_samples"],
                                     return_params=True)
                     wind_preview_data = defaultdict(list)
 
-                    x = np.linalg.norm([current_freestream_measurements[0], current_freestream_measurements[1]])
-                    wind_preview_data[f"FreestreamWindMag_{0}"] = {"mean": x, "min": x, "max": x}
+                    mag = np.linalg.norm([current_freestream_measurements[0], current_freestream_measurements[1]])
+                    wind_preview_data[f"FreestreamWindMag_{0}"] = {"mean": mag, "min": mag, "max": mag}
                     
                     # compute angle of arctan(u/v)
                     if current_freestream_measurements[1] != 0.0:
-                        x = np.arctan((abs(current_freestream_measurements[0]) / abs(current_freestream_measurements[1])))
+                        direction = np.arctan((abs(current_freestream_measurements[0]) / abs(current_freestream_measurements[1])))
                     elif current_freestream_measurements[0] >= 0:
-                        x = np.pi / 2
+                        direction = np.pi / 2
                     else:
-                        x = np.pi
+                        direction = np.pi
                     
-                    if current_freestream_measurements[1] >= 0 and current_freestream_measurements[0] >= 0:
-                        # first quadrant
-                        angle = x
-                    elif current_freestream_measurements[1] < 0 and current_freestream_measurements[0] >= 0:
+                    # if current_freestream_measurements[1] >= 0 and current_freestream_measurements[0] >= 0:
+                    #     # first quadrant
+                    #     angle = angle
+                    if current_freestream_measurements[1] < 0 and current_freestream_measurements[0] >= 0:
                         # second quadrant
-                        angle = np.pi - x
+                        direction = np.pi - direction
                     elif current_freestream_measurements[1] < 0 and current_freestream_measurements[0] < 0:
                         # third quadrant
-                        angle = np.pi + x
+                        direction = np.pi + direction
                     else:
                         # fourth quadrant
-                        angle = 2*np.pi - x
+                        direction = 2*np.pi - direction
                     # compute freestream wind direction angle from above, clockwise from north
-                    angle = (angle + np.pi) * (180 / np.pi)
+                    direction = (direction + np.pi) * (180 / np.pi)
 
-                    wind_preview_data[f"FreestreamWindDir_{0}"] = {"mean": angle, "min": angle, "max": angle}
+                    wind_preview_data[f"FreestreamWindDir_{0}"] = {"mean": direction, "min": direction, "max": direction}
                     
                     dev_u = 2 * np.sqrt(np.diag(distribution_params[2]))
                     dev_v = 2 * np.sqrt(np.diag(distribution_params[3]))
@@ -615,11 +615,12 @@ class MPC(ControllerBase):
                         wind_preview_data[f"FreestreamWindDir_{j + 1}"] = {"mean": mean_dirs[j], "min": min_dirs[j], "max": max_dirs[j]}
 
                 else:
-                    return generate_wind_preview(current_freestream_measurements, time_step,
+                    return generate_wind_preview(wf, current_freestream_measurements, time_step,
  								wind_preview_generator=wf._sample_wind_preview, 
- 								n_preview_steps=input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] // input_dict["dt"]),
- 								preview_dt=int(input_dict["controller"]["dt"] // input_dict["dt"]),
- 								n_samples=input_dict["controller"]["n_wind_preview_samples"], return_params=False)
+ 								# n_preview_steps=input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] // input_dict["dt"]),
+ 								# preview_dt=int(input_dict["controller"]["dt"] // input_dict["dt"]),
+ 								# n_samples=input_dict["controller"]["n_wind_preview_samples"]
+                                return_params=False)
                 
                 return wind_preview_data
         

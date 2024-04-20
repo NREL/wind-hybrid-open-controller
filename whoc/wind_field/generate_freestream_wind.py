@@ -26,18 +26,19 @@ def generate_freestream_wind(save_path, n_seeds, regenerate_wind_field=False):
         os.makedirs(wind_field_dir)
 
     seed = 0
-    wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * input_dict["controller"]["dt"]
-    wind_field_config["simulation_max_time"] = input_dict["hercules_comms"]["helics"]["config"]["stoptime"]
     wind_field_config["num_turbines"] = input_dict["controller"]["num_turbines"]
-    wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
+    wind_field_config["n_preview_steps"] = int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] / input_dict["dt"]) + input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
     wind_field_config["preview_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"])
     wind_field_config["simulation_sampling_time"] = input_dict["dt"]
+    wind_field_config["distribution_params_path"] = os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "wind_field_data", "wind_preview_distribution_params.pkl")  
+    wind_field_config["time_series_dt"] = input_dict["dt"]
     
-    wf = WindField(**wind_field_config)
-    if not os.path.exists(distribution_params_path):
-        wind_preview_distribution_params = wf._generate_wind_preview_distribution_params(int(wind_field_config["simulation_max_time"] // wind_field_config["simulation_sampling_time"]) + wind_field_config["n_preview_steps"], wind_field_config["preview_dt"], regenerate_params=False)
+    # if not os.path.exists(distribution_params_path):
+    #     wind_preview_distribution_params = wf._generate_wind_preview_distribution_params(int(wind_field_config["simulation_max_time"] // wind_field_config["simulation_sampling_time"]) + wind_field_config["n_preview_steps"], wind_field_config["preview_dt"], regenerate_params=False)
     
     if len(wind_field_filenames) < n_seeds or regenerate_wind_field:
+        wind_field_config["regenerate_distribution_params"] = True
+        wf = WindField(**wind_field_config)
         generate_multi_wind_ts(wf, wind_field_config, seeds=[seed + i for i in range(n_seeds)])
         wind_field_filenames = [f"case_{i}.csv" for i in range(n_seeds)]
         regenerate_wind_field = True
