@@ -20,6 +20,12 @@ examples/*/*/*.nc
 examples/*/*.csv
 examples/*/*.pkl
 examples/*/*/*.png
+examples/*/post_processing/*.nc
+examples/*/chk*/
+examples/*/plt*/
+examples/post_processing/*
+examples/chk*/
+examples/plt*/
 
 # Exceptions
 !examples/lookup-based_wake_steering_florisstandin/amr_standin_data.csv

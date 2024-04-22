@@ -421,7 +421,7 @@ class YawOptimizationSRRHC(YawOptimizationSR):
 class MPC(ControllerBase):
 
     # SLSQP, NSGA2, ParOpt, CONMIN, ALPSO
-    max_iter = 15
+    max_iter = 30
     acc = 1e-6
     # optimizers = [
     #     SLSQP(options={"IPRINT": 0, "MAXIT": max_iter, "ACC": acc}),

@@ -12,5 +12,6 @@ module load conda
 module load openmpi
 conda activate whoc
 
-mpirun -np $SLURM_NTASKS python -m mpi4py.futures run_case_studies.py debug 0 1 2
+python run_case_studies.py debug nompi 0 1 2
+# mpirun -np $SLURM_NTASKS python -m mpi4py.futures run_case_studies.py debug 0 1 2
 # srun python run_case_studies.py
