@@ -8,8 +8,16 @@ data.db
 slices
 
 # Data files
+*.nc
+*.png
+*.jpeg
 *.csv
 *.log
+*log
+*.pkl
+chk*
+plt*
+*.out
 examples/*/logstandin*
 examples/*/loghercules*
 examples/*/logfloris*

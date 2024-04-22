@@ -1,0 +1,264 @@
++ spack-start
++ spack env activate -p -d /home/ahenry/toolboxes/whoc_env
+Starting AMR-Wind job at:  Fri Apr 19 16:14:24 MDT 2024
+416
+==============================================================================
+                AMR-Wind (https://github.com/exawind/amr-wind)
+
+  AMR-Wind version :: 754dd54
+  AMR-Wind Git SHA :: 754dd54e0dd4501be2b1c201fd84ba37628d801b
+  AMReX version    :: 24.03-36-g748f8dfea597
+
+  Exec. time       :: Fri Apr 19 16:14:31 2024
+  Build time       :: Apr  9 2024 13:12:57
+  C++ compiler     :: GNU 8.5.0
+
+  MPI              :: ON    (Num. ranks = 416)
+  GPU              :: OFF
+  OpenMP           :: OFF
+
+  Enabled third-party libraries: 
+    NetCDF    4.7.4
+    HYPRE     2.31.0
+    OpenFAST  
+
+           This software is released under the BSD 3-clause license.           
+ See https://github.com/Exawind/amr-wind/blob/development/LICENSE for details. 
+------------------------------------------------------------------------------
+
+Initializing AMReX (24.03-36-g748f8dfea597)...
+MPI initialized with 416 MPI processes
+MPI initialized with thread support level 0
+AMReX (24.03-36-g748f8dfea597) initialized
+Initializing AMR-Wind ...
+helics fedinitstring: --federates=1 --broker_address=127.0.0.1 --brokerport=32000
+Initializing boundary conditions for velocity_mueff
+Initializing boundary conditions for velocity
+Initializing boundary conditions for density
+Initializing boundary conditions for p
+Initializing boundary conditions for velocity_src_term
+Initializing boundary conditions for gp
+Creating PDESystem instance: ICNS-Godunov
+ABLWallFunction: log_law_height not specified for ABL physics. Assuming log_law_height = first cell height
+Initializing boundary conditions for temperature_mueff
+Initializing boundary conditions for temperature
+Initializing boundary conditions for temperature_src_term
+Creating PDESystem instance: Temperature-Godunov
+Creating ABLStatsBase instance: precursor
+Creating Physics instance: ABL
+Initializing boundary conditions for mu_turb
+using default CellConsLinear interpolation for TKE fillpatch
+Initializing boundary conditions for tke_mueff
+Initializing boundary conditions for tke
+Initializing boundary conditions for tke_src_term
+Creating PDESystem instance: TKE-Godunov
+Creating TurbulenceModel instance: OneEqKsgsM84-ConstTransport
+Creating PostProcessBase instance: Sampling
+Creating PostProcessBase instance: Sampling
+Initializing I/O manager
+Creating mesh... done
+Grid summary: 
+  Level 0   1024 grids  33554432 cells  100 % of domain
+            smallest grid: 32 x 32 x 32  biggest grid: 32 x 32 x 32
+
+Shear Stress model: moeng
+Heat Flux model: moeng
+Creating MomentumSource instance: BoussinesqBuoyancy
+Creating MomentumSource instance: CoriolisForcing
+Creating MomentumSource instance: ABLMeanBoussinesq
+Abort(1012575375) on node 105 (rank 105 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=20, array_of_requests=0x5775a70, array_of_statuses=0x58fbfe0) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(207269007) on node 170 (rank 170 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=31, array_of_requests=0x55fed10, array_of_statuses=0x3e6cbe0) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(207269007) on node 170 (rank 170 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=31, array_of_requests=0x55fed10, array_of_statuses=0x3e6cbe0) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(5942415) on node 174 (rank 174 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=20, array_of_requests=0x5d7bac0, array_of_statuses=0x5edb470) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(677031055) on node 182 (rank 182 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=23, array_of_requests=0x4c5b8b0, array_of_statuses=0x5723780) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(677031055) on node 182 (rank 182 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=23, array_of_requests=0x4c5b8b0, array_of_statuses=0x5723780) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(5942415) on node 109 (rank 109 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=21, array_of_requests=0x610d1d0, array_of_statuses=0x18e5490) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(5942415) on node 109 (rank 109 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=21, array_of_requests=0x610d1d0, array_of_statuses=0x18e5490) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(744139919) on node 114 (rank 114 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=20, array_of_requests=0x7024650, array_of_statuses=0x7184000) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(744139919) on node 114 (rank 114 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=20, array_of_requests=0x7024650, array_of_statuses=0x7184000) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(677031055) on node 121 (rank 121 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=21, array_of_requests=0x656e220, array_of_statuses=0x1d1bfb0) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(677031055) on node 121 (rank 121 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=21, array_of_requests=0x656e220, array_of_statuses=0x1d1bfb0) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(945466511) on node 144 (rank 144 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=32, array_of_requests=0x6ca25b0, array_of_statuses=0x2560c90) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(945466511) on node 144 (rank 144 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=32, array_of_requests=0x6ca25b0, array_of_statuses=0x2560c90) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(408595599) on node 151 (rank 151 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=32, array_of_requests=0x6cd0190, array_of_statuses=0x258bc90) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(408595599) on node 151 (rank 151 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=32, array_of_requests=0x6cd0190, array_of_statuses=0x258bc90) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(207269007) on node 158 (rank 158 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=23, array_of_requests=0x58c0680, array_of_statuses=0x6388550) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(207269007) on node 158 (rank 158 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=23, array_of_requests=0x58c0680, array_of_statuses=0x6388550) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(341486735) on node 162 (rank 162 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=20, array_of_requests=0x62b26f0, array_of_statuses=0x64120a0) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(341486735) on node 162 (rank 162 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=20, array_of_requests=0x62b26f0, array_of_statuses=0x64120a0) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(274377871) on node 164 (rank 164 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=23, array_of_requests=0x5301e50, array_of_statuses=0x5dc9a90) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(274377871) on node 164 (rank 164 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=23, array_of_requests=0x5301e50, array_of_statuses=0x5dc9a90) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(1012575375) on node 168 (rank 168 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=32, array_of_requests=0x6a44830, array_of_statuses=0x2302c90) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(1012575375) on node 168 (rank 168 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=32, array_of_requests=0x6a44830, array_of_statuses=0x2302c90) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(5942415) on node 174 (rank 174 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=20, array_of_requests=0x5d7bac0, array_of_statuses=0x5edb470) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+Abort(1012575375) on node 105 (rank 105 in comm 0): Fatal error in internal_Waitall: Other MPI error, error stack:
+internal_Waitall(82)..........: MPI_Waitall(count=20, array_of_requests=0x5775a70, array_of_statuses=0x58fbfe0) failed
+MPIR_Waitall(1099)............: 
+MPIR_Waitall_state(976).......: 
+MPID_Progress_wait(335).......: 
+MPIDI_progress_test(158)......: 
+MPIDI_OFI_handle_cq_error(627): OFI poll failed (ofi_events.c:627:MPIDI_OFI_handle_cq_error:Input/output error)
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+slurmstepd: error: *** STEP 3495849.0 ON x1007c1s1b0n0 CANCELLED AT 2024-04-19T16:16:41 ***
+slurmstepd: error: *** STEP 3495849.0 ON x1007c1s1b0n0 CANCELLED AT 2024-04-19T16:16:41 ***
+slurmstepd: error: *** STEP 3495849.0 ON x1007c1s1b0n0 CANCELLED AT 2024-04-19T16:16:41 ***
+slurmstepd: error: *** STEP 3495849.0 ON x1007c1s1b0n0 CANCELLED AT 2024-04-19T16:16:41 ***
+slurmstepd: error: *** STEP 3495849.0 ON x1007c1s1b0n0 CANCELLED AT 2024-04-19T16:16:41 ***
+slurmstepd: error: *** STEP 3495849.0 ON x1007c1s1b0n0 CANCELLED AT 2024-04-19T16:16:41 ***
+slurmstepd: error: *** STEP 3495849.0 ON x1007c1s1b0n0 CANCELLED AT 2024-04-19T16:16:41 ***
+srun: error: x1007c2s3b0n0: tasks 208-311: Killed
+srun: error: x1007c2s1b0n0: tasks 105,109,114,121,144,151,158,162,164,168,170,174,182: Segmentation fault (core dumped)
+srun: error: x1007c1s1b0n0: tasks 0-103: Killed
+srun: error: x1007c2s1b0n0: tasks 104,106-108,110-113,115-120,122-143,145-150,152-157,159-161,163,165-167,169,171-173,175-181,183-207: Killed
+srun: error: Timed out waiting for job step to complete
+Finished AMR-Wind job at:  Fri Apr 19 16:18:28 MDT 2024
