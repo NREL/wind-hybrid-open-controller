@@ -2,7 +2,11 @@
 #SBATCH --job-name=amr_precursor
 #SBATCH --time=12:00:00
 ##SBATCH --partition=debug
+<<<<<<< HEAD
+#SBATCH --nodes=4
+=======
 #SBATCH --nodes=1
+>>>>>>> 779f27e193dde4a170e547e68a38be4e5fc84703
 #SBATCH --ntasks-per-node=104
 #SBATCH --account=ssc
 
