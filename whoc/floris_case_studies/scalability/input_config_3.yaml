@@ -2,29 +2,29 @@ controller:
   alpha: 0.5
   basin_hop: false
   beta: 0.9
-  case_names: 100 Turbines
+  case_names: 3 Turbines
   control_input_domain: continuous
   controller_class: MPC
   controller_type: SimpleYawController
   deadband_thr: 8
   dt: 60
-  floris_input_file: /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/whoc/../examples/mpc_wake_steering_florisstandin/floris_gch_100.yaml
+  floris_input_file: /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/whoc/../examples/mpc_wake_steering_florisstandin/floris_gch_3.yaml
   generate_lut: false
   initial_conditions:
     yaw: 270.0
   lpf_time_const: 35
-  lut_path: /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/whoc/../examples/mpc_wake_steering_florisstandin/lut_100.csv
+  lut_path: /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/whoc/../examples/mpc_wake_steering_florisstandin/lut_3.csv
   n_horizon: 10
   n_wind_preview_samples: 3
   nu: 0.001
-  num_turbines: 100
+  num_turbines: 3
   offline_probability: 0.0
   seed: 0
   solver: slsqp
   state_con_type: extreme
   use_filtered_wind_dir: true
   warm_start: greedy
-  wind_case_idx: 0
+  wind_case_idx: 3
   wind_preview_type: stochastic
   yaw_increment: 0.25
   yaw_limits:
@@ -55,7 +55,7 @@ hercules_comms:
       name: hercules
       publication_interval: 1
       starttime: 0
-      stoptime: 300
+      stoptime: 3600
       use_dash_frontend: false
 name: example_000
 py_sims:

@@ -2,7 +2,7 @@ controller:
   alpha: 0.5
   basin_hop: false
   beta: 0.9
-  case_names: 02.5% Chance of Breakdown
+  case_names: 00.0% Chance of Breakdown
   control_input_domain: continuous
   controller_class: MPC
   controller_type: SimpleYawController
@@ -18,13 +18,13 @@ controller:
   n_wind_preview_samples: 3
   nu: 0.001
   num_turbines: 25
-  offline_probability: 0.025
+  offline_probability: 0
   seed: 0
   solver: slsqp
   state_con_type: extreme
   use_filtered_wind_dir: true
   warm_start: greedy
-  wind_case_idx: 0
+  wind_case_idx: 1
   wind_preview_type: stochastic
   yaw_increment: 0.25
   yaw_limits:
@@ -55,7 +55,7 @@ hercules_comms:
       name: hercules
       publication_interval: 1
       starttime: 0
-      stoptime: 300
+      stoptime: 3600
       use_dash_frontend: false
 name: example_000
 py_sims:
