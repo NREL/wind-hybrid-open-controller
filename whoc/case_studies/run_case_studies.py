@@ -38,8 +38,8 @@ if sys.platform == "linux":
 elif sys.platform == "darwin":
     STORAGE_DIR = "/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/whoc/floris_case_studies"
 
-if not os.path.exists(STORAGE_DIR)
-os.makedirs(STORAGE_DIR)
+if not os.path.exists(STORAGE_DIR):
+    os.makedirs(STORAGE_DIR)
 
 # sequential_pyopt is best solver, stochastic is best preview type
 case_studies = {
@@ -741,7 +741,9 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
         if not os.path.exists(results_dir):
             os.makedirs(results_dir)
 
+        print(f"744 about to save df {r} of {len(results)}")
         results_dfs[case_name_lists[r]].to_csv(os.path.join(results_dir, f"time_series_results_case_{case_lists[r]['case_names']}_seed_{case_lists[r]['wind_case_idx']}.csv"))
+        print(f"746 finished saving df {r} of {len(results)}")
 
         # fi.calculate_wake(wind_dir_ts[:-2, np.newaxis] - results_dfs[case_name_lists[f]][[f"TurbineYawAngle_{i}" for i in range(9)]].to_numpy())
         # turbine_powers = fi.get_turbine_powers()
