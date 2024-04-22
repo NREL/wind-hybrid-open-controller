@@ -32,6 +32,7 @@ from hercules.utilities import load_yaml
 # from warnings import simplefilter
 # simplefilter('error')
 N_COST_FUNC_TUNINGS = 101
+
 # sequential_pyopt is best solver, stochastic is best preview type
 case_studies = {
     "baseline_controllers": {"seed": {"group": 0, "vals": [0]},
@@ -382,6 +383,8 @@ def simulate_controller(controller_class, input_dict, **kwargs):
                                         yaw_rate=input_dict["controller"]["yaw_rate"]) \
         .load_floris(config_path=input_dict["controller"]["floris_input_file"])
     
+    kwargs["wind_field_config"]["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
+
     ctrl = controller_class(fi, input_dict=input_dict, **kwargs)
     # TODO use coroutines or threading for hercules interfaces
     # optionally warm-start with LUT solution
@@ -596,14 +599,16 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
 
     wind_field_config["simulation_max_time"] = input_dict["hercules_comms"]["helics"]["config"]["stoptime"]
     wind_field_config["num_turbines"] = input_dict["controller"]["num_turbines"]
-    wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
     wind_field_config["preview_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"])
     wind_field_config["simulation_sampling_time"] = input_dict["dt"]
-    wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
+    
+    # wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
+    wind_field_config["n_preview_steps"] = int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] / input_dict["dt"]) \
+        + max(case_studies["horizon_length"]["n_horizon"]["vals"]) * int(input_dict["controller"]["dt"] / input_dict["dt"])
     wind_field_config["n_samples_per_init_seed"] = 1
     wind_field_config["regenerate_distribution_params"] = False
     wind_field_config["distribution_params_path"] = os.path.join(os.path.dirname(whoc_file), "..", "examples", "wind_field_data", "wind_preview_distribution_params.pkl")  
-    wind_field_config["time_series_dt"] = input_dict["dt"]
+    wind_field_config["time_series_dt"] = 1
 
     print("run_simulations line 546")
     # TODO check that wind field has same dt or interpolate...
@@ -835,7 +840,6 @@ def plot_simulations(results_dirs):
 if __name__ == '__main__':
 
     REGENERATE_WIND_FIELD = False
-    PARALLEL = True
 
     case_families = ["baseline_controllers", "solver_type",
                         "wind_preview_type", "warm_start", 
@@ -844,13 +848,14 @@ if __name__ == '__main__':
 
     DEBUG = sys.argv[1].lower() == "debug"
     USE_MPI = sys.argv[2].lower() == "mpi"
-    if len(sys.argv) > 3:
-        CASE_FAMILY_IDX = [int(i) for i in sys.argv[3:]]
+    PARALLEL = sys.argv[3].lower() == "parallel"
+    if len(sys.argv) > 4:
+        CASE_FAMILY_IDX = [int(i) for i in sys.argv[4:]]
     else:
         CASE_FAMILY_IDX = list(range(len(case_families)))
 
     if DEBUG:
-        N_SEEDS = 2
+        N_SEEDS = 1
     else:
         N_SEEDS = 6
 

@@ -1,0 +1,1 @@
+scp -r /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/wind_field_data ahenry@kestrel.hpc.nrel.gov:/home/ahenry/toolboxes/whoc_env/wind-hybrid-open-controller/examples
