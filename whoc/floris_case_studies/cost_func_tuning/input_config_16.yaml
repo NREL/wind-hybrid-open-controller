@@ -1,0 +1,68 @@
+controller:
+  alpha: 0.8
+  basin_hop: false
+  beta: 0.9
+  case_names: alpha_0.8
+  control_input_domain: continuous
+  controller_class: MPC
+  controller_type: SimpleYawController
+  deadband_thr: 8
+  dt: 60
+  floris_input_file: /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/whoc/../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml
+  generate_lut: false
+  initial_conditions:
+    yaw: 270.0
+  lpf_time_const: 35
+  lut_path: /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/whoc/../examples/mpc_wake_steering_florisstandin/lut_9.csv
+  n_horizon: 10
+  n_wind_preview_samples: 3
+  nu: 0.001
+  num_turbines: 9
+  offline_probability: 0.0
+  seed: 0
+  solver: slsqp
+  state_con_type: extreme
+  use_filtered_wind_dir: true
+  warm_start: greedy
+  wind_case_idx: 0
+  wind_preview_type: stochastic
+  yaw_increment: 0.25
+  yaw_limits:
+  - -30
+  - 30
+  yaw_rate: 0.3
+description: Just a solar plant
+dt: 0.5
+hercules_comms:
+  amr_wind:
+    wind_farm_0:
+      amr_wind_input_file: amr_input.inp
+      type: amr_wind_local
+      yaw_simulator_name: yaw_system_0
+  helics:
+    config:
+      Agent: ControlCenter
+      KAFKA: false
+      KAFKA_topics: EMUV1py
+      endpoint_interval: 1
+      helics:
+        endpoints: []
+        helicsport: 23404
+        publication_topics:
+        - control
+        subscription_topics:
+        - status
+      name: hercules
+      publication_interval: 1
+      starttime: 0
+      stoptime: 300
+      use_dash_frontend: false
+name: example_000
+py_sims:
+  solar_farm_0:
+    capacity: 50
+    efficiency: 0.5
+    initial_conditions:
+      irradiance: 1000
+      power: 25
+    py_sim_type: SimpleSolar
