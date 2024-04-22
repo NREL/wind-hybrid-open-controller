@@ -33,6 +33,14 @@ from hercules.utilities import load_yaml
 # simplefilter('error')
 N_COST_FUNC_TUNINGS = 101
 
+if sys.platform == "linux":
+    STORAGE_DIR = "/projects/ssc/ahenry/whoc/floris_case_studies"
+elif sys.platform == "darwin":
+    STORAGE_DIR = "/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/whoc/floris_case_studies"
+
+if not os.path.exists(STORAGE_DIR)
+os.makedirs(STORAGE_DIR)
+
 # sequential_pyopt is best solver, stochastic is best preview type
 case_studies = {
     "baseline_controllers": {"seed": {"group": 0, "vals": [0]},
@@ -655,7 +663,7 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
         n_cases_list.append(len(case_list))
 
         # make save directory
-        results_dir = os.path.join(os.path.dirname(whoc_file), "case_studies", case_study_key)
+        results_dir = os.path.join(STORAGE_DIR, case_study_key)
         
         if os.path.exists(results_dir):
             shutil.rmtree(results_dir)
