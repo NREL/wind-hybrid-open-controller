@@ -31,7 +31,7 @@ from hercules.utilities import load_yaml
 
 # from warnings import simplefilter
 # simplefilter('error')
-N_COST_FUNC_TUNINGS = 101
+N_COST_FUNC_TUNINGS = 21
 
 if sys.platform == "linux":
     STORAGE_DIR = "/projects/ssc/ahenry/whoc/floris_case_studies"
