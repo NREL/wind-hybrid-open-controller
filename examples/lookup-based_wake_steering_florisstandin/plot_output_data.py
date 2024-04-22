@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-df = pd.read_csv("hercules_output.csv")
+df = pd.read_csv("outputs/hercules_output.csv")
 
 print(df.columns)
 
