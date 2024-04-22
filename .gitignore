@@ -8,6 +8,7 @@ data.db
 slices
 
 # Data files
+<<<<<<< HEAD
 *.nc
 *.png
 *.jpeg
@@ -18,6 +19,10 @@ slices
 chk*
 plt*
 *.out
+=======
+*.csv
+*.log
+>>>>>>> 779f27e193dde4a170e547e68a38be4e5fc84703
 examples/*/logstandin*
 examples/*/loghercules*
 examples/*/logfloris*
@@ -34,6 +39,12 @@ examples/*/plt*/
 examples/post_processing/*
 examples/chk*/
 examples/plt*/
+<<<<<<< HEAD
+=======
+examples/post_processing/*.nc
+examples/*/post_processing/*.nc
+
+>>>>>>> 779f27e193dde4a170e547e68a38be4e5fc84703
 
 # Exceptions
 !examples/lookup-based_wake_steering_florisstandin/amr_standin_data.csv
