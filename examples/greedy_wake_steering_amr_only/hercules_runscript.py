@@ -26,8 +26,9 @@ with open(os.path.join(os.path.dirname(whoc.__file__), "wind_field", "wind_field
     wind_field_config = yaml.safe_load(fp)
 
 amr_standin_data = generate_freestream_wind(".", n_seeds, regenerate_wind_field)[case_idx]
-amr_standin_data["time"] += input_dict["hercules_comms"]["helics"]["config"]["starttime"
-
+amr_standin_data["time"] += input_dict["hercules_comms"]["helics"]["config"]["starttime"]
+print(amr_standin_data["amr_wind_speed"])
+print(amr_standin_data["amr_wind_direction"])
 
 # controller = ControllerStandin(input_dict)
 seed = 0
