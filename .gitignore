@@ -26,6 +26,7 @@ examples/*/plt*/
 examples/post_processing/*
 examples/chk*/
 examples/plt*/
+examples/post_processing/*.nc
 
 # Exceptions
 !examples/lookup-based_wake_steering_florisstandin/amr_standin_data.csv
