@@ -667,8 +667,8 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
         # make save directory
         results_dir = os.path.join(STORAGE_DIR, case_study_key)
         
-        if os.path.exists(results_dir):
-            shutil.rmtree(results_dir)
+        # if os.path.exists(results_dir):
+        #     shutil.rmtree(results_dir)
         
         os.makedirs(results_dir)
 
@@ -699,6 +699,7 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
         # if platform == "linux":
         if use_dask:
             # executor = MPIPoolExecutor(max_workers=mp.cpu_count())
+            initialize()
             executer = Client()
             futures = [executer.submit(simulate_controller, 
                                                 controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
