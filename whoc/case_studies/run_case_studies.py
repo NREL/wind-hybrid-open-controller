@@ -43,6 +43,9 @@ elif sys.platform == "darwin":
 if not os.path.exists(STORAGE_DIR):
     os.makedirs(STORAGE_DIR)
 
+initialize()
+client = Client()
+
 # sequential_pyopt is best solver, stochastic is best preview type
 case_studies = {
     "baseline_controllers": {"seed": {"group": 0, "vals": [0]},
@@ -699,16 +702,15 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
         # if platform == "linux":
         if use_dask:
             # executor = MPIPoolExecutor(max_workers=mp.cpu_count())
-            initialize()
-            executer = Client()
-            futures = [executer.submit(simulate_controller, 
+            
+            futures = [client.submit(simulate_controller, 
                                                 controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
                                                 wind_case_idx=case_lists[c]["wind_case_idx"], wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
                                                 case_name=case_lists[c]["case_names"],
                                                 lut_path=case_lists[c]["lut_path"], generate_lut=case_lists[c]["generate_lut"], seed=case_lists[c]["seed"], wind_field_config=wind_field_config, verbose=False)
                         for c, d in enumerate(input_dicts)]
             # dask_wait(futures)
-            results = executer.gather(futures)
+            results = client.gather(futures)
             # results = [fut.result() for fut in futures]
         # elif platform == "darwin":
         else:
