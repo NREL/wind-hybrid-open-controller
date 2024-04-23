@@ -1,5 +1,5 @@
 # from concurrent.futures import ProcessPoolExecutor, wait
-# from mpi4py.futures import MPIPoolExecutor
+from mpi4py.futures import MPIPoolExecutor
 # from mpi4py.futures import wait as mpi_wait
 from dask_mpi import initialize
 from dask.distributed import Client
@@ -43,8 +43,6 @@ elif sys.platform == "darwin":
 if not os.path.exists(STORAGE_DIR):
     os.makedirs(STORAGE_DIR)
 
-initialize()
-client = Client()
 
 # sequential_pyopt is best solver, stochastic is best preview type
 case_studies = {
@@ -592,7 +590,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
 
     return results_df
 
-def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_parallel, use_dask):
+def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_parallel, multi):
 
     input_dict = load_yaml(os.path.join(os.path.dirname(whoc_file), "../examples/hercules_input_001.yaml"))
 
@@ -700,9 +698,8 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
     print(f"about to submit calls to simulate_controller")
     if run_parallel:
         # if platform == "linux":
-        if use_dask:
-            # executor = MPIPoolExecutor(max_workers=mp.cpu_count())
-            
+        
+        if multi == "dask":
             futures = [client.submit(simulate_controller, 
                                                 controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
                                                 wind_case_idx=case_lists[c]["wind_case_idx"], wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
@@ -714,7 +711,10 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
             # results = [fut.result() for fut in futures]
         # elif platform == "darwin":
         else:
-            executor = ProcessPoolExecutor()
+            if multi == "mpi":
+                executor = MPIPoolExecutor(max_workers=mp.cpu_count())
+            else:
+                executor = ProcessPoolExecutor()
             with executor as run_simulations_exec:
                 print(f"run_simulations line 618 with {run_simulations_exec._max_workers} workers")
                 # for MPIPool executor, (waiting as if shutdown() were called with wait set to True)
@@ -865,7 +865,15 @@ if __name__ == '__main__':
                         "scalability", "cost_func_tuning"]
 
     DEBUG = sys.argv[1].lower() == "debug"
-    USE_DASK = sys.argv[2].lower() == "dask"
+    if sys.argv[2].lower() == "dask":
+        MULTI = "dask"
+        initialize()
+        client = Client()
+    elif sys.argv[2].lower() == "mpi":
+        MULTI = "mpi"
+    else:
+        MULTI = "cf"
+
     PARALLEL = sys.argv[3].lower() == "parallel"
     if len(sys.argv) > 4:
         CASE_FAMILY_IDX = [int(i) for i in sys.argv[4:]]
@@ -886,7 +894,7 @@ if __name__ == '__main__':
     os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "true"
     # run_simulations(["perfect_preview_type"], REGENERATE_WIND_FIELD)
     print([case_families[i] for i in CASE_FAMILY_IDX])
-    run_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS, run_parallel=PARALLEL, use_dask=USE_DASK)
+    run_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS, run_parallel=PARALLEL, multi=MULTI)
     # results_dirs = [os.path.join(os.path.dirname(whoc_file), "case_studies", case_key) 
     #                 for case_key in ["baseline_controllers", "solver_type",
     #                                  "wind_preview_type", "warm_start", 
