@@ -1,6 +1,7 @@
 # from concurrent.futures import ProcessPoolExecutor, wait
 # from mpi4py.futures import MPIPoolExecutor
 # from mpi4py.futures import wait as mpi_wait
+from dask_mpi import initialize
 from dask.distributed import Client
 from dask.distributed import wait as dask_wait
 from concurrent.futures import ProcessPoolExecutor
