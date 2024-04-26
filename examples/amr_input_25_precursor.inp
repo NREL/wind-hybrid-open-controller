@@ -15,10 +15,6 @@ time.cfl              =   0.95               # CFL factor
 #.......................................#
 time.plot_interval            =  3600        # Steps between plot files
 time.checkpoint_interval      =  3600        # Steps between checkpoint files
-<<<<<<< HEAD
-=======
-#io.restart_file = "/home/ahenry/toolboxes/whoc_env/wind-hybrid-open-controller/examples/chk14400"
->>>>>>> 779f27e193dde4a170e547e68a38be4e5fc84703
 
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
 #               PHYSICS                 #
@@ -34,22 +30,13 @@ transport.laminar_prandtl = 0.7
 transport.turbulent_prandtl = 0.3333
 turbulence.model = OneEqKsgsM84
 
-<<<<<<< HEAD
-incflo.physics = ABL
-ICNS.source_terms = BoussinesqBuoyancy CoriolisForcing ABLMeanBoussinesq
-=======
 incflo.physics = ABL #Actuator
 ICNS.source_terms = BoussinesqBuoyancy CoriolisForcing ABLMeanBoussinesq #ActuatorForcing
->>>>>>> 779f27e193dde4a170e547e68a38be4e5fc84703
 TKE.source_terms = KsgsM84Src
 BoussinesqBuoyancy.reference_temperature = 300.0
 CoriolisForcing.latitude = 41.3
 ABLForcing.abl_forcing_height = 90
-<<<<<<< HEAD
 incflo.velocity = 8.0 2.0 0.0
-=======
-incflo.velocity = 6.928203230275509 4.0 0.0
->>>>>>> 779f27e193dde4a170e547e68a38be4e5fc84703
 
 
 # Atmospheric boundary layer
@@ -72,35 +59,23 @@ ABL.stats_output_frequency                  = 1
 ABL.surface_temp_flux                       = 0.00
 ABL.wall_shear_stress_type                  = "Moeng"
 
-<<<<<<< HEAD
-ABL.bndry_file = "/home/ahenry/toolboxes/whoc_env/amr_precursors/b_abl_neutral_lowTI_redo/bndry_files"
-ABL.bndry_io_mode = 0 # Output mode = 0, Input mode = 1
-ABL.bndry_planes = ylo xlo
-=======
 ABL.bndry_file = "/home/ahenry/data/amr_precursors/abl/bndry_file.nc"
 ABL.bndry_io_mode = 0 # Output mode = 0, Input mode = 1
->>>>>>> 779f27e193dde4a170e547e68a38be4e5fc84703
 ABL.bndry_var_names = velocity temperature tke
 
 
 # Output boundary files
-<<<<<<< HEAD
-=======
 ABL.bndry_planes = ylo xlo
->>>>>>> 779f27e193dde4a170e547e68a38be4e5fc84703
 ABL.bndry_output_start_time = 7200.0
 ABL.bndry_var_names = velocity temperature tke
 ABL.bndry_output_format = native
 ABL.stats_output_frequency = 1                   
 ABL.stats_output_format = netcdf  
 
-<<<<<<< HEAD
-=======
 # Whether to use helics
 helics.activated        =  false
 helics.broker_port = 23405
 
->>>>>>> 779f27e193dde4a170e547e68a38be4e5fc84703
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
 #        ADAPTIVE MESH REFINEMENT       #
 #.......................................#
@@ -165,8 +140,6 @@ samplingLine.z_line.num_points = 128
 samplingLine.z_line.start = 5.0 5.0 5.0
 samplingLine.z_line.end = 5.0 5.0 1275.0
 
-<<<<<<< HEAD
-=======
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨# 
 #              TURBINES                 #
 #.......................................#
@@ -232,4 +205,3 @@ Actuator.T21.base_position = 3528.0 756.0 0.0
 Actuator.T22.base_position = 3528.0 1512.0 0.0
 Actuator.T23.base_position = 3528.0 2268.0 0.0
 Actuator.T24.base_position = 3528.0 3024.0 0.0
->>>>>>> 779f27e193dde4a170e547e68a38be4e5fc84703
