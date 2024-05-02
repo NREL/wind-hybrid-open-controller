@@ -2,11 +2,7 @@
 #SBATCH --job-name=amr_precursor
 #SBATCH --time=12:00:00
 ##SBATCH --partition=debug
-<<<<<<< HEAD
 #SBATCH --nodes=4
-=======
-#SBATCH --nodes=1
->>>>>>> 779f27e193dde4a170e547e68a38be4e5fc84703
 #SBATCH --ntasks-per-node=104
 #SBATCH --account=ssc
 
@@ -26,5 +22,5 @@ spack load amr-wind+helics+openfast
 echo "Starting AMR-Wind job at: " $(date)
 echo $SLURM_NTASKS
 # Now go back to scratch folder and launch the job
-srun -n $SLURM_NTASKS /home/ahenry/toolboxes/whoc_env/amr-wind/spack-build-bmx2pfy/amr_wind amr_input_25_precursor.inp
+srun -n $SLURM_NTASKS /home/ahenry/toolboxes/whoc_env/amr-wind/spack-build-bmx2pfy/amr_wind amr_precursor_original.inp
 echo "Finished AMR-Wind job at: " $(date)
