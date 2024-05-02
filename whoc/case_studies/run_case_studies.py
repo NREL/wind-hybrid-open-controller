@@ -1,5 +1,5 @@
 # from concurrent.futures import ProcessPoolExecutor, wait
-# from mpi4py.futures import MPIPoolExecutor
+from mpi4py.futures import MPIPoolExecutor
 # from mpi4py.futures import wait as mpi_wait
 from dask_mpi import initialize
 from dask.distributed import Client
@@ -26,7 +26,7 @@ from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 from whoc.controllers.mpc_wake_steering_controller import MPC
 from whoc.controllers.greedy_wake_steering_controller import GreedyController
 from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
-from whoc.wind_field.WindField import generate_multi_wind_ts, WindField
+from whoc.wind_field.WindField import generate_multi_wind_ts, WindField, write_abl_forcing_velocity_timetable, fit_amr_distribution
 from whoc.postprocess_case_studies import plot_wind_field_ts, plot_opt_var_ts, plot_opt_cost_ts, plot_power_ts, barplot_opt_cost, compare_simulations, plot_cost_function_pareto_curve, plot_breakdown_robustness
 
 from hercules.utilities import load_yaml
@@ -43,8 +43,6 @@ elif sys.platform == "darwin":
 if not os.path.exists(STORAGE_DIR):
     os.makedirs(STORAGE_DIR)
 
-initialize()
-client = Client()
 
 # sequential_pyopt is best solver, stochastic is best preview type
 case_studies = {
@@ -90,17 +88,17 @@ case_studies = {
                           },
     "sequential_slsqp_solver": {"seed": {"group": 0, "vals": [0]},
                                 # "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
-                             "controller_class": {"group": 0, "vals": ["MPC"]},
-                    "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                          "controller_class": {"group": 0, "vals": ["MPC"]},
+                          "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
-                             "generate_lut": {"group": 0, "vals": [False]},
-                    "num_turbines": {"group": 0, "vals": [9]}, 
+                          "generate_lut": {"group": 0, "vals": [False]},
+                          "num_turbines": {"group": 0, "vals": [9]}, 
                           "n_horizon": {"group": 0, "vals": [5]}, 
                           "alpha": {"group": 0, "vals": [0.5]}, 
                           "wind_preview_type": {"group": 0, "vals": ["stochastic"]}, 
                           "warm_start": {"group": 0, "vals": ["greedy"]}, 
                           "case_names": {"group": 1, "vals": ["Sequential SLSQP"]},
-                           "solver": {"group": 1, "vals": ["sequential_slsqp"]},
+                          "solver": {"group": 1, "vals": ["sequential_slsqp"]},
                           "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
                           },
@@ -240,7 +238,7 @@ case_studies = {
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
                          "generate_lut": {"group": 0, "vals": [False]},
                          "n_horizon": {"group": 0, "vals": [10]}, 
-                         "case_names": {"group": 1, "vals": [f"alpha_{f}" for f in list(np.linspace(0, 1.0, N_COST_FUNC_TUNINGS))]},
+                         "case_names": {"group": 1, "vals": [f"alpha_{np.round(f, 2)}" for f in list(np.linspace(0, 1.0, N_COST_FUNC_TUNINGS))]},
                          "alpha": {"group": 1, "vals": list(np.linspace(0, 1.0, N_COST_FUNC_TUNINGS))}, 
                           "wind_preview_type": {"group": 0, "vals": ["stochastic"]}, 
                           "warm_start": {"group": 0, "vals": ["greedy"]}, 
@@ -248,6 +246,24 @@ case_studies = {
                           "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
                           },
+    "breakdown_robustness": 
+        {"seed": {"group": 0, "vals": [0]},
+        #  "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
+         "num_turbines": {"group": 0, "vals": [25]}, 
+         "controller_class": {"group": 0, "vals": ["MPC"]},
+         "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{25}.csv")]},
+                             "generate_lut": {"group": 0, "vals": [False]},
+          "n_horizon": {"group": 0, "vals": [10]}, 
+          "alpha": {"group": 0, "vals": [0.5]}, 
+          "wind_preview_type": {"group": 0, "vals": ["stochastic"]}, 
+          "warm_start": {"group": 0, "vals": ["greedy"]}, 
+          "solver": {"group": 0, "vals": ["slsqp"]},
+          "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_25.yaml")]},
+          "case_names": {"group": 1, "vals": [f"{f*100:04.1f}% Chance of Breakdown" for f in list(np.linspace(0, 0.5, N_COST_FUNC_TUNINGS))]},
+          "offline_probability": {"group": 1, "vals": list(np.linspace(0, 0.5, N_COST_FUNC_TUNINGS))}
+        },
     "scalability": {"seed": {"group": 0, "vals": [0]},
                     # "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                     "num_turbines": {"group": 1, "vals": [3, 9, 25, 100]},
@@ -279,25 +295,7 @@ case_studies = {
                           "solver": {"group": 0, "vals": ["slsqp"]},
                           "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
-                          },
-    "breakdown_robustness": 
-        {"seed": {"group": 0, "vals": [0]},
-        #  "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
-         "num_turbines": {"group": 0, "vals": [25]}, 
-         "controller_class": {"group": 0, "vals": ["MPC"]},
-         "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{25}.csv")]},
-                             "generate_lut": {"group": 0, "vals": [False]},
-          "n_horizon": {"group": 0, "vals": [10]}, 
-          "alpha": {"group": 0, "vals": [0.5]}, 
-          "wind_preview_type": {"group": 0, "vals": ["stochastic"]}, 
-          "warm_start": {"group": 0, "vals": ["greedy"]}, 
-          "solver": {"group": 0, "vals": ["slsqp"]},
-          "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_25.yaml")]},
-          "case_names": {"group": 1, "vals": [f"{f*100:04.1f}% Chance of Breakdown" for f in [0, 0.025, 0.05, 0.5, 0.2]]},
-          "offline_probability": {"group": 1, "vals": [0, 0.025, 0.05, 0.5, 0.2]}
-        }
+                          }
 }
 
 def convert_str(val):
@@ -592,7 +590,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
 
     return results_df
 
-def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_parallel, use_dask):
+def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_parallel, multi):
 
     input_dict = load_yaml(os.path.join(os.path.dirname(whoc_file), "../examples/hercules_input_001.yaml"))
 
@@ -625,23 +623,36 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
 
     print("run_simulations line 546")
     # TODO check that wind field has same dt or interpolate...
+    # TODO clean this up, just fit amr distribution for amr simulations in run_hercules.py
     seed = 0
     if len(wind_field_filenames) < n_seeds or regenerate_wind_field:
-        wind_field_config["regenerate_distribution_params"] = True
+        wind_field_config["regenerate_distribution_params"] = False # set to True to regenerate from constructed mean and covaraicne
         full_wf = WindField(**wind_field_config)
-        generate_multi_wind_ts(full_wf, init_seeds=[seed + i for i in range(n_seeds)])
+        wind_field_data = generate_multi_wind_ts(full_wf, init_seeds=[seed + i for i in range(n_seeds)])
+        write_abl_forcing_velocity_timetable(wind_field_data, wind_field_dir) # then use these timetables in amr precursor
+
         wind_field_filenames = [os.path.join(wind_field_dir, f"case_{i}.csv") for i in range(n_seeds)]
         regenerate_wind_field = True
     
+    # regenerate mean and cov matrices from the amr precursors driven by abl_forcing_velocity_timetabla
+    amr_case_folders = ['/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples']
+    abl_stats_files = ['post_processing/abl_statistics00000.nc']
+    if all(os.path.exists(os.path.join(dirname, filename) for dirname, filename in product(amr_case_folders, abl_stats_files))):
+        fit_amr_distribution(wind_field_config["distribution_params_path"].replace("wind_preview_distribution_params.pkl", "wind_preview_distribution_params_amr.pkl"), 
+                            case_folders=amr_case_folders, 
+                            abl_stats_files=abl_stats_files) # change distribution params based on amr data if it exists
+
     print("run_simulations line 555")
     # if wind field data exists, get it
     WIND_TYPE = "stochastic"
     wind_field_fig_dir = os.path.join(os.path.dirname(whoc_file), '../examples/wind_field_data/figs') 
     wind_field_data = []
     if os.path.exists(wind_field_dir):
-        for fn in wind_field_filenames:
-            wind_field_data.append(pd.read_csv(fn))
-            plot_wind_field_ts(wind_field_data[-1], os.path.join(wind_field_fig_dir, fn.split(".")[0]))
+        for f, fn in enumerate(wind_field_filenames):
+            wind_field_data.append(pd.read_csv(fn, index_col=0))
+            # wind_field_data[-1].rename(columns={"Sample": "WindSeed"}, inplace=True)
+            # wind_field_data[-1]["WindSeed"] = f
+            # wind_field_data[-1].to_csv(fn)
 
             if WIND_TYPE == "step":
                 # n_rows = len(wind_field_data[-1].index)
@@ -650,7 +661,9 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
                 wind_field_data[-1].loc[:45, f"FreestreamWindDir"] = 260.0
                 wind_field_data[-1].loc[45:, f"FreestreamWindDir"] = 270.0
     
+
     # true wind disturbance time-series
+    plot_wind_field_ts(pd.concat(wind_field_data), os.path.join(wind_field_fig_dir, "seeds.png"))
     wind_mag_ts = [wind_field_data[case_idx]["FreestreamWindMag"].to_numpy() for case_idx in range(n_seeds)]
     wind_dir_ts = [wind_field_data[case_idx]["FreestreamWindDir"].to_numpy() for case_idx in range(n_seeds)]
 
@@ -700,9 +713,8 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
     print(f"about to submit calls to simulate_controller")
     if run_parallel:
         # if platform == "linux":
-        if use_dask:
-            # executor = MPIPoolExecutor(max_workers=mp.cpu_count())
-            
+        
+        if multi == "dask":
             futures = [client.submit(simulate_controller, 
                                                 controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
                                                 wind_case_idx=case_lists[c]["wind_case_idx"], wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
@@ -714,7 +726,10 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
             # results = [fut.result() for fut in futures]
         # elif platform == "darwin":
         else:
-            executor = ProcessPoolExecutor()
+            if multi == "mpi":
+                executor = MPIPoolExecutor(max_workers=mp.cpu_count())
+            else:
+                executor = ProcessPoolExecutor()
             with executor as run_simulations_exec:
                 print(f"run_simulations line 618 with {run_simulations_exec._max_workers} workers")
                 # for MPIPool executor, (waiting as if shutdown() were called with wait set to True)
@@ -779,16 +794,16 @@ def process_simulations(results_dirs):
     results_dfs = get_results_data(results_dirs)
     compare_results_df = compare_simulations(results_dfs)
     
-    plot_breakdown_robustness(compare_results_df, case_studies, os.path.join(os.path.dirname(whoc_file), "case_studies"))
-    plot_cost_function_pareto_curve(compare_results_df, case_studies, os.path.join(os.path.dirname(whoc_file), "case_studies"))
+    plot_breakdown_robustness(compare_results_df, case_studies, os.path.join(os.path.dirname(whoc_file), "floris_case_studies"))
+    plot_cost_function_pareto_curve(compare_results_df, case_studies, os.path.join(os.path.dirname(whoc_file), "floris_case_studies"))
 
-    # TODO generate results table in tex
+    # generate results table in tex
     # solver_type_df = compare_results_df.loc[compare_results_df.index.get_level_values("CaseFamily") == "solver_type", :].reset_index("CaseName")
     # solver_type_df.loc[solver_type_df.CaseName == 'SLSQP', ("RelativeYawAngleChangeAbsMean", "mean")]
 
     x = compare_results_df.loc[(compare_results_df.index.get_level_values("CaseFamily") != "scalability") & (compare_results_df.index.get_level_values("CaseFamily") != "breakdown_robustness"), :]
     # x = x.loc[:, x.columns.get_level_values(1) == "mean"]
-    x = x.loc[:, ("TotalRunningOptimizationCostMean", "mean")]
+    x = x.loc[:, ("RelativeTotalRunningOptimizationCostMean", "mean")]
     x = x.groupby("CaseFamily", group_keys=False).nsmallest(3)
     # Set alpha to 0.1, n_horizon to 12, solver to SLSQP, warm-start to LUT
 
@@ -798,34 +813,34 @@ def process_simulations(results_dirs):
     # get_result('solver_type', 'SLSQP', 'TotalRunningOptimizationCostMean')
     # get_result('solver_type', 'SLSQP', 'OptimizationConvergenceTimeMean')
     compare_results_latex = (
-    f"\\begin{{tabular}}{{l|llll}}\n"
-    f"\\textbf{{Case Family}} & \\textbf{{Case Name}} & \\thead{{\\textbf{{Relative Mean}} \\\\ \\textbf{{Farm Power [MW]}}}} & \\thead{{\\textbf{{Relative Mean Absolute}} \\\\ \\textbf{{Yaw Angle Change [deg]}}}} & \\thead{{\\textbf{{Mean}} \\\\ \\textbf{{Convergence Time [s]}}}} \\\\ \hline \n"
-    f"\multirow{{3}}{{*}}{{\\textbf{{Solver}}}} & SLSQP                                  & ${get_result('solver_type', 'SLSQP', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('solver_type', 'SLSQP', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('solver_type', 'SLSQP', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-    f"&                                          Sequential SLSQP                       & ${get_result('solver_type', 'Sequential SLSQP', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('solver_type', 'Sequential SLSQP', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('solver_type', 'Sequential SLSQP', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-    f"&                                          Serial Refine                          & ${get_result('solver_type', 'Sequential Refine', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('solver_type', 'Sequential Refine', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('solver_type', 'Sequential Refine', 'OptimizationConvergenceTimeMean')):d}$  \\\\ \hline \n"
-    f"\multirow{{3}}{{*}}{{\\textbf{{Wind Preview Model}}}} & Perfect                    & ${get_result('wind_preview_type', 'Perfect', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('wind_preview_type', 'Perfect', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('wind_preview_type', 'Perfect', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-    f"&                                                      Persistent                 & ${get_result('wind_preview_type', 'Preview', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('wind_preview_type', 'Preview', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('wind_preview_type', 'Preview', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-    f"&                                                      Stochastic                 & ${get_result('wind_preview_type', 'Stochastic', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('wind_preview_type', 'Stochastic', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('wind_preview_type', 'Stochastic', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \hline \n"
-    f"\multirow{{3}}{{*}}{{\\textbf{{Warm-Starting Method}}}} & Greedy                   & ${get_result('warm_start', 'Greedy', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('warm_start', 'Greedy', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('warm_start', 'Greedy', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-    f"&                                                        LUT                      & ${get_result('warm_start', 'LUT', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('warm_start', 'LUT', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('warm_start', 'LUT', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-    f"&                                                        Previous Solution        & ${get_result('warm_start', 'Previous', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('warm_start', 'Previous', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('warm_start', 'Previous', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \hline \n"
-    f"\multirow{{4}}{{*}}{{\\textbf{{Wind Farm Size}}}}       & $3 \\times 1$             & ${get_result('scalability', '3 Turbines', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('scalability', '3 Turbines', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('scalability', '3 Turbines', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-    f"&                                                        $3 \\times 3$             & ${get_result('scalability', '9 Turbines', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('scalability', '9 Turbines', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('scalability', '9 Turbines', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-    f"&                                                        $5 \\times 5$             & ${get_result('scalability', '25 Turbines', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('scalability', '25 Turbines', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('scalability', '25 Turbines', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-    f"&                                                        $10 \\times 10$           & ${get_result('scalability', '100 Turbines', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('scalability', '100 Turbines', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('scalability', '100 Turbines', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \hline \n"
-    f"\multirow{{5}}{{*}}{{\\textbf{{Horizon Length}}}}       & $6$                      & ${get_result('horizon_length_N', 'N_p = 6', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('horizon_length_N', 'N_p = 6', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('horizon_length_N', 'N_p = 6', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-    f"&                                                        $8$                      & ${get_result('horizon_length_N', 'N_p = 8', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('horizon_length_N', 'N_p = 8', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('horizon_length_N', 'N_p = 8', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-    f"&                                                        $10$                     & ${get_result('horizon_length_N', 'N_p = 10', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('horizon_length_N', 'N_p = 10', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('horizon_length_N', 'N_p = 10', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-    f"&                                                        $12$                     & ${get_result('horizon_length_N', 'N_p = 12', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('horizon_length_N', 'N_p = 12', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('horizon_length_N', 'N_p = 12', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-    f"&                                                        $14$                     & ${get_result('horizon_length_N', 'N_p = 14', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('horizon_length_N', 'N_p = 14', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('horizon_length_N', 'N_p = 14', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \hline \n"
-    f"\multirow{{5}}{{*}}{{\\textbf{{Probability of Turbine Failure}}}} & $0\%$          & ${get_result('breakdown_robustness', '00.0% Chance of Breakdown', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('breakdown_robustness', '00.0% Chance of Breakdown', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('breakdown_robustness', '00.0% Chance of Breakdown', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-    f"&                                                                  $1\%$          & ${get_result('breakdown_robustness', '02.5% Chance of Breakdown', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('breakdown_robustness', '02.5% Chance of Breakdown', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('breakdown_robustness', '02.5% Chance of Breakdown', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-    f"&                                                                  $5\%$          & ${get_result('breakdown_robustness', '05.0% Chance of Breakdown', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('breakdown_robustness', '05.0% Chance of Breakdown', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('breakdown_robustness', '05.0% Chance of Breakdown', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-    f"&                                                                  $10\%$         & ${get_result('breakdown_robustness', '20.0% Chance of Breakdown', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('breakdown_robustness', '20.0% Chance of Breakdown', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('breakdown_robustness', '20.0% Chance of Breakdown', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-    f"&                                                                  $20\%$         & ${get_result('breakdown_robustness', '50.0% Chance of Breakdown', 'RelativeFarmPowerMean'):.3e}$ & ${get_result('breakdown_robustness', '50.0% Chance of Breakdown', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${int(get_result('breakdown_robustness', '50.0% Chance of Breakdown', 'OptimizationConvergenceTimeMean')):d}$ \n"
+    f"\\begin{{tabular}}{{l|lllll}}\n"
+    f"\\textbf{{Case Family}} & \\textbf{{Case Name}} & \\thead{{\\textbf{{Relative Mean}} \\\\ \\textbf{{Farm Power [MW]}}}}                                                                    & \\thead{{\\textbf{{Relative Mean Absolute}} \\\\ \\textbf{{Yaw Angle Change [deg]}}}}                    & \\thead{{\\textbf{{Relative}} \\\\ \\textbf{{Mean Cost [-]}}}}                                                        & \\thead{{\\textbf{{Mean}} \\\\ \\textbf{{Convergence Time [s]}}}} \\\\ \hline \n"
+    f"\multirow{{3}}{{*}}{{\\textbf{{Solver}}}} & \\textbf{{SLSQP}}                     & ${get_result('solver_type', 'SLSQP', 'RelativeFarmPowerMean') / 1e6:.3f}$                              & ${get_result('solver_type', 'SLSQP', 'RelativeYawAngleChangeAbsMean'):.3f}$                              & ${get_result('solver_type', 'SLSQP', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                                 & ${int(get_result('solver_type', 'SLSQP', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                          Sequential SLSQP                       & ${get_result('solver_type', 'Sequential SLSQP', 'RelativeFarmPowerMean') / 1e6:.3f}$                   & ${get_result('solver_type', 'Sequential SLSQP', 'RelativeYawAngleChangeAbsMean'):.3f}$                   & ${get_result('solver_type', 'Sequential SLSQP', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                      & ${int(get_result('solver_type', 'Sequential SLSQP', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                          Serial Refine                          & ${get_result('solver_type', 'Sequential Refine', 'RelativeFarmPowerMean') / 1e6:.3f}$                  & ${get_result('solver_type', 'Sequential Refine', 'RelativeYawAngleChangeAbsMean'):.3f}$                  & ${get_result('solver_type', 'Sequential Refine', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                     & ${int(get_result('solver_type', 'Sequential Refine', 'OptimizationConvergenceTimeMean')):d}$  \\\\ \hline \n"
+    f"\multirow{{3}}{{*}}{{\\textbf{{Wind Preview Model}}}} & Perfect                   & ${get_result('wind_preview_type', 'Perfect', 'RelativeFarmPowerMean') / 1e6:.3f}$                      & ${get_result('wind_preview_type', 'Perfect', 'RelativeYawAngleChangeAbsMean'):.3f}$                      & ${get_result('wind_preview_type', 'Perfect', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                         & ${int(get_result('wind_preview_type', 'Perfect', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                      Persistent                 & ${get_result('wind_preview_type', 'Persistent', 'RelativeFarmPowerMean') / 1e6:.3f}$                   & ${get_result('wind_preview_type', 'Persistent', 'RelativeYawAngleChangeAbsMean'):.3f}$                   & ${get_result('wind_preview_type', 'Persistent', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                      & ${int(get_result('wind_preview_type', 'Persistent', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                      \\textbf{{Stochastic}}     & ${get_result('wind_preview_type', 'Stochastic', 'RelativeFarmPowerMean') / 1e6:.3f}$                   & ${get_result('wind_preview_type', 'Stochastic', 'RelativeYawAngleChangeAbsMean'):.3f}$                   & ${get_result('wind_preview_type', 'Stochastic', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                      & ${int(get_result('wind_preview_type', 'Stochastic', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \hline \n"
+    f"\multirow{{3}}{{*}}{{\\textbf{{Warm-Starting Method}}}} & Greedy                  & ${get_result('warm_start', 'Greedy', 'RelativeFarmPowerMean') / 1e6:.3f}$                              & ${get_result('warm_start', 'Greedy', 'RelativeYawAngleChangeAbsMean'):.3f}$                              & ${get_result('warm_start', 'Greedy', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                                 & ${int(get_result('warm_start', 'Greedy', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                        LUT                      & ${get_result('warm_start', 'LUT', 'RelativeFarmPowerMean') / 1e6:.3f}$                                 & ${get_result('warm_start', 'LUT', 'RelativeYawAngleChangeAbsMean'):.3f}$                                 & ${get_result('warm_start', 'LUT', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                                    & ${int(get_result('warm_start', 'LUT', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                        Previous Solution        & ${get_result('warm_start', 'Previous', 'RelativeFarmPowerMean') / 1e6:.3f}$                            & ${get_result('warm_start', 'Previous', 'RelativeYawAngleChangeAbsMean'):.3f}$                            & ${get_result('warm_start', 'Previous', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                               & ${int(get_result('warm_start', 'Previous', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \hline \n"
+    f"\multirow{{4}}{{*}}{{\\textbf{{Wind Farm Size}}}}       & $3 \\times 1$           & ${get_result('scalability', '3 Turbines', 'RelativeFarmPowerMean') / 1e6:.3f}$                         & ${get_result('scalability', '3 Turbines', 'RelativeYawAngleChangeAbsMean'):.3f}$                         & ${get_result('scalability', '3 Turbines', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                            & ${int(get_result('scalability', '3 Turbines', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                        $\\bm{{3 \\times 3}}$    & ${get_result('scalability', '9 Turbines', 'RelativeFarmPowerMean') / 1e6:.3f}$                         & ${get_result('scalability', '9 Turbines', 'RelativeYawAngleChangeAbsMean'):.3f}$                         & ${get_result('scalability', '9 Turbines', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                            & ${int(get_result('scalability', '9 Turbines', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                        $5 \\times 5$            & ${get_result('scalability', '25 Turbines', 'RelativeFarmPowerMean') / 1e6:.3f}$                        & ${get_result('scalability', '25 Turbines', 'RelativeYawAngleChangeAbsMean'):.3f}$                        & ${get_result('scalability', '25 Turbines', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                           & ${int(get_result('scalability', '25 Turbines', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                        $10 \\times 10$          & ${get_result('scalability', '100 Turbines', 'RelativeFarmPowerMean') / 1e6:.3f}$                       & ${get_result('scalability', '100 Turbines', 'RelativeYawAngleChangeAbsMean'):.3f}$                       & ${get_result('scalability', '100 Turbines', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                          & ${int(get_result('scalability', '100 Turbines', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \hline \n"
+    f"\multirow{{5}}{{*}}{{\\textbf{{Horizon Length}}}}       & $6$                     & ${get_result('horizon_length_N', 'N_p = 6', 'RelativeFarmPowerMean') / 1e6:.3f}$                       & ${get_result('horizon_length_N', 'N_p = 6', 'RelativeYawAngleChangeAbsMean'):.3f}$                       & ${get_result('horizon_length_N', 'N_p = 6', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                          & ${int(get_result('horizon_length_N', 'N_p = 6', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                        $8$                      & ${get_result('horizon_length_N', 'N_p = 8', 'RelativeFarmPowerMean') / 1e6:.3f}$                       & ${get_result('horizon_length_N', 'N_p = 8', 'RelativeYawAngleChangeAbsMean'):.3f}$                       & ${get_result('horizon_length_N', 'N_p = 8', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                          & ${int(get_result('horizon_length_N', 'N_p = 8', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                        $\\bm{{10}}$             & ${get_result('horizon_length_N', 'N_p = 10', 'RelativeFarmPowerMean') / 1e6:.3f}$                      & ${get_result('horizon_length_N', 'N_p = 10', 'RelativeYawAngleChangeAbsMean'):.3f}$                      & ${get_result('horizon_length_N', 'N_p = 10', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                         & ${int(get_result('horizon_length_N', 'N_p = 10', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                        $12$                     & ${get_result('horizon_length_N', 'N_p = 12', 'RelativeFarmPowerMean') / 1e6:.3f}$                      & ${get_result('horizon_length_N', 'N_p = 12', 'RelativeYawAngleChangeAbsMean'):.3f}$                      & ${get_result('horizon_length_N', 'N_p = 12', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                         & ${int(get_result('horizon_length_N', 'N_p = 12', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    f"&                                                        $14$                     & ${get_result('horizon_length_N', 'N_p = 14', 'RelativeFarmPowerMean') / 1e6:.3f}$                      & ${get_result('horizon_length_N', 'N_p = 14', 'RelativeYawAngleChangeAbsMean'):.3f}$                      & ${get_result('horizon_length_N', 'N_p = 14', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                         & ${int(get_result('horizon_length_N', 'N_p = 14', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \hline \n"
+    # f"\multirow{{5}}{{*}}{{\\textbf{{Probability of Turbine Failure}}}} & $\\bm{{0\%}}$ & ${get_result('breakdown_robustness', '00.0% Chance of Breakdown', 'RelativeFarmPowerMean') / 1e6:.3f}$ & ${get_result('breakdown_robustness', '00.0% Chance of Breakdown', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${get_result('breakdown_robustness', '00.0% Chance of Breakdown', 'RelativeTotalRunningOptimizationCostMean'):.3f}$    & ${int(get_result('breakdown_robustness', '00.0% Chance of Breakdown', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    # f"&                                                                  $1\%$          & ${get_result('breakdown_robustness', '02.5% Chance of Breakdown', 'RelativeFarmPowerMean') / 1e6:.3f}$ & ${get_result('breakdown_robustness', '02.5% Chance of Breakdown', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${get_result('breakdown_robustness', '02.5% Chance of Breakdown', 'RelativeTotalRunningOptimizationCostMean'):.3f}$    & ${int(get_result('breakdown_robustness', '02.5% Chance of Breakdown', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    # f"&                                                                  $5\%$          & ${get_result('breakdown_robustness', '05.0% Chance of Breakdown', 'RelativeFarmPowerMean') / 1e6:.3f}$ & ${get_result('breakdown_robustness', '05.0% Chance of Breakdown', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${get_result('breakdown_robustness', '05.0% Chance of Breakdown', 'RelativeTotalRunningOptimizationCostMean'):.3f}$    & ${int(get_result('breakdown_robustness', '05.0% Chance of Breakdown', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    # f"&                                                                  $10\%$         & ${get_result('breakdown_robustness', '20.0% Chance of Breakdown', 'RelativeFarmPowerMean') / 1e6:.3f}$ & ${get_result('breakdown_robustness', '20.0% Chance of Breakdown', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${get_result('breakdown_robustness', '20.0% Chance of Breakdown', 'RelativeTotalRunningOptimizationCostMean'):.3f}$    & ${int(get_result('breakdown_robustness', '20.0% Chance of Breakdown', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+    # f"&                                                                  $20\%$         & ${get_result('breakdown_robustness', '50.0% Chance of Breakdown', 'RelativeFarmPowerMean') / 1e6:.3f}$ & ${get_result('breakdown_robustness', '50.0% Chance of Breakdown', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${get_result('breakdown_robustness', '50.0% Chance of Breakdown', 'RelativeTotalRunningOptimizationCostMean'):.3f}$    & ${int(get_result('breakdown_robustness', '50.0% Chance of Breakdown', 'OptimizationConvergenceTimeMean')):d}$ \n"
     f"\end{{tabular}}"
     )
-    with open(os.path.join(os.path.dirname(whoc_file), "case_studies", "comparison_time_series_results_table.tex"), "w") as fp:
+    with open(os.path.join(os.path.dirname(whoc_file), "floris_case_studies", "comparison_time_series_results_table.tex"), "w") as fp:
         fp.write(compare_results_latex)
     
 
@@ -838,14 +853,14 @@ def plot_simulations(results_dirs):
             with open(os.path.join(results_dir, input_fn), 'r') as fp:
                 input_config = yaml.safe_load(fp)
 
-            df = results_dfs[f"{os.path.basename(results_dir)}_{f}"]
+            df = results_dfs[f"{os.path.basename(results_dir)}_{input_config['controller']['case_names']}"]
 
             # if "Time" not in df.columns:
             #     df["Time"] = np.arange(0, 3600.0 - 60.0, 60.0)
 
             plot_wind_field_ts(df, os.path.join(results_dir, "wind_ts.png"))
 
-            plot_opt_var_ts(results_dfs[r], input_config["controller"]["yaw_limits"], results_dir)
+            plot_opt_var_ts(df, input_config["controller"]["yaw_limits"], results_dir)
             # plot_opt_var_ts(df, (-30.0, 30.0), os.path.join(results_dir, f"opt_vars_ts_{f}.png"))
             
             plot_opt_cost_ts(df, os.path.join(results_dir, f"opt_costs_ts_{f}.png"))
@@ -857,15 +872,25 @@ def plot_simulations(results_dirs):
 
 if __name__ == '__main__':
 
-    REGENERATE_WIND_FIELD = False
+    REGENERATE_WIND_FIELD = True
+    RUN_SIMULATIONS = True
+    POST_PROCESS = False
 
     case_families = ["baseline_controllers", "solver_type",
-                        "wind_preview_type", "warm_start", 
-                        "horizon_length", "breakdown_robustness",
-                        "scalability", "cost_func_tuning"]
+                     "wind_preview_type", "warm_start", 
+                     "horizon_length", "breakdown_robustness",
+                     "scalability", "cost_func_tuning", "stochastic_preview_type"]
 
     DEBUG = sys.argv[1].lower() == "debug"
-    USE_DASK = sys.argv[2].lower() == "dask"
+    if sys.argv[2].lower() == "dask":
+        MULTI = "dask"
+        initialize()
+        client = Client()
+    elif sys.argv[2].lower() == "mpi":
+        MULTI = "mpi"
+    else:
+        MULTI = "cf"
+
     PARALLEL = sys.argv[3].lower() == "parallel"
     if len(sys.argv) > 4:
         CASE_FAMILY_IDX = [int(i) for i in sys.argv[4:]]
@@ -886,16 +911,13 @@ if __name__ == '__main__':
     os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "true"
     # run_simulations(["perfect_preview_type"], REGENERATE_WIND_FIELD)
     print([case_families[i] for i in CASE_FAMILY_IDX])
-    run_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS, run_parallel=PARALLEL, use_dask=USE_DASK)
-    # results_dirs = [os.path.join(os.path.dirname(whoc_file), "case_studies", case_key) 
-    #                 for case_key in ["baseline_controllers", "solver_type",
-    #                                  "wind_preview_type", "warm_start", 
-    #                                  "horizon_length", "breakdown_robustness",
-    #                                  "scalability", "cost_func_tuning"]]
-    # results_dirs = [os.path.join(os.path.dirname(whoc_file), "case_studies", case_key) for case_key in ["baseline_controllers", "solver_type",
-    #                                                                                                         "wind_preview_type", "warm_start", "scalability", "cost_func_tuning",
-    #                                                                                                         "horizon_length", "breakdown_robustness"]]
-    # compute stats over all seeds
-    # process_simulations(results_dirs)
-    
-    # plot_simulations(results_dirs)
+    if RUN_SIMULATIONS:
+        run_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS, run_parallel=PARALLEL, multi=MULTI)
+
+    if POST_PROCESS:
+        results_dirs = [os.path.join(os.path.dirname(whoc_file), "case_studies", case_families[i]) for i in CASE_FAMILY_IDX]
+        
+        # compute stats over all seeds
+        process_simulations(results_dirs)
+        
+        plot_simulations(results_dirs[0:2])
