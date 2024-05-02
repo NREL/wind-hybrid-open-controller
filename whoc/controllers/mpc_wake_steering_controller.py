@@ -10,6 +10,7 @@ import pandas as pd
 from pyoptsparse import Optimization, SLSQP, SNOPT
 from scipy.optimize import linprog, basinhopping
 from scipy.integrate import dblquad
+from itertools import combinations, product
 
 import whoc
 from whoc.controllers.controller_base import ControllerBase
@@ -421,7 +422,7 @@ class YawOptimizationSRRHC(YawOptimizationSR):
 class MPC(ControllerBase):
 
     # SLSQP, NSGA2, ParOpt, CONMIN, ALPSO
-    max_iter = 30
+    max_iter = 15
     acc = 1e-6
     # optimizers = [
     #     SLSQP(options={"IPRINT": 0, "MAXIT": max_iter, "ACC": acc}),
@@ -461,7 +462,7 @@ class MPC(ControllerBase):
         elif input_dict["controller"]["state_con_type"].lower() in ["check_all_samples", "extreme", "probabilistic"]:
             self.state_con_type = input_dict["controller"]["state_con_type"].lower()
         else:
-            raise TypeError("state_con_type must be have value of 'check_all_samples', 'extreme' or 'extreme'")
+            raise TypeError("state_con_type must be have value of 'check_all_samples', 'extreme' or 'probabilistic'")
 
         self.seed = kwargs["seed"] if "seed" in kwargs else None
         np.random.seed(seed=self.seed)
@@ -476,9 +477,6 @@ class MPC(ControllerBase):
                     distribution_params = generate_wind_preview( 
                                     wf, current_freestream_measurements, time_step,
                                     wind_preview_generator=wf._sample_wind_preview, 
-                                    # n_preview_steps=input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] // input_dict["dt"]),
-                                    # preview_dt=int(input_dict["controller"]["dt"] // input_dict["dt"]),
-                                    # n_samples=input_dict["controller"]["n_wind_preview_samples"],
                                     return_params=True)
                     wind_preview_data = defaultdict(list)
 
@@ -502,14 +500,15 @@ class MPC(ControllerBase):
                     elif current_freestream_measurements[1] < 0 and current_freestream_measurements[0] < 0:
                         # third quadrant
                         direction = np.pi + direction
-                    else:
+                    elif current_freestream_measurements[1] > 0 and current_freestream_measurements[0] < 0:
                         # fourth quadrant
                         direction = 2*np.pi - direction
                     # compute freestream wind direction angle from above, clockwise from north
-                    direction = (direction + np.pi) * (180 / np.pi)
+                    direction = (2*np.pi - direction) * (180 / np.pi)
 
                     wind_preview_data[f"FreestreamWindDir_{0}"] = {"mean": direction, "min": direction, "max": direction}
                     
+                    # TODO make less conservative...
                     dev_u = 2 * np.sqrt(np.diag(distribution_params[2]))
                     dev_v = 2 * np.sqrt(np.diag(distribution_params[3]))
                     min_u = distribution_params[0] - dev_u
@@ -517,98 +516,59 @@ class MPC(ControllerBase):
                     min_v = distribution_params[1] - dev_v
                     max_v = distribution_params[1] + dev_v
 
-                    min_mags = np.linalg.norm([min_u, min_v], axis=0)
+                    min_pos_u = [min_u[j] if min_u[j] > 0 else (0.0 if max_u[j] > 0 else np.nan) for j in range(self.n_horizon)]
+                    min_pos_v = [min_v[j] if min_v[j] > 0 else (0.0 if max_v[j] > 0 else np.nan) for j in range(self.n_horizon)]
+                    max_pos_u = [max_u[j] if max_u[j] > 0 else np.nan for j in range(self.n_horizon)]
+                    max_pos_v = [max_v[j] if max_v[j] > 0 else np.nan for j in range(self.n_horizon)]
+
+                    min_neg_u = [max_u[j] if max_u[j] < 0 else (0.0 if min_u[j] < 0 else np.nan) for j in range(self.n_horizon)]
+                    min_neg_v = [max_v[j] if max_v[j] < 0 else (0.0 if min_v[j] < 0 else np.nan) for j in range(self.n_horizon)]
+                    max_neg_u = [min_u[j] if min_u[j] < 0 else np.nan for j in range(self.n_horizon)]
+                    max_neg_v = [min_v[j] if min_v[j] < 0 else np.nan for j in range(self.n_horizon)]
+
+                    min_mags = np.linalg.norm([np.nanmin([min_pos_u, min_neg_u], axis=0), np.nanmin([min_pos_v, min_neg_v], axis=0)], axis=0)
                     mean_mags = np.linalg.norm([distribution_params[0], distribution_params[1]], axis=0)
-                    max_mags = np.linalg.norm([max_u, max_v], axis=0)
+                    max_mags = np.linalg.norm([np.nanmax([max_pos_u, max_neg_u], axis=0), np.nanmax([max_pos_v, max_neg_v], axis=0)], axis=0)
 
-                    min_pos_u = [min_u[j] if min_u[j] > 0 else (0.0 if max_u[j] > 0 else None) for j in range(self.n_horizon)]
-                    min_pos_v = [min_v[j] if min_v[j] > 0 else (0.0 if max_v[j] > 0 else None) for j in range(self.n_horizon)]
-                    max_pos_u = [max_u[j] if max_u[j] > 0 else None for j in range(self.n_horizon)]
-                    max_pos_v = [max_v[j] if max_v[j] > 0 else None for j in range(self.n_horizon)]
+                    combs = list(product([min_pos_u, max_pos_u, min_neg_u, max_neg_u], [min_pos_v, max_pos_v, min_neg_v, max_neg_v]))
+                    combs = np.array([[[u[j], v[j]] for u, v in combs] for j in range(self.n_horizon)]) # if not np.isnan(u[j]) and not np.isnan(v[j])]) # shape = (n_horizon, n_combinations of min max u and v, coordinates u and v)
 
-                    min_neg_u = [max_u[j] if max_u[j] < 0 else (0.0 if min_u[j] < 0 else None) for j in range(self.n_horizon)]
-                    min_neg_v = [max_v[j] if max_v[j] < 0 else (0.0 if min_v[j] < 0 else None) for j in range(self.n_horizon)]
-                    max_neg_u = [min_u[j] if min_u[j] < 0 else None for j in range(self.n_horizon)]
-                    max_neg_v = [min_v[j] if min_v[j] < 0 else None for j in range(self.n_horizon)]
-                    # TODO vectorize
-#                     u_vals = np.vstack([min_pos_u, max_pos_u, min_neg_u, max_neg_u]).T
-#                     v_vals = np.vstack([min_pos_v, max_pos_v, min_neg_v, max_neg_v]).T
-#                     u_vals, v_vals = np.meshgrid(u_vals, v_vals)
-#                     # compute directions
-#                     u_only_dir = np.zeros_like(u_vals)
-#                     u_only_dir[(v_vala == 0) & (u_preview >= 0)] = (np.pi / 2)
-#                     u_only_dir[(v_preview == 0) & (u_preview < 0)] = np.pi
-#                     # TODO below does not capture all quadrants of angle...
-# å
-#                     dir_preview = np.arctan(np.divide(abs(u_preview), abs(v_preview),
-#                                             out=np.ones_like(u_preview) * np.nan,
-#                                             where=v_preview != 0),
-#                                     out=u_only_dir,
-#                                     where=v_preview != 0)
-#                     dir_preview[dir_preview < 0] = np.pi + dir_preview[dir_preview < 0]
-#                     # dir_preview[(u_preview >= 0) & (v_preview >= 0)] = dir_preview[(u_preview >= 0) & (v_preview >= 0)] # first quadrant
-#                     dir_preview[(u_preview >= 0) & (v_preview < 0)] = np.pi - dir_preview[(u_preview >= 0) & (v_preview < 0)] # second quadrant
-#                     dir_preview[(u_preview < 0) & (v_preview < 0)] = np.pi + dir_preview[(u_preview < 0) & (v_preview < 0)] # third quadrant
-#                     dir_preview[(u_preview < 0) & (v_preview >= 0)] = 2*np.pi - dir_preview[(u_preview < 0) & (v_preview >= 0)] # fourth quadrant
+                    # compute directions
+                    u_only_dir = np.ones_like(combs[:, :, 0]) * np.nan
+                    u_only_dir[(combs[:, :, 1] == 0) & (combs[:, :, 0] > 0)] = (np.pi / 2)
+                    u_only_dir[(combs[:, :, 1] == 0) & (combs[:, :, 0] <= 0)] = np.pi
+                    dir_preview = np.arctan(np.divide(abs(combs[:, :, 0]), abs(combs[:, :, 1]),
+                                out=np.ones_like(combs[:, :, 0]) * np.nan,
+                                where=combs[:, :, 1] != 0),
+                        out=u_only_dir,
+                        where=combs[:, :, 1] != 0)
+                    
+                    # dir_preview[(u_preview >= 0) & (v_preview >= 0)] = dir_preview[(u_preview >= 0) & (v_preview >= 0)] # first quadrant
+                    dir_preview[(combs[:, :, 0] >= 0) & (combs[:, :, 1] < 0)] = np.pi - dir_preview[(combs[:, :, 0] >= 0) & (combs[:, :, 1] < 0)] # second quadrant
+                    dir_preview[(combs[:, :, 0] < 0) & (combs[:, :, 1] < 0)] = np.pi + dir_preview[(combs[:, :, 0] < 0) & (combs[:, :, 1] < 0)] # third quadrant
+                    dir_preview[(combs[:, :, 0] < 0) & (combs[:, :, 1] > 0)] = 2*np.pi - dir_preview[(combs[:, :, 0] < 0) & (combs[:, :, 1] >= 0)] # fourth quadrant
+                    dir_preview = (2*np.pi - dir_preview) * (180. / np.pi) % 360.
 
-                    all_dirs = []
-                    for j in range(self.n_horizon):
-                        all_dirs.append([])
-                        for u in [min_pos_u, max_pos_u, min_neg_u, max_neg_u]:
-                            if u[j] is None:
-                                continue
-                            for v in [min_pos_v, max_pos_v, min_neg_v, max_neg_v]:
-                                if v[j] is None:
-                                    continue
+                    min_dirs = np.nanmin(dir_preview, axis=1)
+                    max_dirs = np.nanmax(dir_preview, axis=1)
 
-                                if v[j] != 0.0:
-                                    alpha = np.arctan((abs(u[j]) / abs(v[j])))
-                                elif u[j] > 0:
-                                    alpha = np.pi / 2
-                                else:
-                                    alpha = np.pi
-                                
-                                if v[j] >= 0 and u[j] >= 0:
-                                    # first quadrant
-                                    angle = alpha
-                                elif v[j] < 0 and u[j] >= 0:
-                                    # second quadrant
-                                    angle = np.pi - alpha
-                                elif v[j] < 0 and u[j] < 0:
-                                    # third quadrant
-                                    angle = np.pi + alpha
-                                else:
-                                    # fourth quadrant
-                                    angle = 2*np.pi - alpha
-                                
-                                all_dirs[-1].append((angle + np.pi) * (180 / np.pi) % 360.0)
-
-                    min_dirs = [min(all_dirs[j]) for j in range(self.n_horizon)]
-                    max_dirs = [max(all_dirs[j]) for j in range(self.n_horizon)]
-
-                    mean_dirs = []
-                    for u, v in zip(distribution_params[0], distribution_params[1]):
-                        if v != 0.0:
-                            alpha = np.arctan((abs(u) / abs(v)))
-                        elif u > 0:
-                            alpha = np.pi / 2
-                        else:
-                            alpha = np.pi
-                        
-                        if v >= 0 and u >= 0:
-                            # first quadrant
-                            angle = alpha
-                        elif v < 0 and u >= 0:
-                            # second quadrant
-                            angle = np.pi - alpha
-                        elif v < 0 and u < 0:
-                            # third quadrant
-                            angle = np.pi + alpha
-                        else:
-                            # fourth quadrant
-                            angle = 2*np.pi - alpha
-
-                        mean_dirs.append((angle + np.pi) * (180 / np.pi) % 360.0)
+                    # compute directions for mean values
+                    combs = np.vstack([distribution_params[0], distribution_params[1]]).T
+                    u_only_dir = np.ones_like(combs[:, 0]) * np.nan
+                    u_only_dir[(combs[:, 1] == 0) & (combs[:, 0] > 0)] = (np.pi / 2)
+                    u_only_dir[(combs[:, 1] == 0) & (combs[:, 0] <= 0)] = np.pi
+                    dir_preview = np.arctan(np.divide(abs(combs[:, 0]), abs(combs[:, 1]),
+                                out=np.ones_like(combs[:, 0]) * np.nan,
+                                where=combs[:, 1] != 0),
+                        out=u_only_dir,
+                        where=combs[:, 1] != 0)
+                    
+                    # dir_preview[(u_preview >= 0) & (v_preview >= 0)] = dir_preview[(u_preview >= 0) & (v_preview >= 0)] # first quadrant
+                    dir_preview[(combs[:, 0] >= 0) & (combs[:, 1] < 0)] = np.pi - dir_preview[(combs[:, 0] >= 0) & (combs[:, 1] < 0)] # second quadrant
+                    dir_preview[(combs[:, 0] < 0) & (combs[:, 1] < 0)] = np.pi + dir_preview[(combs[:, 0] < 0) & (combs[:, 1] < 0)] # third quadrant
+                    dir_preview[(combs[:, 0] < 0) & (combs[:, 1] > 0)] = 2*np.pi - dir_preview[(combs[:, 0] < 0) & (combs[:, 1] > 0)] # fourth quadrant
+                    dir_preview = (2 * np.pi - dir_preview) * (180. / np.pi) % 360.
+                    mean_dirs = dir_preview
 
                     for j in range(input_dict["controller"]["n_horizon"]):
                         wind_preview_data[f"FreestreamWindMag_{j + 1}"] = {"mean": mean_mags[j], "min": min_mags[j], "max": max_mags[j]}
@@ -617,9 +577,6 @@ class MPC(ControllerBase):
                 else:
                     return generate_wind_preview(wf, current_freestream_measurements, time_step,
  								wind_preview_generator=wf._sample_wind_preview, 
- 								# n_preview_steps=input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] // input_dict["dt"]),
- 								# preview_dt=int(input_dict["controller"]["dt"] // input_dict["dt"]),
- 								# n_samples=input_dict["controller"]["n_wind_preview_samples"]
                                 return_params=False)
                 
                 return wind_preview_data
@@ -841,8 +798,7 @@ class MPC(ControllerBase):
                         state_cons = state_cons + [(disturbance_dict["wind_direction"][(m * self.n_horizon) + j] - yaw_setpoints[j, turbine_i]) / self.yaw_norm_const]
         elif self.state_con_type == "extreme":
             # rather than including every sample, could only include most 'extreme' wind directions...
-            # max_wd = [np.max([disturbance_dict["wind_direction"][(m * self.n_horizon) + j] for m in range(self.n_wind_preview_samples)]) for j in range(self.n_horizon)]
-            # min_wd = [np.min([disturbance_dict["wind_direction"][(m * self.n_horizon) + j] for m in range(self.n_wind_preview_samples)]) for j in range(self.n_horizon)]
+            
             max_wd = [disturbance_dict["wind_direction"][j]["max"] for j in range(self.n_horizon)]
             min_wd = [disturbance_dict["wind_direction"][j]["min"] for j in range(self.n_horizon)]
             
@@ -959,7 +915,7 @@ class MPC(ControllerBase):
                                                                 return_statistical_values=True)
             
             if self.wind_preview_type == "stochastic":
-                # include mean value to compute cost function with
+                # include conditional mean values to compute cost function with
                 for j in range(self.n_horizon + 1):
                     self.wind_preview_samples[f"FreestreamWindDir_{j}"].append(self.wind_preview_stats[f"FreestreamWindDir_{j}"]["mean"])
                     self.wind_preview_samples[f"FreestreamWindMag_{j}"].append(self.wind_preview_stats[f"FreestreamWindMag_{j}"]["mean"])
@@ -1250,7 +1206,6 @@ class MPC(ControllerBase):
             for j in range(self.n_horizon):
                 # compute yaw angle setpoints from warm_start_func
                 
-                # if self.wind_preview_type == "stochastic":
                 next_yaw_setpoints = self.warm_start_func(
                     {
                         "wind_speeds": [self.wind_preview_stats[f"FreestreamWindMag_{j + 1}"]["mean"]], 
@@ -1434,13 +1389,8 @@ class MPC(ControllerBase):
                                                             "wind_direction": [self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][m] 
                                                                             for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)]
                                                             }, yaw_setpoints, solve_turbine_ids)
-                    
-                # if len(funcs["state_cons"]) == 90:
-                #     print("oh")
                 
                 funcs["dyn_state_cons"] = self.dyn_state_rules(opt_var_dict, solve_turbine_ids)
-
-            # np.unique(np.where(np.abs(current_yaw_offsets) > 90)[0])
             # send yaw angles 
 
             # greedily yaw directly into wind for normalization constant
@@ -1469,7 +1419,6 @@ class MPC(ControllerBase):
             self.fi.env.run()
             yawed_turbine_powers = self.fi.env.get_turbine_powers()
 
-            # TODO add negative power to paper
             decay_factor = -np.log(1e-6) / ((90 - np.max(np.abs(self.yaw_limits))) / self.yaw_norm_const)
             neg_decay = np.exp(-decay_factor * (self.yaw_limits[0] - current_yaw_offsets[current_yaw_offsets < self.yaw_limits[0]]) / self.yaw_norm_const)
             pos_decay = np.exp(-decay_factor * (current_yaw_offsets[current_yaw_offsets > self.yaw_limits[1]] - self.yaw_limits[1]) / self.yaw_norm_const)
@@ -1492,11 +1441,12 @@ class MPC(ControllerBase):
             # funcs["norm_turbine_powers"] = norm_turbine_powers.flatten()
             self.norm_turbine_powers = np.reshape(norm_turbine_powers, (self.n_wind_preview_samples, self.n_horizon, self.n_turbines))
             # self.norm_turbine_powers = np.reshape(norm_turbine_powers, (1, self.n_horizon, self.n_turbines))
-            # funcs["cost_states"] = sum([-0.5*np.mean((norm_turbine_powers[:, j, i])**2) * self.Q
-            #                     for j in range(self.n_horizon) for i in range(self.n_turbines)])
-            # mean value is last element for stochastic case
-            funcs["cost_states"] = sum([-0.5*(norm_turbine_powers[-1, j, i]**2) * self.Q
+            # TODO add to paper that we average over samples
+            funcs["cost_states"] = sum([-0.5*np.mean((norm_turbine_powers[:, j, i])**2) * self.Q
                                 for j in range(self.n_horizon) for i in range(self.n_turbines)])
+            # conditional mean value is last element for stochastic case, other values are wind samples
+            # funcs["cost_states"] = sum([-0.5*(norm_turbine_powers[-1, j, i]**2) * self.Q
+            #                     for j in range(self.n_horizon) for i in range(self.n_turbines)])
             
             funcs["cost_control_inputs"] = sum(0.5*(opt_var_dict["control_inputs"][(n_solve_turbines * j) + i])**2 * self.R
                                 for j in range(self.n_horizon) for i in range(n_solve_turbines))
@@ -1506,7 +1456,7 @@ class MPC(ControllerBase):
 
             if compute_derivatives:
                 if self.wind_preview_type == "stochastic":
-                    
+                    # TODO compare derivative computed here with that computed with persistent model
                     u = np.random.normal(loc=0.0, scale=1.0, size=(self.n_wind_preview_samples * self.n_horizon, n_solve_turbines))
                     
                     # we subtract plus change since current_yaw_offsets = wind dir - yaw setpoints
@@ -1547,21 +1497,17 @@ class MPC(ControllerBase):
                     norm_turbine_powers_states_drvt = np.einsum("ia, ib->iab", norm_turbine_power_diff / self.nu, u)
 
                 elif self.wind_preview_type == "persistent" or self.wind_preview_type == "perfect":
-
+                    # self.n_wind_preview_samples -= 1
                     norm_turbine_powers_states_drvt = np.zeros((self.n_wind_preview_samples * self.n_horizon, self.n_turbines, n_solve_turbines))
                     # norm_turbine_powers_states_drvt = np.zeros((1 * self.n_horizon, self.n_turbines, n_solve_turbines))
                     # perturb each state (each yaw angle) by +/= nu to estimate derivative of all turbines power output for a variation in each turbines yaw offset
                     # if any yaw offset are out of the [-90, 90] range, then the power output of all turbines will be nan. clip to avoid this
 
-                    # TODO parallelize across solve turbine perturbations
                     # u = np.tile(np.eye(self.n_solve_turbines), (self.n_solve_turbines * self.n_horizon, 1))
 
                     for i in range(n_solve_turbines):
                         mask = np.zeros((self.n_turbines,))
-                        # if self.solver == "sequential_slsqp":
                         mask[solve_turbine_ids[i]] = 1
-                        # else:
-                        #     mask[i] = 1
                         
                         # we subtract plus change since current_yaw_offsets = wind dir - yaw setpoints
                         plus_yaw_offsets = current_yaw_offsets - mask * self.nu * self.yaw_norm_const
@@ -1572,6 +1518,7 @@ class MPC(ControllerBase):
                             yaw_angles=yaw_offsets,
                             disable_turbines=self.offline_status,
                         )
+                        # TODO vectorize this to tile wind speeds/directions and compute plus and neg in one go
                         self.fi.env.run()
                         plus_perturbed_yawed_turbine_powers = self.fi.env.get_turbine_powers()
 
@@ -1595,8 +1542,6 @@ class MPC(ControllerBase):
                         # self.fi.env.set(yaw_angles=np.clip(neg_yaw_offsets, *self.yaw_limits), disable_turbines=self.offline_status)
                         self.fi.env.run()
                         neg_perturbed_yawed_turbine_powers = self.fi.env.get_turbine_powers()
-
-                        # TODO negative coefficient of thrust ... if effective yaw is greater than90, set negative powers, sim to interior point method, gradual penalty above 30deg offsets TEST
                         
                         neg_decay = np.exp(-decay_factor * (self.yaw_limits[0] - neg_yaw_offsets[neg_yaw_offsets < self.yaw_limits[0]]) / self.yaw_norm_const)
                         pos_decay = np.exp(-decay_factor * (neg_yaw_offsets[neg_yaw_offsets > self.yaw_limits[1]] - self.yaw_limits[1]) / self.yaw_norm_const)
@@ -1618,7 +1563,7 @@ class MPC(ControllerBase):
 
                 # funcs["norm_turbine_powers_states_drvt"] = norm_turbine_powers_states_drvt.flatten()
                 self.norm_turbine_powers_states_drvt = np.reshape(norm_turbine_powers_states_drvt, (self.n_wind_preview_samples, self.n_horizon, self.n_turbines, n_solve_turbines))
-                
+                # np.max(np.abs(self.norm_turbine_powers_states_drvt - x))
                 assert not np.any(np.isnan(self.norm_turbine_powers_states_drvt))
             
             funcs["cost"] = funcs["cost_states"] + funcs["cost_control_inputs"]
@@ -1643,14 +1588,10 @@ class MPC(ControllerBase):
                     "dyn_state_cons": {"states": [], "control_inputs": []},
                     "state_cons": {"states": [], "control_inputs": []}}
             
-            # norm_turbine_powers =  np.reshape(obj_con_dict["norm_turbine_powers"], (self.n_wind_preview_samples, self.n_horizon, self.n_turbines))
-            # norm_turbine_powers_states_drvt = np.reshape(obj_con_dict["norm_turbine_powers_states_drvt"], (self.n_wind_preview_samples, self.n_horizon, self.n_turbines, n_solve_turbines))
-
-            # if self.wind_preview_type == "stochastic":
             for j in range(self.n_horizon):
                 for i in range(n_solve_turbines):
                     current_idx = (n_solve_turbines * j) + i
-                    # TODO check
+                    
                     # compute power derivative based on sampling from wind preview with respect to changes to the state/control input of this turbine/horizon step
                     # using derivative: power of each turbine wrt each turbine's yaw setpoint, summing over terms for each turbine
                     sens["cost"]["states"].append(
