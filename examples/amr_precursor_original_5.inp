@@ -20,7 +20,9 @@ ABL.bndry_output_start_time              = 7200.0
 ABL.bndry_var_names                      = velocity temperature
 ABL.bndry_output_format                  = native
 ABL.stats_output_frequency               = 1                   
-ABL.stats_output_format                  = netcdf  
+ABL.stats_output_format                  = netcdf
+ABLForcing.forcing_timetable_output_file = "forcing_files"
+ABLForcing.forcing_timetable_start_time  = 7200.0
 
 
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
@@ -66,7 +68,8 @@ zhi.temperature                          = 0.003
 #.......................................#
 ICNS.source_terms                        = BoussinesqBuoyancy CoriolisForcing ABLForcing
 incflo.velocity                          = 8.0 0.0. 0.0 # 6.928203230275509 4.0 0.0 # TODO WHAT DOES THIS DO, WILL FREESTREAM WIND VARY
-ABLForcing.abl_forcing_height            = 150
+ABLForcing.abl_forcing_height            = 90.0 #150 TODO shouldn't this be at turbine hub height? => yes
+ABLForcing.velocity_timetable            = "wind_field_data/raw_data/abl_forcing_velocity_timetable_5.csv" # CHANGE ME FOR NEW SEED
 CoriolisForcing.latitude 				 = 41.3
 BoussinesqBuoyancy.reference_temperature = 300.0
 ABL.reference_temperature                = 300.0
@@ -74,7 +77,7 @@ ABL.temperature_heights                  = 0.0 700.0 800.0 1280.0
 ABL.temperature_values                   = 300.0 300.0 308.0 309.44
 ABL.perturb_temperature                  = false
 ABL.cutoff_height                        = 50.0
-ABL.perturb_velocity                     = true
+ABL.perturb_velocity                     = true # COULD ALTERNATIVELY (TO VELOCITY_TIMETABLE) CHANGE THE NEXT FIVE PARAMS FOR NEW SEEDS
 ABL.perturb_ref_height                   = 50.0
 ABL.Uperiods                             = 25.0
 ABL.Vperiods                             = 25.0

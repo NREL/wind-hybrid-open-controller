@@ -67,9 +67,9 @@ controller:
   alpha: 0.1 # WARNING: if you choose this to be small and set the initial values of the control inputs to 0, solver may get stuck at initial solution
   control_input_domain: continuous
   wind_preview_type: stochastic # wind preview type asumed in MPC: persistent (assumes that current freestream measurements will stay constant over horizon), stochastic (sample from Gaussian model of preview), perfect (preview known)
-  n_wind_preview_samples: 3
+  n_wind_preview_samples: 100
   warm_start: lut # may equal 'previous' to warm-start with time-shifted previous solution,  "lut" to warm-start with lookup table solution, or "random" #TODO
-  nu: 0.001 # step size to add/subtract from yaw angles for stochastic gradient estimate
+  nu: 0.01 # step size to add/subtract from yaw angles for stochastic gradient estimate
   use_filtered_wind_dir: True
   floris_input_file: ../../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml
   solver: slsqp # may equal serial_refine, slsqp, sequential_slsqp, or zsgd

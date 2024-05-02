@@ -15,8 +15,8 @@ controller:
   lpf_time_const: 35
   lut_path: /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/whoc/../examples/mpc_wake_steering_florisstandin/lut_9.csv
   n_horizon: 6
-  n_wind_preview_samples: 3
-  nu: 0.001
+  n_wind_preview_samples: 100
+  nu: 0.01
   num_turbines: 9
   offline_probability: 0.0
   seed: 0
@@ -55,7 +55,7 @@ hercules_comms:
       name: hercules
       publication_interval: 1
       starttime: 0
-      stoptime: 3600
+      stoptime: 300
       use_dash_frontend: false
 name: example_000
 py_sims:
