@@ -18,7 +18,7 @@ slices
 chk*
 plt*
 *.out
-
+*.dat 
 examples/*/logstandin*
 examples/*/loghercules*
 examples/*/logfloris*
@@ -40,7 +40,12 @@ examples/*/post_processing/*.nc
 examples/post_processing/abl_statistics00000.nc
 examples/post_processing/samplingLine00000.nc
 examples/post_processing/samplingPlane00000.nc
-examples/bndry_files
+examples/bndry_files/
+examples/bndry_files*/
+examples/*/time.dat
+examples/post_processing/abl_statistics00000.nc
+examples/*.out
+
 
 whoc/floris_case_studies/*/*.yaml
 
