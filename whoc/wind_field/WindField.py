@@ -443,42 +443,28 @@ def generate_wind_ts(wf, from_gaussian, case_idx, save_name="", init_seed=None, 
     # define noise preview
 
     # compute directions
-    u_only_dir = np.ones_like(freestream_wind_speed_u) * np.nan
-    u_only_dir[(freestream_wind_speed_v == 0) & (freestream_wind_speed_u >= 0)] = (np.pi / 2)
-    u_only_dir[(freestream_wind_speed_v == 0) & (freestream_wind_speed_u < 0)] = np.pi
+    # u_only_dir = np.ones_like(freestream_wind_speed_u) * np.nan
+    # u_only_dir[(freestream_wind_speed_v == 0) & (freestream_wind_speed_u >= 0)] = (np.pi / 2)
+    # u_only_dir[(freestream_wind_speed_v == 0) & (freestream_wind_speed_u < 0)] = np.pi
     
-    dir_preview = np.arctan(np.divide(abs(freestream_wind_speed_u), abs(freestream_wind_speed_v),
-                            out=np.ones_like(freestream_wind_speed_u) * np.nan,
-                            where=freestream_wind_speed_v != 0),
-                    out=u_only_dir,
-                    where=freestream_wind_speed_v != 0)
-    # dir_preview[dir_preview < 0] = np.pi + dir_preview[dir_preview < 0]
-    # dir_preview[(u_preview >= 0) & (v_preview >= 0)] = dir_preview[(u_preview >= 0) & (v_preview >= 0)] # first quadrant
-    dir_preview[(freestream_wind_speed_u >= 0) & (freestream_wind_speed_v < 0)] = np.pi - dir_preview[(freestream_wind_speed_u >= 0) & (freestream_wind_speed_v < 0)] # second quadrant
-    dir_preview[(freestream_wind_speed_u < 0) & (freestream_wind_speed_v < 0)] = np.pi + dir_preview[(freestream_wind_speed_u < 0) & (freestream_wind_speed_v < 0)] # third quadrant
-    dir_preview[(freestream_wind_speed_u < 0) & (freestream_wind_speed_v >= 0)] = 2*np.pi - dir_preview[(freestream_wind_speed_u < 0) & (freestream_wind_speed_v >= 0)] # fourth quadrant
+    # dir_preview = np.arctan(np.divide(abs(freestream_wind_speed_u), abs(freestream_wind_speed_v),
+    #                         out=np.ones_like(freestream_wind_speed_u) * np.nan,
+    #                         where=freestream_wind_speed_v != 0),
+    #                 out=u_only_dir,
+    #                 where=freestream_wind_speed_v != 0)
+    # # dir_preview[dir_preview < 0] = np.pi + dir_preview[dir_preview < 0]
+    # # dir_preview[(u_preview >= 0) & (v_preview >= 0)] = dir_preview[(u_preview >= 0) & (v_preview >= 0)] # first quadrant
+    # dir_preview[(freestream_wind_speed_u >= 0) & (freestream_wind_speed_v < 0)] = np.pi - dir_preview[(freestream_wind_speed_u >= 0) & (freestream_wind_speed_v < 0)] # second quadrant
+    # dir_preview[(freestream_wind_speed_u < 0) & (freestream_wind_speed_v < 0)] = np.pi + dir_preview[(freestream_wind_speed_u < 0) & (freestream_wind_speed_v < 0)] # third quadrant
+    # dir_preview[(freestream_wind_speed_u < 0) & (freestream_wind_speed_v >= 0)] = 2*np.pi - dir_preview[(freestream_wind_speed_u < 0) & (freestream_wind_speed_v >= 0)] # fourth quadrant
+
+    dir_preview = np.arctan2(freestream_wind_speed_u, freestream_wind_speed_v)
 
     # compute freestream wind direction angle from above, clockwise from north
-    dir_preview = (2 * np.pi - dir_preview) * (180 / np.pi)
-    
-    # # compute directions
-    # u_only_dirs = np.zeros_like(freestream_wind_speed_u)
-    # u_only_dirs[(freestream_wind_speed_v == 0) & (freestream_wind_speed_u >= 0)] = 270.
-    # u_only_dirs[(freestream_wind_speed_v == 0) & (freestream_wind_speed_u < 0)] = 90.
-    # u_only_dirs = (u_only_dirs - 180) * (np.pi / 180)
-    
-    # dirs = np.arctan(np.divide(freestream_wind_speed_u, freestream_wind_speed_v,
-    # 						   out=np.ones_like(freestream_wind_speed_u) * np.nan,
-    # 						   where=freestream_wind_speed_v != 0),
-    # 				 out=u_only_dirs,
-    # 				 where=freestream_wind_speed_v != 0)
-    # dirs[dirs < 0] = np.pi + dirs[dirs < 0]
-    # dirs = (dirs * (180 / np.pi)) + 180
-
+    dir_preview = ((2 * np.pi - dir_preview) * (180 / np.pi)) % 360.0
     mag_preview = np.linalg.norm(np.dstack([freestream_wind_speed_u, freestream_wind_speed_v]), axis=2)
     
     # save case raw_data as dataframe
-     # TODO why is windseed always set to zero
     wind_field_data = {
         "Time": np.tile(time, wf.n_samples_per_init_seed),
         "WindSeed": np.repeat(init_seed, len(time)),
@@ -515,24 +501,25 @@ def generate_wind_preview(wf, current_freestream_measurements, simulation_time_s
         mag_preview = np.linalg.norm(np.stack([u_preview, v_preview], axis=2), axis=2)
         
         # compute directions
-        u_only_dir = np.ones_like(u_preview) * np.nan
-        u_only_dir[(v_preview == 0) & (u_preview >= 0)] = (np.pi / 2)
-        u_only_dir[(v_preview == 0) & (u_preview < 0)] = np.pi
+        # u_only_dir = np.ones_like(u_preview) * np.nan
+        # u_only_dir[(v_preview == 0) & (u_preview >= 0)] = (np.pi / 2)
+        # u_only_dir[(v_preview == 0) & (u_preview < 0)] = np.pi
         
 
-        dir_preview = np.arctan(np.divide(abs(u_preview), abs(v_preview),
-                                out=np.ones_like(u_preview) * np.nan,
-                                where=v_preview != 0),
-                        out=u_only_dir,
-                        where=v_preview != 0)
-        # dir_preview[dir_preview < 0] = np.pi + dir_preview[dir_preview < 0]
-        # dir_preview[(u_preview >= 0) & (v_preview >= 0)] = dir_preview[(u_preview >= 0) & (v_preview >= 0)] # first quadrant
-        dir_preview[(u_preview >= 0) & (v_preview < 0)] = np.pi - dir_preview[(u_preview >= 0) & (v_preview < 0)] # second quadrant
-        dir_preview[(u_preview < 0) & (v_preview < 0)] = np.pi + dir_preview[(u_preview < 0) & (v_preview < 0)] # third quadrant
-        dir_preview[(u_preview < 0) & (v_preview >= 0)] = 2*np.pi - dir_preview[(u_preview < 0) & (v_preview >= 0)] # fourth quadrant
+        # dir_preview = np.arctan(np.divide(abs(u_preview), abs(v_preview),
+        #                         out=np.ones_like(u_preview) * np.nan,
+        #                         where=v_preview != 0),
+        #                 out=u_only_dir,
+        #                 where=v_preview != 0)
+        # # dir_preview[dir_preview < 0] = np.pi + dir_preview[dir_preview < 0]
+        # # dir_preview[(u_preview >= 0) & (v_preview >= 0)] = dir_preview[(u_preview >= 0) & (v_preview >= 0)] # first quadrant
+        # dir_preview[(u_preview >= 0) & (v_preview < 0)] = np.pi - dir_preview[(u_preview >= 0) & (v_preview < 0)] # second quadrant
+        # dir_preview[(u_preview < 0) & (v_preview < 0)] = np.pi + dir_preview[(u_preview < 0) & (v_preview < 0)] # third quadrant
+        # dir_preview[(u_preview < 0) & (v_preview >= 0)] = 2*np.pi - dir_preview[(u_preview < 0) & (v_preview >= 0)] # fourth quadrant
 
         # compute freestream wind direction angle from above, clockwise from north
-        dir_preview = (2 * np.pi - dir_preview) * (180 / np.pi)
+        dir_preview = np.arctan2(u_preview, v_preview)
+        dir_preview = ((2 * np.pi - dir_preview) * (180 / np.pi)) % 360.0
         
         for j in range(int((wf.n_preview_steps + wf.preview_dt) // wf.preview_dt)):
             wind_preview_data[f"FreestreamWindSpeedU_{j}"] += list(u_preview[:, j])
@@ -562,20 +549,22 @@ def generate_wind_preview_ts(config, case_idx, wind_field_data):
         mag = np.linalg.norm(np.vstack([u_preview, v_preview]), axis=0)
         
         # compute directions
-        u_only_dir = np.ones_like(u_preview) * np.nan
-        u_only_dir[(v_preview == 0) & (u_preview > 0)] = (np.pi / 2)
-        u_only_dir[(v_preview == 0) & (u_preview <= 0)] = np.pi
+        # u_only_dir = np.ones_like(u_preview) * np.nan
+        # u_only_dir[(v_preview == 0) & (u_preview > 0)] = (np.pi / 2)
+        # u_only_dir[(v_preview == 0) & (u_preview <= 0)] = np.pi
   
-        direction = np.arctan(np.divide(u_preview, v_preview,
-                                  out=np.ones_like(u_preview) * np.nan,
-                                  where=v_preview != 0),
-                        out=u_only_dir,
-                        where=v_preview != 0)
+        # direction = np.arctan(np.divide(u_preview, v_preview,
+        #                           out=np.ones_like(u_preview) * np.nan,
+        #                           where=v_preview != 0),
+        #                 out=u_only_dir,
+        #                 where=v_preview != 0)
         
-        direction[(u_preview >= 0) & (v_preview < 0)] = np.pi - direction[(u_preview >= 0) & (v_preview < 0)] # second quadrant
-        direction[(u_preview < 0) & (v_preview < 0)] = np.pi + direction[(u_preview < 0) & (v_preview < 0)] # third quadrant
-        direction[(u_preview < 0) & (v_preview > 0)] = 2*np.pi - direction[(u_preview < 0) & (v_preview >= 0)] # fourth quadrant
-        direction = (2*np.pi - direction) * (180. / np.pi) % 360.
+        # direction[(u_preview >= 0) & (v_preview < 0)] = np.pi - direction[(u_preview >= 0) & (v_preview < 0)] # second quadrant
+        # direction[(u_preview < 0) & (v_preview < 0)] = np.pi + direction[(u_preview < 0) & (v_preview < 0)] # third quadrant
+        # direction[(u_preview < 0) & (v_preview > 0)] = 2*np.pi - direction[(u_preview < 0) & (v_preview >= 0)] # fourth quadrant
+
+        direction = np.arctan2(u_preview, v_preview)
+        direction = ((2 * np.pi - direction) * (180. / np.pi)) % 360.
         
         for i in range(config["n_preview_steps"]):
             wind_preview_data[f"FreestreamWindSpeedU_{i}"].append(u_preview[i])
@@ -661,21 +650,23 @@ def plot_distribution_ts(wf, n_preview_steps):
     freestream_wind_speed_u = wf.df[[f'FreestreamWindSpeedU_{i}' for i in range(n_preview_steps)]].to_numpy()
     freestream_wind_speed_v = wf.df[[f'FreestreamWindSpeedV_{i}' for i in range(n_preview_steps)]].to_numpy()
     freestream_wind_mag = (freestream_wind_speed_u ** 2 + freestream_wind_speed_v ** 2) ** 0.5
-    # freestream_wind_dir = np.arctan(freestream_wind_speed_u / freestream_wind_speed_v) * (180 / np.pi) + 180
     
-    # compute directions
-    u_only_dir = np.ones_like(freestream_wind_speed_u) * np.nan
-    u_only_dir[(freestream_wind_speed_v == 0) & (freestream_wind_speed_u >= 0)] = 270
-    u_only_dir[(freestream_wind_speed_v == 0) & (freestream_wind_speed_u < 0)] = 90
-    u_only_dir = (u_only_dir - 180) * (np.pi / 180)
+    # # freestream_wind_dir = np.arctan(freestream_wind_speed_u / freestream_wind_speed_v) * (180 / np.pi) + 180
     
-    freestream_wind_dir = np.arctan(np.divide(freestream_wind_speed_u, freestream_wind_speed_v,
-                                              out=np.ones_like(freestream_wind_speed_u) * np.nan,
-                                              where=freestream_wind_speed_v != 0),
-                                    out=u_only_dir,
-                                    where=freestream_wind_speed_v != 0)
-    freestream_wind_dir[freestream_wind_dir < 0] = np.pi + freestream_wind_dir[freestream_wind_dir < 0]
-    freestream_wind_dir = (freestream_wind_dir * (180 / np.pi)) + 180
+    # # compute directions
+    # u_only_dir = np.ones_like(freestream_wind_speed_u) * np.nan
+    # u_only_dir[(freestream_wind_speed_v == 0) & (freestream_wind_speed_u >= 0)] = 270
+    # u_only_dir[(freestream_wind_speed_v == 0) & (freestream_wind_speed_u < 0)] = 90
+    # u_only_dir = (u_only_dir - 180) * (np.pi / 180)
+    
+    # freestream_wind_dir = np.arctan(np.divide(freestream_wind_speed_u, freestream_wind_speed_v,
+    #                                           out=np.ones_like(freestream_wind_speed_u) * np.nan,
+    #                                           where=freestream_wind_speed_v != 0),
+    #                                 out=u_only_dir,
+    #                                 where=freestream_wind_speed_v != 0)
+    # freestream_wind_dir[freestream_wind_dir < 0] = np.pi + freestream_wind_dir[freestream_wind_dir < 0]
+    freestream_wind_dir = np.arctan2(freestream_wind_speed_u, freestream_wind_speed_v)
+    freestream_wind_dir = ((2 * np.pi - freestream_wind_dir) * (180 / np.pi)) % 360.0
     
     colors = cm.rainbow(np.linspace(0, 1, n_preview_steps))
     
@@ -737,11 +728,11 @@ def write_abl_forcing_velocity_timetable(wfs, save_path):
     for d, wf in enumerate(wfs):
         df = wf.df[["Time", "FreestreamWindMag", "FreestreamWindDir"]]
         df["FreestreamWindDir"] = (270.0 - df["FreestreamWindDir"]) % 360.0
-        df.loc[df["FreestreamWindDir"] > 180.0, "FreestreamWindDir"] = 360.0 - df.loc[df["FreestreamWindDir"] > 180.0, "FreestreamWindDir"]
+        df.loc[df["FreestreamWindDir"] > 180.0, "FreestreamWindDir"] = df.loc[df["FreestreamWindDir"] > 180.0, "FreestreamWindDir"] - 360.0
         df.to_csv(os.path.join(save_path, f"abl_forcing_velocity_timetable_{d}.csv"), 
                                                                          index=False)
 
-def fit_amr_distribution(distribution_params_path, case_folders=None, abl_stats_files=None):
+def get_amr_timeseries(case_folders=None, abl_stats_files=None):
     if case_folders is None:
         case_folders = ['/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples']#,'/lustre/eaglefs/projects/ssc/jfrederi/amr-wind-runs/precursor-new/baseline_8ms_dt002_dx2p5']#,'/projects/ssc/jfrederi/precursors-amr-wind/neutral_highti_8ms/precursor','/projects/ssc/jfrederi/precursors-amr-wind/neutral_highti_rthedin']#,'/projects/ssc/jfrederi/precursors-amr-wind/neutral_lowti_8ms/precursor','/projects/ssc/jfrederi/precursors-amr-wind/neutral_lowti_9ms/precursor','/projects/ssc/jfrederi/precursors-amr-wind/neutral_lowti_10ms/precursor','/projects/ssc/jfrederi/precursors-amr-wind/neutral_lowti_12ms','/projects/ssc/jfrederi/precursors-amr-wind/neutral_lowti_12ms']
 
@@ -765,6 +756,11 @@ def fit_amr_distribution(distribution_params_path, case_folders=None, abl_stats_
     settled_time = abl[0].time[settled_time_idx]
     settled_u = abl[0].get_time_series_at_height('u', height)[settled_time_idx]
     settled_v = abl[0].get_time_series_at_height('v', height)[settled_time_idx]
+    return settled_time, settled_u, settled_v
+
+def fit_amr_distribution(distribution_params_path, case_folders=None, abl_stats_files=None):
+
+    settled_time, settled_u, settled_v = get_amr_timeseries(case_folders, abl_stats_files)
 
     u_preview_samples = []
     v_preview_samples = []

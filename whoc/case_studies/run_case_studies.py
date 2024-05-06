@@ -140,11 +140,12 @@ case_studies = {
                           "controller_class": {"group": 0, "vals": ["MPC"]},
                           "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
-                             "generate_lut": {"group": 0, "vals": [False]},
+                          "generate_lut": {"group": 0, "vals": [False]},
                           "n_horizon": {"group": 0, "vals": [10]}, 
                           "alpha": {"group": 0, "vals": [0.5]}, 
-                          "case_names": {"group": 1, "vals": ["Stochastic"]},
+                          "case_names": {"group": 2, "vals": [f"Stochastic_{d}" for d in [10, 25, 50, 100, 200]]},
                           "wind_preview_type": {"group": 1, "vals": ["stochastic"]}, 
+                          "n_wind_preview_samples": {"group": 2, "vals": [10, 25, 50, 100, 200]},
                           "warm_start": {"group": 0, "vals": ["greedy"]}, 
                           "solver": {"group": 0, "vals": ["slsqp"]},
                           "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -623,10 +624,9 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
 
     print("run_simulations line 546")
     # TODO check that wind field has same dt or interpolate...
-    # TODO clean this up, just fit amr distribution for amr simulations in run_hercules.py
     seed = 0
     if len(wind_field_filenames) < n_seeds or regenerate_wind_field:
-        wind_field_config["regenerate_distribution_params"] = False # set to True to regenerate from constructed mean and covaraicne
+        wind_field_config["regenerate_distribution_params"] = True # set to True to regenerate from constructed mean and covaraicne
         full_wf = WindField(**wind_field_config)
         wind_field_data = generate_multi_wind_ts(full_wf, init_seeds=[seed + i for i in range(n_seeds)])
         write_abl_forcing_velocity_timetable(wind_field_data, wind_field_dir) # then use these timetables in amr precursor
@@ -634,13 +634,6 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
         wind_field_filenames = [os.path.join(wind_field_dir, f"case_{i}.csv") for i in range(n_seeds)]
         regenerate_wind_field = True
     
-    # regenerate mean and cov matrices from the amr precursors driven by abl_forcing_velocity_timetabla
-    amr_case_folders = ['/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples']
-    abl_stats_files = ['post_processing/abl_statistics00000.nc']
-    if all(os.path.exists(os.path.join(dirname, filename) for dirname, filename in product(amr_case_folders, abl_stats_files))):
-        fit_amr_distribution(wind_field_config["distribution_params_path"].replace("wind_preview_distribution_params.pkl", "wind_preview_distribution_params_amr.pkl"), 
-                            case_folders=amr_case_folders, 
-                            abl_stats_files=abl_stats_files) # change distribution params based on amr data if it exists
 
     print("run_simulations line 555")
     # if wind field data exists, get it
@@ -660,7 +653,6 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
                 wind_field_data[-1].loc[15:, f"FreestreamWindMag"] = 11.0
                 wind_field_data[-1].loc[:45, f"FreestreamWindDir"] = 260.0
                 wind_field_data[-1].loc[45:, f"FreestreamWindDir"] = 270.0
-    
 
     # true wind disturbance time-series
     plot_wind_field_ts(pd.concat(wind_field_data), os.path.join(wind_field_fig_dir, "seeds.png"))
@@ -683,8 +675,8 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
         # make save directory
         results_dir = os.path.join(STORAGE_DIR, case_study_key)
         
-        # if os.path.exists(results_dir):
-        #     shutil.rmtree(results_dir)
+        if os.path.exists(results_dir):
+            shutil.rmtree(results_dir)
         
         os.makedirs(results_dir)
 
@@ -705,8 +697,8 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
 
     # instantiate controller and run_simulations simulation
     print("run_simulations line 613")
-    wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
-    wind_field_config["n_samples_per_init_seed"] = input_dict["controller"]["n_wind_preview_samples"]
+    # wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
+    # wind_field_config["n_samples_per_init_seed"] = input_dict["controller"]["n_wind_preview_samples"]
     wind_field_config["regenerate_distribution_params"] = False
     wind_field_config["time_series_dt"] = int(input_dict["controller"]["dt"] // input_dict["dt"])
 
@@ -793,6 +785,7 @@ def get_results_data(results_dirs):
 def process_simulations(results_dirs):
     results_dfs = get_results_data(results_dirs)
     compare_results_df = compare_simulations(results_dfs)
+    compare_results_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False)[("FarmPowerMean", "mean")]
     
     plot_breakdown_robustness(compare_results_df, case_studies, os.path.join(os.path.dirname(whoc_file), "floris_case_studies"))
     plot_cost_function_pareto_curve(compare_results_df, case_studies, os.path.join(os.path.dirname(whoc_file), "floris_case_studies"))
@@ -872,7 +865,7 @@ def plot_simulations(results_dirs):
 
 if __name__ == '__main__':
 
-    REGENERATE_WIND_FIELD = True
+    REGENERATE_WIND_FIELD = False
     RUN_SIMULATIONS = True
     POST_PROCESS = False
 
