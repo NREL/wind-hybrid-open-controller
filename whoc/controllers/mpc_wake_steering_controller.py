@@ -467,6 +467,8 @@ class MPC(ControllerBase):
         self.seed = kwargs["seed"] if "seed" in kwargs else None
         np.random.seed(seed=self.seed)
 
+        wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
+        wind_field_config["n_samples_per_init_seed"] = input_dict["controller"]["n_wind_preview_samples"]
         wf = WindField(**wind_field_config)
         # wind_preview_generator = wf._sample_wind_preview(noise_func=np.random.multivariate_normal, noise_args=None)
         
@@ -484,27 +486,28 @@ class MPC(ControllerBase):
                     wind_preview_data[f"FreestreamWindMag_{0}"] = {"mean": mag, "min": mag, "max": mag}
                     
                     # compute angle of arctan(u/v)
-                    if current_freestream_measurements[1] != 0.0:
-                        direction = np.arctan((abs(current_freestream_measurements[0]) / abs(current_freestream_measurements[1])))
-                    elif current_freestream_measurements[0] >= 0:
-                        direction = np.pi / 2
-                    else:
-                        direction = np.pi
+                    # if current_freestream_measurements[1] != 0.0:
+                    #     direction = np.arctan((abs(current_freestream_measurements[0]) / abs(current_freestream_measurements[1])))
+                    # elif current_freestream_measurements[0] >= 0:
+                    #     direction = np.pi / 2
+                    # else:
+                    #     direction = np.pi
                     
-                    # if current_freestream_measurements[1] >= 0 and current_freestream_measurements[0] >= 0:
-                    #     # first quadrant
-                    #     angle = angle
-                    if current_freestream_measurements[1] < 0 and current_freestream_measurements[0] >= 0:
-                        # second quadrant
-                        direction = np.pi - direction
-                    elif current_freestream_measurements[1] < 0 and current_freestream_measurements[0] < 0:
-                        # third quadrant
-                        direction = np.pi + direction
-                    elif current_freestream_measurements[1] > 0 and current_freestream_measurements[0] < 0:
-                        # fourth quadrant
-                        direction = 2*np.pi - direction
+                    # # if current_freestream_measurements[1] >= 0 and current_freestream_measurements[0] >= 0:
+                    # #     # first quadrant
+                    # #     angle = angle
+                    # if current_freestream_measurements[1] < 0 and current_freestream_measurements[0] >= 0:
+                    #     # second quadrant
+                    #     direction = np.pi - direction
+                    # elif current_freestream_measurements[1] < 0 and current_freestream_measurements[0] < 0:
+                    #     # third quadrant
+                    #     direction = np.pi + direction
+                    # elif current_freestream_measurements[1] > 0 and current_freestream_measurements[0] < 0:
+                    #     # fourth quadrant
+                    #     direction = 2*np.pi - direction
                     # compute freestream wind direction angle from above, clockwise from north
-                    direction = (2*np.pi - direction) * (180 / np.pi)
+                    direction = np.arctan2(current_freestream_measurements[0], current_freestream_measurements[1])
+                    direction = ((2 * np.pi - direction) * (180 / np.pi)) % 360.0
 
                     wind_preview_data[f"FreestreamWindDir_{0}"] = {"mean": direction, "min": direction, "max": direction}
                     
@@ -534,40 +537,44 @@ class MPC(ControllerBase):
                     combs = np.array([[[u[j], v[j]] for u, v in combs] for j in range(self.n_horizon)]) # if not np.isnan(u[j]) and not np.isnan(v[j])]) # shape = (n_horizon, n_combinations of min max u and v, coordinates u and v)
 
                     # compute directions
-                    u_only_dir = np.ones_like(combs[:, :, 0]) * np.nan
-                    u_only_dir[(combs[:, :, 1] == 0) & (combs[:, :, 0] > 0)] = (np.pi / 2)
-                    u_only_dir[(combs[:, :, 1] == 0) & (combs[:, :, 0] <= 0)] = np.pi
-                    dir_preview = np.arctan(np.divide(abs(combs[:, :, 0]), abs(combs[:, :, 1]),
-                                out=np.ones_like(combs[:, :, 0]) * np.nan,
-                                where=combs[:, :, 1] != 0),
-                        out=u_only_dir,
-                        where=combs[:, :, 1] != 0)
+                    # u_only_dir = np.ones_like(combs[:, :, 0]) * np.nan
+                    # u_only_dir[(combs[:, :, 1] == 0) & (combs[:, :, 0] > 0)] = (np.pi / 2)
+                    # u_only_dir[(combs[:, :, 1] == 0) & (combs[:, :, 0] <= 0)] = np.pi
+                    # dir_preview = np.arctan(np.divide(abs(combs[:, :, 0]), abs(combs[:, :, 1]),
+                    #             out=np.ones_like(combs[:, :, 0]) * np.nan,
+                    #             where=combs[:, :, 1] != 0),
+                    #     out=u_only_dir,
+                    #     where=combs[:, :, 1] != 0)
                     
-                    # dir_preview[(u_preview >= 0) & (v_preview >= 0)] = dir_preview[(u_preview >= 0) & (v_preview >= 0)] # first quadrant
-                    dir_preview[(combs[:, :, 0] >= 0) & (combs[:, :, 1] < 0)] = np.pi - dir_preview[(combs[:, :, 0] >= 0) & (combs[:, :, 1] < 0)] # second quadrant
-                    dir_preview[(combs[:, :, 0] < 0) & (combs[:, :, 1] < 0)] = np.pi + dir_preview[(combs[:, :, 0] < 0) & (combs[:, :, 1] < 0)] # third quadrant
-                    dir_preview[(combs[:, :, 0] < 0) & (combs[:, :, 1] > 0)] = 2*np.pi - dir_preview[(combs[:, :, 0] < 0) & (combs[:, :, 1] >= 0)] # fourth quadrant
-                    dir_preview = (2*np.pi - dir_preview) * (180. / np.pi) % 360.
+                    # # dir_preview[(u_preview >= 0) & (v_preview >= 0)] = dir_preview[(u_preview >= 0) & (v_preview >= 0)] # first quadrant
+                    # dir_preview[(combs[:, :, 0] >= 0) & (combs[:, :, 1] < 0)] = np.pi - dir_preview[(combs[:, :, 0] >= 0) & (combs[:, :, 1] < 0)] # second quadrant
+                    # dir_preview[(combs[:, :, 0] < 0) & (combs[:, :, 1] < 0)] = np.pi + dir_preview[(combs[:, :, 0] < 0) & (combs[:, :, 1] < 0)] # third quadrant
+                    # dir_preview[(combs[:, :, 0] < 0) & (combs[:, :, 1] > 0)] = 2*np.pi - dir_preview[(combs[:, :, 0] < 0) & (combs[:, :, 1] >= 0)] # fourth quadrant
+                    
+                    dir_preview = np.arctan2(combs[:, :, 0], combs[:, :, 1])
+                    dir_preview = ((2 * np.pi - dir_preview) * (180. / np.pi)) % 360.
 
                     min_dirs = np.nanmin(dir_preview, axis=1)
                     max_dirs = np.nanmax(dir_preview, axis=1)
 
                     # compute directions for mean values
                     combs = np.vstack([distribution_params[0], distribution_params[1]]).T
-                    u_only_dir = np.ones_like(combs[:, 0]) * np.nan
-                    u_only_dir[(combs[:, 1] == 0) & (combs[:, 0] > 0)] = (np.pi / 2)
-                    u_only_dir[(combs[:, 1] == 0) & (combs[:, 0] <= 0)] = np.pi
-                    dir_preview = np.arctan(np.divide(abs(combs[:, 0]), abs(combs[:, 1]),
-                                out=np.ones_like(combs[:, 0]) * np.nan,
-                                where=combs[:, 1] != 0),
-                        out=u_only_dir,
-                        where=combs[:, 1] != 0)
+                    # u_only_dir = np.ones_like(combs[:, 0]) * np.nan
+                    # u_only_dir[(combs[:, 1] == 0) & (combs[:, 0] > 0)] = (np.pi / 2)
+                    # u_only_dir[(combs[:, 1] == 0) & (combs[:, 0] <= 0)] = np.pi
+                    # dir_preview = np.arctan(np.divide(abs(combs[:, 0]), abs(combs[:, 1]),
+                    #             out=np.ones_like(combs[:, 0]) * np.nan,
+                    #             where=combs[:, 1] != 0),
+                    #     out=u_only_dir,
+                    #     where=combs[:, 1] != 0)
                     
-                    # dir_preview[(u_preview >= 0) & (v_preview >= 0)] = dir_preview[(u_preview >= 0) & (v_preview >= 0)] # first quadrant
-                    dir_preview[(combs[:, 0] >= 0) & (combs[:, 1] < 0)] = np.pi - dir_preview[(combs[:, 0] >= 0) & (combs[:, 1] < 0)] # second quadrant
-                    dir_preview[(combs[:, 0] < 0) & (combs[:, 1] < 0)] = np.pi + dir_preview[(combs[:, 0] < 0) & (combs[:, 1] < 0)] # third quadrant
-                    dir_preview[(combs[:, 0] < 0) & (combs[:, 1] > 0)] = 2*np.pi - dir_preview[(combs[:, 0] < 0) & (combs[:, 1] > 0)] # fourth quadrant
-                    dir_preview = (2 * np.pi - dir_preview) * (180. / np.pi) % 360.
+                    # # dir_preview[(u_preview >= 0) & (v_preview >= 0)] = dir_preview[(u_preview >= 0) & (v_preview >= 0)] # first quadrant
+                    # dir_preview[(combs[:, 0] >= 0) & (combs[:, 1] < 0)] = np.pi - dir_preview[(combs[:, 0] >= 0) & (combs[:, 1] < 0)] # second quadrant
+                    # dir_preview[(combs[:, 0] < 0) & (combs[:, 1] < 0)] = np.pi + dir_preview[(combs[:, 0] < 0) & (combs[:, 1] < 0)] # third quadrant
+                    # dir_preview[(combs[:, 0] < 0) & (combs[:, 1] > 0)] = 2*np.pi - dir_preview[(combs[:, 0] < 0) & (combs[:, 1] > 0)] # fourth quadrant
+                    
+                    dir_preview = np.arctan2(combs[:, 0], combs[:, 1])
+                    dir_preview = ((2 * np.pi - dir_preview) * (180. / np.pi)) % 360.
                     mean_dirs = dir_preview
 
                     for j in range(input_dict["controller"]["n_horizon"]):

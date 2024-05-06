@@ -15,10 +15,10 @@ controller:
   lpf_time_const: 35
   lut_path: /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/whoc/../examples/mpc_wake_steering_florisstandin/lut_25.csv
   n_horizon: 10
-  n_wind_preview_samples: 3
-  nu: 0.001
+  n_wind_preview_samples: 100
+  nu: 0.01
   num_turbines: 25
-  offline_probability: 0
+  offline_probability: 0.0
   seed: 0
   solver: slsqp
   state_con_type: extreme
