@@ -11,9 +11,9 @@ time.cfl                                 = 0.95        # CFL factor
 #.......................................#
 time.plot_interval                       = 3600       # Steps between plot files
 time.checkpoint_interval                 = 3600       # Steps between checkpoint files
-io.check_file                            = "output_files/chk"
-io.plot_file                             = "output_files/plt"
-ABL.bndry_file                           = "bndry_files"
+io.check_file                            = "output_files/chk_0"
+io.plot_file                             = "output_files/plt_0"
+ABL.bndry_file                           = "bndry_files_0"
 ABL.bndry_io_mode                        = 0
 ABL.bndry_planes                         = ylo xlo
 ABL.bndry_output_start_time              = 7200.0
@@ -21,7 +21,7 @@ ABL.bndry_var_names                      = velocity temperature
 ABL.bndry_output_format                  = native
 ABL.stats_output_frequency               = 1                   
 ABL.stats_output_format                  = netcdf
-ABLForcing.forcing_timetable_output_file = "forcing_files"
+ABLForcing.forcing_timetable_output_file = "forcing_files_0"
 ABLForcing.forcing_timetable_start_time  = 7200.0
 
 
