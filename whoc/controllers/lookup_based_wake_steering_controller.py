@@ -167,6 +167,8 @@ class LookupBasedWakeSteeringController(ControllerBase):
                                             for i in range(self.n_turbines)]).T[-1, 0]
                 wind_speeds = 8.0
             
+            print(f"{'filtered' if self.use_filt else 'unfiltered'} wind directions = {wind_dirs}")
+            
             # TODO shouldn't freestream wind speed/dir also be availalbe in measurements_dict, or just assume first row of turbines?
             # TODO filter wind speed and dir before certain time statpm?
             current_yaw_setpoints = np.atleast_2d(self.controls_dict["yaw_angles"])[0, :]

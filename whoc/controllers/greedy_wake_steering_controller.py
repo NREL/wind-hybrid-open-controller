@@ -60,11 +60,9 @@ class GreedyController(ControllerBase):
 		# if current_time < 2 * self.simulation_dt:
 		
 		if np.all(self.measurements_dict["wind_directions"] == 0):
-			# print(f"GREEDY CONTROL 63, ")
 			pass # will be set to initial values
 		# TODO MISHA this is a patch up for AMR wind initialization problem
 		elif (abs(current_time % self.simulation_dt) == 0.0) or (current_time == self.simulation_dt * 2):
-			# print("GREEDY CONTROL 67")
 			current_wind_directions = np.atleast_2d(self.measurements_dict["wind_directions"])
 			if self.use_filt:
 				self.historic_measurements["wind_directions"] = np.vstack([
@@ -85,6 +83,8 @@ class GreedyController(ControllerBase):
 				# use filtered wind direction and speed
 				wind_dirs = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"][:, i])
 												for i in range(self.n_turbines)]).T[-1, :]
+				
+			print(f"{'filtered' if self.use_filt else 'unfiltered'} wind directions = {wind_dirs}")
 				
 			# TODO MISHA can't rely on receiving yaw_angles from measurements?
 			yaw_setpoints = []
