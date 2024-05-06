@@ -64,8 +64,9 @@ class ControllerBase(metaclass=ABCMeta):
         # If not running with direct hercules integration,
         # hercules_dict may simply be None throughout this method.
         self._receive_measurements(hercules_dict)
-
+        print(f"measurements_dict = {self.measurements_dict}")
         self.compute_controls()
+        print(f"controls_dict = {self.controls_dict}")
 
         hercules_dict = self._send_controls(hercules_dict)
 
