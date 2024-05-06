@@ -150,6 +150,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
         # TODO MISHA this is a patch up for AMR wind initialization problem
         elif (abs(current_time % self.dt) == 0.0) or (current_time == self.simulation_dt * 2):
             # if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
+            print(f"self.measurements_dict['wind_directions'] = {self.measurements_dict['wind_directions']}")
             if current_time < 60 or not self.use_filt:
                 
                 if np.size(current_wind_directions) == 0:
