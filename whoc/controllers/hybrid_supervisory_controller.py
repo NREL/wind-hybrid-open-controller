@@ -15,7 +15,7 @@
 import numpy as np
 
 from whoc.controllers.controller_base import ControllerBase
-from whoc.controllers.wind_farm_power_tracking_controller import WindFarmPowerTrackingController
+
 
 class HybridSupervisoryControllerSkeleton(ControllerBase):
     def __init__(

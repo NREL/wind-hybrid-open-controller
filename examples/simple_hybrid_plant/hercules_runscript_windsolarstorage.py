@@ -18,10 +18,10 @@ from hercules.emulator import Emulator
 from hercules.py_sims import PySims
 from hercules.utilities import load_yaml
 from whoc.controllers import (
-    HybridSupervisoryControllerSkeleton,
-    WindFarmPowerTrackingController,
     BatteryPassthroughController,
-    SolarPassthroughController
+    HybridSupervisoryControllerSkeleton,
+    SolarPassthroughController,
+    WindFarmPowerTrackingController,
 )
 from whoc.interfaces.hercules_hybrid_actuator_disk_interface import HerculesHybridADInterface
 

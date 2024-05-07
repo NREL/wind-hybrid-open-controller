@@ -13,10 +13,7 @@
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
 import pytest
-from whoc.interfaces import (
-    HerculesADInterface,
-    HerculesWindBatteryInterface,
-)
+from whoc.interfaces import HerculesADInterface, HerculesWindBatteryInterface
 
 test_hercules_dict = {
     "dt": 1,

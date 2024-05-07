@@ -33,7 +33,9 @@ class HerculesHybridADInterface(InterfaceBase):
         self.battery_name = [ps for ps in py_sims if "battery" in ps][0]
 
     def get_measurements(self, hercules_dict):
-        turbine_powers = hercules_dict["hercules_comms"]["amr_wind"][self.wind_name]["turbine_powers"]
+        turbine_powers = (
+            hercules_dict["hercules_comms"]["amr_wind"][self.wind_name]["turbine_powers"]
+        )
         time = hercules_dict["time"]
 
         if ("external_signals" in hercules_dict
