@@ -108,28 +108,28 @@ def plot_simulations(results_dirs):
     summary_df = pd.read_csv(os.path.join(STORAGE_DIR, f"comparison_time_series_results.csv"), index_col=0)
     barplot_opt_cost(summary_df, STORAGE_DIR, relative=True)
 
+if __name__ == "__main__":
+    DEBUG = sys.argv[1].lower() == "debug"
 
-DEBUG = sys.argv[1].lower() == "debug"
+    if len(sys.argv) > 4:
+        CASE_FAMILY_IDX = [int(i) for i in sys.argv[4:]]
+    else:
+        CASE_FAMILY_IDX = list(range(len(case_families)))
 
-if len(sys.argv) > 4:
-    CASE_FAMILY_IDX = [int(i) for i in sys.argv[4:]]
-else:
-    CASE_FAMILY_IDX = list(range(len(case_families)))
+    if DEBUG:
+        N_SEEDS = 1
+    else:
+        N_SEEDS = 6
 
-if DEBUG:
-    N_SEEDS = 1
-else:
-    N_SEEDS = 6
+    for case_family in case_families:
+        case_studies[case_family]["wind_case_idx"] = {"group": 2, "vals": [i for i in range(N_SEEDS)]}
 
-for case_family in case_families:
-    case_studies[case_family]["wind_case_idx"] = {"group": 2, "vals": [i for i in range(N_SEEDS)]}
+    # run_simulations(["perfect_preview_type"], REGENERATE_WIND_FIELD)
+    print([case_families[i] for i in CASE_FAMILY_IDX])
 
-# run_simulations(["perfect_preview_type"], REGENERATE_WIND_FIELD)
-print([case_families[i] for i in CASE_FAMILY_IDX])
+    results_dirs = [os.path.join(STORAGE_DIR, case_families[i]) for i in CASE_FAMILY_IDX]
 
-results_dirs = [os.path.join(STORAGE_DIR, case_families[i]) for i in CASE_FAMILY_IDX]
+    # compute stats over all seeds
+    process_simulations(results_dirs)
 
-# compute stats over all seeds
-process_simulations(results_dirs)
-
-plot_simulations(results_dirs[0:2])
+    plot_simulations(results_dirs[0:2])

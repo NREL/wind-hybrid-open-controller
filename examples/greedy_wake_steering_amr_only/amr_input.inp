@@ -150,7 +150,7 @@ samplingLine.z_line.end = 5.0 5.0 1275.0
 
 Actuator.labels                            = T00 T01 T02 T03 T04 T05 T06 T07 T08 T09 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20 T21 T22 T23 T24
 Actuator.type = JoukowskyDisk
-Actuator.JoukowskyDisk.rotor_diameter      = 116.0
+Actuator.JoukowskyDisk.rotor_diameter      = 126.0
 Actuator.JoukowskyDisk.hub_height          = 90.0
 Actuator.JoukowskyDisk.output_frequency    = 10
 Actuator.JoukowskyDisk.diameters_to_sample = 2.5                 

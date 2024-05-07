@@ -59,11 +59,12 @@ class GreedyController(ControllerBase):
 		current_time = np.atleast_1d(self.measurements_dict["time"])[0]
 		# if current_time < 2 * self.simulation_dt:
 		
-		if np.all(self.measurements_dict["wind_directions"] == 0):
+		if np.all(np.isclose(self.measurements_dict["wind_directions"], 0)):
+			# yaw angles will be set to initial values
 			print("Bad wind direction measurement received, reverting to previous measurement.")
-			pass # will be set to initial values
 		# TODO MISHA this is a patch up for AMR wind initialization problem
 		elif (abs(current_time % self.simulation_dt) == 0.0) or (current_time == self.simulation_dt * 2):
+			print(f"unfiltered wind directions = {self.measurements_dict['wind_directions']}")
 			current_wind_directions = np.atleast_2d(self.measurements_dict["wind_directions"])
 			if self.use_filt:
 				self.historic_measurements["wind_directions"] = np.vstack([
@@ -88,20 +89,23 @@ class GreedyController(ControllerBase):
 			print(f"{'filtered' if self.use_filt else 'unfiltered'} wind directions = {wind_dirs}")
 				
 			# TODO MISHA can't rely on receiving yaw_angles from measurements?
-			yaw_setpoints = []
 			current_yaw_setpoints = np.atleast_2d(self.controls_dict["yaw_angles"])[0, :]
-			
-			for i in range(self.n_turbines):
-				
-				# current_yaw_angles = np.atleast_2d(self.measurements_dict["yaw_angles"])[0, :]
-				if np.abs([current_yaw_setpoints[i] - wind_dirs[i]]) > self.deadband_thr:
-					# move towards zero offset if the deadband has been superceded
-					yaw_setpoints.append(wind_dirs[i] - 0.0)
-				else:
-					# otherwise stay put
-					yaw_setpoints.append(current_yaw_setpoints[i])
+			yaw_setpoints = np.array(current_yaw_setpoints)
+			change_idx = np.abs(current_yaw_setpoints - wind_dirs) > self.deadband_thr
+			yaw_setpoints[change_idx] = wind_dirs[change_idx]
 
-			yaw_setpoints = np.array(yaw_setpoints)
+			# yaw_setpoints = []
+			# for i in range(self.n_turbines):
+				
+			# 	# current_yaw_angles = np.atleast_2d(self.measurements_dict["yaw_angles"])[0, :]
+			# 	if np.abs([current_yaw_setpoints[i] - wind_dirs[i]]) > self.deadband_thr:
+			# 		# move towards zero offset if the deadband has been superceded
+			# 		yaw_setpoints.append(wind_dirs[i] - 0.0)
+			# 	else:
+			# 		# otherwise stay put
+			# 		yaw_setpoints.append(current_yaw_setpoints[i])
+
+			
 			yaw_setpoints = np.clip(yaw_setpoints, current_yaw_setpoints - self.simulation_dt * self.yaw_rate, current_yaw_setpoints + self.simulation_dt * self.yaw_rate)
 			yaw_setpoints = np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
 			

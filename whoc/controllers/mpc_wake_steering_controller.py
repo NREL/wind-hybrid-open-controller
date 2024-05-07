@@ -894,11 +894,12 @@ class MPC(ControllerBase):
         """
         
         current_time = np.atleast_1d(self.measurements_dict["time"])[0]
-        if np.all(self.measurements_dict["wind_directions"] == 0):
-            pass # will be set to initial values
+        if np.all(np.isclose(self.measurements_dict["wind_directions"], 0)):
+            # yaw angles will be set to initial values
+            print("Bad wind direction measurement received, reverting to previous measurement.")
         # TODO MISHA this is a patch up for AMR wind initialization problem
         elif (abs(current_time % self.dt) == 0.0) or (current_time == self.simulation_dt * 2):
-            
+            print(f"unfiltered wind directions = {self.measurements_dict['wind_directions']}")
             if current_time > 0.:
                 # update initial state self.mi_model.initial_state
                 # TODO MISHA should be able to get this from measurements dict
