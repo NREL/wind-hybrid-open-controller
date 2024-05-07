@@ -47,8 +47,8 @@ class HerculesHybridADInterface(InterfaceBase):
             "wind_turbine_powers": turbine_powers,
             "plant_power_reference": plant_power_reference,
             "battery_power": hercules_dict["py_sims"][self.battery_name]["outputs"]["power"],
-            "solar_power": hercules_dict["py_sims"][self.solar_name]["outputs"]["power"],
-        }
+            "solar_power": hercules_dict["py_sims"][self.solar_name]["outputs"]["power_mw"] * 1000,
+        } # Note: solar_power converted to kW here
 
         return measurements
 
@@ -87,7 +87,7 @@ class HerculesHybridADInterface(InterfaceBase):
         ] = wind_power_setpoints
         hercules_dict["py_sims"]["inputs"].update(
             {"battery_signal": battery_power_setpoint,
-             "solar_signal": solar_power_setpoint}
+             "solar_setpoint_mw": solar_power_setpoint / 1000} # Convert to MW
         )
 
         return hercules_dict
