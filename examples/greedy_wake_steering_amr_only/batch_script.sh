@@ -2,11 +2,9 @@
 #SBATCH --job-name=greedy_wake_steering_amr_only
 #SBATCH --time=01:00:00
 #SBATCH --partition=debug
-#SBATCH --nodes=2
-#SBATCH --ntasks-per-node=36
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=104
 #SBATCH --account=ssc
-#SBATCH --mail-user=aoife.henry@colorado.edu
-#SBATCH --mail-type=ALL
 
 # A lot of modules and conda stuff
 module purge
@@ -38,7 +36,7 @@ helics_broker -t zmq  -f 2 --loglevel="debug" --local_port=$HELICS_PORT &
 
 # Need to set this to your hercules folder
 # cd /home/pfleming/hercules/hercules
-python3 hercules_runscript.py hercules_input_000.yaml $WIND_CASE_IDX >> loghercules 2>&1  & # Start the controller center and pass in input file
+python hercules_runscript.py hercules_input_000.yaml $WIND_CASE_IDX >> loghercules 2>&1  & # Start the controller center and pass in input file
 
 # Now go back to scratch folder and launch the job
 srun -n 72 /home/ahenry/toolboxes/whoc_env/amr-wind/spack-build-bmx2pfy/amr_wind amr_input.inp >> logamr 2>&1
