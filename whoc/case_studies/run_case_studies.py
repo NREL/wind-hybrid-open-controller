@@ -722,10 +722,11 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
                 # comm_rank = MPI.COMM_WORLD.Get_rank()
                 # node_name = MPI.Get_processor_name()
                 executor = MPICommExecutor(MPI.COMM_WORLD, root=0)
-                executor.max_workers = comm_size
             else:
                 executor = ProcessPoolExecutor()
             with executor as run_simulations_exec:
+                if multi == "mpi":
+                    run_simulations_exec.max_workers = comm_size
                 print(f"run_simulations line 618 with {run_simulations_exec._max_workers} workers")
                 # for MPIPool executor, (waiting as if shutdown() were called with wait set to True)
                 futures = [run_simulations_exec.submit(simulate_controller, 
