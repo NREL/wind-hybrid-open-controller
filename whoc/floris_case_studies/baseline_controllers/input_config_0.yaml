@@ -55,7 +55,7 @@ hercules_comms:
       name: hercules
       publication_interval: 1
       starttime: 0
-      stoptime: 3600
+      stoptime: 300
       use_dash_frontend: false
 name: example_000
 py_sims:
