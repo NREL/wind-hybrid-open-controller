@@ -466,10 +466,8 @@ def initialize_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_
         # make save directory
         results_dir = os.path.join(STORAGE_DIR, case_study_key)
         
-        if os.path.exists(results_dir):
-            shutil.rmtree(results_dir)
-        
-        os.makedirs(results_dir)
+        if not os.path.exists(results_dir):
+            os.makedirs(results_dir)
 
         # Load default settings and make copies
         start_case_idx = len(input_dicts)
