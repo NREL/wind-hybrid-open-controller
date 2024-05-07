@@ -674,8 +674,8 @@ def initialize_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_
         # make save directory
         results_dir = os.path.join(STORAGE_DIR, case_study_key)
         
-        if os.path.exists(results_dir):
-            shutil.rmtree(results_dir)
+        # if os.path.exists(results_dir):
+        #     shutil.rmtree(results_dir)
         
         os.makedirs(results_dir)
 
@@ -709,7 +709,7 @@ def save_simulations(case_lists, case_name_lists, results):
     for r, res in enumerate(results):
         results_dfs[case_name_lists[r]] = res
 
-        results_dir = os.path.join(os.path.dirname(whoc_file), "case_studies", "_".join(case_name_lists[r].split('_')[:-1]))
+        results_dir = os.path.join(os.path.dirname(whoc_file), "floris_case_studies", "_".join(case_name_lists[r].split('_')[:-1]))
 
         if not os.path.exists(results_dir):
             os.makedirs(results_dir)
@@ -819,8 +819,8 @@ def plot_simulations(results_dirs):
         
             plot_power_ts(df, os.path.join(results_dir, f"yaw_power_ts_{f}.png"))
     
-    summary_df = pd.read_csv(os.path.join(os.path.dirname(whoc_file), "case_studies", f"comparison_time_series_results.csv"), index_col=0)
-    barplot_opt_cost(summary_df, os.path.join(os.path.dirname(whoc_file), "case_studies"), relative=True)
+    summary_df = pd.read_csv(os.path.join(os.path.dirname(whoc_file), "floris_case_studies", f"comparison_time_series_results.csv"), index_col=0)
+    barplot_opt_cost(summary_df, os.path.join(os.path.dirname(whoc_file), "floris_case_studies"), relative=True)
 
 
 REGENERATE_WIND_FIELD = False
@@ -920,7 +920,7 @@ if RUN_SIMULATIONS:
     save_simulations(case_lists, case_name_lists, results)
             
 if POST_PROCESS:
-    results_dirs = [os.path.join(os.path.dirname(whoc_file), "case_studies", case_families[i]) for i in CASE_FAMILY_IDX]
+    results_dirs = [os.path.join(os.path.dirname(whoc_file), "floris_case_studies", case_families[i]) for i in CASE_FAMILY_IDX]
     
     # compute stats over all seeds
     process_simulations(results_dirs)
