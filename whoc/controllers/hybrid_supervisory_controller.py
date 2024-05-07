@@ -73,13 +73,11 @@ class HybridSupervisoryControllerSkeleton(ControllerBase):
         battery_power = self.measurements_dict["battery_power"]
 
         # Temporary print statements
-        print(wind_power)
-        print(solar_power)
-        print(battery_power)
+        print("Measured powers (wind, solar, battery):", wind_power, solar_power, battery_power)
 
         # Placeholder for supervisory control logic
-        wind_reference = 1e9 # Unit is kW
-        solar_reference = 0.5e9
-        battery_reference = 0.5e9
+        wind_reference = 2.5 #1e9 # Unit is kW
+        solar_reference = 0.5e9 # Check if this is working
+        battery_reference = 3.0 # 0.5e9
 
         return wind_reference, solar_reference, battery_reference

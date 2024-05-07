@@ -46,14 +46,18 @@ class HerculesHybridADInterface(InterfaceBase):
             "time": time,
             "wind_turbine_powers": turbine_powers,
             "plant_power_reference": plant_power_reference,
-            "battery_power": hercules_dict["py_sims"][self.battery_name]["outputs"],
-            "solar_power": hercules_dict["py_sims"][self.solar_name]["outputs"],
+            "battery_power": hercules_dict["py_sims"][self.battery_name]["outputs"]["power"],
+            "solar_power": hercules_dict["py_sims"][self.solar_name]["outputs"]["power"],
         }
 
         return measurements
 
     def check_controls(self, controls_dict):
-        available_controls = ["wind_power_setpoints", "solar_power_setpoint", "battery_power_setpoint"]
+        available_controls = [
+            "wind_power_setpoints",
+            "solar_power_setpoint",
+            "battery_power_setpoint"
+        ]
 
         for k in controls_dict.keys():
             if k not in available_controls:
