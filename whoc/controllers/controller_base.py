@@ -45,8 +45,9 @@ class ControllerBase(metaclass=ABCMeta):
         #     from servers.python_server import WHOC_python_server
         #     self._s = WHOC_python_server()
 
-        # Initialize controls to send
-        self.controls_dict = None
+        # Initialize measurements and controls to send
+        self.measurements_dict = {}
+        self.controls_dict = {}
 
     def _receive_measurements(self, dict=None):
         # May need to eventually loop here, depending on server set up.

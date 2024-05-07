@@ -44,6 +44,9 @@ class HybridSupervisoryControllerSkeleton(ControllerBase):
         self.controls_dict = {}
         if self.wind_controller:
             self.wind_controller.measurements_dict["wind_power_reference"] = wind_reference
+            self.wind_controller.measurements_dict["turbine_powers"] = (
+                self.measurements_dict["wind_turbine_powers"]
+            )
             self.wind_controller.compute_controls()
             self.controls_dict["wind_power_setpoints"] = (
                 self.wind_controller.controls_dict["power_setpoints"]
@@ -51,21 +54,31 @@ class HybridSupervisoryControllerSkeleton(ControllerBase):
         if self.solar_controller:
             self.solar_controller.measurements_dict["solar_power_reference"] = solar_reference
             self.solar_controller.compute_controls()
-            self.controls_dict["solar_power_setpoints"] = (
-                self.solar_controller.controls_dict["power_setpoints"]
+            self.controls_dict["solar_power_setpoint"] = (
+                self.solar_controller.controls_dict["power_setpoint"]
             )
         if self.battery_controller:
             self.battery_controller.measurements_dict["battery_power_reference"] = battery_reference
             self.battery_controller.compute_controls()
-            self.controls_dict["battery_power_setpoints"] = (
-                self.battery_controller.controls_dict["power_setpoints"]
+            self.controls_dict["battery_power_setpoint"] = (
+                self.battery_controller.controls_dict["power_setpoint"]
             )
 
         return None
 
     def supervisory_control(self):
+        # Extract current power production
+        wind_power = np.array(self.measurements_dict["wind_turbine_powers"]).sum()
+        solar_power = self.measurements_dict["solar_power"]
+        battery_power = self.measurements_dict["battery_power"]
+
+        # Temporary print statements
+        print(wind_power)
+        print(solar_power)
+        print(battery_power)
+
         # Placeholder for supervisory control logic
-        wind_reference = 1e9 # Unit is watts (CHECK)
+        wind_reference = 1e9 # Unit is kW
         solar_reference = 0.5e9
         battery_reference = 0.5e9
 

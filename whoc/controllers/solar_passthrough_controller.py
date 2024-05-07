@@ -26,4 +26,4 @@ class SolarPassthroughController(ControllerBase):
 
     def compute_controls(self):
         reference_power = self.measurements_dict["solar_power_reference"]
-        self.controls_dict["power_setpoints"] = reference_power
+        self.controls_dict["power_setpoint"] = reference_power
