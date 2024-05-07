@@ -47,10 +47,17 @@ class HerculesHybridADInterface(InterfaceBase):
         measurements = {
             "time": time,
             "wind_turbine_powers": turbine_powers,
+            "wind_speed": hercules_dict["hercules_comms"]["amr_wind"][self.wind_name]["wind_speed"],
             "plant_power_reference": plant_power_reference,
             "battery_power": hercules_dict["py_sims"][self.battery_name]["outputs"]["power"],
+            "battery_soc": hercules_dict["py_sims"][self.battery_name]["outputs"]["soc"],
             "solar_power": hercules_dict["py_sims"][self.solar_name]["outputs"]["power_mw"] * 1000,
-        } # Note: solar_power converted to kW here
+            "solar_dni": hercules_dict["py_sims"][self.solar_name]["outputs"]["dni"],
+            "solar_aoi": hercules_dict["py_sims"][self.solar_name]["outputs"]["aoi"],
+        } 
+        # Notes: solar_power converted to kW here
+        # solar_dni is the direct normal irradiance
+        # solar_aoi is the angle of incidence
 
         return measurements
 

@@ -67,10 +67,15 @@ class HybridSupervisoryControllerSkeleton(ControllerBase):
         return None
 
     def supervisory_control(self):
-        # Extract current power production
+        # Extract measurements sent
+        time = self.measurements_dict["time"] # noqa: F841 
         wind_power = np.array(self.measurements_dict["wind_turbine_powers"]).sum()
         solar_power = self.measurements_dict["solar_power"]
-        battery_power = self.measurements_dict["battery_power"]
+        battery_power = self.measurements_dict["battery_power"] # noqa: F841
+        wind_speed = self.measurements_dict["wind_speed"] # noqa: F841
+        battery_soc = self.measurements_dict["battery_soc"] # noqa: F841
+        solar_dni = self.measurements_dict["solar_dni"] # direct normal irradiance # noqa: F841
+        solar_aoi = self.measurements_dict["solar_aoi"] # angle of incidence # noqa: F841
 
         # Temporary print statements (note that negative battery indicates discharging)
         print("Measured powers (wind, solar, battery):", wind_power, solar_power, battery_power)
