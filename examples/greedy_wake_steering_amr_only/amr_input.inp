@@ -148,7 +148,7 @@ samplingLine.z_line.end = 5.0 5.0 1275.0
 
 # 2.3 MW Turbine inputs
 
-Actuator.labels                            = T00 #T01 T02 T03 T04 T05 T06 T07 T08 T09 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20 T21 T22 T23 T24
+Actuator.labels                            = T00
 Actuator.type = JoukowskyDisk
 Actuator.JoukowskyDisk.rotor_diameter      = 126.0
 Actuator.JoukowskyDisk.hub_height          = 90.0
@@ -170,27 +170,3 @@ Actuator.JoukowskyDisk.thrust_coeff = 0.795419507524108 0.8163759621542088 0.816
 Actuator.JoukowskyDisk.yaw = 270.0
 
 Actuator.T00.base_position = 2000.0 2000.0 0.0
-Actuator.T01.base_position = 0.0 756.0 0.0
-Actuator.T02.base_position = 0.0 1512.0 0.0
-Actuator.T03.base_position = 0.0 2268.0 0.0
-Actuator.T04.base_position = 0.0 3024.0 0.0
-Actuator.T05.base_position = 882.0 0.0 0.0
-Actuator.T06.base_position = 882.0 756.0 0.0
-Actuator.T07.base_position = 882.0 1512.0 0.0
-Actuator.T08.base_position = 882.0 2268.0 0.0
-Actuator.T09.base_position = 882.0 3024.0 0.0
-Actuator.T10.base_position = 1764.0 0.0 0.0
-Actuator.T11.base_position = 1764.0 756.0 0.0
-Actuator.T12.base_position = 1764.0 1512.0 0.0
-Actuator.T13.base_position = 1764.0 2268.0 0.0
-Actuator.T14.base_position = 1764.0 3024.0 0.0
-Actuator.T15.base_position = 2646.0 0.0 0.0
-Actuator.T16.base_position = 2646.0 756.0 0.0
-Actuator.T17.base_position = 2646.0 1512.0 0.0
-Actuator.T18.base_position = 2646.0 2268.0 0.0
-Actuator.T19.base_position = 2646.0 3024.0 0.0
-Actuator.T20.base_position = 3528.0 0.0 0.0
-Actuator.T21.base_position = 3528.0 756.0 0.0
-Actuator.T22.base_position = 3528.0 1512.0 0.0
-Actuator.T23.base_position = 3528.0 2268.0 0.0
-Actuator.T24.base_position = 3528.0 3024.0 0.0
