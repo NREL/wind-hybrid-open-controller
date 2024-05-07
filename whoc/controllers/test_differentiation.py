@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from itertools import product
 from scipy.optimize import linprog, minimize
+from pyoptsparse import Optimization, SLSQP
 
 # TODO compare to central difference
 
@@ -13,23 +14,21 @@ if __name__ == "__main__":
     y = np.linspace(-np.pi, np.pi, 100)
     xy = np.array(list(product(x, y)))
 
-    # x_grid, y_grid = np.meshgrid(x, y)
-    # x_init, y_init = [np.pi, np.pi / 2]
-
     z1_func = lambda xy: np.sin(np.atleast_2d(xy)[:, 0]) + np.cos(2*np.atleast_2d(xy)[:, 1])
     z2_func = lambda xy: -np.cos(np.atleast_2d(xy)[:, 0]) + np.sin(-4*np.atleast_2d(xy)[:, 1])
 
-    z1_func = lambda xy: np.atleast_2d(xy)[:, 0]**2
-    z2_func = lambda xy: (np.atleast_2d(xy)[:, 1] - 0.5)**2
+    # z1_func = lambda xy: np.atleast_2d(xy)[:, 0]**2
+    # z2_func = lambda xy: (np.atleast_2d(xy)[:, 1] - 0.5)**2
+
     z_func = lambda xy: np.array([z1_func(xy), z2_func(xy)]) #+ np.random.normal(0, 0.001)
     z = z_func(xy)
-    # z_grid = z_func(x_grid, y_grid)
 
-    # dz1dxy_func = lambda xy: np.array([np.cos(np.atleast_2d(xy)[:, 0]), -2*np.sin(2*np.atleast_2d(xy)[:, 1])])
-    # dz2dxy_func = lambda xy: np.array([np.sin(np.atleast_2d(xy)[:, 0]), -4*np.cos(-4*np.atleast_2d(xy)[:, 1])])
+    dz1dxy_func = lambda xy: np.array([np.cos(np.atleast_2d(xy)[:, 0]), -2*np.sin(2*np.atleast_2d(xy)[:, 1])])
+    dz2dxy_func = lambda xy: np.array([np.sin(np.atleast_2d(xy)[:, 0]), -4*np.cos(-4*np.atleast_2d(xy)[:, 1])])
 
-    dz1dxy_func = lambda xy: np.array([2 * (np.atleast_2d(xy)[:, 0]), np.zeros_like(np.atleast_2d(xy)[:, 0])])
-    dz2dxy_func = lambda xy: np.array([np.zeros_like(np.atleast_2d(xy)[:, 0]), 2 * (np.atleast_2d(xy)[:, 1] - 0.5)])
+    # dz1dxy_func = lambda xy: np.array([2 * (np.atleast_2d(xy)[:, 0]), np.zeros_like(np.atleast_2d(xy)[:, 0])])
+    # dz2dxy_func = lambda xy: np.array([np.zeros_like(np.atleast_2d(xy)[:, 0]), 2 * (np.atleast_2d(xy)[:, 1] - 0.5)])
+
     dzdxy_func = lambda xy: np.array([dz1dxy_func(xy), dz2dxy_func(xy)]).T
     
     if 1:
@@ -44,8 +43,7 @@ if __name__ == "__main__":
         drvt_err = []
         xy_vals = []
 
-        i = 0
-        while i < max_iter:
+        def approx_dzdxy_func(xy):
             z = z_func(xy).T
 
             u = np.random.normal(loc=0.0, scale=1.0, size=(n_samples, 2))
@@ -57,6 +55,11 @@ if __name__ == "__main__":
             # approx_dzdxy = (diff_z[:, np.newaxis] / nu) * u
             approx_dzdxy = np.einsum("ia, ib->iab", diff_z / nu, u)
             approx_dzdxy = np.mean(approx_dzdxy, axis=0)
+            return approx_dzdxy.sum(axis=0)
+
+        i = 0
+        while i < max_iter:
+            approx_dzdxy = approx_dzdxy_func(xy)
 
             true_dz1dxy = dz1dxy_func(xy).T
             true_dz2dxy = dz2dxy_func(xy).T
@@ -89,9 +92,11 @@ if __name__ == "__main__":
         ax[1].legend()
 
         # xy_range = np.linspace(-np.pi, np.pi, 1000)
-        res = minimize(lambda xy: z1_func(xy) + z2_func(xy), xy_init, bounds=[(-np.pi, np.pi), (-np.pi, np.pi)])
-        print("Minimizer computed using minimize:", (res.x, res.fun))
-        print("Minimizer computed using ZCGD", (xy_vals[-1, :], np.sum(z_func(xy_vals[-1, :]))))
+        res_min = minimize(lambda xy: z1_func(xy) + z2_func(xy), xy_init, bounds=[(-np.pi, np.pi), (-np.pi, np.pi)])
+        res_min_zsgd = minimize(lambda xy: z1_func(xy) + z2_func(xy), xy_init, bounds=[(-np.pi, np.pi), (-np.pi, np.pi)], method='SLSQP', jac=approx_dzdxy_func)
+        print("Minimizer computed using minimize:", (res_min.x, res_min.fun))
+        print("Minimizer computed using SLSQP + ZSGD derivative:", (res_min_zsgd.x, res_min_zsgd.fun))
+        print("Minimizer computed using ZSGD", (xy_vals[-1, :], np.sum(z_func(xy_vals[-1, :]))))
         # print("Minimizer computed using ZCGD", [xy_z1_vals[-1, :], xy_z2_vals[-1, :]])
         
         # if PLOT_U:

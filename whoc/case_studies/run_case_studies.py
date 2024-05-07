@@ -1,9 +1,8 @@
-# from concurrent.futures import ProcessPoolExecutor, wait
-from mpi4py.futures import MPIPoolExecutor
-# from mpi4py.futures import wait as mpi_wait
-from dask_mpi import initialize
-from dask.distributed import Client
-from dask.distributed import wait as dask_wait
+from mpi4py import MPI
+from mpi4py.futures import MPICommExecutor
+# from dask_mpi import initialize
+# from dask.distributed import Client
+# from dask.distributed import wait as dask_wait
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import wait as cf_wait
 import multiprocessing as mp
@@ -129,8 +128,8 @@ case_studies = {
                           "alpha": {"group": 0, "vals": [0.5]}, 
                           "wind_preview_type": {"group": 0, "vals": ["stochastic"]}, 
                           "warm_start": {"group": 0, "vals": ["greedy"]}, 
-                          "case_names": {"group": 1, "vals": ['SLSQP', "Sequential SLSQP", "Sequential Refine"]},
-                           "solver": {"group": 1, "vals": ["slsqp", "sequential_slsqp", "serial_refine"]},
+                          "case_names": {"group": 1, "vals": ["ZSGD", "SLSQP", "Sequential SLSQP", "Sequential Refine"]},
+                           "solver": {"group": 1, "vals": ["zsgd", "slsqp", "sequential_slsqp", "serial_refine"]},
                           "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
                           },
@@ -143,9 +142,9 @@ case_studies = {
                           "generate_lut": {"group": 0, "vals": [False]},
                           "n_horizon": {"group": 0, "vals": [10]}, 
                           "alpha": {"group": 0, "vals": [0.5]}, 
-                          "case_names": {"group": 2, "vals": [f"Stochastic_{d}" for d in [10, 25, 50, 100, 200]]},
-                          "wind_preview_type": {"group": 1, "vals": ["stochastic"]}, 
-                          "n_wind_preview_samples": {"group": 2, "vals": [10, 25, 50, 100, 200]},
+                          "case_names": {"group": 1, "vals": [f"Stochastic_{d}" for d in [10, 25, 50, 100, 200]] + ["Persistent"]},
+                          "wind_preview_type": {"group": 1, "vals": ["stochastic", "stochastic", "stochastic", "stochastic", "stochastic", "persistent"]}, 
+                          "n_wind_preview_samples": {"group": 1, "vals": [10, 25, 50, 100, 200, 10]},
                           "warm_start": {"group": 0, "vals": ["greedy"]}, 
                           "solver": {"group": 0, "vals": ["slsqp"]},
                           "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -719,7 +718,11 @@ def run_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_paralle
         # elif platform == "darwin":
         else:
             if multi == "mpi":
-                executor = MPIPoolExecutor(max_workers=mp.cpu_count())
+                comm_size = MPI.COMM_WORLD.Get_size()
+                # comm_rank = MPI.COMM_WORLD.Get_rank()
+                # node_name = MPI.Get_processor_name()
+                executor = MPICommExecutor(MPI.COMM_WORLD, root=0)
+                executor.max_workers = comm_size
             else:
                 executor = ProcessPoolExecutor()
             with executor as run_simulations_exec:
@@ -783,9 +786,10 @@ def get_results_data(results_dirs):
     return results_dfs
 
 def process_simulations(results_dirs):
-    results_dfs = get_results_data(results_dirs)
+    results_dfs = get_results_data(results_dirs) # TODO change save name of compare_results_df
     compare_results_df = compare_simulations(results_dfs)
     compare_results_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False)[("FarmPowerMean", "mean")]
+    compare_results_df.sort_values(by=("TotalRunningOptimizationCostMean", "mean"), ascending=True)[("TotalRunningOptimizationCostMean", "mean")]
     
     plot_breakdown_robustness(compare_results_df, case_studies, os.path.join(os.path.dirname(whoc_file), "floris_case_studies"))
     plot_cost_function_pareto_curve(compare_results_df, case_studies, os.path.join(os.path.dirname(whoc_file), "floris_case_studies"))
@@ -867,19 +871,20 @@ if __name__ == '__main__':
 
     REGENERATE_WIND_FIELD = False
     RUN_SIMULATIONS = True
-    POST_PROCESS = False
+    POST_PROCESS = True
 
     case_families = ["baseline_controllers", "solver_type",
                      "wind_preview_type", "warm_start", 
                      "horizon_length", "breakdown_robustness",
-                     "scalability", "cost_func_tuning", "stochastic_preview_type"]
+                     "scalability", "cost_func_tuning", 
+                     "stochastic_preview_type"]
 
     DEBUG = sys.argv[1].lower() == "debug"
-    if sys.argv[2].lower() == "dask":
-        MULTI = "dask"
-        initialize()
-        client = Client()
-    elif sys.argv[2].lower() == "mpi":
+    # if sys.argv[2].lower() == "dask":
+    #     MULTI = "dask"
+    #     initialize()
+    #     client = Client()
+    if sys.argv[2].lower() == "mpi":
         MULTI = "mpi"
     else:
         MULTI = "cf"
