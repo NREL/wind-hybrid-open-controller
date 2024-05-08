@@ -9,6 +9,12 @@ import copy
 import io
 import sys
 
+print(12)
+
+os.environ['PYOPTSPARSE_REQUIRE_MPI'] = 'no'
+
+print(16)
+
 from whoc import __file__ as whoc_file
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 from whoc.controllers.mpc_wake_steering_controller import MPC
@@ -19,7 +25,7 @@ from whoc.postprocess_case_studies import plot_wind_field_ts
 
 from hercules.utilities import load_yaml
 
-os.environ['PYOPTSPARSE_REQUIRE_MPI'] = 'no'
+print(28)
 
 # from warnings import simplefilter
 # simplefilter('error')
