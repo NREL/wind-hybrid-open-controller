@@ -487,24 +487,16 @@ def initialize_simulations(case_study_keys, regenerate_wind_field, n_seeds):
 
     return case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts
 
+case_families = ["baseline_controllers", "solver_type",
+                    "wind_preview_type", "warm_start", 
+                    "horizon_length", "breakdown_robustness",
+                    "scalability", "cost_func_tuning", 
+                    "stochastic_preview_type"]
+    
 if __name__ == "__main__":
     REGENERATE_WIND_FIELD = False
-    RUN_SIMULATIONS = True
-    POST_PROCESS = True
-
-    case_families = ["baseline_controllers", "solver_type",
-                        "wind_preview_type", "warm_start", 
-                        "horizon_length", "breakdown_robustness",
-                        "scalability", "cost_func_tuning", 
-                        "stochastic_preview_type"]
 
     DEBUG = sys.argv[1].lower() == "debug"
-    if sys.argv[2].lower() == "mpi":
-        MULTI = "mpi"
-    else:
-        MULTI = "cf"
-
-    PARALLEL = sys.argv[3].lower() == "parallel"
     if len(sys.argv) > 4:
         CASE_FAMILY_IDX = [int(i) for i in sys.argv[4:]]
     else:
