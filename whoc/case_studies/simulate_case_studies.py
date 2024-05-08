@@ -233,25 +233,6 @@ def simulate_controller(controller_class, input_dict, **kwargs):
     
     return results_df
 
-# def save_simulations(case_lists, case_name_lists, results): 
-#     # unpack rsults for each case
-#     results_dfs = {}
-#     for r, res in enumerate(results):
-#         results_dfs[case_name_lists[r]] = res
-
-#         results_dir = os.path.join(os.path.dirname(whoc_file), "floris_case_studies", "_".join(case_name_lists[r].split('_')[:-1]))
-
-#         if not os.path.exists(results_dir):
-#             os.makedirs(results_dir)
-
-#         print(f"744 about to save df {r} of {len(results)}")
-#         results_dfs[case_name_lists[r]].to_csv(os.path.join(results_dir, f"time_series_results_case_{case_lists[r]['case_names']}_seed_{case_lists[r]['wind_case_idx']}.csv"))
-#         print(f"746 finished saving df {r} of {len(results)}")
-
-#         # fi.calculate_wake(wind_dir_ts[:-2, np.newaxis] - results_dfs[case_name_lists[f]][[f"TurbineYawAngle_{i}" for i in range(9)]].to_numpy())
-#         # turbine_powers = fi.get_turbine_powers()
-#         # assert np.all(fi.get_turbine_powers() == results_dfs[case_name_lists[f]][[f"TurbinePower_{i}" for i in range(9)]].to_numpy())
-
 if __name__ == "__main__":
     comm_rank = MPI.COMM_WORLD.Get_rank()
     if sys.argv[2].lower() == "mpi":
@@ -296,11 +277,9 @@ if __name__ == "__main__":
 
         # run simulations
         print(f"about to submit calls to simulate_controller")
-        run_parallel = PARALLEL
-        multi = MULTI
-    
-    if run_parallel:
-        if multi == "mpi":
+        
+    if PARALLEL:
+        if MULTI == "mpi":
             comm_size = MPI.COMM_WORLD.Get_size()
             # comm_rank = MPI.COMM_WORLD.Get_rank()
             # node_name = MPI.Get_processor_name()
@@ -308,7 +287,7 @@ if __name__ == "__main__":
         else:
             executor = ProcessPoolExecutor()
         with executor as run_simulations_exec:
-            if multi == "mpi":
+            if MULTI == "mpi":
                 run_simulations_exec.max_workers = comm_size
             print(f"run_simulations line 618 with {run_simulations_exec._max_workers} workers")
             # for MPIPool executor, (waiting as if shutdown() were called with wait set to True)
