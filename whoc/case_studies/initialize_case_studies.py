@@ -1,8 +1,9 @@
-from mpi4py import MPI
+import os
+# from mpi4py import MPI
 import pickle
 import pandas as pd
 import numpy as np
-import os
+
 from glob import glob
 import yaml
 from itertools import product
@@ -12,15 +13,15 @@ import sys
 
 print(12)
 
-os.environ['PYOPTSPARSE_REQUIRE_MPI'] = 'no'
+
 
 print(16)
 
 from whoc import __file__ as whoc_file
-from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
-from whoc.controllers.mpc_wake_steering_controller import MPC
-from whoc.controllers.greedy_wake_steering_controller import GreedyController
-from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
+# from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
+# from whoc.controllers.mpc_wake_steering_controller import MPC
+# from whoc.controllers.greedy_wake_steering_controller import GreedyController
+# from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
 from whoc.wind_field.WindField import generate_multi_wind_ts, WindField, write_abl_forcing_velocity_timetable
 from whoc.postprocess_case_studies import plot_wind_field_ts
 
@@ -505,7 +506,7 @@ case_families = ["baseline_controllers", "solver_type",
 if __name__ == "__main__":
     REGENERATE_WIND_FIELD = False
     
-    comm_rank = MPI.COMM_WORLD.Get_rank()
+    # comm_rank = MPI.COMM_WORLD.Get_rank()
     if sys.argv[2].lower() == "mpi":
         MULTI = "mpi"
     else:
@@ -523,8 +524,8 @@ if __name__ == "__main__":
         N_SEEDS = 1
     else:
         N_SEEDS = 6
-    if (MULTI == "mpi" and comm_rank == 0) or (MULTI != "mpi"):
-
+    # if (MULTI == "mpi" and comm_rank == 0) or (MULTI != "mpi"):
+    if True:
         for case_family in case_families:
             case_studies[case_family]["wind_case_idx"] = {"group": 2, "vals": [i for i in range(N_SEEDS)]}
 
