@@ -282,9 +282,16 @@ if __name__ == "__main__":
     print([case_families[i] for i in CASE_FAMILY_IDX])
 
     if os.path.exists("init_simulations.pkl"):
-        with open("init_simulations.pkl", "rb") as fp:
-            tmp = pickle.load(fp)
-            case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = tuple(tmp.values())
+        if MULTI == "mpi":
+            comm_rank = MPI.COMM_WORLD.Get_rank()
+            if comm_rank == 0:
+                with open("init_simulations.pkl", "rb") as fp:
+                    tmp = pickle.load(fp)
+                    case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = tuple(tmp.values())
+            else:
+                with open("init_simulations.pkl", "rb") as fp:
+                    tmp = pickle.load(fp)
+                    case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = tuple(tmp.values())
     else:
         raise FileNotFoundError("run initialize_case_studies.py to generate init_simulation.pkl")
 
