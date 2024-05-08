@@ -487,45 +487,38 @@ def initialize_simulations(case_study_keys, regenerate_wind_field, n_seeds):
 
     return case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts
 
-REGENERATE_WIND_FIELD = False
-RUN_SIMULATIONS = True
-POST_PROCESS = True
+if __name__ == "__main__":
+    REGENERATE_WIND_FIELD = False
+    RUN_SIMULATIONS = True
+    POST_PROCESS = True
 
-case_families = ["baseline_controllers", "solver_type",
-                    "wind_preview_type", "warm_start", 
-                    "horizon_length", "breakdown_robustness",
-                    "scalability", "cost_func_tuning", 
-                    "stochastic_preview_type"]
+    case_families = ["baseline_controllers", "solver_type",
+                        "wind_preview_type", "warm_start", 
+                        "horizon_length", "breakdown_robustness",
+                        "scalability", "cost_func_tuning", 
+                        "stochastic_preview_type"]
 
-DEBUG = sys.argv[1].lower() == "debug"
-# if sys.argv[2].lower() == "dask":
-#     MULTI = "dask"
-#     initialize()
-#     client = Client()
-if sys.argv[2].lower() == "mpi":
-    MULTI = "mpi"
-else:
-    MULTI = "cf"
+    DEBUG = sys.argv[1].lower() == "debug"
+    if sys.argv[2].lower() == "mpi":
+        MULTI = "mpi"
+    else:
+        MULTI = "cf"
 
-PARALLEL = sys.argv[3].lower() == "parallel"
-if len(sys.argv) > 4:
-    CASE_FAMILY_IDX = [int(i) for i in sys.argv[4:]]
-else:
-    CASE_FAMILY_IDX = list(range(len(case_families)))
+    PARALLEL = sys.argv[3].lower() == "parallel"
+    if len(sys.argv) > 4:
+        CASE_FAMILY_IDX = [int(i) for i in sys.argv[4:]]
+    else:
+        CASE_FAMILY_IDX = list(range(len(case_families)))
 
-if DEBUG:
-    N_SEEDS = 1
-else:
-    N_SEEDS = 6
+    if DEBUG:
+        N_SEEDS = 1
+    else:
+        N_SEEDS = 6
 
-for case_family in case_families:
-    case_studies[case_family]["wind_case_idx"] = {"group": 2, "vals": [i for i in range(N_SEEDS)]}
+    for case_family in case_families:
+        case_studies[case_family]["wind_case_idx"] = {"group": 2, "vals": [i for i in range(N_SEEDS)]}
 
-# MISHA QUESTION how to make AMR-Wind wait for control solution?
-# run_simulations(["baseline_controllers"], REGENERATE_WIND_FIELD)
-# mp.set_start_method('fork')
-os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "true"
-# run_simulations(["perfect_preview_type"], REGENERATE_WIND_FIELD)
-print([case_families[i] for i in CASE_FAMILY_IDX])
-case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = initialize_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS)
-    
+    # MISHA QUESTION how to make AMR-Wind wait for control solution?
+    os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "true"
+    print([case_families[i] for i in CASE_FAMILY_IDX])
+    case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = initialize_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS)
