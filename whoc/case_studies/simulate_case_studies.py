@@ -253,67 +253,53 @@ def simulate_controller(controller_class, input_dict, **kwargs):
 #         # assert np.all(fi.get_turbine_powers() == results_dfs[case_name_lists[f]][[f"TurbinePower_{i}" for i in range(9)]].to_numpy())
 
 if __name__ == "__main__":
-    DEBUG = sys.argv[1].lower() == "debug"
-    # if sys.argv[2].lower() == "dask":
-    #     MULTI = "dask"
-    #     initialize()
-    #     client = Client()
+    comm_rank = MPI.COMM_WORLD.Get_rank()
     if sys.argv[2].lower() == "mpi":
         MULTI = "mpi"
     else:
         MULTI = "cf"
 
-    PARALLEL = sys.argv[3].lower() == "parallel"
-    if len(sys.argv) > 4:
-        CASE_FAMILY_IDX = [int(i) for i in sys.argv[4:]]
-    else:
-        CASE_FAMILY_IDX = list(range(len(case_families)))
+    # intialization code
+    if (MULTI == "mpi" and comm_rank == 0) or (MULTI != "mpi"):
 
-    if DEBUG:
-        N_SEEDS = 1
-    else:
-        N_SEEDS = 6
+        DEBUG = sys.argv[1].lower() == "debug"
+        # if sys.argv[2].lower() == "dask":
+        #     MULTI = "dask"
+        #     initialize()
+        #     client = Client()
 
-    for case_family in case_families:
-        case_studies[case_family]["wind_case_idx"] = {"group": 2, "vals": [i for i in range(N_SEEDS)]}
 
-    os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "true"
-    # run_simulations(["perfect_preview_type"], REGENERATE_WIND_FIELD)
-    print([case_families[i] for i in CASE_FAMILY_IDX])
+        PARALLEL = sys.argv[3].lower() == "parallel"
+        if len(sys.argv) > 4:
+            CASE_FAMILY_IDX = [int(i) for i in sys.argv[4:]]
+        else:
+            CASE_FAMILY_IDX = list(range(len(case_families)))
 
-    if os.path.exists("init_simulations.pkl"):
-        if MULTI == "mpi":
-            comm_rank = MPI.COMM_WORLD.Get_rank()
-            if comm_rank == 0:
-                with open("init_simulations.pkl", "rb") as fp:
-                    tmp = pickle.load(fp)
-                    case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = tuple(tmp.values())
-            else:
-                with open("init_simulations.pkl", "rb") as fp:
-                    tmp = pickle.load(fp)
-                    case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = tuple(tmp.values())
-    else:
-        raise FileNotFoundError("run initialize_case_studies.py to generate init_simulation.pkl")
+        if DEBUG:
+            N_SEEDS = 1
+        else:
+            N_SEEDS = 6
 
-    # run simulations
-    print(f"about to submit calls to simulate_controller")
-    run_parallel = PARALLEL
-    multi = MULTI
+        for case_family in case_families:
+            case_studies[case_family]["wind_case_idx"] = {"group": 2, "vals": [i for i in range(N_SEEDS)]}
+
+        os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "true"
+        # run_simulations(["perfect_preview_type"], REGENERATE_WIND_FIELD)
+        print([case_families[i] for i in CASE_FAMILY_IDX])
+
+        if os.path.exists("init_simulations.pkl"):
+            with open("init_simulations.pkl", "rb") as fp:
+                tmp = pickle.load(fp)
+                case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = tuple(tmp.values())
+        else:
+            raise FileNotFoundError("run initialize_case_studies.py to generate init_simulation.pkl")
+
+        # run simulations
+        print(f"about to submit calls to simulate_controller")
+        run_parallel = PARALLEL
+        multi = MULTI
+    
     if run_parallel:
-        # if platform == "linux":
-        
-        # if multi == "dask":
-        #     futures = [client.submit(simulate_controller, 
-        #                                         controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
-        #                                         wind_case_idx=case_lists[c]["wind_case_idx"], wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
-        #                                         case_name=case_lists[c]["case_names"],
-        #                                         lut_path=case_lists[c]["lut_path"], generate_lut=case_lists[c]["generate_lut"], seed=case_lists[c]["seed"], wind_field_config=wind_field_config, verbose=False)
-        #                 for c, d in enumerate(input_dicts)]
-        #     # dask_wait(futures)
-        #     results = client.gather(futures)
-        #     # results = [fut.result() for fut in futures]
-        # # elif platform == "darwin":
-        # else:
         if multi == "mpi":
             comm_size = MPI.COMM_WORLD.Get_size()
             # comm_rank = MPI.COMM_WORLD.Get_rank()
