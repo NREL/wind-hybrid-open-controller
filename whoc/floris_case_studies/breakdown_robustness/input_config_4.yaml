@@ -8,12 +8,12 @@ controller:
   controller_type: SimpleYawController
   deadband_thr: 8
   dt: 60
-  floris_input_file: /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/whoc/../examples/mpc_wake_steering_florisstandin/floris_gch_25.yaml
+  floris_input_file: /home/ahenry/toolboxes/whoc_env/wind-hybrid-open-controller/whoc/../examples/mpc_wake_steering_florisstandin/floris_gch_25.yaml
   generate_lut: false
   initial_conditions:
     yaw: 270.0
   lpf_time_const: 35
-  lut_path: /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/whoc/../examples/mpc_wake_steering_florisstandin/lut_25.csv
+  lut_path: /home/ahenry/toolboxes/whoc_env/wind-hybrid-open-controller/whoc/../examples/mpc_wake_steering_florisstandin/lut_25.csv
   n_horizon: 10
   n_wind_preview_samples: 100
   nu: 0.01
