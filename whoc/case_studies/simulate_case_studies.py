@@ -240,26 +240,20 @@ if __name__ == "__main__":
     else:
         MULTI = "cf"
 
+    DEBUG = sys.argv[1].lower() == "debug"
+    PARALLEL = sys.argv[3].lower() == "parallel"
+    if len(sys.argv) > 4:
+        CASE_FAMILY_IDX = [int(i) for i in sys.argv[4:]]
+    else:
+        CASE_FAMILY_IDX = list(range(len(case_families)))
+
+    if DEBUG:
+        N_SEEDS = 1
+    else:
+        N_SEEDS = 6
+
     # intialization code
     if (MULTI == "mpi" and comm_rank == 0) or (MULTI != "mpi"):
-
-        DEBUG = sys.argv[1].lower() == "debug"
-        # if sys.argv[2].lower() == "dask":
-        #     MULTI = "dask"
-        #     initialize()
-        #     client = Client()
-
-
-        PARALLEL = sys.argv[3].lower() == "parallel"
-        if len(sys.argv) > 4:
-            CASE_FAMILY_IDX = [int(i) for i in sys.argv[4:]]
-        else:
-            CASE_FAMILY_IDX = list(range(len(case_families)))
-
-        if DEBUG:
-            N_SEEDS = 1
-        else:
-            N_SEEDS = 6
 
         for case_family in case_families:
             case_studies[case_family]["wind_case_idx"] = {"group": 2, "vals": [i for i in range(N_SEEDS)]}
