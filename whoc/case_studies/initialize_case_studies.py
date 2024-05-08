@@ -511,6 +511,5 @@ if __name__ == "__main__":
         case_studies[case_family]["wind_case_idx"] = {"group": 2, "vals": [i for i in range(N_SEEDS)]}
 
     # MISHA QUESTION how to make AMR-Wind wait for control solution?
-    os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "true"
     print([case_families[i] for i in CASE_FAMILY_IDX])
     case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = initialize_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS)
