@@ -1,3 +1,4 @@
+from mpi4py import MPI
 import pickle
 import pandas as pd
 import numpy as np
@@ -503,7 +504,15 @@ case_families = ["baseline_controllers", "solver_type",
     
 if __name__ == "__main__":
     REGENERATE_WIND_FIELD = False
+    
+    comm_rank = MPI.COMM_WORLD.Get_rank()
+    if sys.argv[2].lower() == "mpi":
+        MULTI = "mpi"
+    else:
+        MULTI = "cf"
 
+    DEBUG = sys.argv[1].lower() == "debug"
+    PARALLEL = sys.argv[3].lower() == "parallel"
     DEBUG = sys.argv[1].lower() == "debug"
     if len(sys.argv) > 4:
         CASE_FAMILY_IDX = [int(i) for i in sys.argv[4:]]
@@ -514,10 +523,11 @@ if __name__ == "__main__":
         N_SEEDS = 1
     else:
         N_SEEDS = 6
+    if (MULTI == "mpi" and comm_rank == 0) or (MULTI != "mpi"):
 
-    for case_family in case_families:
-        case_studies[case_family]["wind_case_idx"] = {"group": 2, "vals": [i for i in range(N_SEEDS)]}
+        for case_family in case_families:
+            case_studies[case_family]["wind_case_idx"] = {"group": 2, "vals": [i for i in range(N_SEEDS)]}
 
-    # MISHA QUESTION how to make AMR-Wind wait for control solution?
-    print([case_families[i] for i in CASE_FAMILY_IDX])
-    case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = initialize_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS)
+        # MISHA QUESTION how to make AMR-Wind wait for control solution?
+        print([case_families[i] for i in CASE_FAMILY_IDX])
+        case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = initialize_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS)
