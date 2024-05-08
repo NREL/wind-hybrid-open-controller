@@ -1,24 +1,12 @@
-from mpi4py import MPI
-from mpi4py.futures import MPICommExecutor
-# from dask_mpi import initialize
-# from dask.distributed import Client
-# from dask.distributed import wait as dask_wait
-from concurrent.futures import ProcessPoolExecutor
-from concurrent.futures import wait as cf_wait
-import multiprocessing as mp
-
 import pickle
 import pandas as pd
 import numpy as np
 import os
 from glob import glob
-import shutil
 import yaml
-from time import perf_counter
 from itertools import product
 import copy
 import io
-import re
 import sys
 
 from whoc import __file__ as whoc_file
@@ -26,8 +14,8 @@ from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 from whoc.controllers.mpc_wake_steering_controller import MPC
 from whoc.controllers.greedy_wake_steering_controller import GreedyController
 from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
-from whoc.wind_field.WindField import generate_multi_wind_ts, WindField, write_abl_forcing_velocity_timetable, fit_amr_distribution
-from whoc.postprocess_case_studies import plot_wind_field_ts, plot_opt_var_ts, plot_opt_cost_ts, plot_power_ts, barplot_opt_cost, compare_simulations, plot_cost_function_pareto_curve, plot_breakdown_robustness
+from whoc.wind_field.WindField import generate_multi_wind_ts, WindField, write_abl_forcing_velocity_timetable
+from whoc.postprocess_case_studies import plot_wind_field_ts
 
 from hercules.utilities import load_yaml
 
@@ -130,8 +118,10 @@ case_studies = {
                           "alpha": {"group": 0, "vals": [0.5]}, 
                           "wind_preview_type": {"group": 0, "vals": ["stochastic"]}, 
                           "warm_start": {"group": 0, "vals": ["greedy"]}, 
-                          "case_names": {"group": 1, "vals": ["ZSGD", "SLSQP", "Sequential SLSQP", "Sequential Refine"]},
-                           "solver": {"group": 1, "vals": ["zsgd", "slsqp", "sequential_slsqp", "serial_refine"]},
+                        #   "case_names": {"group": 1, "vals": ["ZSGD", "SLSQP", "Sequential SLSQP", "Sequential Refine"]},
+                         "case_names": {"group": 1, "vals": ["SLSQP", "Sequential SLSQP", "Sequential Refine"]},
+                        #    "solver": {"group": 1, "vals": ["zsgd", "slsqp", "sequential_slsqp", "serial_refine"]},
+                        "solver": {"group": 1, "vals": ["slsqp", "sequential_slsqp", "serial_refine"]},
                           "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
                           },
@@ -382,7 +372,7 @@ def CaseGen_General(case_inputs, namebase=''):
 
     return case_list, case_name
 
-def initialize_simulations(case_study_keys, regenerate_wind_field, n_seeds, run_parallel, multi):
+def initialize_simulations(case_study_keys, regenerate_wind_field, n_seeds):
 
     input_dict = load_yaml(os.path.join(os.path.dirname(whoc_file), "../examples/hercules_input_001.yaml"))
 
@@ -537,5 +527,5 @@ for case_family in case_families:
 os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "true"
 # run_simulations(["perfect_preview_type"], REGENERATE_WIND_FIELD)
 print([case_families[i] for i in CASE_FAMILY_IDX])
-case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = initialize_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS, run_parallel=PARALLEL, multi=MULTI)
+case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = initialize_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS)
     
