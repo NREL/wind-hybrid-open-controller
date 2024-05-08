@@ -4,7 +4,6 @@ import yaml
 import re
 import sys
 
-from whoc import __file__ as whoc_file
 from whoc.postprocess_case_studies import plot_wind_field_ts, plot_opt_var_ts, plot_opt_cost_ts, plot_power_ts, barplot_opt_cost, compare_simulations, plot_cost_function_pareto_curve, plot_breakdown_robustness
 from whoc.case_studies.initialize_case_studies import case_studies, STORAGE_DIR, case_families
 
