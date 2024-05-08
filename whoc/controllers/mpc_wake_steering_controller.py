@@ -1,5 +1,4 @@
 from time import perf_counter
-from functools import partial
 import copy
 from collections import defaultdict
 import os
@@ -7,10 +6,10 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from pyoptsparse import Optimization, SLSQP, SNOPT
+from pyoptsparse import Optimization, SLSQP # TODO this is introducing an error
 from scipy.optimize import linprog, basinhopping
 from scipy.integrate import dblquad
-from itertools import combinations, product
+from itertools import product
 
 import whoc
 from whoc.controllers.controller_base import ControllerBase

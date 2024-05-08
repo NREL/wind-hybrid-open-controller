@@ -19,6 +19,8 @@ from whoc.postprocess_case_studies import plot_wind_field_ts
 
 from hercules.utilities import load_yaml
 
+os.environ['PYOPTSPARSE_REQUIRE_MPI'] = 'no'
+
 # from warnings import simplefilter
 # simplefilter('error')
 N_COST_FUNC_TUNINGS = 21
