@@ -30,6 +30,7 @@ export NUM_TURBINES=25
 export WIND_CASE_IDX=0
 
 rm logamr loghercules
+rm -rf chk* plt* *.out *.csv
 
 # Set up the helics broker
 helics_broker -t zmq  -f 2 --loglevel="debug" --local_port=$HELICS_PORT &
