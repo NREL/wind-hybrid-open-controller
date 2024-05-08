@@ -258,7 +258,7 @@ if __name__ == "__main__":
         for case_family in case_families:
             case_studies[case_family]["wind_case_idx"] = {"group": 2, "vals": [i for i in range(N_SEEDS)]}
 
-        os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "true"
+        os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "no"
         # run_simulations(["perfect_preview_type"], REGENERATE_WIND_FIELD)
         print([case_families[i] for i in CASE_FAMILY_IDX])
 
