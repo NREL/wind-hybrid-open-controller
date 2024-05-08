@@ -1,8 +1,5 @@
 from mpi4py import MPI
 from mpi4py.futures import MPICommExecutor
-# from dask_mpi import initialize
-# from dask.distributed import Client
-# from dask.distributed import wait as dask_wait
 from concurrent.futures import ProcessPoolExecutor
 
 import os
@@ -18,7 +15,7 @@ from whoc.case_studies.process_case_studies import process_simulations, plot_sim
 
 if __name__ == "__main__":
     REGENERATE_WIND_FIELD = False
-    RUN_SIMULATIONS = True
+    RUN_SIMULATIONS = False
     POST_PROCESS = True
 
     case_families = ["baseline_controllers", "solver_type",
@@ -63,7 +60,7 @@ if __name__ == "__main__":
         print(f"about to submit calls to simulate_controller")
         comm_rank = MPI.COMM_WORLD.Get_rank()
         if (MULTI == "mpi" and comm_rank == 0) or (MULTI != "mpi"):
-            case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = initialize_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS)
+            case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = initialize_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS, debug=DEBUG)
         
         if PARALLEL:
             if MULTI == "mpi":
@@ -99,11 +96,12 @@ if __name__ == "__main__":
                                                 wind_field_config=wind_field_config, verbose=False))
         
         # save_simulations(case_lists, case_name_lists, results)
-                
-    if POST_PROCESS:
-        results_dirs = [os.path.join(STORAGE_DIR, case_families[i]) for i in CASE_FAMILY_IDX]
-        
-        # compute stats over all seeds
-        process_simulations(results_dirs)
-        
-        plot_simulations(results_dirs[0:2])
+    comm_rank = MPI.COMM_WORLD.Get_rank()
+    if (MULTI == "mpi" and comm_rank == 0) or (MULTI != "mpi"):
+        if POST_PROCESS:
+            results_dirs = [os.path.join(STORAGE_DIR, case_families[i]) for i in CASE_FAMILY_IDX]
+            
+            # compute stats over all seeds
+            process_simulations(results_dirs)
+            
+            plot_simulations(results_dirs[0:2])
