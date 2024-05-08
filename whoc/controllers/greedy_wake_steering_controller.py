@@ -15,7 +15,7 @@ from whoc.controllers.controller_base import ControllerBase
 
 class GreedyController(ControllerBase):
 	def __init__(self, interface, input_dict, verbose=False, **kwargs):
-		super().__init__(interface)
+		super().__init__(interface, verbose=verbose)
 		self.n_turbines = input_dict["controller"]["num_turbines"]
 		self.yaw_limits = input_dict["controller"]["yaw_limits"]
 		self.yaw_rate = input_dict["controller"]["yaw_rate"]
@@ -61,11 +61,14 @@ class GreedyController(ControllerBase):
 		
 		if np.all(np.isclose(self.measurements_dict["wind_directions"], 0)):
 			# yaw angles will be set to initial values
-			print("Bad wind direction measurement received, reverting to previous measurement.")
+			if self.verbose:
+				print("Bad wind direction measurement received, reverting to previous measurement.")
 		# TODO MISHA this is a patch up for AMR wind initialization problem
 		elif (abs(current_time % self.simulation_dt) == 0.0) or (current_time == self.simulation_dt * 2):
-			print(f"unfiltered wind directions = {self.measurements_dict['wind_directions']}")
+			
 			current_wind_directions = np.atleast_2d(self.measurements_dict["wind_directions"])
+			if self.verbose:
+				print(f"unfiltered wind directions = {current_wind_directions[-1, :]}")
 			if self.use_filt:
 				self.historic_measurements["wind_directions"] = np.vstack([
 					self.historic_measurements["wind_directions"],
@@ -85,26 +88,15 @@ class GreedyController(ControllerBase):
 				# use filtered wind direction and speed
 				wind_dirs = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"][:, i])
 												for i in range(self.n_turbines)]).T[-1, :]
-				
-			print(f"{'filtered' if self.use_filt else 'unfiltered'} wind directions = {wind_dirs}")
+			
+			if self.verbose:
+				print(f"{'filtered' if self.use_filt else 'unfiltered'} wind directions = {wind_dirs}")
 				
 			# TODO MISHA can't rely on receiving yaw_angles from measurements?
 			current_yaw_setpoints = np.atleast_2d(self.controls_dict["yaw_angles"])[0, :]
 			yaw_setpoints = np.array(current_yaw_setpoints)
 			change_idx = np.abs(current_yaw_setpoints - wind_dirs) > self.deadband_thr
 			yaw_setpoints[change_idx] = wind_dirs[change_idx]
-
-			# yaw_setpoints = []
-			# for i in range(self.n_turbines):
-				
-			# 	# current_yaw_angles = np.atleast_2d(self.measurements_dict["yaw_angles"])[0, :]
-			# 	if np.abs([current_yaw_setpoints[i] - wind_dirs[i]]) > self.deadband_thr:
-			# 		# move towards zero offset if the deadband has been superceded
-			# 		yaw_setpoints.append(wind_dirs[i] - 0.0)
-			# 	else:
-			# 		# otherwise stay put
-			# 		yaw_setpoints.append(current_yaw_setpoints[i])
-
 			
 			yaw_setpoints = np.clip(yaw_setpoints, current_yaw_setpoints - self.simulation_dt * self.yaw_rate, current_yaw_setpoints + self.simulation_dt * self.yaw_rate)
 			yaw_setpoints = np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
