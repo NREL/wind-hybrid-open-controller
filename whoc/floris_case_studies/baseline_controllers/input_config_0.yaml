@@ -22,6 +22,7 @@ controller:
   seed: 0
   solver: slsqp
   state_con_type: extreme
+  use_filt: true
   use_filtered_wind_dir: true
   warm_start: lut
   wind_case_idx: 0

@@ -29,6 +29,7 @@ def process_simulations(results_dirs):
     results_dfs = get_results_data(results_dirs) # TODO change save name of compare_results_df
     compare_results_df = compare_simulations(results_dfs)
     compare_results_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False)[("FarmPowerMean", "mean")]
+    compare_results_df.sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True)[("YawAngleChangeAbsMean", "mean")]
     compare_results_df.sort_values(by=("TotalRunningOptimizationCostMean", "mean"), ascending=True)[("TotalRunningOptimizationCostMean", "mean")]
     
     plot_breakdown_robustness(compare_results_df, case_studies, STORAGE_DIR)

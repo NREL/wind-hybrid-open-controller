@@ -35,6 +35,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 		self.historic_measurements = {"wind_directions": np.zeros((0, self.n_turbines)),
 									  "wind_speeds": np.zeros((0, self.n_turbines))}
 		# self.ws_lpf_alpha = np.exp(-input_dict["controller"]["ws_lpf_omega_c"] * input_dict["controller"]["lpf_T"])
+		self.use_filt = input_dict["controller"]["use_filtered_wind_dir"]
 		self.lpf_time_const = input_dict["controller"]["lpf_time_const"]
 		self.lpf_alpha = np.exp(-(1 / input_dict["controller"]["lpf_time_const"]) * input_dict["dt"])
 		self.deadband_thr = input_dict["controller"]["deadband_thr"]
@@ -43,7 +44,6 @@ class LookupBasedWakeSteeringController(ControllerBase):
 		self.yaw_rate = input_dict["controller"]["yaw_rate"]
 		self.yaw_increment = input_dict["controller"]["yaw_increment"]
 		self.max_workers = kwargs["max_workers"] if "max_workers" in kwargs else 16
-		self.use_filt = input_dict["controller"]["use_filtered_wind_dir"]
 
 		# Handle yaw optimizer object
 		if "df_yaw" in kwargs:
@@ -147,11 +147,13 @@ class LookupBasedWakeSteeringController(ControllerBase):
 		# if current_time < 2 * self.simulation_dt:
 		if np.all(np.isclose(self.measurements_dict["wind_directions"], 0)):
 			# yaw angles will be set to initial values
-			print("Bad wind direction measurement received, reverting to previous measurement.")
+			if self.verbose:
+				print("Bad wind direction measurement received, reverting to previous measurement.")
 		# TODO MISHA this is a patch up for AMR wind initialization problem
 		elif (abs(current_time % self.dt) == 0.0) or (current_time == self.simulation_dt * 2):
 			# if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
-			print(f"unfiltered wind directions = {self.measurements_dict['wind_directions']}")
+			if self.verbose:
+				print(f"unfiltered wind directions = {current_wind_directions[-1, :]}")
 			if current_time < 60 or not self.use_filt:
 				
 				if np.size(current_wind_directions) == 0:
@@ -170,7 +172,8 @@ class LookupBasedWakeSteeringController(ControllerBase):
 											for i in range(self.n_turbines)]).T[-1, 0]
 				wind_speeds = 8.0
 			
-			print(f"{'filtered' if self.use_filt else 'unfiltered'} wind directions = {wind_dirs}")
+			if self.verbose:
+				print(f"{'filtered' if self.use_filt else 'unfiltered'} wind directions = {wind_dirs}")
 			
 			# TODO shouldn't freestream wind speed/dir also be availalbe in measurements_dict, or just assume first row of turbines?
 			# TODO filter wind speed and dir before certain time statpm?
