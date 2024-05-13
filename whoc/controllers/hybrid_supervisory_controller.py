@@ -76,9 +76,11 @@ class HybridSupervisoryControllerSkeleton(ControllerBase):
         battery_soc = self.measurements_dict["battery_soc"] # noqa: F841
         solar_dni = self.measurements_dict["solar_dni"] # direct normal irradiance # noqa: F841
         solar_aoi = self.measurements_dict["solar_aoi"] # angle of incidence # noqa: F841
+        reference_power = self.measurements_dict["plant_power_reference"]
 
         # Temporary print statements (note that negative battery indicates discharging)
         print("Measured powers (wind, solar, battery):", wind_power, solar_power, battery_power)
+        print("Reference power:", reference_power)
 
         # Placeholder for supervisory control logic
         wind_reference = 20 # kW
