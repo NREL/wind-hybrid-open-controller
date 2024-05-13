@@ -12,6 +12,7 @@
 
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 import numpy as np
+import pandas as pd
 
 # import pandas as pd
 from whoc.controllers import (
@@ -73,50 +74,50 @@ def test_controller_instantiation():
     _ = WindFarmPowerTrackingController(interface=test_interface, input_dict=test_hercules_dict)
 
 
-# def test_LookupBasedWakeSteeringController():
-#     test_interface = HerculesADInterface(test_hercules_dict)
+def test_LookupBasedWakeSteeringController():
+    test_interface = HerculesADInterface(test_hercules_dict)
 
-#     # No lookup table passed; simply passes through wind direction to yaw angles
-#     test_controller = LookupBasedWakeSteeringController(
-#         interface=test_interface,
-#         input_dict=test_hercules_dict
-#     )
+    # No lookup table passed; simply passes through wind direction to yaw angles
+    test_controller = LookupBasedWakeSteeringController(
+        interface=test_interface,
+        input_dict=test_hercules_dict
+    )
 
-#     # Check that the controller can be stepped
-#     test_hercules_dict["time"] = 20
-#     test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
-#     test_angles = np.array(
-#         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_yaw_angles"]
-#     )
-#     wind_directions = np.array(
-#         test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_wind_directions"]
-#     )
-#     assert np.allclose(test_angles, wind_directions)
+    # Check that the controller can be stepped
+    test_hercules_dict["time"] = 20
+    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_angles = np.array(
+        test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_yaw_angles"]
+    )
+    wind_directions = np.array(
+        test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_wind_directions"]
+    )
+    assert np.allclose(test_angles, wind_directions)
 
-#     # Lookup table that specified 20 degree offset for T000, 10 degree offset for T001 for all
-#     # wind directions
-#     test_offsets = np.array([20.0, 10.0])
-#     df_opt_test = pd.DataFrame(data={
-#         "wind_direction":[220.0, 320.0, 220.0, 320.0],
-#         "wind_speed":[0.0, 0.0, 20.0, 20.0],
-#         "yaw_angles_opt":[test_offsets]*4,
-#         "turbulence_intensity":[0.06]*4
-#     })
-#     test_controller = LookupBasedWakeSteeringController(
-#         interface=test_interface,
-#         input_dict=test_hercules_dict,
-#         df_yaw=df_opt_test
-#     )
+    # Lookup table that specified 20 degree offset for T000, 10 degree offset for T001 for all
+    # wind directions
+    test_offsets = np.array([20.0, 10.0])
+    df_opt_test = pd.DataFrame(data={
+        "wind_direction":[220.0, 320.0, 220.0, 320.0],
+        "wind_speed":[0.0, 0.0, 20.0, 20.0],
+        "yaw_angles_opt":[test_offsets]*4,
+        "turbulence_intensity":[0.06]*4
+    })
+    test_controller = LookupBasedWakeSteeringController(
+        interface=test_interface,
+        input_dict=test_hercules_dict,
+        df_yaw=df_opt_test
+    )
 
-#     test_hercules_dict["time"] = 20
-#     test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
-#     test_angles = np.array(
-#         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_yaw_angles"]
-#     )
-#     wind_directions = np.array(
-#         test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_wind_directions"]
-#     )
-#     assert np.allclose(test_angles, wind_directions - test_offsets)
+    test_hercules_dict["time"] = 20
+    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_angles = np.array(
+        test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_yaw_angles"]
+    )
+    wind_directions = np.array(
+        test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_wind_directions"]
+    )
+    assert np.allclose(test_angles, wind_directions - test_offsets)
 
 
 def test_WindBatteryController():
