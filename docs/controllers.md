@@ -48,3 +48,15 @@ Integral action, as well as gain scheduling based on turbine saturation, has bee
 simple proportional control appears sufficient currently. However, these may be enabled at a 
 later date if needed. The `proportional_gain` for the controller may be provided on instantiation,
 and defaults to `proportional_gain = 1`.
+
+### HybridSupervisoryControllerSkeleton
+
+Placeholder for a closed-loop supervisory controller for a hybrid wind/solar/battery plant.
+Reads in current power production from wind, solar, and battery, as well as a few atmospheric
+variables, as well as a plant power reference. Currently, arbitrarily sets the lower level wind 
+power, solar power, and battery power references. Those references are then handled by the
+operational controllers for wind, solar, and battery, which are assigned to the
+`HybridSupervisoryControllerSkeleton` on instantiation to distribute the bulk references to each
+asset amongst the individual generators. Currently, only wind actually distributes the power. 
+Intended for replacement by both a simple closed-loop supervisory controller and a more advanced
+supervisory controller.
