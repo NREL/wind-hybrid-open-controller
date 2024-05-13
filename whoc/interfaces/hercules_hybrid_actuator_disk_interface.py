@@ -26,7 +26,7 @@ class HerculesHybridADInterface(InterfaceBase):
         self.n_turbines = hercules_dict["controller"]["num_turbines"]
         self.turbines = range(self.n_turbines)
 
-        # Grab name of wind, solar, and battery (assumes there is only one!)
+        # Grab name of wind, solar, and battery (assumes there is EXACTLY one of each)
         self.wind_name = list(hercules_dict["hercules_comms"]["amr_wind"].keys())[0]
         py_sims = list(hercules_dict["py_sims"].keys())
         self.solar_name = [ps for ps in py_sims if "solar" in ps][0]
