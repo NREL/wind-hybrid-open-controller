@@ -15,13 +15,18 @@ import numpy as np
 
 # import pandas as pd
 from whoc.controllers import (
+    HybridSupervisoryControllerSkeleton,
     LookupBasedWakeSteeringController,
     WindBatteryController,
     WindFarmPowerDistributingController,
     WindFarmPowerTrackingController,
 )
 from whoc.controllers.wind_farm_power_tracking_controller import POWER_SETPOINT_DEFAULT
-from whoc.interfaces import HerculesADInterface, HerculesWindBatteryInterface
+from whoc.interfaces import (
+    HerculesADInterface,
+    HerculesHybridADInterface,
+    HerculesWindBatteryInterface,
+)
 from whoc.interfaces.interface_base import InterfaceBase
 
 
@@ -52,11 +57,15 @@ test_hercules_dict = {
             "test_farm": {
                 "turbine_wind_directions": [271.0, 272.5],
                 "turbine_powers": [4000.0, 4001.0],
+                "wind_speed": 10.0,
             }
         }
     },
-    "py_sims": {"test_battery": {"outputs": 10.0}, "inputs": {}},
-    "external_signals": {"wind_power_reference": 1000.0},
+    "py_sims": {
+        "test_battery": {"outputs": {"power": 10.0, "soc": 0.3}}, "inputs": {},
+        "test_solar": {"outputs": {"power_mw": 1.0, "dni": 1000.0, "aoi": 30.0}},
+    },
+    "external_signals": {"wind_power_reference": 1000.0, "plant_power_reference": 1000.0},
 }
 
 
@@ -71,6 +80,7 @@ def test_controller_instantiation():
     _ = WindBatteryController(interface=test_interface, input_dict=test_hercules_dict)
     _ = WindFarmPowerDistributingController(interface=test_interface, input_dict=test_hercules_dict)
     _ = WindFarmPowerTrackingController(interface=test_interface, input_dict=test_hercules_dict)
+    _ = HybridSupervisoryControllerSkeleton(interface=test_interface, input_dict=test_hercules_dict)
 
 
 # def test_LookupBasedWakeSteeringController():
@@ -222,3 +232,17 @@ def test_WindFarmPowerTrackingController():
         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
     )
     assert (test_power_setpoints_a < test_power_setpoints).all()
+
+def test_HybridSupervisoryControllerSkeleton():
+    test_interface = HerculesHybridADInterface(test_hercules_dict)
+
+    test_controller = HybridSupervisoryControllerSkeleton(
+        interface=test_interface, input_dict=test_hercules_dict
+    )
+
+    # Simply test the supervisory_control method, for the time being
+    test_hercules_dict["external_signals"]["plant_power_reference"] = 1000
+    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [500, 500]
+    test_controller.step(test_hercules_dict) # Run the controller once to update measurements
+    supervisory_control_output = test_controller.supervisory_control()
+    assert np.allclose(supervisory_control_output, [20, 50, -30])

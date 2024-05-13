@@ -15,8 +15,8 @@
 import pytest
 from whoc.interfaces import (
     HerculesADInterface,
-    HerculesWindBatteryInterface,
     HerculesHybridADInterface,
+    HerculesWindBatteryInterface,
 )
 
 test_hercules_dict = {
