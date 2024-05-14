@@ -72,6 +72,7 @@ class HybridSupervisoryControllerSkeleton(ControllerBase):
         wind_power = np.array(self.measurements_dict["wind_turbine_powers"]).sum()
         solar_power = self.measurements_dict["solar_power"]
         battery_power = self.measurements_dict["battery_power"] # noqa: F841
+        plant_power_reference = self.measurements_dict["plant_power_reference"] # noqa: F841
         wind_speed = self.measurements_dict["wind_speed"] # noqa: F841
         battery_soc = self.measurements_dict["battery_soc"] # noqa: F841
         solar_dni = self.measurements_dict["solar_dni"] # direct normal irradiance # noqa: F841
@@ -80,9 +81,32 @@ class HybridSupervisoryControllerSkeleton(ControllerBase):
         # Temporary print statements (note that negative battery indicates discharging)
         print("Measured powers (wind, solar, battery):", wind_power, solar_power, battery_power)
 
-        # Placeholder for supervisory control logic
-        wind_reference = 20 # kW
-        solar_reference = 50 # kW, not currently working
-        battery_reference = -30 # kW, Negative requests discharging, positive requests charging
+        print('plant_power_reference', plant_power_reference)
+        battery_reference = (wind_power + solar_power) - plant_power_reference
+        # This is here because the wind powers are initialized at 0, which is a problem for the controller
+
+        if (wind_power + solar_power) < plant_power_reference:
+            if wind_power == 0:
+                wind_reference = 20000
+            else:
+                wind_reference = wind_power *(1.01)
+            solar_reference = solar_power *(1.01)
+        elif (wind_power + solar_power) > (plant_power_reference+20000) or battery_soc>0.89:
+            if wind_power == 0:
+                wind_reference = 20000
+            else:
+                wind_reference = wind_power *(0.98)
+            solar_reference = solar_power *(0.98)
+        else:
+            if wind_power == 0:
+                wind_reference = 20000
+            else:
+                wind_reference = wind_power *(1.01)
+            solar_reference = solar_power *(1.01)
+
+        # # Placeholder for supervisory control logic
+        # wind_reference = 20000 # kW
+        # solar_reference = 5000 # kW, not currently working
+        # battery_reference = -30 # kW, Negative requests discharging, positive requests charging
 
         return wind_reference, solar_reference, battery_reference

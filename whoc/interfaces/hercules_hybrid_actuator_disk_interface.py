@@ -40,7 +40,7 @@ class HerculesHybridADInterface(InterfaceBase):
 
         if ("external_signals" in hercules_dict
             and "plant_power_reference" in hercules_dict["external_signals"]):
-            plant_power_reference = hercules_dict["external_signals"]["wind_power_reference"]
+            plant_power_reference = hercules_dict["external_signals"]["plant_power_reference"]
         else:
             plant_power_reference = POWER_SETPOINT_DEFAULT
 
