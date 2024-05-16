@@ -38,8 +38,6 @@ class HybridSupervisoryControllerSkeleton(ControllerBase):
 
         # Set constants
         self.battery_charge_rate = interface.battery_charge_rate
-        self.wind_capacity_kW = interface.wind_capacity_kW
-        self.solar_capacity_kW = interface.solar_capacity_kW
 
         # Initialize Power references
         self.wind_reference = 0
