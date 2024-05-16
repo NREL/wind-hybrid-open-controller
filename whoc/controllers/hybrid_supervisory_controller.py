@@ -98,7 +98,8 @@ class HybridSupervisoryControllerSkeleton(ControllerBase):
         battery_reference = (wind_power + solar_power) - plant_power_reference
 
         # Decide control gain:
-        if (wind_power + solar_power) < (plant_power_reference+self.battery_charge_rate) and battery_power > 0:
+        if (wind_power + solar_power) < (plant_power_reference+self.battery_charge_rate)\
+            and battery_power > 0:
             K = ((wind_power+solar_power) - (plant_power_reference+self.battery_charge_rate))/2
         else:
             K = ((wind_power + solar_power) - plant_power_reference) / 2
