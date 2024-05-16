@@ -98,16 +98,20 @@ class HybridSupervisoryControllerSkeleton(ControllerBase):
         # Decide control gain:
         if (wind_power + solar_power) < (plant_power_reference+self.battery_charge_rate)\
             and battery_power > 0:
-            K = ((wind_power+solar_power) - (plant_power_reference+self.battery_charge_rate))/2
+            if battery_soc>0.89:
+                K = ((wind_power + solar_power) - plant_power_reference) / 2
+            else:
+                K = ((wind_power+solar_power) - (plant_power_reference+self.battery_charge_rate))/2
         else:
             K = ((wind_power + solar_power) - plant_power_reference) / 2
 
 
         if (wind_power + solar_power) > (plant_power_reference+self.battery_charge_rate) or \
             ((wind_power + solar_power) > (plant_power_reference) and battery_soc>0.89):
+            
             # go down
-            wind_reference = wind_power + K
-            solar_reference = solar_power + K
+            wind_reference = wind_power - K
+            solar_reference = solar_power - K
         else: 
             # go up
             # Is the resource saturated?
