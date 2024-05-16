@@ -32,6 +32,11 @@ class HerculesHybridADInterface(InterfaceBase):
         self.solar_name = [ps for ps in py_sims if "solar" in ps][0]
         self.battery_name = [ps for ps in py_sims if "battery" in ps][0]
 
+        # Set constants
+        self.battery_charge_rate = hercules_dict["py_sims"][self.battery_name]["charge_rate"]*1000 # Change battery charge rate to kW
+        self.wind_capacity_kW = hercules_dict["controller"]["wind_capacity_MW"]*1000
+        self.solar_capacity_kW = hercules_dict["controller"]["solar_capacity_MW"]*1000
+
     def get_measurements(self, hercules_dict):
         turbine_powers = (
             hercules_dict["hercules_comms"]["amr_wind"][self.wind_name]["turbine_powers"]
