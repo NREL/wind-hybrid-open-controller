@@ -94,8 +94,6 @@ class HybridSupervisoryControllerSkeleton(ControllerBase):
         # Temporary print statements (note that negative battery indicates discharging)
         print("Measured powers (wind, solar, battery):", wind_power, solar_power, battery_power)
 
-        # Find error with power reference 
-        power_reference_error = (wind_power+solar_power-battery_power) - plant_power_reference
         # Calculate battery reference value
         battery_reference = (wind_power + solar_power) - plant_power_reference
 
