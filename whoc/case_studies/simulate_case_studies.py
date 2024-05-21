@@ -262,8 +262,8 @@ if __name__ == "__main__":
         # run_simulations(["perfect_preview_type"], REGENERATE_WIND_FIELD)
         print([case_families[i] for i in CASE_FAMILY_IDX])
 
-        if os.path.exists("init_simulations.pkl"):
-            with open("init_simulations.pkl", "rb") as fp:
+        if os.path.exists(os.path.join(STORAGE_DIR, "init_simulations.pkl")):
+            with open(os.path.join(STORAGE_DIR, "init_simulations.pkl"), "rb") as fp:
                 tmp = pickle.load(fp)
                 case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = tuple(tmp.values())
         else:
