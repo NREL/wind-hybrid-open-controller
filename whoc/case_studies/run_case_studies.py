@@ -15,14 +15,8 @@ from whoc.case_studies.process_case_studies import process_simulations, plot_sim
 
 if __name__ == "__main__":
     REGENERATE_WIND_FIELD = False
-    RUN_SIMULATIONS = False
+    RUN_SIMULATIONS = True
     POST_PROCESS = True
-
-    case_families = ["baseline_controllers", "solver_type",
-                        "wind_preview_type", "warm_start", 
-                        "horizon_length", "breakdown_robustness",
-                        "scalability", "cost_func_tuning", 
-                        "stochastic_preview_type"]
 
     DEBUG = sys.argv[1].lower() == "debug"
     # if sys.argv[2].lower() == "dask":

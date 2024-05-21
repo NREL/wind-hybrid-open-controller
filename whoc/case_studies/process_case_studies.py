@@ -3,6 +3,7 @@ import os
 import yaml
 import re
 import sys
+import matplotlib.pyplot as plt
 
 from whoc.postprocess_case_studies import plot_wind_field_ts, plot_opt_var_ts, plot_opt_cost_ts, plot_power_ts, barplot_opt_cost, compare_simulations, plot_cost_function_pareto_curve, plot_breakdown_robustness
 from whoc.case_studies.initialize_case_studies import case_studies, STORAGE_DIR, case_families
@@ -30,8 +31,11 @@ def process_simulations(results_dirs):
     compare_results_df = compare_simulations(results_dfs)
     compare_results_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False)[("FarmPowerMean", "mean")]
     compare_results_df.sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True)[("YawAngleChangeAbsMean", "mean")]
-    compare_results_df.sort_values(by=("TotalRunningOptimizationCostMean", "mean"), ascending=True)[("TotalRunningOptimizationCostMean", "mean")]
-    
+    # compare_results_df.sort_values(by=("TotalRunningOptimizationCostMean", "mean"), ascending=True).groupby(level=0)[("TotalRunningOptimizationCostMean", "mean")]
+    compare_results_df[("TotalRunningOptimizationCostMean", "mean")]
+    compare_results_df.groupby("CaseFamily", group_keys=False).apply(lambda x: x.sort_values(by=("TotalRunningOptimizationCostMean", "mean"), ascending=True).head(3))[("TotalRunningOptimizationCostMean", "mean")]
+    compare_results_df.groupby("CaseFamily", group_keys=False).apply(lambda x: x.sort_values(by=("RelativeYawAngleChangeAbsMean", "mean"), ascending=True).head(3))[("RelativeYawAngleChangeAbsMean", "mean")]
+    compare_results_df.groupby("CaseFamily", group_keys=False).apply(lambda x: x.sort_values(by=("RelativeFarmPowerMean", "mean"), ascending=False).head(3))[("RelativeFarmPowerMean", "mean")]
     plot_breakdown_robustness(compare_results_df, case_studies, STORAGE_DIR)
     plot_cost_function_pareto_curve(compare_results_df, case_studies, STORAGE_DIR)
 
@@ -91,19 +95,23 @@ def plot_simulations(results_dirs):
             with open(os.path.join(results_dir, input_fn), 'r') as fp:
                 input_config = yaml.safe_load(fp)
 
-            df = results_dfs[f"{os.path.basename(results_dir)}_{input_config['controller']['case_names']}"]
+            df = results_dfs[f"{os.path.basename(results_dir)}_{input_config['controller']['case_names'].replace('/', '_')}"]
 
             # if "Time" not in df.columns:
             #     df["Time"] = np.arange(0, 3600.0 - 60.0, 60.0)
 
-            plot_wind_field_ts(df, os.path.join(results_dir, "wind_ts.png"))
+            fig, _ = plot_wind_field_ts(df, os.path.join(results_dir, "wind_ts.png"))
+            fig.suptitle("_".join([os.path.basename(results_dir), "wind_ts"]))
 
-            plot_opt_var_ts(df, input_config["controller"]["yaw_limits"], results_dir)
+            fig, _ = plot_opt_var_ts(df, input_config["controller"]["yaw_limits"], os.path.join(results_dir, f"opt_var_ts_{input_config['controller']['case_names'].replace('/', '_')}.png"))
+            fig.suptitle("_".join([os.path.basename(results_dir), input_config['controller']['case_names'].replace('/', '_'), "opt_var_ts"]))
             # plot_opt_var_ts(df, (-30.0, 30.0), os.path.join(results_dir, f"opt_vars_ts_{f}.png"))
             
-            plot_opt_cost_ts(df, os.path.join(results_dir, f"opt_costs_ts_{f}.png"))
+            fig, _ = plot_opt_cost_ts(df, os.path.join(results_dir, f"opt_costs_ts_{input_config['controller']['case_names'].replace('/', '_')}.png"))
+            fig.suptitle("_".join([os.path.basename(results_dir), input_config['controller']['case_names'].replace('/', '_'), "opt_costs_ts"]))
         
-            plot_power_ts(df, os.path.join(results_dir, f"yaw_power_ts_{f}.png"))
+            fig, _ = plot_power_ts(df, os.path.join(results_dir, f"yaw_power_ts_{input_config['controller']['case_names'].replace('/', '_')}.png"))
+            fig.suptitle("_".join([os.path.basename(results_dir), input_config['controller']['case_names'].replace('/', '_'), "yaw_power_ts"]))
     
     summary_df = pd.read_csv(os.path.join(STORAGE_DIR, f"comparison_time_series_results.csv"), index_col=0)
     barplot_opt_cost(summary_df, STORAGE_DIR, relative=True)

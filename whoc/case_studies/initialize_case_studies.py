@@ -22,14 +22,12 @@ from hercules.utilities import load_yaml
 N_COST_FUNC_TUNINGS = 21
 
 if sys.platform == "linux":
-    # STORAGE_DIR = "/projects/ssc/ahenry/whoc/floris_case_studies"
-    STORAGE_DIR = "/home/ahenry/toolboxes/whoc_env/wind-hybrid-open-controller/whoc/floris_case_studies"
+    STORAGE_DIR = "/projects/ssc/ahenry/whoc/floris_case_studies"
 elif sys.platform == "darwin":
-    STORAGE_DIR = "/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/whoc/floris_case_studies"
+    STORAGE_DIR = "/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples"
 
 if not os.path.exists(STORAGE_DIR):
     os.makedirs(STORAGE_DIR)
-
 
 # sequential_pyopt is best solver, stochastic is best preview type
 case_studies = {
@@ -168,20 +166,20 @@ case_studies = {
                           },
     "perfect_preview_type": {"seed": {"group": 0, "vals": [0]},
                         #   "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
-                             "num_turbines": {"group": 0, "vals": [9]}, 
+                             "num_turbines": {"group": 0, "vals": [3]}, 
                           "controller_class": {"group": 0, "vals": ["MPC"]},
                           "use_filt": {"group": 0, "vals": [False]},
                           "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{9}.csv")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{3}.csv")]},
                              "generate_lut": {"group": 0, "vals": [False]},
-                          "n_horizon": {"group": 0, "vals": [10]}, 
+                          "n_horizon": {"group": 0, "vals": [5]}, 
                           "alpha": {"group": 0, "vals": [0.5]}, 
                           "case_names": {"group": 1, "vals": ["Perfect"]},
                           "wind_preview_type": {"group": 1, "vals": ["perfect"]}, 
                           "warm_start": {"group": 0, "vals": ["greedy"]}, 
                           "solver": {"group": 0, "vals": ["slsqp"]},
                           "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml")]}
+                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_3.yaml")]}
                           },
     "wind_preview_type": {"seed": {"group": 0, "vals": [0]},
                         #   "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
@@ -395,7 +393,7 @@ def initialize_simulations(case_study_keys, regenerate_wind_field, n_seeds, debu
         wind_field_config = yaml.safe_load(fp)
 
     # instantiate wind field if files don't already exist
-    wind_field_dir = os.path.join(os.path.dirname(whoc_file), '../examples/wind_field_data/raw_data')        
+    wind_field_dir = os.path.join(STORAGE_DIR, 'wind_field_data/raw_data')
     wind_field_filenames = glob(f"{wind_field_dir}/case_*.csv")
     if not os.path.exists(wind_field_dir):
         os.makedirs(wind_field_dir)
@@ -492,7 +490,7 @@ def initialize_simulations(case_study_keys, regenerate_wind_field, n_seeds, debu
     wind_field_config["regenerate_distribution_params"] = False
     wind_field_config["time_series_dt"] = int(input_dict["controller"]["dt"] // input_dict["dt"])
 
-    with open("init_simulations.pkl", "wb") as fp:
+    with open(os.path.join(STORAGE_DIR, "init_simulations.pkl"), "wb") as fp:
         pickle.dump({"case_lists": case_lists, "case_name_lists": case_name_lists, "input_dicts": input_dicts, "wind_field_config": wind_field_config,
                      "wind_mag_ts": wind_mag_ts, "wind_dir_ts": wind_dir_ts}, fp)
 
@@ -502,7 +500,7 @@ case_families = ["baseline_controllers", "solver_type",
                     "wind_preview_type", "warm_start", 
                     "horizon_length", "breakdown_robustness",
                     "scalability", "cost_func_tuning", 
-                    "stochastic_preview_type"]
+                    "stochastic_preview_type", "slsqp_solver", "perfect_preview_type"]
     
 if __name__ == "__main__":
     REGENERATE_WIND_FIELD = False
