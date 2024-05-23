@@ -48,6 +48,7 @@ examples/*.out
 
 
 whoc/floris_case_studies/*/*.yaml
+whoc/case_studies/*.pkl
 
 # Exceptions
 !examples/lookup-based_wake_steering_florisstandin/amr_standin_data.csv
