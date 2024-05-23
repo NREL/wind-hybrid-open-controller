@@ -218,6 +218,7 @@ def plot_opt_var_ts(data_df, yaw_offset_bounds, save_path):
     fig_opt_vars, ax_opt_vars = plt.subplots(2, 1, sharex=True, figsize=(15.12, 7.98))
     # fig_opt_vars.set_size_inches(10, 5)
     plot_seed = 0
+    time_frac = 1;
     plot_turbine = int(len(yaw_angle_cols) // 2)
     for seed in sorted(pd.unique(data_df["WindSeed"])):
         if seed != plot_seed:
@@ -228,7 +229,7 @@ def plot_opt_var_ts(data_df, yaw_offset_bounds, save_path):
         ax_opt_vars[0].plot(seed_df["Time"], seed_df["FreestreamWindDir"] - yaw_offset_bounds[0], color=colors[seed], linestyle='dotted')
         ax_opt_vars[0].plot(seed_df["Time"], seed_df["FreestreamWindDir"] - yaw_offset_bounds[1], color=colors[seed], linestyle='dotted', label="Lower/Upper Bounds")
         ax_opt_vars[1].plot(seed_df["Time"], seed_df[yaw_angle_change_cols[plot_turbine]], color=colors[seed], linestyle='-')
-        ax_opt_vars[1].set(title='Yaw Angles Change [deg]', xlabel='Time [s]', xlim=(0, int((seed_df["Time"].max() + seed_df["Time"].diff().iloc[1]) // 6)), ylim=(-2, 2))
+        ax_opt_vars[1].set(title='Yaw Angles Change [deg]', xlabel='Time [s]', xlim=(0, int((seed_df["Time"].max() + seed_df["Time"].diff().iloc[1]) * time_frac)), ylim=(-2, 2))
     # ax_outputs[1, 0].plot(time_ts[:int(simulation_max_time // input_dict["dt"]) - 1], turbine_powers_ts)
     # ax_outputs[1, 0].set(title="Turbine Powers [MW]")
     ax_opt_vars[0].legend()
@@ -240,7 +241,7 @@ def plot_opt_var_ts(data_df, yaw_offset_bounds, save_path):
 def plot_opt_cost_ts(data_df, save_path):
     fig_opt_cost, ax_opt_cost = plt.subplots(2, 1, sharex=True, figsize=(15.12, 7.98))
     # fig_opt_cost.set_size_inches(10, 5)
-    
+    time_frac = 1;
     plot_seed = 0
     # plot_turbine = 4
     for seed in sorted(pd.unique(data_df["WindSeed"])):
@@ -250,7 +251,8 @@ def plot_opt_cost_ts(data_df, save_path):
         ax_opt_cost[0].step(seed_df["Time"], seed_df["RunningOptimizationCostTerm_0"])
         ax_opt_cost[0].set(title="Optimization Farm Power Cost [-]")
         ax_opt_cost[1].step(seed_df["Time"], seed_df["RunningOptimizationCostTerm_1"])
-        ax_opt_cost[1].set(title="Optimization Yaw Angle Change Cost [-]", xlabel='Time [s]', xlim=(0, int((seed_df["Time"].max() + seed_df["Time"].diff().iloc[1]) // 6)), ylim=(0, 0.05))
+
+        ax_opt_cost[1].set(title="Optimization Yaw Angle Change Cost [-]", xlabel='Time [s]', xlim=(0, int((seed_df["Time"].max() + seed_df["Time"].diff().iloc[1]) * time_frac)), ylim=(0, 0.05))
     # ax_outputs[2].scatter(time_ts[:int(simulation_max_time // input_dict["dt"]) - 1], convergence_time_ts)
     # ax_outputs[2].set(title="Convergence Time [s]")
     fig_opt_cost.savefig(save_path)
