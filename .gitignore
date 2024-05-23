@@ -8,6 +8,7 @@ data.db
 slices
 
 # Data files
+*.hst
 *.nc
 *.png
 *.jpeg
@@ -68,3 +69,7 @@ whoc/case_studies/*.pkl
 whoc/case_studies/*/*.csv
 whoc/case_studies/*/*.yaml
 whoc/case_studies/*.out
+whoc/floris_case_studies/*/*.csv
+whoc/floris_case_studies/*/*.yaml
+whoc/floris_case_studies/*.out
+whoc/floris_case_studies/optimizer_histories/*.hst
