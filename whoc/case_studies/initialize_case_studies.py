@@ -413,12 +413,13 @@ def initialize_simulations(case_study_keys, regenerate_wind_field, n_seeds, debu
         + max(case_studies["horizon_length"]["n_horizon"]["vals"]) * int(input_dict["controller"]["dt"] / input_dict["dt"])
     wind_field_config["n_samples_per_init_seed"] = 1
     wind_field_config["regenerate_distribution_params"] = False
-    wind_field_config["distribution_params_path"] = os.path.join(os.path.dirname(whoc_file), "..", "examples", "wind_field_data", "wind_preview_distribution_params.pkl")  
+    wind_field_config["distribution_params_path"] = os.path.join(STORAGE_DIR, "wind_field_data", "wind_preview_distribution_params.pkl")  
     wind_field_config["time_series_dt"] = 1
 
     # TODO check that wind field has same dt or interpolate...
     seed = 0
     if len(wind_field_filenames) < n_seeds or regenerate_wind_field:
+        print("regenerating wind fields")
         wind_field_config["regenerate_distribution_params"] = True # set to True to regenerate from constructed mean and covaraicne
         full_wf = WindField(**wind_field_config)
         wind_field_data = generate_multi_wind_ts(full_wf, init_seeds=[seed + i for i in range(n_seeds)])

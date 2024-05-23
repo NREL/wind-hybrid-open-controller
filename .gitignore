@@ -47,9 +47,6 @@ examples/*/time.dat
 examples/post_processing/abl_statistics00000.nc
 examples/*.out
 
-
-whoc/floris_case_studies/*/*.yaml
-
 # Exceptions
 !examples/lookup-based_wake_steering_florisstandin/amr_standin_data.csv
 !examples/wind_farm_power_tracking_florisstandin/amr_standin_data.csv
@@ -65,10 +62,7 @@ whoc/floris_case_studies/*/*.yaml
 # Outputs
 *echo
 
-whoc/case_studies/*/*.csv
-whoc/case_studies/*/*.yaml
-whoc/case_studies/*.out
-whoc/floris_case_studies/*/*.csv
-whoc/floris_case_studies/*/*.yaml
-whoc/floris_case_studies/*.out
-whoc/floris_case_studies/optimizer_histories/*.hst
+examples/floris_case_studies/*/*.csv
+examples/floris_case_studies/*/*.yaml
+examples/floris_case_studies/*.out
+examples/floris_case_studies/optimizer_histories/*.hst
