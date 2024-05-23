@@ -11,8 +11,8 @@ time.cfl                                 = 0.95        # CFL factor
 #.......................................#
 time.plot_interval                       = 3600       # Steps between plot files
 time.checkpoint_interval                 = 3600       # Steps between checkpoint files
-io.check_file                            = "output_files/chk_4"
-io.plot_file                             = "output_files/plt_4"
+io.check_file                            = "output_files_4/chk"
+io.plot_file                             = "output_files_4/plt"
 ABL.bndry_file                           = "bndry_files_4"
 ABL.bndry_io_mode                        = 0
 ABL.bndry_planes                         = ylo xlo
