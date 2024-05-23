@@ -429,14 +429,11 @@ def initialize_simulations(case_study_keys, regenerate_wind_field, n_seeds, debu
     
     # if wind field data exists, get it
     WIND_TYPE = "stochastic"
-    wind_field_fig_dir = os.path.join(os.path.dirname(whoc_file), '../examples/wind_field_data/figs') 
+    wind_field_fig_dir = os.path.join(wind_field_dir, 'figs') 
     wind_field_data = []
     if os.path.exists(wind_field_dir):
         for f, fn in enumerate(wind_field_filenames):
             wind_field_data.append(pd.read_csv(fn, index_col=0))
-            # wind_field_data[-1].rename(columns={"Sample": "WindSeed"}, inplace=True)
-            # wind_field_data[-1]["WindSeed"] = f
-            # wind_field_data[-1].to_csv(fn)
 
             if WIND_TYPE == "step":
                 # n_rows = len(wind_field_data[-1].index)
