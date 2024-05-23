@@ -444,7 +444,7 @@ def initialize_simulations(case_study_keys, regenerate_wind_field, n_seeds, debu
                 wind_field_data[-1].loc[45:, f"FreestreamWindDir"] = 270.0
 
     # true wind disturbance time-series
-    plot_wind_field_ts(pd.concat(wind_field_data), os.path.join(wind_field_fig_dir, "seeds.png"))
+    #plot_wind_field_ts(pd.concat(wind_field_data), os.path.join(wind_field_fig_dir, "seeds.png"))
     wind_mag_ts = [wind_field_data[case_idx]["FreestreamWindMag"].to_numpy() for case_idx in range(n_seeds)]
     wind_dir_ts = [wind_field_data[case_idx]["FreestreamWindDir"].to_numpy() for case_idx in range(n_seeds)]
 

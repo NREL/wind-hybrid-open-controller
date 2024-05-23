@@ -24,4 +24,5 @@ echo "Starting AMR-Wind job at: " $(date) >> logamr
 echo $SLURM_NTASKS
 # Now go back to scratch folder and launch the job
 srun /home/ahenry/toolboxes/whoc_env/amr-wind/spack-build-bmx2pfy/amr_wind amr_precursor_original_2.inp
+mv post_processing post_processing_2
 echo "Finished precursor 2 at:" $(date) >> logamr
