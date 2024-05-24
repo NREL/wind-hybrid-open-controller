@@ -11,9 +11,9 @@ time.cfl                                 = 0.95        # CFL factor
 #.......................................#
 time.plot_interval                       = 3600       # Steps between plot files
 time.checkpoint_interval                 = 3600       # Steps between checkpoint files
-io.check_file                            = "output_files_5/chk"
-io.plot_file                             = "output_files_5/plt"
-ABL.bndry_file                           = "bndry_files_5"
+io.check_file                            = "/projects/ssc/ahenry/whoc/amr_precursors/output_files_5/chk"
+io.plot_file                             = "/projects/ssc/ahenry/whoc/amr_precursors/output_files_5/plt"
+ABL.bndry_file                           = "/projects/ssc/ahenry/whoc/amr_precursors/bndry_files_5"
 ABL.bndry_io_mode                        = 0
 ABL.bndry_planes                         = ylo xlo
 ABL.bndry_output_start_time              = 7200.0
@@ -21,7 +21,7 @@ ABL.bndry_var_names                      = velocity temperature
 ABL.bndry_output_format                  = native
 ABL.stats_output_frequency               = 1                   
 ABL.stats_output_format                  = netcdf
-ABLForcing.forcing_timetable_output_file = "forcing_files_5"
+ABLForcing.forcing_timetable_output_file = "/projects/ssc/ahenry/whoc/amr_precursors/forcing_files_5"
 ABLForcing.forcing_timetable_start_time  = 7200.0
 
 
@@ -69,7 +69,7 @@ zhi.temperature                          = 0.003
 ICNS.source_terms                        = BoussinesqBuoyancy CoriolisForcing ABLForcing
 incflo.velocity                          = 8.0 0.0. 0.0 # 6.928203230275509 4.0 0.0 # TODO WHAT DOES THIS DO, WILL FREESTREAM WIND VARY
 ABLForcing.abl_forcing_height            = 90.0 #150 TODO shouldn't this be at turbine hub height? => yes
-ABLForcing.velocity_timetable            = "wind_field_data/raw_data/abl_forcing_velocity_timetable_5.csv" # CHANGE ME FOR NEW SEED
+ABLForcing.velocity_timetable            = "/projects/ssc/ahenry/whoc/amr_precursors/wind_field_data/raw_data/abl_forcing_velocity_timetable_5.csv" # CHANGE ME FOR NEW SEED
 CoriolisForcing.latitude 				 = 41.3
 BoussinesqBuoyancy.reference_temperature = 300.0
 ABL.reference_temperature                = 300.0
