@@ -729,8 +729,7 @@ def write_abl_forcing_velocity_timetable(wfs, save_path):
         df = wf.df[["Time", "FreestreamWindMag", "FreestreamWindDir"]]
         df["FreestreamWindDir"] = (270.0 - df["FreestreamWindDir"]) % 360.0
         df.loc[df["FreestreamWindDir"] > 180.0, "FreestreamWindDir"] = df.loc[df["FreestreamWindDir"] > 180.0, "FreestreamWindDir"] - 360.0
-        df.to_csv(os.path.join(save_path, f"abl_forcing_velocity_timetable_{d}.csv"), 
-                                                                         index=False)
+        df.to_csv(os.path.join(save_path, f"abl_forcing_velocity_timetable_{d}.csv"), index=False)
 
 def get_amr_timeseries(case_folders=None, abl_stats_files=None):
     if case_folders is None:

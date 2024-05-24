@@ -422,7 +422,7 @@ def initialize_simulations(case_study_keys, regenerate_wind_field, n_seeds, debu
         print("regenerating wind fields")
         wind_field_config["regenerate_distribution_params"] = True # set to True to regenerate from constructed mean and covaraicne
         full_wf = WindField(**wind_field_config)
-        wind_field_data = generate_multi_wind_ts(full_wf, init_seeds=[seed + i for i in range(n_seeds)])
+        wind_field_data = generate_multi_wind_ts(full_wf, wind_field_dir, init_seeds=[seed + i for i in range(n_seeds)])
         write_abl_forcing_velocity_timetable(wind_field_data, wind_field_dir) # then use these timetables in amr precursor
 
         wind_field_filenames = [os.path.join(wind_field_dir, f"case_{i}.csv") for i in range(n_seeds)]

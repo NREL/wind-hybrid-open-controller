@@ -458,6 +458,8 @@ class MPC(ControllerBase):
 		self.wind_mag_ts = kwargs["wind_mag_ts"]
 		self.wind_dir_ts = kwargs["wind_dir_ts"]
 		self._last_yaw_setpoints = None
+		self._last_measured_time = None
+		self.current_time = 0.0
 		
 		self.use_filt = input_dict["controller"]["use_filtered_wind_dir"]
 		self.lpf_time_const = input_dict["controller"]["lpf_time_const"]
@@ -862,10 +864,18 @@ class MPC(ControllerBase):
 		"""
 		solve OCP to minimize objective over future horizon
 		"""
-		# TODO HIGH only run compute_controls when new amr reading comes in (ie with new timestamp), also in LUT and Greedy
+		# TODO HIGH only run compute_controls when new amr reading comes in (ie with new timestamp), also in LUT and Greedy, keep track of curent_time independently of measurements_dict
 		# current_wind_directions = np.atleast_2d(self.measurements_dict["wind_directions"])
-		current_time = np.atleast_1d(self.measurements_dict["time"])[0]
-		current_wind_directions = self.wind_dir_ts[int(current_time // self.simulation_dt):int((current_time + self.dt) // self.simulation_dt)][:, np.newaxis]
+		if (self._last_measured_time is not None) and self._last_measured_time == np.atleast_1d(self.measurements_dict["time"])[0]:
+			return
+
+		print(f"self.current_time == {self.current_time}")
+		print(f"self._last_measured_time == {self._last_measured_time}")
+		print(f"self.measurements_dict['time'] == {np.atleast_1d(self.measurements_dict["time"])[0]}")
+
+		self._last_measured_time = np.atleast_1d(self.measurements_dict["time"])[0]
+
+		current_wind_directions = self.wind_dir_ts[int(self.current_time // self.simulation_dt):int((self.current_time + self.dt) // self.simulation_dt)][:, np.newaxis]
 
 		# x = np.atleast_2d(self.measurements_dict["wind_directions"])
 		# y = self.wind_dir_ts[int(current_time // self.simulation_dt):int((current_time + self.dt) // self.simulation_dt)][:, np.newaxis]
@@ -880,16 +890,16 @@ class MPC(ControllerBase):
 			if self.verbose:
 				print("Bad wind direction measurement received, reverting to previous measurement.")
 		# TODO MISHA this is a patch up for AMR wind initialization problem
-		elif (abs(current_time % self.dt) == 0.0) or (current_time == self.simulation_dt * 2):
+		elif (abs(self.current_time % self.dt) == 0.0) or (self.current_time == self.simulation_dt * 2):
 			if self.verbose:
 				print(f"unfiltered wind directions = {current_wind_directions[-1, :]}")
-			if current_time > 0.:
+			if self.current_time > 0.:
 				# update initial state self.mi_model.initial_state
 				# TODO MISHA should be able to get this from measurements dict
 				current_yaw_angles = np.atleast_2d(self.controls_dict["yaw_angles"])[0, :]
 				self.initial_state = current_yaw_angles / self.yaw_norm_const # scaled by yaw limits
 			
-			if (current_time < 60 or not self.use_filt):
+			if (self.current_time < 60 or not self.use_filt):
 				current_wind_directions = current_wind_directions[-1, 0]
 			else:
 				# use filtered wind direction and speed
@@ -898,7 +908,7 @@ class MPC(ControllerBase):
 			if self.verbose:
 				print(f"{'filtered' if self.use_filt else 'unfiltered'} wind directions = {current_wind_directions}")
 			
-			current_wind_speeds = self.wind_mag_ts[int(current_time // self.simulation_dt)]
+			current_wind_speeds = self.wind_mag_ts[int(self.current_time // self.simulation_dt)]
 			# current_wind_speeds = np.atleast_2d(self.measurements_dict["wind_speeds"])
 
 			# x = np.atleast_2d(self.measurements_dict["wind_speeds"])
@@ -913,12 +923,12 @@ class MPC(ControllerBase):
 			# returns n_preview_samples of horizon preview realiztions in the case of stochastic preview type, 
 			# else just returns single values for persistent or perfect preview type
 			self.wind_preview_samples = self.wind_preview_func(self.current_freestream_measurements, 
-															   int(current_time // self.simulation_dt),
+															   int(self.current_time // self.simulation_dt),
 															   return_statistical_values=False)
 			
 			# returns dictionary of mean, min, max value expected from distribution, in the cahse of stochastic preview type
 			self.wind_preview_stats = self.wind_preview_func(self.current_freestream_measurements, 
-																int(current_time // self.simulation_dt),
+																int(self.current_time // self.simulation_dt),
 																return_statistical_values=True)
 			
 			if self.wind_preview_type == "stochastic":
@@ -994,7 +1004,7 @@ class MPC(ControllerBase):
 				print(f"nonzero state_con_bools = {state_con_bools}")
 
 			self.controls_dict = {"yaw_angles": list(yaw_star)}
-			
+			self.current_time += self.dt
 			# [c1 == c2 for c1, c2 in zip(self.pyopt_sol_obj.constraints["state_cons"].value, state_cons)]
 
 	def zsgd_solve(self):
