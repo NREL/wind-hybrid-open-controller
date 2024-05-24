@@ -56,7 +56,12 @@ class GreedyController(ControllerBase):
 	
 	def compute_controls(self):
 		# TODO MISHA should we check this at every simulation step rather than every 60, for threshold changes?
-		current_time = np.atleast_1d(self.measurements_dict["time"])[0]
+		if self.current_time == np.atleast_1d(self.measurements_dict["time"])[0]:
+			return
+
+		self.current_time = np.atleast_1d(self.measurements_dict["time"])[0]
+		print(f"self.current_time == {self.current_time}")
+
 		# if current_time < 2 * self.simulation_dt:
 		
 		if np.all(np.isclose(self.measurements_dict["wind_directions"], 0)):
@@ -64,7 +69,7 @@ class GreedyController(ControllerBase):
 			if self.verbose:
 				print("Bad wind direction measurement received, reverting to previous measurement.")
 		# TODO MISHA this is a patch up for AMR wind initialization problem
-		elif (abs(current_time % self.simulation_dt) == 0.0) or (current_time == self.simulation_dt * 2):
+		elif (abs(self.current_time % self.simulation_dt) == 0.0) or (self.current_time == self.simulation_dt * 2):
 			
 			current_wind_directions = np.atleast_2d(self.measurements_dict["wind_directions"])
 			if self.verbose:
@@ -75,7 +80,7 @@ class GreedyController(ControllerBase):
 					current_wind_directions])[-int((self.lpf_time_const // self.simulation_dt) * 1e3):, :]
 				
 			# if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
-			if current_time < 60. or not self.use_filt:
+			if self.current_time < 60. or not self.use_filt:
 				if np.size(current_wind_directions) == 0:
 					if self.verbose:
 						print("Bad wind direction measurement received, reverting to previous measurement.")
