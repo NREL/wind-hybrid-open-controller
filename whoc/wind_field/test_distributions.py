@@ -110,7 +110,7 @@ if __name__ == "__main__":
 
         # instantiate wind field if files don't already exist
         wind_field_dir = os.path.join(STORAGE_DIR, "wind_field_data", "raw_data")        
-        wind_field_filenames = glob(os.path.join(wind_field_dir, "debug_case_*.csv"))
+        wind_field_filenames = glob(os.path.join(wind_field_dir, "case_*.csv"))
         distribution_params_path = os.path.join(STORAGE_DIR, "wind_field_data", "wind_preview_distribution_params.pkl")    
         
         if not os.path.exists(wind_field_dir):
