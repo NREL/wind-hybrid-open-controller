@@ -497,7 +497,7 @@ class MPC(ControllerBase):
 					
 					# compute freestream wind direction angle from above, clockwise from north
 					direction = np.arctan2(current_freestream_measurements[0], current_freestream_measurements[1])
-					direction = ((2 * np.pi - direction) * (180 / np.pi)) % 360.0
+					direction = (270.0 - (direction * (180 / np.pi))) % 360.0
 
 					wind_preview_data[f"FreestreamWindDir_{0}"] = {"mean": direction, "min": direction, "max": direction}
 					
@@ -528,7 +528,7 @@ class MPC(ControllerBase):
 
 					# compute directions
 					dir_preview = np.arctan2(combs[:, :, 0], combs[:, :, 1])
-					dir_preview = ((2 * np.pi - dir_preview) * (180. / np.pi)) % 360.
+					dir_preview = (270.0 - (dir_preview * (180 / np.pi))) % 360.0
 
 					min_dirs = np.nanmin(dir_preview, axis=1)
 					max_dirs = np.nanmax(dir_preview, axis=1)
@@ -536,7 +536,7 @@ class MPC(ControllerBase):
 					# compute directions for mean values
 					combs = np.vstack([distribution_params[0], distribution_params[1]]).T
 					dir_preview = np.arctan2(combs[:, 0], combs[:, 1])
-					dir_preview = ((2 * np.pi - dir_preview) * (180. / np.pi)) % 360.
+					dir_preview = (270.0 - (dir_preview * (180 / np.pi))) % 360.0
 					mean_dirs = dir_preview
 
 					for j in range(input_dict["controller"]["n_horizon"]):

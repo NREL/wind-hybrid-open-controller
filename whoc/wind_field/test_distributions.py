@@ -11,6 +11,7 @@ from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import wait as cf_wait
 
 import whoc
+from whoc.case_studies.initialize_case_studies import STORAGE_DIR
 from whoc.wind_field.WindField import WindField, generate_wind_preview
 from whoc.wind_field.WindField import generate_multi_wind_ts
 
@@ -20,7 +21,7 @@ from hercules.utilities import load_yaml
 # for each time-step in freestream time-series, for each seed generate the preview
 def generate_preview(wf, input_dict, wind_field_data, time_step, seed):
     print(f"generating preview for seed {seed} time-step {time_step}")
-    current_freestream_measurements = wind_field_data[seed].loc[(wind_field_data[seed]["Time"] // input_dict["dt"] == time_step) & (wind_field_data[seed]["Sample"] == 0), ["FreestreamWindSpeedU", "FreestreamWindSpeedV"]].to_numpy()[0, :]
+    current_freestream_measurements = wind_field_data[seed].loc[(wind_field_data[seed]["Time"] // input_dict["dt"] == time_step) & (wind_field_data[seed]["WindSeed"] == 0), ["FreestreamWindSpeedU", "FreestreamWindSpeedV"]].to_numpy()[0, :]
     preview_dt = int(input_dict["controller"]["dt"] // input_dict["dt"])
     n_preview_steps = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] // input_dict["dt"])
     preview = generate_wind_preview(wf, current_freestream_measurements, time_step,
@@ -33,12 +34,14 @@ def generate_preview(wf, input_dict, wind_field_data, time_step, seed):
     #                     preview_dt=int(input_dict["controller"]["dt"] // input_dict["dt"]),
     #                     n_samples=input_dict["controller"]["n_wind_preview_samples"],
     #                     return_params=True)
-    freestream_samples = wind_field_data[seed].loc[(wind_field_data[seed]["Time"] // input_dict["dt"]).isin(np.arange(time_step, time_step + n_preview_steps + preview_dt, int(input_dict["controller"]["dt"] // input_dict["dt"]))), ["Time", "Sample", "FreestreamWindSpeedU", "FreestreamWindSpeedV"]]
+    freestream_samples = wind_field_data[seed].loc[(wind_field_data[seed]["Time"] // input_dict["dt"]).isin(np.arange(time_step, time_step + n_preview_steps + preview_dt, wf.time_series_dt)), ["Time", "WindSample", "FreestreamWindSpeedU", "FreestreamWindSpeedV"]]
     freestream_samples = np.hstack([
-        freestream_samples[["Time", "Sample", "FreestreamWindSpeedU"]].pivot(index="Sample", columns="Time", values="FreestreamWindSpeedU").to_numpy(),
-        freestream_samples[["Time", "Sample", "FreestreamWindSpeedV"]].pivot(index="Sample", columns="Time", values="FreestreamWindSpeedV").to_numpy()])
+        freestream_samples[["Time", "WindSample", "FreestreamWindSpeedU"]].pivot(index="WindSample", columns="Time", values="FreestreamWindSpeedU").to_numpy(),
+        freestream_samples[["Time", "WindSample", "FreestreamWindSpeedV"]].pivot(index="WindSample", columns="Time", values="FreestreamWindSpeedV").to_numpy()
+        ])
     # .to_numpy().T.flatten()
-    preview_samples = np.vstack([np.vstack([[preview[f"FreestreamWindSpeedU_{k}"][m], preview[f"FreestreamWindSpeedV_{k}"][m]] for k in range(input_dict["controller"]["n_horizon"] + 1)]).T.flatten() for m in range(wf.n_samples_per_init_seed)])
+    # preview_samples = np.vstack([np.vstack([[preview[f"FreestreamWindSpeedU_{k}"][m], preview[f"FreestreamWindSpeedV_{k}"][m]] for k in range(input_dict["controller"]["n_horizon"] + 1)]).T.flatten() for m in range(wf.n_samples_per_init_seed)])
+    preview_samples = np.vstack([np.vstack([[preview[f"FreestreamWindSpeedU_{k}"][m], preview[f"FreestreamWindSpeedV_{k}"][m]] for k in range(int((n_preview_steps + preview_dt) // wf.time_series_dt))]).T.flatten() for m in range(wf.n_samples_per_init_seed)])
     return freestream_samples, preview_samples
 
 if __name__ == "__main__":
@@ -106,32 +109,31 @@ if __name__ == "__main__":
             wind_field_config = yaml.safe_load(fp)
 
         # instantiate wind field if files don't already exist
-        wind_field_dir = os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "wind_field_data", "raw_data")        
+        wind_field_dir = os.path.join(STORAGE_DIR, "wind_field_data", "raw_data")        
         wind_field_filenames = glob(os.path.join(wind_field_dir, "debug_case_*.csv"))
-        distribution_params_path = os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "wind_field_data", "wind_preview_distribution_params.pkl")    
+        distribution_params_path = os.path.join(STORAGE_DIR, "wind_field_data", "wind_preview_distribution_params.pkl")    
         
         if not os.path.exists(wind_field_dir):
             os.makedirs(wind_field_dir)
 
         seed = 0
-        # wind_field_config["simulation_max_time"] = input_dict["hercules_comms"]["helics"]["config"]["stoptime"]
-        # wind_field_config["simulation_max_time"] = 1
+
+        input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = 300
+        wind_field_config["simulation_max_time"] = input_dict["hercules_comms"]["helics"]["config"]["stoptime"]
         wind_field_config["num_turbines"] = input_dict["controller"]["num_turbines"]
-        wind_field_config["n_preview_steps"] = int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] / input_dict["dt"]) + input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
-        # wind_field_config["n_preview_steps"] = 0 + input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
         wind_field_config["preview_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"])
         wind_field_config["simulation_sampling_time"] = input_dict["dt"]
-        wind_field_config["distribution_params_path"] = os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "wind_field_data", "wind_preview_distribution_params.pkl")    
+        wind_field_config["n_preview_steps"] =  int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] / input_dict["dt"]) + input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
         wind_field_config["n_samples_per_init_seed"] = 5
-
-        # if not os.path.exists(distribution_params_path):
-        #     wind_preview_distribution_params = full_wf._generate_wind_preview_distribution_params(regenerate_params=False)
+        wind_field_config["regenerate_distribution_params"] = False
+        wind_field_config["distribution_params_path"] = os.path.join(STORAGE_DIR, "wind_field_data", "wind_preview_distribution_params.pkl")  
+        wind_field_config["time_series_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"])
 
         if len(wind_field_filenames) < n_seeds or regenerate_wind_field:
             # generate_multi_wind_ts(wf, wind_field_config, seeds=[seed + i for i in range(n_seeds)], save_name="short_")
             wind_field_config["regenerate_distribution_params"] = True
             full_wf = WindField(**wind_field_config)
-            generate_multi_wind_ts(full_wf, init_seeds=range(n_seeds), save_name="debug_")
+            generate_multi_wind_ts(full_wf, wind_field_dir, init_seeds=range(n_seeds), save_name="debug_")
             wind_field_filenames = [os.path.join(wind_field_dir, f"debug_case_{i}.csv") for i in range(n_seeds)]
             regenerate_wind_field = True
         
@@ -146,6 +148,7 @@ if __name__ == "__main__":
         # wind_field_config["n_samples"] = input_dict["controller"]["n_wind_preview_samples"]
         wind_field_config["n_samples_per_init_seed"] = 500
         wind_field_config["regenerate_distribution_params"] = False
+        wind_field_config["time_series_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"])
         preview_wf = WindField(**wind_field_config)
         with ProcessPoolExecutor() as generate_previews_exec:
             # for MPIPool executor, (waiting as if shutdown() were called with wait set to True)
@@ -165,8 +168,8 @@ if __name__ == "__main__":
         
         freestream_samples = np.vstack([res[0] for res in results])
         preview_samples = np.vstack([res[1] for res in results])
-        np.save(os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "wind_field_data", "freestream_samples.npy"), freestream_samples)
-        np.save(os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "wind_field_data", "preview_samples.npy"), preview_samples)
+        np.save(os.path.join(STORAGE_DIR, "wind_field_data", "freestream_samples.npy"), freestream_samples)
+        np.save(os.path.join(STORAGE_DIR, "wind_field_data", "preview_samples.npy"), preview_samples)
 
         # ttest_stats = multivariate_ttest(freestream_samples, preview_samples, paired=False)
 
