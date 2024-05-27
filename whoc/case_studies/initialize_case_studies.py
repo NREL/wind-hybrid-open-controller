@@ -12,6 +12,7 @@ import io
 import sys
 
 from whoc import __file__ as whoc_file
+from whoc.wind_field.WindField import plot_ts
 from whoc.wind_field.WindField import generate_multi_wind_ts, WindField, write_abl_forcing_velocity_timetable
 from whoc.postprocess_case_studies import plot_wind_field_ts
 
@@ -382,7 +383,6 @@ def CaseGen_General(case_inputs, namebase=''):
             case_list_i[var] = convert_str(matrix_out[i,j])
         case_list.append(case_list_i)
 
-
     return case_list, case_name
 
 def initialize_simulations(case_study_keys, regenerate_wind_field, n_seeds, debug):
@@ -422,8 +422,10 @@ def initialize_simulations(case_study_keys, regenerate_wind_field, n_seeds, debu
         print("regenerating wind fields")
         wind_field_config["regenerate_distribution_params"] = True # set to True to regenerate from constructed mean and covaraicne
         full_wf = WindField(**wind_field_config)
+        if not os.path.exists(wind_field_dir):
+            os.makedirs(wind_field_dir)
         wind_field_data = generate_multi_wind_ts(full_wf, wind_field_dir, init_seeds=[seed + i for i in range(n_seeds)])
-        write_abl_forcing_velocity_timetable(wind_field_data, wind_field_dir) # then use these timetables in amr precursor
+        write_abl_forcing_velocity_timetable([wfd.df for wfd in wind_field_data], wind_field_dir) # then use these timetables in amr precursor
 
         wind_field_filenames = [os.path.join(wind_field_dir, f"case_{i}.csv") for i in range(n_seeds)]
         regenerate_wind_field = True
@@ -442,7 +444,8 @@ def initialize_simulations(case_study_keys, regenerate_wind_field, n_seeds, debu
                 wind_field_data[-1].loc[15:, f"FreestreamWindMag"] = 11.0
                 wind_field_data[-1].loc[:45, f"FreestreamWindDir"] = 260.0
                 wind_field_data[-1].loc[45:, f"FreestreamWindDir"] = 270.0
-
+    plot_wind_field_ts(pd.DataFrame(wind_field_data[0]), wind_field_dir)
+    plot_ts(pd.DataFrame(wind_field_data[0]), wind_field_dir)
     # true wind disturbance time-series
     #plot_wind_field_ts(pd.concat(wind_field_data), os.path.join(wind_field_fig_dir, "seeds.png"))
     wind_mag_ts = [wind_field_data[case_idx]["FreestreamWindMag"].to_numpy() for case_idx in range(n_seeds)]
@@ -501,7 +504,7 @@ case_families = ["baseline_controllers", "solver_type",
                     "stochastic_preview_type", "slsqp_solver", "perfect_preview_type"]
     
 if __name__ == "__main__":
-    REGENERATE_WIND_FIELD = False
+    REGENERATE_WIND_FIELD = True
     
     # comm_rank = MPI.COMM_WORLD.Get_rank()
     if sys.argv[2].lower() == "mpi":
