@@ -504,7 +504,7 @@ case_families = ["baseline_controllers", "solver_type",
                     "stochastic_preview_type", "slsqp_solver", "perfect_preview_type"]
     
 if __name__ == "__main__":
-    REGENERATE_WIND_FIELD = True
+    REGENERATE_WIND_FIELD = False
     
     # comm_rank = MPI.COMM_WORLD.Get_rank()
     if sys.argv[2].lower() == "mpi":
