@@ -16,10 +16,12 @@ slices
 *.log
 *log
 *.pkl
+*.npy
 chk*
 plt*
 *.out
 *.dat 
+
 examples/*/logstandin*
 examples/*/loghercules*
 examples/*/logfloris*
@@ -46,6 +48,7 @@ examples/bndry_files*/
 examples/*/time.dat
 examples/post_processing/abl_statistics00000.nc
 examples/*.out
+examples/*/*/*.npy
 
 # Exceptions
 !examples/lookup-based_wake_steering_florisstandin/amr_standin_data.csv
