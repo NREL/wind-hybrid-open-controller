@@ -56,9 +56,10 @@ if __name__ == "__main__":
     if RUN_SIMULATIONS:
         print(55)
         # run simulations
-        print(f"about to submit calls to simulate_controller")
         
         if (MULTI == "mpi" and (comm_rank := MPI.COMM_WORLD.Get_rank()) == 0) or (MULTI != "mpi"):
+            print(f"running initialize_simulations")
+        
             case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = initialize_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS, debug=DEBUG)
         
         print(62)
@@ -73,7 +74,8 @@ if __name__ == "__main__":
             with executor as run_simulations_exec:
                 if MULTI == "mpi":
                     run_simulations_exec.max_workers = comm_size
-                print(f"run_simulations line 618 with {run_simulations_exec._max_workers} workers")
+                
+                print(f"run_simulations line 78 with {run_simulations_exec._max_workers} workers")
                 # for MPIPool executor, (waiting as if shutdown() were called with wait set to True)
                 futures = [run_simulations_exec.submit(simulate_controller, 
                                                 controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
@@ -83,8 +85,6 @@ if __name__ == "__main__":
                         for c, d in enumerate(input_dicts)]
                 
                 results = [fut.result() for fut in futures]
-
-            print("run_simulations line 626")
 
         else:
             results = []
