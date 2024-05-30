@@ -1,7 +1,9 @@
+print(1)
+
 from mpi4py import MPI
 from mpi4py.futures import MPICommExecutor
 from concurrent.futures import ProcessPoolExecutor
-
+print(6)
 import os
 import sys
 
@@ -13,6 +15,7 @@ from whoc.case_studies.initialize_case_studies import initialize_simulations, ca
 from whoc.case_studies.simulate_case_studies import simulate_controller
 from whoc.case_studies.process_case_studies import process_simulations, plot_simulations
 
+print(18)
 if __name__ == "__main__":
     REGENERATE_WIND_FIELD = False
     RUN_SIMULATIONS = True
@@ -49,13 +52,14 @@ if __name__ == "__main__":
     # run_simulations(["perfect_preview_type"], REGENERATE_WIND_FIELD)
     print([case_families[i] for i in CASE_FAMILY_IDX])
     if RUN_SIMULATIONS:
-
+        print(55)
         # run simulations
         print(f"about to submit calls to simulate_controller")
         
         if (MULTI == "mpi" and (comm_rank := MPI.COMM_WORLD.Get_rank()) == 0) or (MULTI != "mpi"):
             case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = initialize_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS, debug=DEBUG)
         
+        print(62)
         if PARALLEL:
             if MULTI == "mpi":
                 comm_size = MPI.COMM_WORLD.Get_size()
@@ -90,8 +94,8 @@ if __name__ == "__main__":
                                                 wind_field_config=wind_field_config, verbose=False))
         
         # save_simulations(case_lists, case_name_lists, results)
-    comm_rank = MPI.COMM_WORLD.Get_rank()
-    if (MULTI == "mpi" and comm_rank == 0) or (MULTI != "mpi"):
+    print(97)
+    if (MULTI == "mpi" and (comm_rank := MPI.COMM_WORLD.Get_rank()) == 0) or (MULTI != "mpi"):
         if POST_PROCESS:
             results_dirs = [os.path.join(STORAGE_DIR, case_families[i]) for i in CASE_FAMILY_IDX]
             
