@@ -1,9 +1,11 @@
 print(1)
 
 from mpi4py import MPI
+print(4)
 from mpi4py.futures import MPICommExecutor
-from concurrent.futures import ProcessPoolExecutor
 print(6)
+from concurrent.futures import ProcessPoolExecutor
+print(8)
 import os
 import sys
 
