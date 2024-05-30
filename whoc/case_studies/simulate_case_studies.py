@@ -1,7 +1,3 @@
-from mpi4py import MPI
-from mpi4py.futures import MPICommExecutor
-from concurrent.futures import ProcessPoolExecutor
-
 import pickle
 import pandas as pd
 import numpy as np
@@ -237,8 +233,11 @@ if __name__ == "__main__":
     
     if sys.argv[2].lower() == "mpi":
         MULTI = "mpi"
+        from mpi4py import MPI
+        from mpi4py.futures import MPICommExecutor
     else:
         MULTI = "cf"
+        from concurrent.futures import ProcessPoolExecutor
 
     DEBUG = sys.argv[1].lower() == "debug"
     PARALLEL = sys.argv[3].lower() == "parallel"

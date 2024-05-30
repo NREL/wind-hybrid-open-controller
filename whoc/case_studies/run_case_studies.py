@@ -1,11 +1,5 @@
 print(1)
 
-from mpi4py import MPI
-print(4)
-from mpi4py.futures import MPICommExecutor
-print(6)
-from concurrent.futures import ProcessPoolExecutor
-print(8)
 import os
 import sys
 
@@ -30,8 +24,11 @@ if __name__ == "__main__":
     #     client = Client()
     if sys.argv[2].lower() == "mpi":
         MULTI = "mpi"
+        from mpi4py import MPI
+        from mpi4py.futures import MPICommExecutor
     else:
         MULTI = "cf"
+        from concurrent.futures import ProcessPoolExecutor
 
     PARALLEL = sys.argv[3].lower() == "parallel"
     if len(sys.argv) > 4:
@@ -50,7 +47,7 @@ if __name__ == "__main__":
     # MISHA QUESTION how to make AMR-Wind wait for control solution?
     # run_simulations(["baseline_controllers"], REGENERATE_WIND_FIELD)
     # mp.set_start_method('fork')
-    os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "false"
+    os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "true"
     # run_simulations(["perfect_preview_type"], REGENERATE_WIND_FIELD)
     print([case_families[i] for i in CASE_FAMILY_IDX])
     if RUN_SIMULATIONS:
