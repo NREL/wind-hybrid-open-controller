@@ -52,8 +52,8 @@ if __name__ == "__main__":
 
         # run simulations
         print(f"about to submit calls to simulate_controller")
-        comm_rank = MPI.COMM_WORLD.Get_rank()
-        if (MULTI == "mpi" and comm_rank == 0) or (MULTI != "mpi"):
+        
+        if (MULTI == "mpi" and (comm_rank := MPI.COMM_WORLD.Get_rank()) == 0) or (MULTI != "mpi"):
             case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = initialize_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS, debug=DEBUG)
         
         if PARALLEL:

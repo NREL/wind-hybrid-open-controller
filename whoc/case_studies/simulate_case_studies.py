@@ -234,7 +234,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
     return results_df
 
 if __name__ == "__main__":
-    comm_rank = MPI.COMM_WORLD.Get_rank()
+    
     if sys.argv[2].lower() == "mpi":
         MULTI = "mpi"
     else:
@@ -253,7 +253,7 @@ if __name__ == "__main__":
         N_SEEDS = 6
 
     # intialization code
-    if (MULTI == "mpi" and comm_rank == 0) or (MULTI != "mpi"):
+    if (MULTI == "mpi" and (comm_rank := MPI.COMM_WORLD.Get_rank())== 0) or (MULTI != "mpi"):
 
         for case_family in case_families:
             case_studies[case_family]["wind_case_idx"] = {"group": 2, "vals": [i for i in range(N_SEEDS)]}
