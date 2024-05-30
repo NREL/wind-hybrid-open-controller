@@ -45,6 +45,8 @@ class LookupBasedWakeSteeringController(ControllerBase):
 		self.yaw_increment = input_dict["controller"]["yaw_increment"]
 		self.max_workers = kwargs["max_workers"] if "max_workers" in kwargs else 16
 
+		self._last_measured_time = None
+
 		# Handle yaw optimizer object
 		if "df_yaw" in kwargs:
 			self.wake_steering_interpolant = get_yaw_angles_interpolant(kwargs["df_yaw"])
@@ -138,11 +140,19 @@ class LookupBasedWakeSteeringController(ControllerBase):
 		)
 	
 	def compute_controls(self):
-		if self.current_time == np.atleast_1d(self.measurements_dict["time"])[0]:
+		if (self._last_measured_time is not None) and self._last_measured_time == np.atleast_1d(self.measurements_dict["time"])[0]:
 			return
 
+		if self.verbose:
+			print(f"self._last_measured_time == {self._last_measured_time}")
+			print(f"self.measurements_dict['time'] == {np.atleast_1d(self.measurements_dict['time'])[0]}")
+
+		self._last_measured_time = np.atleast_1d(self.measurements_dict["time"])[0]
+
 		self.current_time = np.atleast_1d(self.measurements_dict["time"])[0]
-		print(f"self.current_time == {self.current_time}")
+
+		if self.verbose:
+			print(f"self.current_time == {self.current_time}")
 
 		current_wind_directions = np.atleast_2d(self.measurements_dict["wind_directions"])
 		if self.use_filt:

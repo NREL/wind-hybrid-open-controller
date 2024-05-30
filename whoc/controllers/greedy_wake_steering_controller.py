@@ -30,6 +30,8 @@ class GreedyController(ControllerBase):
 		self.deadband_thr = input_dict["controller"]["deadband_thr"]
 		self.use_filt = input_dict["controller"]["use_filtered_wind_dir"]
 
+		self._last_measured_time = None
+
 		# Set initial conditions
 		self.yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
 		if hasattr(self.yaw_IC, "__len__"):
@@ -56,11 +58,20 @@ class GreedyController(ControllerBase):
 	
 	def compute_controls(self):
 		# TODO MISHA should we check this at every simulation step rather than every 60, for threshold changes?
-		if self.current_time == np.atleast_1d(self.measurements_dict["time"])[0]:
+		
+		if (self._last_measured_time is not None) and self._last_measured_time == np.atleast_1d(self.measurements_dict["time"])[0]:
 			return
 
+		if self.verbose:
+			print(f"self._last_measured_time == {self._last_measured_time}")
+			print(f"self.measurements_dict['time'] == {np.atleast_1d(self.measurements_dict['time'])[0]}")
+
+		self._last_measured_time = np.atleast_1d(self.measurements_dict["time"])[0]
+
 		self.current_time = np.atleast_1d(self.measurements_dict["time"])[0]
-		print(f"self.current_time == {self.current_time}")
+
+		if self.verbose:
+			print(f"self.current_time == {self.current_time}")
 
 		# if current_time < 2 * self.simulation_dt:
 		

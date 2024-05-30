@@ -34,7 +34,7 @@ def generate_preview(wf, input_dict, wind_field_data, time_step, seed):
     #                     preview_dt=int(input_dict["controller"]["dt"] // input_dict["dt"]),
     #                     n_samples=input_dict["controller"]["n_wind_preview_samples"],
     #                     return_params=True)
-    freestream_samples = wind_field_data[seed].loc[(wind_field_data[seed]["Time"] // input_dict["dt"]).isin(np.arange(time_step, time_step + n_preview_steps + preview_dt, wf.time_series_dt)), ["Time", "WindSample", "FreestreamWindSpeedU", "FreestreamWindSpeedV"]]
+    freestream_samples = wind_field_data[seed].loc[(wind_field_data[seed]["Time"] // input_dict["dt"]).isin(np.arange(time_step, time_step + n_preview_steps + preview_dt, wf.preview_dt)), ["Time", "WindSample", "FreestreamWindSpeedU", "FreestreamWindSpeedV"]]
     freestream_samples = np.hstack([
         freestream_samples[["Time", "WindSample", "FreestreamWindSpeedU"]].pivot(index="WindSample", columns="Time", values="FreestreamWindSpeedU").to_numpy(),
         freestream_samples[["Time", "WindSample", "FreestreamWindSpeedV"]].pivot(index="WindSample", columns="Time", values="FreestreamWindSpeedV").to_numpy()
@@ -118,16 +118,16 @@ if __name__ == "__main__":
 
         seed = 0
 
-        input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = 300
+        input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = 720
         wind_field_config["simulation_max_time"] = input_dict["hercules_comms"]["helics"]["config"]["stoptime"]
         wind_field_config["num_turbines"] = input_dict["controller"]["num_turbines"]
         wind_field_config["preview_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"])
         wind_field_config["simulation_sampling_time"] = input_dict["dt"]
         wind_field_config["n_preview_steps"] =  int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] / input_dict["dt"]) + input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
-        wind_field_config["n_samples_per_init_seed"] = 5
+        wind_field_config["n_samples_per_init_seed"] = 1
         wind_field_config["regenerate_distribution_params"] = False
         wind_field_config["distribution_params_path"] = os.path.join(STORAGE_DIR, "wind_field_data", "wind_preview_distribution_params.pkl")  
-        wind_field_config["time_series_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"])
+        wind_field_config["time_series_dt"] = 1
 
         if len(wind_field_filenames) < n_seeds or regenerate_wind_field:
             # generate_multi_wind_ts(wf, wind_field_config, seeds=[seed + i for i in range(n_seeds)], save_name="short_")

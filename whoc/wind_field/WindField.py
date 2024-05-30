@@ -790,10 +790,9 @@ if __name__ == '__main__':
     input_dict["controller"]["n_wind_preview_samples"] = 100
 
     wind_field_config["simulation_max_time"] = 3600
-    wind_field_config["simulation_sampling_time"] = 0.5
-    wind_field_config["n_preview_steps"] = int(12 * 60 * (1 / wind_field_config["simulation_sampling_time"]))
-    wind_field_config["preview_dt"] = int(60 / wind_field_config["simulation_sampling_time"])
-    wind_field_config["n_samples_per_init_seed"] = input_dict["controller"]["n_wind_preview_samples"]
+    wind_field_config["simulation_sampling_time"] = input_dict["dt"]
+    wind_field_config["n_preview_steps"] = int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] / input_dict["dt"]) + input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
+    wind_field_config["preview_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"])
     wind_field_config["regenerate_distribution_params"] = False
     wind_field_config["distribution_params_path"] = os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "floris_case_studies", "wind_field_data", "wind_preview_distribution_params.pkl")  
 
@@ -808,6 +807,7 @@ if __name__ == '__main__':
     if not len(wind_field_filenames) or regenerate_wind_field:
         # generate_multi_wind_ts(wind_field_config, save_name="short_", seed=seed)
         wind_field_config["regenerate_distribution_params"] = True
+        wind_field_config["n_samples_per_init_seed"] = 1
         wind_field_config["time_series_dt"] = 1
         full_wf = WindField(**wind_field_config)
         generate_multi_wind_ts(full_wf, wind_field_dir, save_name="", init_seeds=[seed])
@@ -828,10 +828,12 @@ if __name__ == '__main__':
     wind_dir_ts = wind_field_data[case_idx]["FreestreamWindDir"].to_numpy()
     wind_u_ts = wind_field_data[case_idx]["FreestreamWindSpeedU"].to_numpy()
     wind_v_ts = wind_field_data[case_idx]["FreestreamWindSpeedV"].to_numpy()
+
     wind_field_config["time_series_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"])
+    wind_field_config["n_samples_per_init_seed"] = input_dict["controller"]["n_wind_preview_samples"]
     wind_field_config["regenerate_distribution_params"] = False
-    wf = WindField(**wind_field_config)
-    stochastic_wind_preview_func = partial(generate_wind_preview, wf=wf, wind_preview_generator=wf._sample_wind_preview)
+    preview_wf = WindField(**wind_field_config)
+    stochastic_wind_preview_func = partial(generate_wind_preview, wf=preview_wf, wind_preview_generator=preview_wf._sample_wind_preview)
             
     def persistent_wind_preview_func(current_freestream_measurements, time_step):
         wind_preview_data = defaultdict(list)

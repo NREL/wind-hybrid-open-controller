@@ -461,6 +461,11 @@ class MPC(ControllerBase):
 		self._last_measured_time = None
 		self.current_time = 0.0
 		
+		if input_dict["controller"]["solver"].lower() in ['slsqp', 'sequential_slsqp', 'serial_refine', 'zsgd']:
+			self.solver = input_dict["controller"]["solver"].lower()
+		else:
+			raise TypeError("solver must be have value of 'slsqp', 'sequential_slsqp', 'serial_refine', or 'zsgd")
+		
 		self.use_filt = input_dict["controller"]["use_filtered_wind_dir"]
 		self.lpf_time_const = input_dict["controller"]["lpf_time_const"]
 		self.lpf_alpha = np.exp(-(1 / input_dict["controller"]["lpf_time_const"]) * input_dict["dt"])
@@ -496,7 +501,7 @@ class MPC(ControllerBase):
 					wind_preview_data[f"FreestreamWindMag_{0}"] = {"mean": mag, "min": mag, "max": mag}
 					
 					# compute freestream wind direction angle from above, clockwise from north
-					direction = np.arctan2(current_freestream_measurements[0], current_freestream_measurements[1])
+					direction = np.arctan2(current_freestream_measurements[1], current_freestream_measurements[0])
 					direction = (270.0 - (direction * (180 / np.pi))) % 360.0
 
 					wind_preview_data[f"FreestreamWindDir_{0}"] = {"mean": direction, "min": direction, "max": direction}
@@ -527,7 +532,7 @@ class MPC(ControllerBase):
 					combs = np.array([[[u[j], v[j]] for u, v in combs] for j in range(self.n_horizon)]) # if not np.isnan(u[j]) and not np.isnan(v[j])]) # shape = (n_horizon, n_combinations of min max u and v, coordinates u and v)
 
 					# compute directions
-					dir_preview = np.arctan2(combs[:, :, 0], combs[:, :, 1])
+					dir_preview = np.arctan2(combs[:, :, 1], combs[:, :, 0])
 					dir_preview = (270.0 - (dir_preview * (180 / np.pi))) % 360.0
 
 					min_dirs = np.nanmin(dir_preview, axis=1)
@@ -535,7 +540,7 @@ class MPC(ControllerBase):
 
 					# compute directions for mean values
 					combs = np.vstack([distribution_params[0], distribution_params[1]]).T
-					dir_preview = np.arctan2(combs[:, 0], combs[:, 1])
+					dir_preview = np.arctan2(combs[:, 1], combs[:, 0])
 					dir_preview = (270.0 - (dir_preview * (180 / np.pi))) % 360.0
 					mean_dirs = dir_preview
 
@@ -583,9 +588,11 @@ class MPC(ControllerBase):
 		self.wind_preview_func = wind_preview_func
 
 		self.wind_preview_type = input_dict["controller"]["wind_preview_type"]
-		if self.wind_preview_type == "stochastic":
+		if "slsqp" in self.solver and self.wind_preview_type == "stochastic":
 			self.n_wind_preview_samples = input_dict["controller"]["n_wind_preview_samples"] + 1 # add one for the mean value
 			# self.n_wind_preview_samples = 3 # min, mean, max
+		elif "slsqp" not in self.solver and self.wind_preview_type == "stochastic":
+			self.n_wind_preview_samples = input_dict["controller"]["n_wind_preview_samples"]
 		else:
 			self.n_wind_preview_samples = 1
 
@@ -628,11 +635,6 @@ class MPC(ControllerBase):
 		self.yaw_norm_const = 360.0
 		self.basin_hop = input_dict["controller"]["basin_hop"]
 
-		if input_dict["controller"]["solver"].lower() in ['slsqp', 'sequential_slsqp', 'serial_refine', 'zsgd']:
-			self.solver = input_dict["controller"]["solver"].lower()
-		else:
-			raise TypeError("solver must be have value of 'slsqp', 'sequential_slsqp', 'serial_refine', or 'zsgd")
-		
 		self.n_solve_turbines = self.n_turbines if self.solver != "sequential_slsqp" else 1
 		self.n_solve_states = self.n_solve_turbines * self.n_horizon
 		self.n_solve_control_inputs = self.n_solve_turbines * self.n_horizon
@@ -869,11 +871,15 @@ class MPC(ControllerBase):
 		if (self._last_measured_time is not None) and self._last_measured_time == np.atleast_1d(self.measurements_dict["time"])[0]:
 			return
 
-		print(f"self.current_time == {self.current_time}")
-		print(f"self._last_measured_time == {self._last_measured_time}")
-		print(f"self.measurements_dict['time'] == {np.atleast_1d(self.measurements_dict["time"])[0]}")
+		if self.verbose:
+			print(f"self._last_measured_time == {self._last_measured_time}")
+			print(f"self.measurements_dict['time'] == {np.atleast_1d(self.measurements_dict['time'])[0]}")
 
 		self._last_measured_time = np.atleast_1d(self.measurements_dict["time"])[0]
+		self.current_time = np.atleast_1d(self.measurements_dict["time"])[0]
+
+		if self.verbose:
+			print(f"self.current_time == {self.current_time}")
 
 		current_wind_directions = self.wind_dir_ts[int(self.current_time // self.simulation_dt):int((self.current_time + self.dt) // self.simulation_dt)][:, np.newaxis]
 
@@ -909,11 +915,6 @@ class MPC(ControllerBase):
 				print(f"{'filtered' if self.use_filt else 'unfiltered'} wind directions = {current_wind_directions}")
 			
 			current_wind_speeds = self.wind_mag_ts[int(self.current_time // self.simulation_dt)]
-			# current_wind_speeds = np.atleast_2d(self.measurements_dict["wind_speeds"])
-
-			# x = np.atleast_2d(self.measurements_dict["wind_speeds"])
-			# y = self.wind_mag_ts[int(current_time // self.simulation_dt):int((current_time + self.dt) // self.simulation_dt)][:, np.newaxis]
-			# np.sum(np.abs(x - y))
 			
 			self.current_freestream_measurements = [
 					current_wind_speeds * np.sin((current_wind_directions - 180.) * (np.pi / 180.)),
@@ -931,7 +932,7 @@ class MPC(ControllerBase):
 																int(self.current_time // self.simulation_dt),
 																return_statistical_values=True)
 			
-			if self.wind_preview_type == "stochastic":
+			if "slsqp" in self.solver and self.wind_preview_type == "stochastic":
 				# include conditional mean values to compute cost function with
 				for j in range(self.n_horizon + 1):
 					self.wind_preview_samples[f"FreestreamWindDir_{j}"].append(self.wind_preview_stats[f"FreestreamWindDir_{j}"]["mean"])
@@ -940,10 +941,11 @@ class MPC(ControllerBase):
 				# tile twice: once for current_yaw_offsets, once for plus_yaw_offsets
 				n_wind_preview_repeats = 2
 				
-			elif self.wind_preview_type in ["perfect", "persistent"]:
+			elif "slsqp" in self.solver and self.wind_preview_type in ["perfect", "persistent"]:
 				# tile 2 * self.n_solve_turbines: once for current_yaw_offsets, once for plus_yaw_offsets and once for neg_yaw_offsets for each turbine
-				
 				n_wind_preview_repeats = 1 + 2 * self.n_turbines #self.n_solve_turbines
+			elif "slsqp" not in self.solver:
+				n_wind_preview_repeats = 1
 
 			self.fi.env.set(
 				wind_directions=np.tile([self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][m] for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)], (n_wind_preview_repeats,)),
@@ -976,19 +978,24 @@ class MPC(ControllerBase):
 			
 			# check constraints
 			# assert np.isclose(sum(self.opt_sol["states"][:self.n_turbines] - (self.initial_state + self.opt_sol["control_inputs"][:self.n_turbines] * (self.yaw_rate / self.yaw_norm_const) * self.dt)), 0, atol=1e-2)
-			init_dyn_state_cons = (sum(self.opt_sol["states"][:self.n_turbines] - (self.initial_state + self.opt_sol["control_inputs"][:self.n_turbines] * (self.yaw_rate / self.yaw_norm_const) * self.dt)))
-			
+			# init_dyn_state_cons = (sum(self.opt_sol["states"][:self.n_turbines] - (self.initial_state + self.opt_sol["control_inputs"][:self.n_turbines] * (self.yaw_rate / self.yaw_norm_const) * self.dt)))
+			init_dyn_state_cons = [self.opt_sol["states"][:self.n_turbines] - (self.initial_state + self.opt_sol["control_inputs"][:self.n_turbines] * (self.yaw_rate / self.yaw_norm_const) * self.dt)]
+			atol = 1e-3
 			# this can sometimes not be satisfied if the iteration limit is exceeded
-			if not np.isclose(init_dyn_state_cons, 0.0): #and not np.any(["Successfully" in c["Text"] for c in np.atleast_1d(self.opt_code)]):
-				print(f"nonzero init_dyn_state_cons = {init_dyn_state_cons}")
+			if not np.all(np.isclose(init_dyn_state_cons, 0.0, atol=atol)): #and not np.any(["Successfully" in c["Text"] for c in np.atleast_1d(self.opt_code)]):
+				if self.verbose:
+					print(f"nonzero init_dyn_state_cons = {init_dyn_state_cons}")
+				else:
+					print(f"Warning: nonzero init_dyn_state_cons")
 			
 			# assert np.isclose(sum(self.opt_sol["states"][self.n_turbines:] - (self.opt_sol["states"][:-self.n_turbines] + self.opt_sol["control_inputs"][self.n_turbines:] * (self.yaw_rate / self.yaw_norm_const) * self.dt)), 0)
-			subsequent_dyn_state_cons = (sum(
-				self.opt_sol["states"][self.n_turbines:] - (self.opt_sol["states"][:-self.n_turbines] + self.opt_sol["control_inputs"][self.n_turbines:] * (self.yaw_rate / self.yaw_norm_const) * self.dt)
-				))
+			subsequent_dyn_state_cons = [self.opt_sol["states"][self.n_turbines:] - (self.opt_sol["states"][:-self.n_turbines] + self.opt_sol["control_inputs"][self.n_turbines:] * (self.yaw_rate / self.yaw_norm_const) * self.dt)]
 
-			if not np.isclose(subsequent_dyn_state_cons, 0.0): # this can sometimes not be satisfied if the iteration limit is exceeded
-				print(f"nonzero subsequent_dyn_state_cons = {subsequent_dyn_state_cons}") # self.pyopt_sol_obj
+			if not np.all(np.isclose(subsequent_dyn_state_cons, 0.0, atol=atol)): # this can sometimes not be satisfied if the iteration limit is exceeded
+				if self.verbose:
+					print(f"nonzero subsequent_dyn_state_cons = {subsequent_dyn_state_cons}") # self.pyopt_sol_obj
+				else:
+					print(f"Warning: subsequent_dyn_state_cons subsequent_dyn_state_cons")
 
 			# assert np.isclose(sum((np.mean(self.wind_preview_samples[f"FreestreamWindDir_{j}"]) / self.yaw_norm_const) - self.opt_sol["states"][(j * self.n_turbines) + i] for j in range(self.n_horizon) for i in range(self.n_turbines)), 0)
 			# x = [(self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][m] / self.yaw_norm_const) for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon) for i in range(self.n_solve_turbines)]
@@ -998,10 +1005,13 @@ class MPC(ControllerBase):
 			
 			# x = [(c > (self.yaw_limits[1] / self.yaw_norm_const) + 0.025) or (c < (self.yaw_limits[0] / self.yaw_norm_const) - 0.025) for c in state_cons]
 			# np.where([(c > (self.yaw_limits[1] / self.yaw_norm_const) + 0.025) or (c < (self.yaw_limits[0] / self.yaw_norm_const) - 0.025) for c in state_cons])
-			state_con_bools = (all([(c <= (self.yaw_limits[1] / self.yaw_norm_const) + 0.025) and (c >= (self.yaw_limits[0] / self.yaw_norm_const) - 0.025) for c in state_cons]))
+			state_con_bools = (all([(c <= (self.yaw_limits[1] / self.yaw_norm_const) + atol) and (c >= (self.yaw_limits[0] / self.yaw_norm_const) - atol) for c in state_cons]))
 
 			if not state_con_bools: # this can sometimes not be satisfied if the iteration limit is exceeded
-				print(f"nonzero state_con_bools = {state_con_bools}")
+				if self.verbose:
+					print(f"nonzero state_con_bools = {state_con_bools}")
+				else:
+					print(f"Warning: nonzero state_con_bools")
 
 			self.controls_dict = {"yaw_angles": list(yaw_star)}
 			self.current_time += self.dt
@@ -1403,7 +1413,7 @@ class MPC(ControllerBase):
 		return np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
 
 	def slsqp_solve(self):
-		run_cd_sens = True
+		run_cd_sens = False
 		
 		# warm start Vars by reinitializing the solution from last time-step self.mi_model.states, set self.init_sol
 		self.warm_start_opt_vars()
@@ -1456,13 +1466,13 @@ class MPC(ControllerBase):
 		# # no Falses with states part of cost only, no Falses for control inputs only
 		# np.where(~np.isclose(grad_nosens_res[0]["cost"]["control_inputs"], np.array(grad_sens_res["cost"]["control_inputs"])))
 		sol = self.optimizer(self.pyopt_prob) #, storeHistory=f"{os.path.dirname(whoc.__file__)}/floris_case_studies/optimizer_histories/custom_sens_{current_time}.hst") # timeLimit=self.dt) #, sens=sens_rules) #, sensMode='pgc')
-		sol_nosens = self.optimizer(self.pyopt_prob_nosens, sensStep=0.01)
+		# sol_nosens = self.optimizer(self.pyopt_prob_nosens, sensStep=0.01)
 
-		s_diff = np.vstack([sol.xStar["states"] - self.init_sol["states"], sol_nosens.xStar["states"] - self.init_sol["states"]]).T
+		# s_diff = np.vstack([sol.xStar["states"] - self.init_sol["states"], sol_nosens.xStar["states"] - self.init_sol["states"]]).T
 		# s_diff_dir = s_diff / np.abs(s_diff)
 		# c_dir = c / np.abs(c)
-		print("max yaw_setpoint diff = ", np.max(np.abs(s_diff[:, 0] - s_diff[:, 1]) * self.yaw_norm_const))
-		print(f"sol.fStar = {sol.fStar}, sol_nosens.fStar = {sol_nosens.fStar}")
+		# print("max yaw_setpoint diff = ", np.max(np.abs(s_diff[:, 0] - s_diff[:, 1]) * self.yaw_norm_const))
+		# print(f"sol.fStar = {sol.fStar}, sol_nosens.fStar = {sol_nosens.fStar}")
 		# assert np.all(s_diff_dir[:, 0] == s_diff_dir[:, 1])
 		# assert np.all(c_dir[:, 0] == c_dir[:, 1])
 		
