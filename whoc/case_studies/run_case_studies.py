@@ -50,7 +50,7 @@ if __name__ == "__main__":
     # MISHA QUESTION how to make AMR-Wind wait for control solution?
     # run_simulations(["baseline_controllers"], REGENERATE_WIND_FIELD)
     # mp.set_start_method('fork')
-    os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "true"
+    os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "false"
     # run_simulations(["perfect_preview_type"], REGENERATE_WIND_FIELD)
     print([case_families[i] for i in CASE_FAMILY_IDX])
     if RUN_SIMULATIONS:
