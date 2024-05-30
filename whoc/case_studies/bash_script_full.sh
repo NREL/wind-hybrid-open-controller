@@ -11,7 +11,6 @@ ml mamba
 conda activate whoc
 #env MPICC=cc pip install dask-mpi mpi4py
 
-rm -rf /projects/ssc/ahenry/whoc/floris_case_studies
 export MAXWORKERS=`echo $(($SLURM_CPUS_ON_NODE * $SLURM_JOB_NUM_NODES))`
 echo "running initialize_case_studies.py"
 python initialize_case_studies.py nodebug mpi parallel 0 1 2 3 4 5 6 7
