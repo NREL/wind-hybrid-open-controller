@@ -28,12 +28,19 @@ def get_results_data(results_dirs):
 
 def process_simulations(results_dirs):
     results_dfs = get_results_data(results_dirs) # TODO change save name of compare_results_df
-    compare_results_df = compare_simulations(results_dfs)
+    compare_results_df = compare_simulations(results_dfs, STORAGE_DIR)
+    compare_results_df.sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True)[("RelativeTotalRunningOptimizationCostMean", "mean")]
     compare_results_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False)[("FarmPowerMean", "mean")]
     compare_results_df.sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True)[("YawAngleChangeAbsMean", "mean")]
     # compare_results_df.sort_values(by=("TotalRunningOptimizationCostMean", "mean"), ascending=True).groupby(level=0)[("TotalRunningOptimizationCostMean", "mean")]
     compare_results_df[("TotalRunningOptimizationCostMean", "mean")]
-    compare_results_df.groupby("CaseFamily", group_keys=False).apply(lambda x: x.sort_values(by=("TotalRunningOptimizationCostMean", "mean"), ascending=True).head(3))[("TotalRunningOptimizationCostMean", "mean")]
+
+    compare_results_df[("FarmPowerMean", "mean")].sort_values(ascending=False) * 1e-7
+    compare_results_df[("YawAngleChangeAbsMean", "mean")].sort_values(ascending=True)
+    x = compare_results_df[("FarmPowerMean", "mean")] * 1e-6 - compare_results_df[("YawAngleChangeAbsMean", "mean")]
+    x.sort_values(ascending=False)
+
+    compare_results_df.groupby("CaseFamily", group_keys=False).apply(lambda x: x.sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True).head(3))[("RelativeTotalRunningOptimizationCostMean", "mean")]
     compare_results_df.groupby("CaseFamily", group_keys=False).apply(lambda x: x.sort_values(by=("RelativeYawAngleChangeAbsMean", "mean"), ascending=True).head(3))[("RelativeYawAngleChangeAbsMean", "mean")]
     compare_results_df.groupby("CaseFamily", group_keys=False).apply(lambda x: x.sort_values(by=("RelativeFarmPowerMean", "mean"), ascending=False).head(3))[("RelativeFarmPowerMean", "mean")]
     plot_breakdown_robustness(compare_results_df, case_studies, STORAGE_DIR)
@@ -100,8 +107,8 @@ def plot_simulations(results_dirs):
             # if "Time" not in df.columns:
             #     df["Time"] = np.arange(0, 3600.0 - 60.0, 60.0)
 
-            fig, _ = plot_wind_field_ts(df, os.path.join(results_dir, "wind_ts.png"))
-            fig.suptitle("_".join([os.path.basename(results_dir), "wind_ts"]))
+            # fig, _ = plot_wind_field_ts(df, os.path.join(results_dir, "wind_ts.png"))
+            # fig.suptitle("_".join([os.path.basename(results_dir), "wind_ts"]))
 
             fig, _ = plot_opt_var_ts(df, input_config["controller"]["yaw_limits"], os.path.join(results_dir, f"opt_var_ts_{input_config['controller']['case_names'].replace('/', '_')}.png"))
             fig.suptitle("_".join([os.path.basename(results_dir), input_config['controller']['case_names'].replace('/', '_'), "opt_var_ts"]))

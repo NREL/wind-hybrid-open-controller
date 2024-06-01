@@ -1,0 +1,21 @@
+\begin{tabular}{l|lllll}
+\textbf{Case Family} & \textbf{Case Name} & \thead{\textbf{Relative Mean} \\ \textbf{Farm Power [MW]}}                                                                    & \thead{\textbf{Relative Mean Absolute} \\ \textbf{Yaw Angle Change [deg]}}                    & \thead{\textbf{Relative} \\ \textbf{Mean Cost [-]}}                                                        & \thead{\textbf{Mean} \\ \textbf{Convergence Time [s]}} \\ \hline 
+\multirow{3}{*}{\textbf{Solver}} & \textbf{SLSQP}                     & $1.526$                              & $0.300$                              & $-0.193$                                 & $43$ \\ 
+&                                          Sequential SLSQP                       & $1.525$                   & $0.300$                   & $-0.193$                      & $115$ \\ 
+&                                          Serial Refine                          & $1.539$                  & $0.307$                  & $-0.196$                     & $214$  \\ \hline 
+\multirow{3}{*}{\textbf{Wind Preview Model}} & Perfect                   & $1.531$                      & $0.302$                      & $-0.195$                         & $12$ \\ 
+&                                                      Persistent                 & $1.536$                   & $0.300$                   & $-0.196$                      & $9$ \\ 
+&                                                      \textbf{Stochastic}     & $1.526$                   & $0.300$                   & $-0.193$                      & $43$ \\ \hline 
+\multirow{3}{*}{\textbf{Warm-Starting Method}} & Greedy                  & $1.526$                              & $0.300$                              & $-0.193$                                 & $44$ \\ 
+&                                                        LUT                      & $1.525$                                 & $0.300$                                 & $-0.193$                                    & $137$ \\ 
+&                                                        Previous Solution        & $1.526$                            & $0.301$                            & $-0.193$                               & $54$ \\ \hline 
+\multirow{4}{*}{\textbf{Wind Farm Size}}       & $3 \times 1$           & $1.525$                         & $0.301$                         & $-0.193$                            & $13$ \\ 
+&                                                        $\bm{3 \times 3}$    & $1.526$                         & $0.300$                         & $-0.193$                            & $67$ \\ 
+&                                                        $5 \times 5$            & $1.458$                        & $0.300$                        & $-0.178$                           & $397$ \\ 
+&                                                        $10 \times 10$          & $1.336$                       & $0.301$                       & $-0.150$                          & $2479$ \\ \hline 
+\multirow{5}{*}{\textbf{Horizon Length}}       & $6$                     & $1.525$                       & $0.300$                       & $-0.193$                          & $32$ \\ 
+&                                                        $8$                      & $1.522$                       & $0.301$                       & $-0.192$                          & $33$ \\ 
+&                                                        $\bm{10}$             & $1.526$                      & $0.300$                      & $-0.193$                         & $44$ \\ 
+&                                                        $12$                     & $1.524$                      & $0.300$                      & $-0.193$                         & $55$ \\ 
+&                                                        $14$                     & $1.523$                      & $0.302$                      & $-0.192$                         & $92$ \\ \hline 
+\end{tabular}

@@ -30,6 +30,9 @@ class GreedyController(ControllerBase):
 		self.deadband_thr = input_dict["controller"]["deadband_thr"]
 		self.use_filt = input_dict["controller"]["use_filtered_wind_dir"]
 
+		self.wind_mag_ts = kwargs["wind_mag_ts"]
+		self.wind_dir_ts = kwargs["wind_dir_ts"]
+
 		self._last_measured_time = None
 
 		# Set initial conditions
@@ -58,7 +61,7 @@ class GreedyController(ControllerBase):
 	
 	def compute_controls(self):
 		# TODO MISHA should we check this at every simulation step rather than every 60, for threshold changes?
-		
+
 		if (self._last_measured_time is not None) and self._last_measured_time == np.atleast_1d(self.measurements_dict["time"])[0]:
 			return
 
@@ -82,16 +85,18 @@ class GreedyController(ControllerBase):
 		# TODO MISHA this is a patch up for AMR wind initialization problem
 		elif (abs(self.current_time % self.simulation_dt) == 0.0) or (self.current_time == self.simulation_dt * 2):
 			
-			current_wind_directions = np.atleast_2d(self.measurements_dict["wind_directions"])
+			# current_wind_directions = np.atleast_2d(self.measurements_dict["wind_directions"])
+			current_wind_directions = self.wind_dir_ts[int(self.current_time // self.simulation_dt):int((self.current_time + self.dt) // self.simulation_dt)][:, np.newaxis]
+
 			if self.verbose:
 				print(f"unfiltered wind directions = {current_wind_directions[-1, :]}")
 			if self.use_filt:
 				self.historic_measurements["wind_directions"] = np.vstack([
 					self.historic_measurements["wind_directions"],
-					current_wind_directions])[-int((self.lpf_time_const // self.simulation_dt) * 1e3):, :]
+					np.tile(current_wind_directions, (1, self.n_turbines))])[-int((self.lpf_time_const // self.simulation_dt) * 1e3):, :]
 				
 			# if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
-			if self.current_time < 60. or not self.use_filt:
+			if self.current_time < 180. or not self.use_filt:
 				if np.size(current_wind_directions) == 0:
 					if self.verbose:
 						print("Bad wind direction measurement received, reverting to previous measurement.")
@@ -103,7 +108,7 @@ class GreedyController(ControllerBase):
 			else:
 				# use filtered wind direction and speed
 				wind_dirs = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"][:, i])
-												for i in range(self.n_turbines)]).T[-1, :]
+												for i in range(self.n_turbines)]).T[-int(self.dt // self.simulation_dt), :]
 			
 			if self.verbose:
 				print(f"{'filtered' if self.use_filt else 'unfiltered'} wind directions = {wind_dirs}")

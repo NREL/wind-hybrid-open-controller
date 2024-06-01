@@ -34,6 +34,8 @@ class LookupBasedWakeSteeringController(ControllerBase):
 		self.turbines = range(self.n_turbines)
 		self.historic_measurements = {"wind_directions": np.zeros((0, self.n_turbines)),
 									  "wind_speeds": np.zeros((0, self.n_turbines))}
+		self.filtered_measurements = {"wind_directions": np.zeros((0, self.n_turbines)),
+									  "wind_speeds": np.zeros((0, self.n_turbines))}
 		# self.ws_lpf_alpha = np.exp(-input_dict["controller"]["ws_lpf_omega_c"] * input_dict["controller"]["lpf_T"])
 		self.use_filt = input_dict["controller"]["use_filtered_wind_dir"]
 		self.lpf_time_const = input_dict["controller"]["lpf_time_const"]
@@ -44,6 +46,9 @@ class LookupBasedWakeSteeringController(ControllerBase):
 		self.yaw_rate = input_dict["controller"]["yaw_rate"]
 		self.yaw_increment = input_dict["controller"]["yaw_increment"]
 		self.max_workers = kwargs["max_workers"] if "max_workers" in kwargs else 16
+
+		self.wind_mag_ts = kwargs["wind_mag_ts"]
+		self.wind_dir_ts = kwargs["wind_dir_ts"]
 
 		self._last_measured_time = None
 
@@ -154,10 +159,12 @@ class LookupBasedWakeSteeringController(ControllerBase):
 		if self.verbose:
 			print(f"self.current_time == {self.current_time}")
 
-		current_wind_directions = np.atleast_2d(self.measurements_dict["wind_directions"])
+		# current_wind_directions = np.atleast_2d(self.measurements_dict["wind_directions"])
+		current_wind_directions = self.wind_dir_ts[int(self.current_time // self.simulation_dt):int((self.current_time + self.dt) // self.simulation_dt)][:, np.newaxis]
+
 		if self.use_filt:
 			self.historic_measurements["wind_directions"] = np.vstack([self.historic_measurements["wind_directions"],
-															current_wind_directions])[-int((self.lpf_time_const // self.simulation_dt) * 1e3):, :]
+															np.tile(current_wind_directions, (1, self.n_turbines))])[-int((self.lpf_time_const // self.simulation_dt) * 1e3):, :]
 
 		# if current_time < 2 * self.simulation_dt:
 		if np.all(np.isclose(self.measurements_dict["wind_directions"], 0)):
@@ -169,7 +176,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			# if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
 			if self.verbose:
 				print(f"unfiltered wind directions = {current_wind_directions[-1, :]}")
-			if self.current_time < 60 or not self.use_filt:
+			if self.current_time < 180 or not self.use_filt:
 				
 				if np.size(current_wind_directions) == 0:
 					if self.verbose:
@@ -181,10 +188,13 @@ class LookupBasedWakeSteeringController(ControllerBase):
 				# wind_speed = self.measurements_dict["wind_speeds"][0]
 				wind_speeds = 8.0 # TODO hercules can't get wind_speeds from measurements_dict
 			else:
-				# use filtered wind direction and speed
+				# use filtered wind direction and speed, NOTE historic_measurments includes controller_dt steps into the future such that we can run simulation in time batches
 				wind_dirs = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"][:, i],
 																	self.lpf_alpha)
-											for i in range(self.n_turbines)]).T[-1, 0]
+											for i in range(self.n_turbines)]).T
+				self.filtered_measurements["wind_directions"] = np.vstack([self.filtered_measurements["wind_directions"],
+															   wind_dirs[-int(self.dt // self.simulation_dt):, :]])
+				wind_dirs = wind_dirs[-int(self.dt // self.simulation_dt), 0]
 				wind_speeds = 8.0
 			
 			if self.verbose:
@@ -205,6 +215,14 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			yaw_setpoints = np.clip(yaw_setpoints, current_yaw_setpoints - self.dt * self.yaw_rate, current_yaw_setpoints + self.dt * self.yaw_rate)
 			yaw_setpoints = np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
 			self.controls_dict = {"yaw_angles": list(yaw_setpoints)}
+
+			if self.current_time == 420.0:
+				if False:
+					import matplotlib.pyplot as plt
+					fig, ax = plt.subplots(1, 1)
+					time = np.arange(len(self.historic_measurements["wind_directions"]))[int(180 // self.simulation_dt):] * self.simulation_dt
+					ax.plot(time, self.historic_measurements["wind_directions"][int(180 // self.simulation_dt):])
+					ax.plot(time, self.filtered_measurements["wind_directions"], "--")
 		
 		return None
 
