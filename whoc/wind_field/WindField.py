@@ -28,6 +28,7 @@ from collections import defaultdict
 from itertools import cycle, chain
 from glob import glob
 from moa_python.post_abl_stats import Post_abl_stats
+from scipy.signal import lfilter
 
 class WindField:
     def __init__(self, **config: dict):
@@ -771,6 +772,10 @@ def generate_multi_wind_preview_ts(config, wind_field_data):
         wait(futures)
         wind_field_data = [fut.result() for fut in futures]
 
+def first_ord_filter(x, alpha):
+    b = [1 - alpha]
+    a = [1, -alpha]
+    return lfilter(b, a, x)
 
 if __name__ == '__main__':
     # with open(os.path.join(os.path.dirname(whoc.__file__), "wind_field", "wind_field_config.yaml")) as fp:

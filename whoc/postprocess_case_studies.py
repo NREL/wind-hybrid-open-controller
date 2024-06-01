@@ -151,7 +151,7 @@ def plot_yaw_power_distribution(data_df, save_path):
     # fig1.set_size_inches((11.2, 4.8))
     # fig2.set_size_inches((11.2, 4.8))
 
-def compare_simulations(results_dfs):
+def compare_simulations(results_dfs, save_dir):
     result_summary_dict = defaultdict(list)
 
     for df_name, results_df in results_dfs.items():
@@ -166,8 +166,8 @@ def compare_simulations(results_dfs):
             yaw_angles_change_ts = seed_df[sorted(list([c for c in results_df.columns if "TurbineYawAngleChange_" in c]))]
             turbine_offline_status_ts = seed_df[sorted(list([c for c in results_df.columns if "TurbineOfflineStatus_" in c]))]
             turbine_power_ts = seed_df[sorted(list([c for c in results_df.columns if "TurbinePower_" in c]))]
-
-            result_summary_dict["CaseFamily"].append("_".join(df_name.split("_")[:-1]))
+            # TODO doesn't work for some case families
+            result_summary_dict["CaseFamily"].append(df_name.replace(f"_{seed_df['CaseName'].iloc[0]}", ""))
             result_summary_dict["CaseName"].append(seed_df["CaseName"].iloc[0])
             result_summary_dict["WindSeed"].append(seed)
             # result_summary_dict["YawAngleChangeAbsSum"].append(results_df[[c for c in results_df.columns if "YawAngleChange" in c]].abs().sum().to_numpy().sum())
@@ -189,17 +189,19 @@ def compare_simulations(results_dfs):
     result_summary_df = pd.DataFrame(result_summary_dict)
     result_summary_df = result_summary_df.groupby(by=["CaseFamily", "CaseName"])[[col for col in result_summary_df.columns if col not in ["CaseFamily", "CaseName", "WindSeed"]]].agg(["min", "max", "mean"])
     
-    result_summary_df.to_csv(os.path.join(os.path.dirname(whoc_file), "case_studies", f"comparison_time_series_results.csv"))
+    result_summary_df.to_csv(os.path.join(save_dir, f"comparison_time_series_results.csv"))
 
     return result_summary_df
 
-def plot_wind_field_ts(data_df, save_path):
+def plot_wind_field_ts(data_df, save_path, filter_func=None):
     fig_wind, ax_wind = plt.subplots(2, 1, sharex=True, figsize=(15.12, 7.98))
     # fig_wind.set_size_inches(10, 5)
 
     for seed in sorted(pd.unique(data_df["WindSeed"])):
         seed_df = data_df.loc[data_df["WindSeed"] == seed].sort_values(by="Time")
         ax_wind[0].plot(seed_df["Time"], seed_df["FreestreamWindDir"], label=f"Seed {seed}")
+        if filter_func is not None:
+            ax_wind[0].plot(seed_df["Time"], filter_func(x=seed_df["FreestreamWindDir"]), label=f"Seed {seed}")
         ax_wind[0].set(title='Wind Direction [deg]')
         ax_wind[1].plot(seed_df["Time"], seed_df["FreestreamWindMag"], label=f"Seed {seed}")
         ax_wind[1].set(title='Wind Speed [m/s]', xlabel='Time [s]', xlim=(0, seed_df["Time"].max() + seed_df["Time"].diff().iloc[1]))
