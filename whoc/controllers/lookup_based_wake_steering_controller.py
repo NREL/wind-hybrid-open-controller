@@ -32,12 +32,12 @@ class LookupBasedWakeSteeringController(ControllerBase):
 		self.dt = input_dict["controller"]["dt"]  # Won't be needed here, but generally good to have
 		self.n_turbines = input_dict["controller"]["num_turbines"]
 		self.turbines = range(self.n_turbines)
-		self.historic_measurements = {"wind_directions": np.zeros((0, self.n_turbines)),
-									  "wind_speeds": np.zeros((0, self.n_turbines))}
-		self.filtered_measurements = {"wind_directions": np.zeros((0, self.n_turbines)),
-									  "wind_speeds": np.zeros((0, self.n_turbines))}
+		self.historic_measurements = {"wind_directions": [],
+									  "wind_speeds": []}
+		self.filtered_measurements = {"wind_directions": [],
+									  "wind_speeds": []}
 		# self.ws_lpf_alpha = np.exp(-input_dict["controller"]["ws_lpf_omega_c"] * input_dict["controller"]["lpf_T"])
-		self.use_filt = input_dict["controller"]["use_filtered_wind_dir"]
+		self.use_filt = input_dict["controller"]["use_lut_filtered_wind_dir"]
 		self.lpf_time_const = input_dict["controller"]["lpf_time_const"]
 		self.lpf_alpha = np.exp(-(1 / input_dict["controller"]["lpf_time_const"]) * input_dict["dt"])
 		self.deadband_thr = input_dict["controller"]["deadband_thr"]
@@ -47,8 +47,8 @@ class LookupBasedWakeSteeringController(ControllerBase):
 		self.yaw_increment = input_dict["controller"]["yaw_increment"]
 		self.max_workers = kwargs["max_workers"] if "max_workers" in kwargs else 16
 
-		self.wind_mag_ts = kwargs["wind_mag_ts"]
 		self.wind_dir_ts = kwargs["wind_dir_ts"]
+		self.wind_mag_ts = kwargs["wind_mag_ts"]
 
 		self._last_measured_time = None
 
@@ -58,19 +58,19 @@ class LookupBasedWakeSteeringController(ControllerBase):
 		else:
 			# optimize, unless passed existing lookup table
 			# os.path.abspath(lut_path)
-			self._optimize_lookup_table(lut_path=kwargs["lut_path"], generate_lut=kwargs["generate_lut"])
+			self._optimize_lookup_table(lut_path=input_dict["controller"]["lut_path"], generate_lut=input_dict["controller"]["generate_lut"])
 		# Set initial conditions
 		self.yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
 		if hasattr(self.yaw_IC, "__len__"):
 			if len(self.yaw_IC) == self.n_turbines:
-				self.controls_dict = {"yaw_angles": self.yaw_IC}
+				self.controls_dict = {"yaw_angles": np.array(self.yaw_IC)}
 			else:
 				raise TypeError(
 					"yaw initial condition should be a float or "
 					+ "a list of floats of length num_turbines."
 				)
 		else:
-			self.controls_dict = {"yaw_angles": [self.yaw_IC] * self.n_turbines}
+			self.controls_dict = {"yaw_angles": np.array([self.yaw_IC] * self.n_turbines)}
 
 		# For startup
 		self.wd_store = [270.]*self.n_turbines # TODO: update this?
@@ -97,8 +97,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			# Load a FLORIS object for yaw optimization
 			
 			fi_lut = ControlledFlorisModel(yaw_limits=self.yaw_limits, dt=self.dt,
-											   yaw_rate=self.yaw_rate, floris_version='dev') \
-				.load_floris(config_path=self.floris_input_file)
+											   yaw_rate=self.yaw_rate, floris_version='v4', config_path=self.floris_input_file)
 			
 			wd_grid, ws_grid = np.meshgrid(wind_directions_lut, wind_speeds_lut, indexing="ij")
 			fi_lut.env.set(
@@ -136,7 +135,8 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			
 			if lut_path is not None:
 				df_lut.to_csv(lut_path)
-		
+
+		# pd.unique(df_lut.iloc[np.where(np.any(np.vstack(df_lut["yaw_angles_opt"].array) != 0, axis=1))[0]]["wind_direction"])
 		# Derive linear interpolant from solution space
 		self.wake_steering_interpolant = LinearNDInterpolator(
 			points=df_lut[["wind_direction", "wind_speed"]],
@@ -145,26 +145,28 @@ class LookupBasedWakeSteeringController(ControllerBase):
 		)
 	
 	def compute_controls(self):
-		if (self._last_measured_time is not None) and self._last_measured_time == np.atleast_1d(self.measurements_dict["time"])[0]:
+		if (self._last_measured_time is not None) and self._last_measured_time == self.measurements_dict["time"]:
 			return
 
 		if self.verbose:
 			print(f"self._last_measured_time == {self._last_measured_time}")
-			print(f"self.measurements_dict['time'] == {np.atleast_1d(self.measurements_dict['time'])[0]}")
+			print(f"self.measurements_dict['time'] == {self.measurements_dict['time']}")
 
-		self._last_measured_time = np.atleast_1d(self.measurements_dict["time"])[0]
+		self._last_measured_time = self.measurements_dict["time"]
 
-		self.current_time = np.atleast_1d(self.measurements_dict["time"])[0]
+		self.current_time = self.measurements_dict["time"]
 
 		if self.verbose:
 			print(f"self.current_time == {self.current_time}")
 
-		# current_wind_directions = np.atleast_2d(self.measurements_dict["wind_directions"])
-		current_wind_directions = self.wind_dir_ts[int(self.current_time // self.simulation_dt):int((self.current_time + self.dt) // self.simulation_dt)][:, np.newaxis]
+		# TODO high should be pulling from measurements
+		# TODO high does LUT pull from local measurements or freestream?
+		current_wind_direction = self.wind_dir_ts[int(self.current_time // self.simulation_dt)], (self.n_turbines,)
+		current_wind_speed = self.wind_mag_ts[int(self.current_time // self.simulation_dt)]
 
 		if self.use_filt:
-			self.historic_measurements["wind_directions"] = np.vstack([self.historic_measurements["wind_directions"],
-															np.tile(current_wind_directions, (1, self.n_turbines))])[-int((self.lpf_time_const // self.simulation_dt) * 1e3):, :]
+			self.historic_measurements["wind_directions"] = np.append(self.historic_measurements["wind_directions"],
+															current_wind_direction)[-int((self.lpf_time_const // self.simulation_dt) * 1e3):, :]
 
 		# if current_time < 2 * self.simulation_dt:
 		if np.all(np.isclose(self.measurements_dict["wind_directions"], 0)):
@@ -172,30 +174,30 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			if self.verbose:
 				print("Bad wind direction measurement received, reverting to previous measurement.")
 		# TODO MISHA this is a patch up for AMR wind initialization problem
-		elif (abs(self.current_time % self.dt) == 0.0) or (self.current_time == self.simulation_dt * 2):
+		elif (abs(self.current_time % self.simulation_dt) == 0.0) or (np.all(self.controls_dict["yaw_angles"] == self.yaw_IC) and self.current_time == self.simulation_dt * 2):
 			# if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
 			if self.verbose:
-				print(f"unfiltered wind directions = {current_wind_directions[-1, :]}")
+				print(f"unfiltered wind direction = {current_wind_direction}")
 			if self.current_time < 180 or not self.use_filt:
 				
-				if np.size(current_wind_directions) == 0:
+				if len(current_wind_direction) == 0:
 					if self.verbose:
 						print("Bad wind direction measurement received, reverting to previous measurement.")
-					wind_dirs = self.wd_store
+					wind_dir = self.wd_store
 				else:
-					wind_dirs = current_wind_directions[0, 0] # TODO Misha do we use all turbine wind directions in lut table?
-					self.wd_store = wind_dirs
+					wind_dir = current_wind_direction # TODO Misha do we use all turbine wind directions in lut table?
+					self.wd_store = wind_dir
 				# wind_speed = self.measurements_dict["wind_speeds"][0]
-				wind_speeds = 8.0 # TODO hercules can't get wind_speeds from measurements_dict
+				wind_speed = current_wind_speed # TODO hercules can't get wind_speeds from measurements_dict
 			else:
 				# use filtered wind direction and speed, NOTE historic_measurments includes controller_dt steps into the future such that we can run simulation in time batches
-				wind_dirs = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"][:, i],
-																	self.lpf_alpha)
-											for i in range(self.n_turbines)]).T
+				wind_dir = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"][:, i],
+																	self.lpf_alpha)]).T
 				self.filtered_measurements["wind_directions"] = np.vstack([self.filtered_measurements["wind_directions"],
-															   wind_dirs[-int(self.dt // self.simulation_dt):, :]])
-				wind_dirs = wind_dirs[-int(self.dt // self.simulation_dt), 0]
-				wind_speeds = 8.0
+															   wind_dir[-1]])
+				wind_dir = wind_dir[-1]
+				wind_speed = current_wind_speed
+				# wind_speeds = 8.0
 			
 			if self.verbose:
 				print(f"{'filtered' if self.use_filt else 'unfiltered'} wind directions = {wind_dirs}")
@@ -203,17 +205,25 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			# TODO shouldn't freestream wind speed/dir also be availalbe in measurements_dict, or just assume first row of turbines?
 			# TODO filter wind speed and dir before certain time statpm?
 
-			current_yaw_setpoints = np.atleast_2d(self.controls_dict["yaw_angles"])[0, :]
+			current_yaw_setpoints = self.controls_dict["yaw_angles"]
 			yaw_setpoints = np.array(current_yaw_setpoints)
 
-			yaw_offsets = self.wake_steering_interpolant(wind_dirs, wind_speeds)
+			yaw_offsets = self.wake_steering_interpolant(wind_dir, wind_speed)
 			new_yaw_setpoints = np.array(wind_dirs) - yaw_offsets
 
 			change_idx = np.abs(current_yaw_setpoints - new_yaw_setpoints) > self.deadband_thr
 			yaw_setpoints[change_idx] = new_yaw_setpoints[change_idx]
 
-			yaw_setpoints = np.clip(yaw_setpoints, current_yaw_setpoints - self.dt * self.yaw_rate, current_yaw_setpoints + self.dt * self.yaw_rate)
-			yaw_setpoints = np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
+			constrained_yaw_setpoints = np.clip(yaw_setpoints, current_yaw_setpoints - self.dt * self.yaw_rate, current_yaw_setpoints + self.dt * self.yaw_rate)
+			
+			if np.all(np.diff(constrained_yaw_setpoints) == 0) and not np.all(np.diff(yaw_setpoints) == 0):
+				print(f"Note: all yaw angles have been constrained by the yaw rate equally at time {self.current_time}")
+			
+			if not len(change_idx):
+				print(f"Note: no yaw angle setpoints surpass the deadband threshold at time {self.current_time}")
+
+			yaw_setpoints = np.rint(constrained_yaw_setpoints / self.yaw_increment) * self.yaw_increment
+
 			self.controls_dict = {"yaw_angles": list(yaw_setpoints)}
 
 			if self.current_time == 420.0:

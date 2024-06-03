@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 
 
 class ControlledFlorisModel(InterfaceBase):
-    def __init__(self, yaw_limits, dt, yaw_rate, offline_probability=0.0, floris_version='v4'):
+    def __init__(self, yaw_limits, dt, yaw_rate, config_path, offline_probability=0.0, floris_version='v4'):
         super().__init__()
         self.yaw_limits = yaw_limits
         self.yaw_rate = yaw_rate
@@ -31,9 +31,11 @@ class ControlledFlorisModel(InterfaceBase):
         self.dt = dt
         self.floris_version = floris_version
         self.offline_probability = offline_probability
-        self.previous_yaw_setpoints = None
+        self._load_floris(config_path)
+
+        self.current_yaw_setpoints = np.zeros((0, self.n_turbines))
     
-    def load_floris(self, config_path):
+    def _load_floris(self, config_path):
         self.env = FlorisModel(config_path)  # GCH model matched to the default "legacy_gauss" of V2
         self.n_turbines = self.env.core.farm.n_turbines
         
@@ -64,53 +66,24 @@ class ControlledFlorisModel(InterfaceBase):
     
     def get_measurements(self, hercules_dict=None):
         """ abstract method from Interface class """
-        
-        # u_only_dirs = np.zeros_like(self.env.core.flow_field.u)
-        # u_only_dirs[(self.env.core.flow_field.v == 0) & (self.env.core.flow_field.u >= 0)] = 270.
-        # u_only_dirs[(self.env.core.flow_field.v == 0) & (self.env.core.flow_field.u < 0)] = 90.
-        # u_only_dirs = (u_only_dirs - 180.) * (np.pi / 180)
-        
-        # dirs = np.arctan(np.divide(self.env.core.flow_field.u, self.env.core.flow_field.v,
-        #                            out=np.ones_like(self.env.core.flow_field.u) * np.nan,
-        #                  where=self.env.core.flow_field.v != 0),
-        #                  out=u_only_dirs,
-        #                  where=self.env.core.flow_field.v != 0)
-        # dirs[dirs < 0] = np.pi + dirs[dirs < 0]
-        # dirs = (dirs * (180 / np.pi)) + 180
-        # # dirs = (np.arctan(dirs) * (180/np.pi)) + 180
-        # # dirs += u_only_dirs
-        # dirs = np.squeeze(np.mean(dirs.reshape(*dirs.shape[:2], -1), axis=2))
-        
-        
+        time_step = int((self.time // self.dt) % self.env.core.flow_field.n_findex)
         # mags = np.sqrt(self.env.core.flow_field.u**2 + self.env.core.flow_field.v**2 + self.env.core.flow_field.w**2)
-        mags = np.sqrt(self.env.core.flow_field.u**2)
-        mags = np.squeeze(np.mean(mags.reshape(*mags.shape[:2], -1), axis=2))
-
-        # TODO MISHA QUESTION is it reliable to compute dirs as above - doesn't seem to align with floris wind direction
-        dirs = np.tile(self.env.core.flow_field.wind_directions[:, np.newaxis], (1, self.n_turbines))
-        # mags = self.env.turbine_average_velocities
-
-        offline_mask = np.isclose(self.env.core.farm.power_setpoints, 0, atol=1e-3)
-        # Note that measured yaw_angles here will not reflect controls_dict from last time-step, because of new wind direction
-        self.measurements_dt = {
-                    "wind_directions": dirs,
-                        "wind_speeds": mags,# self.env.turbine_average_velocities,
-                        "turbine_powers": np.ma.masked_array(np.squeeze(self.env.get_turbine_powers()), offline_mask).filled(0.0),
-                        "yaw_angles": np.squeeze(dirs - self.env.core.farm.yaw_angles)}
-        # measurements = {"time": self.time,
-        #                 "wind_directions": self.measurements_dt["wind_directions"][0, :],
-        #                 "wind_speeds": self.measurements_dt["wind_speeds"][0, :], # self.env.turbine_average_velocities,
-        #                 "powers":  self.measurements_dt["powers"][0, :],
-        #                 "yaw_angles": self.measurements_dt["yaw_angles"][0, :]}
-        measurements = {"time": self.time,
-                        "amr_wind_speed": self.env.core.flow_field.wind_speeds,
-                        "amr_wind_direction": self.env.core.flow_field.wind_directions,
-                "wind_directions": self.measurements_dt["wind_directions"],
-                "wind_speeds": self.measurements_dt["wind_speeds"], # self.env.turbine_average_velocities,
-                "turbine_powers":  self.measurements_dt["turbine_powers"],
-                "yaw_angles": self.measurements_dt["yaw_angles"]}
+        mag = np.sqrt(self.env.core.flow_field.u[time_step]**2)
+        mag = np.mean(mag.reshape(*mag.shape[:1], -1), axis=1)
+        direction = np.tile(self.env.core.flow_field.wind_directions[time_step], (self.n_turbines,))
+        offline_mask = np.isclose(self.env.core.farm.power_setpoints[time_step], 0, atol=1e-3)
         
-        # self.time += 1
+        measurements = {
+            "time": self.time,
+            "amr_wind_speed": self.env.core.flow_field.wind_speeds[time_step],
+            "amr_wind_direction": self.env.core.flow_field.wind_directions[time_step],
+            "wind_directions": direction,
+            "wind_speeds": mag, # self.env.turbine_average_velocities,
+            "turbine_powers": np.ma.masked_array(self.env.get_turbine_powers()[time_step], offline_mask).filled(0.0),
+            "yaw_angles": self.current_yaw_setpoints[-1, :]
+        }
+        
+        
         return measurements
     
     def check_controls(self, ctrl_dict):
@@ -129,7 +102,7 @@ class ControlledFlorisModel(InterfaceBase):
             yaw_offsets = self.env.core.farm.yaw_angles
         else:
             yaw_offsets = (np.array(disturbances["wind_directions"])[:, np.newaxis] - ctrl_dict["yaw_angles"])
-            self.previous_yaw_setpoints = ctrl_dict["yaw_angles"]
+            self.current_yaw_setpoints = np.array(ctrl_dict["yaw_angles"])[np.newaxis, :]
 
         self.env.set(
             wind_directions=disturbances["wind_directions"],
@@ -144,21 +117,19 @@ class ControlledFlorisModel(InterfaceBase):
         return disturbances
     def send_controls(self, hercules_dict, **controls):
         """ abstract method from Interface class """
-        target_yaw_setpoints = controls["yaw_angles"]
-        yaw_setpoint_change_dirs = np.sign(np.subtract(target_yaw_setpoints, self.previous_yaw_setpoints))
+        # if control_dt time has passed, pass yaw_setpoint_trajectory to floris model and flush controls buffer. Otherwise, add controls angles to buffer.
+        
+        if self.run_floris:
+            yaw_offsets = self.env.core.flow_field.wind_directions[:, np.newaxis] - self.current_yaw_setpoints
+            # yaw_offsets = self.env.core.flow_field.wind_directions[:, np.newaxis] - controls["yaw_angles"]
+            self.env.set(yaw_angles=yaw_offsets, disable_turbines=self.offline_status)
+            self.env.run()
+            self.current_yaw_setpoints = self.current_yaw_setpoints[-1:, :]
+            # self.current_yaw_setpoints = np.zeros((0, self.n_turbines))
+        else:
+            self.current_yaw_setpoints = np.vstack([self.current_yaw_setpoints,
+                                                    controls["yaw_angles"]])
 
-        yaw_setpoint_trajectory = np.array([np.clip(
-            self.previous_yaw_setpoints + (self.yaw_rate * self.dt * (k + 1) * yaw_setpoint_change_dirs),
-                              [target_yaw_setpoints[i] if yaw_setpoint_change_dirs[i] < 0 else -np.infty for i in range(self.n_turbines)], 
-                              [target_yaw_setpoints[i] if yaw_setpoint_change_dirs[i] >= 0 else np.infty for i in range(self.n_turbines)]
-                              ) 
-                              for k in range(self.env.core.flow_field.wind_directions.shape[0])])
-
-        yaw_offset_trajectory = self.env.core.flow_field.wind_directions[:, np.newaxis] - yaw_setpoint_trajectory
-        # yaw_offsets = self.env.core.flow_field.wind_directions[:, np.newaxis] - controls["yaw_angles"]
-        self.env.set(yaw_angles=yaw_offset_trajectory, disable_turbines=self.offline_status)
-        self.env.run()
-        self.previous_yaw_setpoints = self.env.core.flow_field.wind_directions[-1, np.newaxis] - yaw_offset_trajectory[-1, :]
         return controls
     
     @classmethod

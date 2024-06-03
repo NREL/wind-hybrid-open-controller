@@ -610,15 +610,15 @@ class MPC(ControllerBase):
 		if self.warm_start == "lut":
 			fi_lut = ControlledFlorisModel(yaw_limits=input_dict["controller"]["yaw_limits"],
 										dt=input_dict["dt"],
-										yaw_rate=input_dict["controller"]["yaw_rate"]) \
-						.load_floris(config_path=input_dict["controller"]["floris_input_file"])
+										yaw_rate=input_dict["controller"]["yaw_rate"],
+										config_path=input_dict["controller"]["floris_input_file"])
 
 			lut_input_dict = dict(input_dict)
-			lut_input_dict["controller"]["use_filtered_wind_dir"] = False
+			# lut_input_dict["controller"]["use_filtered_wind_dir"] = False
 			ctrl_lut = LookupBasedWakeSteeringController(fi_lut, input_dict=lut_input_dict, 
-													lut_path=os.path.join(os.path.dirname(whoc.__file__), 
-																		f"../examples/mpc_wake_steering_florisstandin/lut_{fi_lut.n_turbines}.csv"), 
-													generate_lut=False)
+													lut_path=input_dict["controller"]["lut_path"], 
+													generate_lut=input_dict["controller"]["generate_lut"], 
+													wind_dir_ts=kwargs["wind_dir_ts"], wind_mag_ts=kwargs["wind_mag_ts"])
 			def warm_start_func(measurements: dict):
 				# feed interface with new disturbances
 				fi_lut.step(disturbances={"wind_speeds": self.wind_preview_samples[f"FreestreamWindMag_{0}"][:1],
@@ -628,6 +628,7 @@ class MPC(ControllerBase):
 										ctrl_dict=None if fi_lut.time > 0 else {"yaw_angles": [ctrl_lut.yaw_IC] * ctrl_lut.n_turbines})
 				
 				# receive measurements from interface, compute control actions, and send to interface
+				fi_lut.run_floris = False
 				ctrl_lut.step()
 				# must return yaw setpoints
 				return ctrl_lut.controls_dict["yaw_angles"]
@@ -652,14 +653,14 @@ class MPC(ControllerBase):
 		self.yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
 		if hasattr(self.yaw_IC, "__len__"):
 			if len(self.yaw_IC) == self.n_turbines:
-				self.controls_dict = {"yaw_angles": self.yaw_IC}
+				self.controls_dict = {"yaw_angles": np.array(self.yaw_IC)}
 			else:
 				raise TypeError(
 					"yaw initial condition should be a float or "
 					+ "a list of floats of length num_turbines."
 				)
 		else:
-			self.controls_dict = {"yaw_angles": [self.yaw_IC] * self.n_turbines}
+			self.controls_dict = {"yaw_angles": np.array([self.yaw_IC] * self.n_turbines)}
 		
 		self.initial_state = np.array([self.yaw_IC / self.yaw_norm_const] * self.n_turbines)
 		
@@ -673,8 +674,8 @@ class MPC(ControllerBase):
 		
 		self.wind_ti = 0.08
 
-		self.fi = ControlledFlorisModel(yaw_limits=self.yaw_limits, dt=self.dt, yaw_rate=self.yaw_rate) \
-			.load_floris(config_path=input_dict["controller"]["floris_input_file"])
+		self.fi = ControlledFlorisModel(yaw_limits=self.yaw_limits, dt=self.dt, yaw_rate=self.yaw_rate, 
+								  config_path=input_dict["controller"]["floris_input_file"])
 		
 		if self.solver == "serial_refine":
 			# self.fi_opt = FlorisModelDev(input_dict["controller"]["floris_input_file"]) #.replace("floris", "floris_dev"))
@@ -800,7 +801,7 @@ class MPC(ControllerBase):
 					for turbine_i in solve_turbine_ids:
 						state_cons = state_cons + [(wd[j] - yaw_setpoints[j, turbine_i]) / self.yaw_norm_const]
 		elif self.state_con_type == "probabilistic":
-			current_time = np.atleast_1d(self.measurements_dict["time"])[0] 
+			current_time = self.measurements_dict["time"]
 			mean_u, mean_v, cov_u, cov_v = self.wind_preview_func(self.current_freestream_measurements, 
 															   int(current_time // self.simulation_dt), 
 															   return_params=True)
@@ -879,64 +880,67 @@ class MPC(ControllerBase):
 		"""
 		solve OCP to minimize objective over future horizon
 		"""
+		
 		# TODO HIGH only run compute_controls when new amr reading comes in (ie with new timestamp), also in LUT and Greedy, keep track of curent_time independently of measurements_dict
 		# current_wind_directions = np.atleast_2d(self.measurements_dict["wind_directions"])
-		if (self._last_measured_time is not None) and self._last_measured_time == np.atleast_1d(self.measurements_dict["time"])[0]:
-			return
+		if (self._last_measured_time is not None) and self._last_measured_time == self.measurements_dict["time"]:
+			pass
 
 		if self.verbose:
 			print(f"self._last_measured_time == {self._last_measured_time}")
-			print(f"self.measurements_dict['time'] == {np.atleast_1d(self.measurements_dict['time'])[0]}")
+			print(f"self.measurements_dict['time'] == {self.measurements_dict['time']}")
 
-		self._last_measured_time = np.atleast_1d(self.measurements_dict["time"])[0]
-		self.current_time = np.atleast_1d(self.measurements_dict["time"])[0]
+		self._last_measured_time = self.measurements_dict["time"]
+		self.current_time = self.measurements_dict["time"]
 
 		if self.verbose:
 			print(f"self.current_time == {self.current_time}")
+		
+		# TODO high should be pulling from measurements
+		current_wind_directions = np.broadcast_to(self.wind_dir_ts[int(self.current_time // self.simulation_dt)], (self.n_turbines,))
 
-		current_wind_directions = self.wind_dir_ts[int(self.current_time // self.simulation_dt):int((self.current_time + self.dt) // self.simulation_dt)][:, np.newaxis]
 
 		# x = np.atleast_2d(self.measurements_dict["wind_directions"])
 		# y = self.wind_dir_ts[int(current_time // self.simulation_dt):int((current_time + self.dt) // self.simulation_dt)][:, np.newaxis]
 		# np.sum(np.abs(x - y))
 		if self.use_filt:
 			self.historic_measurements["wind_directions"] = np.vstack([self.historic_measurements["wind_directions"],
-															np.tile(current_wind_directions, (1, self.n_turbines))])[-int((self.lpf_time_const // self.simulation_dt) * 1e3):, :]
+															current_wind_directions])[-int((self.lpf_time_const // self.simulation_dt) * 1e3):, :]
 			
-		
+		assert np.all(self.wind_dir_ts[:self.historic_measurements["wind_directions"].shape[0], np.newaxis] == self.historic_measurements["wind_directions"])
 		if np.all(np.isclose(self.measurements_dict["wind_directions"], 0)):
 			# yaw angles will be set to initial values
 			if self.verbose:
 				print("Bad wind direction measurement received, reverting to previous measurement.")
 		# TODO MISHA this is a patch up for AMR wind initialization problem
-		elif (abs(self.current_time % self.dt) == 0.0) or (self.current_time == self.simulation_dt * 2):
-			if self.verbose or True:
-				print(f"unfiltered wind directions = {current_wind_directions[-int(self.dt // self.simulation_dt), :]}")
+		elif (abs(self.current_time % self.dt) == 0.0) or (np.all(self.controls_dict["yaw_angles"] == self.yaw_IC) and (self.current_time == self.simulation_dt * 2)):
+			if self.verbose:
+				print(f"unfiltered wind directions = {current_wind_directions}")
 			if self.current_time > 0.:
 				# update initial state self.mi_model.initial_state
 				# TODO MISHA should be able to get this from measurements dict
-				current_yaw_angles = np.atleast_2d(self.controls_dict["yaw_angles"])[0, :]
+				current_yaw_angles = self.controls_dict["yaw_angles"]
 				self.initial_state = current_yaw_angles / self.yaw_norm_const # scaled by yaw limits
 			
-			if (self.current_time < 180 or not self.use_filt):
-				current_wind_directions = current_wind_directions[-int(self.dt // self.simulation_dt), 0]
+			if (self.current_time < 180.0 or not self.use_filt):
+				current_wind_directions = current_wind_directions[0]
 			else:
 				# use filtered wind direction and speed
-				current_wind_directions = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"][:, i], self.lpf_alpha)
+				current_filtered_measurements = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"][:, i], self.lpf_alpha)
 											for i in range(self.n_turbines)]).T
 				self.filtered_measurements["wind_directions"] = np.vstack([self.filtered_measurements["wind_directions"], 
-															   current_wind_directions[-int(self.dt // self.simulation_dt):, :]])
+															   current_filtered_measurements[-1, :]])
+				# self.filtered_measurements["wind_directions"][:, 0] -  self.historic_measurements["wind_directions"][-int(self.dt // self.simulation_dt):, 0]
+				current_wind_directions = current_filtered_measurements # TODO need freestream, but this is just choosing front turbine...
 				
-				current_wind_directions = current_wind_directions[-int(self.dt // self.simulation_dt), 0] # TODO need freestream, but this is just choosing front turbine...
-				
-			if self.verbose or True:
+			if self.verbose:
 				print(f"{'filtered' if self.use_filt else 'unfiltered'} wind directions = {current_wind_directions}")
 			
-			current_wind_speeds = self.wind_mag_ts[int(self.current_time // self.simulation_dt)]
+			current_wind_speed = self.wind_mag_ts[int(self.current_time // self.simulation_dt)]
 			
 			self.current_freestream_measurements = [
-					current_wind_speeds * np.sin((current_wind_directions - 180.) * (np.pi / 180.)),
-					current_wind_speeds * np.cos((current_wind_directions - 180.) * (np.pi / 180.))
+					current_wind_speed * np.sin((current_wind_directions - 180.) * (np.pi / 180.)),
+					current_wind_speed * np.cos((current_wind_directions - 180.) * (np.pi / 180.))
 			]
 			
 			# returns n_preview_samples of horizon preview realiztions in the case of stochastic preview type, 
@@ -972,7 +976,7 @@ class MPC(ControllerBase):
 			)
 
 			# TODO is this a valid way to check for amr-wind
-			current_powers = np.atleast_2d(self.measurements_dict["turbine_powers"])[0, :]
+			current_powers = self.measurements_dict["turbine_powers"]
 			self.offline_status = np.isclose(current_powers, 0.0)
 			self.offline_status = np.broadcast_to(self.offline_status, (self.fi.env.core.flow_field.n_findex, self.n_turbines))
 
@@ -1031,16 +1035,15 @@ class MPC(ControllerBase):
 				else:
 					print(f"Warning: nonzero state_con_bools")
 
-			self.controls_dict = {"yaw_angles": list(yaw_star)}
-			self.current_time += self.dt
-
-			if self.current_time == 240.0:
-				if False:
-					fig, ax = plt.subplots(1, 1)
-					time = np.arange(len(self.historic_measurements["wind_directions"]))[int(180 // self.simulation_dt):] * self.simulation_dt
-					ax.plot(time, self.historic_measurements["wind_directions"][int(180 // self.simulation_dt):])
-					ax.plot(time, self.filtered_measurements["wind_directions"], "--")
-			# [c1 == c2 for c1, c2 in zip(self.pyopt_sol_obj.constraints["state_cons"].value, state_cons)]
+			self.target_controls_dict = {"yaw_angles": list(yaw_star)}
+			# self.current_time += self.dt
+		# TODO high test
+		yaw_setpoint_change_dirs = np.sign(np.subtract(self.target_controls_dict["yaw_angles"], self.controls_dict["yaw_angles"]))
+		self.controls_dict["yaw_angles"] = np.clip(
+							self.controls_dict["yaw_angles"] + (self.yaw_rate * self.simulation_dt * yaw_setpoint_change_dirs),
+							[self.target_controls_dict["yaw_angles"][i] if yaw_setpoint_change_dirs[i] < 0 else -np.infty for i in range(self.n_turbines)], 
+							[self.target_controls_dict["yaw_angles"][i] if yaw_setpoint_change_dirs[i] >= 0 else np.infty for i in range(self.n_turbines)]
+		)
 
 	def zsgd_solve(self):
 
@@ -1314,10 +1317,10 @@ class MPC(ControllerBase):
 	def warm_start_opt_vars(self):
 		self.init_sol = {"states": [], "control_inputs": []}
 		# TODO should be able to get this from measurements_dict
-		current_yaw_setpoints = np.atleast_2d(self.controls_dict["yaw_angles"])[0, :]
+		current_yaw_setpoints = self.controls_dict["yaw_angles"]
 		
 		if self.warm_start == "previous":
-			current_time = np.atleast_1d(self.measurements_dict["time"])[0]
+			current_time = self.measurements_dict["time"]
 			if current_time > 0:
 				self.init_sol = {
 					"states": np.clip(np.concatenate([
@@ -1511,7 +1514,9 @@ class MPC(ControllerBase):
 		# solution is scaled by yaw limit
 		# yaw_setpoints = ((self.initial_state * self.yaw_norm_const) + (self.yaw_rate * self.dt * self.opt_sol["control_inputs"][:self.n_turbines]))
 		yaw_setpoints = self.opt_sol["states"][:self.n_turbines] * self.yaw_norm_const
-		return np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
+		rounded_yaw_setpoints = np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
+
+		return rounded_yaw_setpoints
 		# return (self.initial_state * self.yaw_norm_const) \
 		# 	+ self.yaw_rate * self.dt * self.opt_sol["control_inputs"][:self.n_turbines]  # solution is scaled by yaw limit
 

@@ -39,14 +39,14 @@ class GreedyController(ControllerBase):
 		self.yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
 		if hasattr(self.yaw_IC, "__len__"):
 			if len(self.yaw_IC) == self.n_turbines:
-				self.controls_dict = {"yaw_angles": self.yaw_IC}
+				self.controls_dict = {"yaw_angles": np.array(self.yaw_IC)}
 			else:
 				raise TypeError(
 					"yaw initial condition should be a float or "
 					+ "a list of floats of length num_turbines."
 				)
 		else:
-			self.controls_dict = {"yaw_angles": [self.yaw_IC] * self.n_turbines}
+			self.controls_dict = {"yaw_angles": np.array([self.yaw_IC] * self.n_turbines)}
 	
 	# self.filtered_measurements["wind_direction"] = []
 	
@@ -62,16 +62,16 @@ class GreedyController(ControllerBase):
 	def compute_controls(self):
 		# TODO MISHA should we check this at every simulation step rather than every 60, for threshold changes?
 
-		if (self._last_measured_time is not None) and self._last_measured_time == np.atleast_1d(self.measurements_dict["time"])[0]:
+		if (self._last_measured_time is not None) and self._last_measured_time == self.measurements_dict["time"]:
 			return
 
 		if self.verbose:
 			print(f"self._last_measured_time == {self._last_measured_time}")
-			print(f"self.measurements_dict['time'] == {np.atleast_1d(self.measurements_dict['time'])[0]}")
+			print(f"self.measurements_dict['time'] == {self.measurements_dict['time']}")
 
-		self._last_measured_time = np.atleast_1d(self.measurements_dict["time"])[0]
+		self._last_measured_time = self.measurements_dict["time"]
 
-		self.current_time = np.atleast_1d(self.measurements_dict["time"])[0]
+		self.current_time = self.measurements_dict["time"]
 
 		if self.verbose:
 			print(f"self.current_time == {self.current_time}")
@@ -83,26 +83,25 @@ class GreedyController(ControllerBase):
 			if self.verbose:
 				print("Bad wind direction measurement received, reverting to previous measurement.")
 		# TODO MISHA this is a patch up for AMR wind initialization problem
-		elif (abs(self.current_time % self.simulation_dt) == 0.0) or (self.current_time == self.simulation_dt * 2):
-			
-			# current_wind_directions = np.atleast_2d(self.measurements_dict["wind_directions"])
-			current_wind_directions = self.wind_dir_ts[int(self.current_time // self.simulation_dt):int((self.current_time + self.dt) // self.simulation_dt)][:, np.newaxis]
+		elif (abs(self.current_time % self.simulation_dt) == 0.0) or (np.all(self.controls_dict["yaw_angles"] == self.yaw_IC) and self.current_time == self.simulation_dt * 2):
+			# TODO HIGH should really be pulling this from amr wind
+			current_wind_directions = np.broadcast_to(self.wind_dir_ts[int(self.current_time // self.simulation_dt)], (self.n_turbines,))
 
 			if self.verbose:
 				print(f"unfiltered wind directions = {current_wind_directions[-1, :]}")
 			if self.use_filt:
 				self.historic_measurements["wind_directions"] = np.vstack([
 					self.historic_measurements["wind_directions"],
-					np.tile(current_wind_directions, (1, self.n_turbines))])[-int((self.lpf_time_const // self.simulation_dt) * 1e3):, :]
+					current_wind_directions])[-int((self.lpf_time_const // self.simulation_dt) * 1e3):, :]
 				
 			# if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
 			if self.current_time < 180. or not self.use_filt:
-				if np.size(current_wind_directions) == 0:
+				if len(current_wind_directions) == 0:
 					if self.verbose:
 						print("Bad wind direction measurement received, reverting to previous measurement.")
 					wind_dirs = self.wd_store
 				else:
-					wind_dirs = current_wind_directions[0, :]
+					wind_dirs = current_wind_directions
 					self.wd_store = list(wind_dirs)
 					
 			else:
@@ -114,7 +113,7 @@ class GreedyController(ControllerBase):
 				print(f"{'filtered' if self.use_filt else 'unfiltered'} wind directions = {wind_dirs}")
 				
 			# TODO MISHA can't rely on receiving yaw_angles from measurements?
-			current_yaw_setpoints = np.atleast_2d(self.controls_dict["yaw_angles"])[0, :]
+			current_yaw_setpoints = self.controls_dict["yaw_angles"]
 			yaw_setpoints = np.array(current_yaw_setpoints)
 			change_idx = np.abs(current_yaw_setpoints - wind_dirs) > self.deadband_thr
 			yaw_setpoints[change_idx] = wind_dirs[change_idx]
