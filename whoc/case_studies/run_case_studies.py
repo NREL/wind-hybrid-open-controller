@@ -3,6 +3,8 @@ print(1)
 import os
 import sys
 
+import numpy as np
+
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 from whoc.controllers.mpc_wake_steering_controller import MPC
 from whoc.controllers.greedy_wake_steering_controller import GreedyController
@@ -42,7 +44,7 @@ if __name__ == "__main__":
         N_SEEDS = 6
 
     for case_family in case_families:
-        case_studies[case_family]["wind_case_idx"] = {"group": 2, "vals": [i for i in range(N_SEEDS)]}
+        case_studies[case_family]["wind_case_idx"] = {"group": max(d["group"] for d in case_studies[case_family].values()) + 1, "vals": [i for i in range(N_SEEDS)]}
 
     # MISHA QUESTION how to make AMR-Wind wait for control solution?
     # run_simulations(["baseline_controllers"], REGENERATE_WIND_FIELD)
@@ -77,8 +79,8 @@ if __name__ == "__main__":
                 futures = [run_simulations_exec.submit(simulate_controller, 
                                                 controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
                                                 wind_case_idx=case_lists[c]["wind_case_idx"], wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
-                                                case_name=case_lists[c]["case_names"], case_family="_".join(case_name_lists[c].split("_")[:-1]),
-                                                lut_path=case_lists[c]["lut_path"], generate_lut=case_lists[c]["generate_lut"], seed=case_lists[c]["seed"], wind_field_config=wind_field_config, verbose=False)
+                                                case_name="_".join([f"{key}_{val if (type(val) is str or type(val) is np.str_) else np.round(val, 4)}" for key, val in case_lists[c].items() if key not in ["wind_case_idx", "seed"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
+                                                case_family="_".join(case_name_lists[c].split("_")[:-1]), seed=case_lists[c]["seed"], wind_field_config=wind_field_config, verbose=False)
                         for c, d in enumerate(input_dicts)]
                 
                 results = [fut.result() for fut in futures]
@@ -88,8 +90,8 @@ if __name__ == "__main__":
             for c, d in enumerate(input_dicts):
                 results.append(simulate_controller(controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
                                                 wind_case_idx=case_lists[c]["wind_case_idx"], wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
-                                                case_name=case_lists[c]["case_names"], case_family="_".join(case_name_lists[c].split("_")[:-1]),
-                                                lut_path=case_lists[c]["lut_path"], generate_lut=case_lists[c]["generate_lut"], seed=case_lists[c]["seed"],
+                                                case_name="_".join([f"{key}_{val if (type(val) is str or type(val) is np.str_) else np.round(val, 4)}" for key, val in case_lists[c].items() if key not in ["wind_case_idx", "seed"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
+                                                case_family="_".join(case_name_lists[c].split("_")[:-1]), seed=case_lists[c]["seed"],
                                                 wind_field_config=wind_field_config, verbose=False))
         
         # save_simulations(case_lists, case_name_lists, results)
@@ -101,4 +103,4 @@ if __name__ == "__main__":
             # compute stats over all seeds
             process_simulations(results_dirs)
             
-            plot_simulations(results_dirs[0:2])
+            plot_simulations(results_dirs)

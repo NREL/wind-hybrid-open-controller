@@ -277,11 +277,13 @@ def plot_power_ts(data_df, save_path):
         if seed != plot_seed:
             continue
         seed_df = data_df.loc[data_df["WindSeed"] == seed].sort_values(by="Time")
+        
+        ax[0].plot(seed_df["Time"], seed_df["FreestreamWindDir"], label="Freestream wind dir.", color="black")
+        ax[0].plot(seed_df["Time"], seed_df["FilteredFreestreamWindDir"], label="Filtered freestream wind dir.", color="black", linestyle="--")
+            
         # Direction
         for t, (wind_dir_col, power_col, yaw_col, color) in enumerate(zip(turbine_wind_direction_cols, turbine_power_cols, yaw_angle_cols, cycle(colors))):
             ax[0].plot(seed_df["Time"], seed_df[yaw_col], color=color, label="T{0:01d} yaw setpoint".format(t), linestyle=":")
-            if t == len(turbine_wind_direction_cols) - 1:
-                ax[0].plot(seed_df["Time"], seed_df[wind_dir_col], label="Farm wind dir.".format(t), color="black")
             if t == 0:
                 ax[1].fill_between(seed_df["Time"], seed_df[power_col] / 1e3, color=color, label="T{0:01d} power".format(t))
             else:
@@ -290,11 +292,13 @@ def plot_power_ts(data_df, save_path):
                     color=color, label="T{0:01d} power".format(t))
         ax[1].plot(seed_df["Time"], seed_df[turbine_power_cols].sum(axis=1) / 1e3, color="black", label="Farm power")
     
-    ax[0].set(title="Wind Direction / Yaw Angle [deg]", xlim=(0, int((seed_df["Time"].max() + seed_df["Time"].diff().iloc[1]) // 6)), ylim=(245, 295))
+    ax[0].set(title="Wind Direction / Yaw Angle [deg]", xlim=(0, int((seed_df["Time"].max() + seed_df["Time"].diff().iloc[1]) // 1)), ylim=(245, 295))
     ax[0].legend(ncols=2, loc="upper left")
     ax[1].set(xlabel="Time [s]", title="Turbine Powers [MW]")
     ax[1].legend(ncols=2)
 
+    results_dir = os.path.dirname(save_path)
+    fig.suptitle("_".join([os.path.basename(results_dir), data_df["CaseName"].iloc[0].replace('/', '_'), "yaw_power_ts"]))
     fig.savefig(save_path)
     # fig.show()
     return fig, ax
@@ -387,6 +391,7 @@ def plot_breakdown_robustness(data_summary_df, case_studies, save_dir):
     sns.scatterplot(data=sub_df, x=("RelativeYawAngleChangeAbsMean", "mean"), y=("RelativeFarmPowerMean", "mean"), size="CaseName", 
                     size_order=reversed(sub_df["CaseName"]), ax=ax)
     ax.set(xlabel="Mean Absolute Relative Yaw Angle Change [deg]", ylabel="Mean Relative Farm Power [MW]")
+    # ax.legend()
     ax.legend_.set_title("Chance of Breakdown")
     ax.collections[0].set_sizes(ax.collections[0].get_sizes() * 5)
     

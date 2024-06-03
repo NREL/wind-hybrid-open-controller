@@ -772,7 +772,7 @@ def generate_multi_wind_preview_ts(config, wind_field_data):
         wait(futures)
         wind_field_data = [fut.result() for fut in futures]
 
-def first_ord_filter(x, alpha):
+def first_ord_filter(x, alpha=np.exp(-(1 / 35) * 0.5)):
     b = [1 - alpha]
     a = [1, -alpha]
     return lfilter(b, a, x)
