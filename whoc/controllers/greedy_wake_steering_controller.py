@@ -78,7 +78,7 @@ class GreedyController(ControllerBase):
 
 		# if current_time < 2 * self.simulation_dt:
 		
-		if np.all(np.isclose(self.measurements_dict["wind_directions"], 0)):
+		if len(self.measurements_dict["wind_directions"]) == 0 or np.all(np.isclose(self.measurements_dict["wind_directions"], 0)):
 			# yaw angles will be set to initial values
 			if self.verbose:
 				print("Bad wind direction measurement received, reverting to previous measurement.")
