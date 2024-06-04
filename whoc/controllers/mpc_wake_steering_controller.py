@@ -6,7 +6,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from pyoptsparse import Optimization, SLSQP # TODO this is introducing an error
+from pyoptsparse import Optimization, SLSQP
 from pyoptsparse.pyOpt_history import History
 from scipy.optimize import linprog, basinhopping
 from scipy.integrate import dblquad
@@ -25,7 +25,6 @@ from floris.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizatio
 # from floris_dev.tools.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
 
 # TODO change constraints to be probabilistic and use freestream wind speed
-# TODO can we run amr wind with a fidelity of 1 second, or change code to allow for other time-steps
 
 optimizer_idx = 0
 
@@ -471,10 +470,10 @@ class MPC(ControllerBase):
 		self.use_filt = input_dict["controller"]["use_filtered_wind_dir"]
 		self.lpf_time_const = input_dict["controller"]["lpf_time_const"]
 		self.lpf_alpha = np.exp(-(1 / input_dict["controller"]["lpf_time_const"]) * input_dict["dt"])
-		self.historic_measurements = {"wind_directions": np.zeros((0, self.n_turbines)),
-									  "wind_speeds": np.zeros((0, self.n_turbines))}
-		self.filtered_measurements = {"wind_directions": np.zeros((0, self.n_turbines)),
-									  "wind_speeds": np.zeros((0, self.n_turbines))}
+		self.historic_measurements = {"wind_directions": [],
+									  "wind_speeds": []}
+		self.filtered_measurements = {"wind_directions": [],
+									  "wind_speeds": []}
 		
 		self.use_state_cons = input_dict["controller"]["use_state_cons"]
 		self.use_dyn_state_cons = input_dict["controller"]["use_dyn_state_cons"]
@@ -897,50 +896,46 @@ class MPC(ControllerBase):
 			print(f"self.current_time == {self.current_time}")
 		
 		# TODO high should be pulling from measurements
-		current_wind_directions = np.broadcast_to(self.wind_dir_ts[int(self.current_time // self.simulation_dt)], (self.n_turbines,))
+		current_wind_direction = self.wind_dir_ts[int(self.current_time // self.simulation_dt)]
 
 
 		# x = np.atleast_2d(self.measurements_dict["wind_directions"])
 		# y = self.wind_dir_ts[int(current_time // self.simulation_dt):int((current_time + self.dt) // self.simulation_dt)][:, np.newaxis]
 		# np.sum(np.abs(x - y))
 		if self.use_filt:
-			self.historic_measurements["wind_directions"] = np.vstack([self.historic_measurements["wind_directions"],
-															current_wind_directions])[-int((self.lpf_time_const // self.simulation_dt) * 1e3):, :]
+			self.historic_measurements["wind_directions"] = np.append(self.historic_measurements["wind_directions"],
+															current_wind_direction)[-int((self.lpf_time_const // self.simulation_dt) * 1e3):]
 			
-		assert np.all(self.wind_dir_ts[:self.historic_measurements["wind_directions"].shape[0], np.newaxis] == self.historic_measurements["wind_directions"])
-		if np.all(np.isclose(self.measurements_dict["wind_directions"], 0)):
+		assert np.all(self.wind_dir_ts[:len(self.historic_measurements["wind_directions"])] == self.historic_measurements["wind_directions"])
+		if len(self.measurements_dict["wind_directions"]) == 0 or np.all(np.isclose(self.measurements_dict["wind_directions"], 0)):
 			# yaw angles will be set to initial values
 			if self.verbose:
 				print("Bad wind direction measurement received, reverting to previous measurement.")
 		# TODO MISHA this is a patch up for AMR wind initialization problem
 		elif (abs(self.current_time % self.dt) == 0.0) or (np.all(self.controls_dict["yaw_angles"] == self.yaw_IC) and (self.current_time == self.simulation_dt * 2)):
 			if self.verbose:
-				print(f"unfiltered wind directions = {current_wind_directions}")
+				print(f"unfiltered wind directions = {current_wind_direction}")
 			if self.current_time > 0.:
 				# update initial state self.mi_model.initial_state
 				# TODO MISHA should be able to get this from measurements dict
 				current_yaw_angles = self.controls_dict["yaw_angles"]
 				self.initial_state = current_yaw_angles / self.yaw_norm_const # scaled by yaw limits
 			
-			if (self.current_time < 180.0 or not self.use_filt):
-				current_wind_directions = current_wind_directions[0]
-			else:
+			if not (self.current_time < 180.0 or not self.use_filt):
 				# use filtered wind direction and speed
-				current_filtered_measurements = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"][:, i], self.lpf_alpha)
-											for i in range(self.n_turbines)]).T
-				self.filtered_measurements["wind_directions"] = np.vstack([self.filtered_measurements["wind_directions"], 
-															   current_filtered_measurements[-1, :]])
+				current_filtered_measurements = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"], self.lpf_alpha)])
+				self.filtered_measurements["wind_directions"].append(current_filtered_measurements[0, -1])
 				# self.filtered_measurements["wind_directions"][:, 0] -  self.historic_measurements["wind_directions"][-int(self.dt // self.simulation_dt):, 0]
-				current_wind_directions = current_filtered_measurements # TODO need freestream, but this is just choosing front turbine...
+				current_wind_direction = current_filtered_measurements[0, -1] # TODO need freestream, but this is just choosing front turbine, could chose front turbine based on last wind direction, or based on average wind direction
 				
 			if self.verbose:
-				print(f"{'filtered' if self.use_filt else 'unfiltered'} wind directions = {current_wind_directions}")
+				print(f"{'filtered' if self.use_filt else 'unfiltered'} wind direction = {current_wind_direction}")
 			
 			current_wind_speed = self.wind_mag_ts[int(self.current_time // self.simulation_dt)]
 			
 			self.current_freestream_measurements = [
-					current_wind_speed * np.sin((current_wind_directions - 180.) * (np.pi / 180.)),
-					current_wind_speed * np.cos((current_wind_directions - 180.) * (np.pi / 180.))
+					current_wind_speed * np.sin((current_wind_direction - 180.) * (np.pi / 180.)),
+					current_wind_speed * np.cos((current_wind_direction - 180.) * (np.pi / 180.))
 			]
 			
 			# returns n_preview_samples of horizon preview realiztions in the case of stochastic preview type, 
@@ -1037,7 +1032,7 @@ class MPC(ControllerBase):
 
 			self.target_controls_dict = {"yaw_angles": list(yaw_star)}
 			# self.current_time += self.dt
-		# TODO high test
+		
 		yaw_setpoint_change_dirs = np.sign(np.subtract(self.target_controls_dict["yaw_angles"], self.controls_dict["yaw_angles"]))
 		self.controls_dict["yaw_angles"] = np.clip(
 							self.controls_dict["yaw_angles"] + (self.yaw_rate * self.simulation_dt * yaw_setpoint_change_dirs),
@@ -1338,7 +1333,7 @@ class MPC(ControllerBase):
 
 		elif self.warm_start == "lut":
 			# delta_yaw = self.dt * (self.yaw_rate / self.yaw_norm_const) * opt_var_dict["control_inputs"][prev_idx]
-			# TODO let this neglect wind direction filtering?
+			
 			self.init_sol = {
 					"states": [],
 					"control_inputs": []

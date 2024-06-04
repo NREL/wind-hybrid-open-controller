@@ -161,15 +161,15 @@ class LookupBasedWakeSteeringController(ControllerBase):
 
 		# TODO high should be pulling from measurements
 		# TODO high does LUT pull from local measurements or freestream?
-		current_wind_direction = self.wind_dir_ts[int(self.current_time // self.simulation_dt)], (self.n_turbines,)
+		current_wind_direction = self.wind_dir_ts[int(self.current_time // self.simulation_dt)]
 		current_wind_speed = self.wind_mag_ts[int(self.current_time // self.simulation_dt)]
 
 		if self.use_filt:
-			self.historic_measurements["wind_directions"] = np.append(self.historic_measurements["wind_directions"],
-															current_wind_direction)[-int((self.lpf_time_const // self.simulation_dt) * 1e3):, :]
+			self.historic_measurements["wind_directions"].append(current_wind_direction)
+			self.historic_measurements["wind_directions"] = self.historic_measurements["wind_directions"][-int((self.lpf_time_const // self.simulation_dt) * 1e3):]
 
 		# if current_time < 2 * self.simulation_dt:
-		if np.all(np.isclose(self.measurements_dict["wind_directions"], 0)):
+		if len(self.measurements_dict["wind_directions"]) == 0 or np.all(np.isclose(self.measurements_dict["wind_directions"], 0)):
 			# yaw angles will be set to initial values
 			if self.verbose:
 				print("Bad wind direction measurement received, reverting to previous measurement.")
@@ -179,28 +179,19 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			if self.verbose:
 				print(f"unfiltered wind direction = {current_wind_direction}")
 			if self.current_time < 180 or not self.use_filt:
-				
-				if len(current_wind_direction) == 0:
-					if self.verbose:
-						print("Bad wind direction measurement received, reverting to previous measurement.")
-					wind_dir = self.wd_store
-				else:
-					wind_dir = current_wind_direction # TODO Misha do we use all turbine wind directions in lut table?
-					self.wd_store = wind_dir
-				# wind_speed = self.measurements_dict["wind_speeds"][0]
+				wind_dir = current_wind_direction
 				wind_speed = current_wind_speed # TODO hercules can't get wind_speeds from measurements_dict
 			else:
 				# use filtered wind direction and speed, NOTE historic_measurments includes controller_dt steps into the future such that we can run simulation in time batches
-				wind_dir = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"][:, i],
-																	self.lpf_alpha)]).T
-				self.filtered_measurements["wind_directions"] = np.vstack([self.filtered_measurements["wind_directions"],
-															   wind_dir[-1]])
-				wind_dir = wind_dir[-1]
+				wind_dir = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"],
+																	self.lpf_alpha)])
+				self.filtered_measurements["wind_directions"].append(wind_dir[0, -1])
+				wind_dir = wind_dir[0, -1]
 				wind_speed = current_wind_speed
 				# wind_speeds = 8.0
 			
 			if self.verbose:
-				print(f"{'filtered' if self.use_filt else 'unfiltered'} wind directions = {wind_dirs}")
+				print(f"{'filtered' if self.use_filt else 'unfiltered'} wind direction = {wind_dir}")
 			
 			# TODO shouldn't freestream wind speed/dir also be availalbe in measurements_dict, or just assume first row of turbines?
 			# TODO filter wind speed and dir before certain time statpm?
@@ -209,7 +200,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			yaw_setpoints = np.array(current_yaw_setpoints)
 
 			yaw_offsets = self.wake_steering_interpolant(wind_dir, wind_speed)
-			new_yaw_setpoints = np.array(wind_dirs) - yaw_offsets
+			new_yaw_setpoints = wind_dir - yaw_offsets
 
 			change_idx = np.abs(current_yaw_setpoints - new_yaw_setpoints) > self.deadband_thr
 			yaw_setpoints[change_idx] = new_yaw_setpoints[change_idx]
