@@ -1,8 +1,6 @@
 # ensure there is enough power reference preview steps left before the full 24 hour mark
-simulation_max_time: 60
+simulation_max_time: 10800
 simulation_sampling_time: 0.5
-# wind_speed_preview_time: 600
-num_turbines: 9
 n_wind_field_cases: 6
 
 data_save_dir: /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/wind_field_data/raw_data
@@ -12,9 +10,9 @@ fig_dir: /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/
 offline_probability: 0.0
 
 wind_speed:
-  range: [3.0, 11.0]
-  u_range: [6.0, 12.0]
-  v_range: [-6.0, 6.0]
+  range: [6.0, 8.0]
+  u_range: [6.0, 8.0]
+  v_range: [-2.0, 2.0]
   var: 0.2
   # probability of wind speed/direction changing (1/2 for increase 1/2 for decrease)
   change_probability: 0.25
@@ -28,7 +26,7 @@ wind_speed:
   noise_func: np.random.normal
 
 wind_dir:
-  range: [250.0, 270.0]
+  range: [255.0, 285.0]
   var: 2.5
   change_probability: 0.25
   turb_std: 2.5

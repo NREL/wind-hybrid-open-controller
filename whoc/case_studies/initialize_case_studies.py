@@ -16,6 +16,8 @@ from whoc import __file__ as whoc_file
 from whoc.wind_field.WindField import plot_ts
 from whoc.wind_field.WindField import generate_multi_wind_ts, WindField, write_abl_forcing_velocity_timetable, first_ord_filter
 from whoc.postprocess_case_studies import plot_wind_field_ts
+from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
+from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 
 from hercules.utilities import load_yaml
 
@@ -47,8 +49,7 @@ case_studies = {
                                 # "use_filtered_wind_dir": {"group": 1, "vals": [True, False]},
                                 # "use_state_cons": {"group": 1, "vals": [True]},
                                 # "use_dyn_state_cons": {"group": 1, "vals": [False]},
-                                # "use_filt": {"group": 1, "vals": [True, True]},
-                                "generate_lut": {"group": 0, "vals": [True]},
+                                # "use_filt": {"group": 1, "vals": [True, True]}},
                           },
     "greedy": {"seed": {"group": 0, "vals": [0]},
             #    "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
@@ -63,12 +64,11 @@ case_studies = {
                         #                                       for nu in list(np.logspace(-4, 0, 5))
                         #                                       for n_samples in [10, 25, 50, 100, 200]
                         #                                       for alpha in list(np.linspace(0, 1.0, 11))]},
-                          "alpha": {"group": 3, "vals": list(np.linspace(0, 1.0, 11))},
+                          "alpha": {"group": 3, "vals": list(np.linspace(0.005, 0.995, 11))},
                            "solver": {"group": 0, "vals": ["slsqp"]}
                           },
     "sequential_slsqp_solver": {"seed": {"group": 0, "vals": [0]},
                           "controller_class": {"group": 0, "vals": ["MPC"]},
-                          "generate_lut": {"group": 0, "vals": [False]},
                           "n_horizon": {"group": 0, "vals": [5]}, 
                           "wind_preview_type": {"group": 0, "vals": ["stochastic"]},
                           "case_names": {"group": 1, "vals": ["Sequential SLSQP"]},
@@ -125,8 +125,8 @@ case_studies = {
                    },
     "cost_func_tuning": {"seed": {"group": 0, "vals": [0]},
                          "controller_class": {"group": 0, "vals": ["MPC"]},
-                         "case_names": {"group": 1, "vals": [f"alpha_{np.round(f, 2)}" for f in list(np.linspace(0, 1.0, N_COST_FUNC_TUNINGS))]},
-                         "alpha": {"group": 1, "vals": list(np.linspace(0, 1.0, N_COST_FUNC_TUNINGS))}
+                         "case_names": {"group": 1, "vals": [f"alpha_{np.round(f, 2)}" for f in list(np.linspace(0.001, 0.999, N_COST_FUNC_TUNINGS))]},
+                         "alpha": {"group": 1, "vals": list(np.logspace(0.001, 0.999, N_COST_FUNC_TUNINGS))}
                           },
     "breakdown_robustness": 
         {"seed": {"group": 0, "vals": [0]},
@@ -134,7 +134,6 @@ case_studies = {
          "controller_class": {"group": 0, "vals": ["MPC"]},
          "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{25}.csv")]},
-                             "generate_lut": {"group": 0, "vals": [False]},
           "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_25.yaml")]},
           "case_names": {"group": 1, "vals": [f"{f*100:04.1f}% Chance of Breakdown" for f in list(np.linspace(0, 0.5, N_COST_FUNC_TUNINGS))]},
@@ -145,7 +144,6 @@ case_studies = {
                     "controller_class": {"group": 0, "vals": ["MPC"]},
                     "lut_path": {"group": 1, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{nturb}.csv") for nturb in [3, 9, 25, 100]]},
-                    "generate_lut": {"group": 0, "vals": [True]},
                     "case_names": {"group": 1, "vals": ["3 Turbines", "9 Turbines", "25 Turbines", "100 Turbines"]},
                     "floris_input_file": {"group": 1, "vals": [os.path.join(os.path.dirname(whoc_file), "../examples/mpc_wake_steering_florisstandin", 
                                                              f"floris_gch_{i}.yaml") for i in [3, 9, 25, 100]]},
@@ -238,7 +236,7 @@ def CaseGen_General(case_inputs, namebase=''):
 
     return case_list, case_name
 
-def initialize_simulations(case_study_keys, regenerate_wind_field, n_seeds, debug):
+def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_field, n_seeds, debug):
 
     input_dict = load_yaml(os.path.join(os.path.dirname(whoc_file), "../examples/hercules_input_001.yaml"))
 
@@ -256,7 +254,7 @@ def initialize_simulations(case_study_keys, regenerate_wind_field, n_seeds, debu
     else:
         input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = 3600
 
-    wind_field_config["simulation_max_time"] = input_dict["hercules_comms"]["helics"]["config"]["stoptime"]
+    # wind_field_config["simulation_max_time"] = input_dict["hercules_comms"]["helics"]["config"]["stoptime"]
     wind_field_config["num_turbines"] = input_dict["controller"]["num_turbines"]
     wind_field_config["preview_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"])
     wind_field_config["simulation_sampling_time"] = input_dict["dt"]
@@ -272,6 +270,7 @@ def initialize_simulations(case_study_keys, regenerate_wind_field, n_seeds, debu
     # TODO check that wind field has same dt or interpolate...
     seed = 0
     if len(wind_field_filenames) < n_seeds or regenerate_wind_field:
+        n_seeds = 6
         print("regenerating wind fields")
         wind_field_config["regenerate_distribution_params"] = True # set to True to regenerate from constructed mean and covaraicne
         full_wf = WindField(**wind_field_config)
@@ -279,13 +278,14 @@ def initialize_simulations(case_study_keys, regenerate_wind_field, n_seeds, debu
             os.makedirs(wind_field_dir)
         wind_field_data = generate_multi_wind_ts(full_wf, wind_field_dir, init_seeds=[seed + i for i in range(n_seeds)])
         write_abl_forcing_velocity_timetable([wfd.df for wfd in wind_field_data], wind_field_dir) # then use these timetables in amr precursor
-
+        lpf_alpha = np.exp(-(1 / input_dict["controller"]["lpf_time_const"]) * input_dict["dt"])
+        plot_wind_field_ts(wind_field_data[0].df, wind_field_dir, filter_func=partial(first_ord_filter, alpha=lpf_alpha))
+        plot_ts(wind_field_data[0].df, wind_field_dir)
         wind_field_filenames = [os.path.join(wind_field_dir, f"case_{i}.csv") for i in range(n_seeds)]
         regenerate_wind_field = True
     
     # if wind field data exists, get it
     WIND_TYPE = "stochastic"
-    wind_field_fig_dir = os.path.join(wind_field_dir, 'figs') 
     wind_field_data = []
     if os.path.exists(wind_field_dir):
         for f, fn in enumerate(wind_field_filenames):
@@ -298,13 +298,28 @@ def initialize_simulations(case_study_keys, regenerate_wind_field, n_seeds, debu
                 wind_field_data[-1].loc[:45, f"FreestreamWindDir"] = 260.0
                 wind_field_data[-1].loc[45:, f"FreestreamWindDir"] = 270.0
     
-    lpf_alpha = np.exp(-(1 / input_dict["controller"]["lpf_time_const"]) * input_dict["dt"])
-    plot_wind_field_ts(pd.DataFrame(wind_field_data[0]), wind_field_dir, filter_func=partial(first_ord_filter, alpha=lpf_alpha))
-    plot_ts(pd.DataFrame(wind_field_data[0]), wind_field_dir)
+    
+    
     # true wind disturbance time-series
     #plot_wind_field_ts(pd.concat(wind_field_data), os.path.join(wind_field_fig_dir, "seeds.png"))
     wind_mag_ts = [wind_field_data[case_idx]["FreestreamWindMag"].to_numpy() for case_idx in range(n_seeds)]
     wind_dir_ts = [wind_field_data[case_idx]["FreestreamWindDir"].to_numpy() for case_idx in range(n_seeds)]
+
+    # regenerate floris lookup tables for all wind farms included
+    if regenerate_lut:
+        lut_input_dict = dict(input_dict)
+        for lut_path, floris_input_file in zip(case_studies["scalability"]["lut_path"]["vals"], 
+                                                        case_studies["scalability"]["floris_input_file"]["vals"]):
+            fi = ControlledFlorisModel(yaw_limits=input_dict["controller"]["yaw_limits"],
+                                            offline_probability=input_dict["controller"]["offline_probability"],
+                                            dt=input_dict["dt"],
+                                            yaw_rate=input_dict["controller"]["yaw_rate"],
+                                            config_path=floris_input_file)
+            lut_input_dict["controller"]["lut_path"] = lut_path
+            lut_input_dict["controller"]["generate_lut"] = True
+            ctrl_lut = LookupBasedWakeSteeringController(fi, lut_input_dict, wind_mag_ts=wind_mag_ts[0], wind_dir_ts=wind_dir_ts[0])
+
+        input_dict["controller"]["generate_lut"] = False
 
     assert np.all([np.isclose(wind_field_data[case_idx]["Time"].iloc[1] - wind_field_data[case_idx]["Time"].iloc[0], input_dict["dt"]) for case_idx in range(n_seeds)]), "sampling time of wind field should be equal to simulation sampling time"
 
@@ -353,6 +368,7 @@ def initialize_simulations(case_study_keys, regenerate_wind_field, n_seeds, debu
     return case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts
 # 0, 1, 2, 3, 4, 8, 9
 # 0, 2, 4, 7, 8, 9
+# 0, 2, 10
 case_families = ["baseline_controllers", "solver_type",
                     "wind_preview_type", "warm_start", 
                     "horizon_length", "breakdown_robustness",
@@ -361,8 +377,8 @@ case_families = ["baseline_controllers", "solver_type",
                     "perfect_preview_type", "slsqp_solver_sweep"]
     
 if __name__ == "__main__":
-    REGENERATE_WIND_FIELD = False
-    
+    REGENERATE_WIND_FIELD = True
+    # TODO replace these with proper command line args
     # comm_rank = MPI.COMM_WORLD.Get_rank()
     if sys.argv[2].lower() == "mpi":
         MULTI = "mpi"

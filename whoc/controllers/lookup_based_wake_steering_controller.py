@@ -51,6 +51,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 		self.wind_mag_ts = kwargs["wind_mag_ts"]
 
 		self._last_measured_time = None
+		self.is_yawing = np.array([False for _ in range(self.n_turbines)])
 
 		# Handle yaw optimizer object
 		if "df_yaw" in kwargs:
@@ -73,6 +74,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			self.controls_dict = {"yaw_angles": np.array([self.yaw_IC] * self.n_turbines)}
 
 		# For startup
+		self.previous_target_yaw_setpoints = self.controls_dict["yaw_angles"]
 		self.wd_store = [270.]*self.n_turbines # TODO: update this?
 	
 	def _first_ord_filter(self, x, alpha):
@@ -160,7 +162,6 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			print(f"self.current_time == {self.current_time}")
 
 		# TODO high should be pulling from measurements
-		# TODO high does LUT pull from local measurements or freestream?
 		current_wind_direction = self.wind_dir_ts[int(self.current_time // self.simulation_dt)]
 		current_wind_speed = self.wind_mag_ts[int(self.current_time // self.simulation_dt)]
 
@@ -180,7 +181,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 				print(f"unfiltered wind direction = {current_wind_direction}")
 			if self.current_time < 180 or not self.use_filt:
 				wind_dir = current_wind_direction
-				wind_speed = current_wind_speed # TODO hercules can't get wind_speeds from measurements_dict
+				wind_speed = current_wind_speed
 			else:
 				# use filtered wind direction and speed, NOTE historic_measurments includes controller_dt steps into the future such that we can run simulation in time batches
 				wind_dir = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"],
@@ -193,37 +194,37 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			if self.verbose:
 				print(f"{'filtered' if self.use_filt else 'unfiltered'} wind direction = {wind_dir}")
 			
-			# TODO shouldn't freestream wind speed/dir also be availalbe in measurements_dict, or just assume first row of turbines?
-			# TODO filter wind speed and dir before certain time statpm?
-
-			current_yaw_setpoints = self.controls_dict["yaw_angles"]
-			yaw_setpoints = np.array(current_yaw_setpoints)
-
-			yaw_offsets = self.wake_steering_interpolant(wind_dir, wind_speed)
-			new_yaw_setpoints = wind_dir - yaw_offsets
-
-			change_idx = np.abs(current_yaw_setpoints - new_yaw_setpoints) > self.deadband_thr
-			yaw_setpoints[change_idx] = new_yaw_setpoints[change_idx]
-
-			constrained_yaw_setpoints = np.clip(yaw_setpoints, current_yaw_setpoints - self.dt * self.yaw_rate, current_yaw_setpoints + self.dt * self.yaw_rate)
+			current_yaw_setpoints = self.controls_dict["yaw_angles"] # TODO is this available in measurements_dict?
 			
-			if np.all(np.diff(constrained_yaw_setpoints) == 0) and not np.all(np.diff(yaw_setpoints) == 0):
+			# flip the boolean value of those turbines which were actively yawing towards a previous setpoint, but now have reached that setpoint
+			self.is_yawing[self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints)] = False
+
+			new_yaw_setpoints = np.array(current_yaw_setpoints)
+
+			target_yaw_offsets = self.wake_steering_interpolant(wind_dir, wind_speed)
+			target_yaw_setpoints = np.rint((wind_dir - target_yaw_offsets) / self.yaw_increment) * self.yaw_increment
+
+			# stores target setpoints from prevoius compute_controls calls, update only those elements which are not already yawing towards a previous setpoint
+			self.previous_target_yaw_setpoints[~self.is_yawing] = target_yaw_setpoints[~self.is_yawing]
+
+			# change the turbine yaw setpoints that have surpassed the threshold difference AND are not already yawing towards a previous setpoint
+			change_idx = (np.abs(current_yaw_setpoints - target_yaw_setpoints) > self.deadband_thr) & ~self.is_yawing
+
+			new_yaw_setpoints[change_idx] = target_yaw_setpoints[change_idx]
+
+			self.is_yawing[change_idx] = True
+
+			constrained_yaw_setpoints = np.clip(new_yaw_setpoints, current_yaw_setpoints - self.simulation_dt * self.yaw_rate, current_yaw_setpoints + self.simulation_dt * self.yaw_rate)
+			
+			if np.all(np.diff(constrained_yaw_setpoints) == 0) and not np.all(np.diff(new_yaw_setpoints) == 0):
 				print(f"Note: all yaw angles have been constrained by the yaw rate equally at time {self.current_time}")
 			
 			if not len(change_idx):
 				print(f"Note: no yaw angle setpoints surpass the deadband threshold at time {self.current_time}")
 
-			yaw_setpoints = np.rint(constrained_yaw_setpoints / self.yaw_increment) * self.yaw_increment
+			constrained_yaw_setpoints = np.rint(constrained_yaw_setpoints / self.yaw_increment) * self.yaw_increment
 
-			self.controls_dict = {"yaw_angles": list(yaw_setpoints)}
-
-			if self.current_time == 420.0:
-				if False:
-					import matplotlib.pyplot as plt
-					fig, ax = plt.subplots(1, 1)
-					time = np.arange(len(self.historic_measurements["wind_directions"]))[int(180 // self.simulation_dt):] * self.simulation_dt
-					ax.plot(time, self.historic_measurements["wind_directions"][int(180 // self.simulation_dt):])
-					ax.plot(time, self.filtered_measurements["wind_directions"], "--")
+			self.controls_dict = {"yaw_angles": list(constrained_yaw_setpoints)}
 		
 		return None
 

@@ -33,6 +33,8 @@ class GreedyController(ControllerBase):
 		self.wind_mag_ts = kwargs["wind_mag_ts"]
 		self.wind_dir_ts = kwargs["wind_dir_ts"]
 
+		self.is_yawing = np.array([False for _ in range(self.n_turbines)])
+
 		self._last_measured_time = None
 
 		# Set initial conditions
@@ -47,6 +49,8 @@ class GreedyController(ControllerBase):
 				)
 		else:
 			self.controls_dict = {"yaw_angles": np.array([self.yaw_IC] * self.n_turbines)}
+		
+		self.previous_target_yaw_setpoints = self.controls_dict["yaw_angles"]
 	
 	# self.filtered_measurements["wind_direction"] = []
 	
@@ -114,14 +118,27 @@ class GreedyController(ControllerBase):
 				
 			# TODO MISHA can't rely on receiving yaw_angles from measurements?
 			current_yaw_setpoints = self.controls_dict["yaw_angles"]
-			yaw_setpoints = np.array(current_yaw_setpoints)
-			change_idx = np.abs(current_yaw_setpoints - wind_dirs) > self.deadband_thr
-			yaw_setpoints[change_idx] = wind_dirs[change_idx]
+			# flip the boolean value of those turbines which were actively yawing towards a previous setpoint, but now have reached that setpoint
+			self.is_yawing[self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints)] = False
+
+			new_yaw_setpoints = np.array(current_yaw_setpoints)
+
+			target_yaw_setpoints = np.rint(wind_dirs / self.yaw_increment) * self.yaw_increment
+
+			# stores target setpoints from prevoius compute_controls calls, update only those elements which are not already yawing towards a previous setpoint
+			self.previous_target_yaw_setpoints[~self.is_yawing] = target_yaw_setpoints[~self.is_yawing]
+
+			# change the turbine yaw setpoints that have surpassed the threshold difference AND are not already yawing towards a previous setpoint
+			change_idx = (np.abs(current_yaw_setpoints - target_yaw_setpoints) > self.deadband_thr) & ~self.is_yawing
+	
+			new_yaw_setpoints[change_idx] = target_yaw_setpoints[change_idx]
+
+			self.is_yawing[change_idx] = True
 			
-			yaw_setpoints = np.clip(yaw_setpoints, current_yaw_setpoints - self.simulation_dt * self.yaw_rate, current_yaw_setpoints + self.simulation_dt * self.yaw_rate)
-			yaw_setpoints = np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
+			constrained_yaw_setpoints = np.clip(new_yaw_setpoints, current_yaw_setpoints - self.simulation_dt * self.yaw_rate, current_yaw_setpoints + self.simulation_dt * self.yaw_rate)
+			constrained_yaw_setpoints = np.rint(constrained_yaw_setpoints / self.yaw_increment) * self.yaw_increment
 			
-			self.controls_dict = {"yaw_angles": list(yaw_setpoints)}
+			self.controls_dict = {"yaw_angles": list(constrained_yaw_setpoints)}
 
 		return None
 

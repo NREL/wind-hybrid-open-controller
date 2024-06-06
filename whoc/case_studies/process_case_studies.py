@@ -33,8 +33,17 @@ def process_simulations(results_dirs):
     results_dfs = get_results_data(results_dirs) # TODO change save name of compare_results_df
     compare_results_df = compare_simulations(results_dfs, STORAGE_DIR)
     compare_results_df.sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True)[("RelativeTotalRunningOptimizationCostMean", "mean")]
-    compare_results_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False)[("FarmPowerMean", "mean")]
-    compare_results_df.sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True)[("YawAngleChangeAbsMean", "mean")]
+    a = compare_results_df.loc[compare_results_df[("YawAngleChangeAbsMean", "mean")] > 0, :].sort_values(by=("FarmPowerMean", "mean"), ascending=False)[("FarmPowerMean", "mean")]
+    b = compare_results_df.loc[compare_results_df[("YawAngleChangeAbsMean", "mean")] > 0, :].sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True)[("YawAngleChangeAbsMean", "mean")]
+    yaw_change_case_names = [ind[1] for ind in b.index]
+    min_index = len(yaw_change_case_names)
+    best_case = None
+    for farm_power_idx, (case_family, case_name) in enumerate(a.index.values):
+        yaw_change_idx = yaw_change_case_names.index(case_name)
+        if farm_power_idx + yaw_change_idx < min_index:
+            min_index = farm_power_idx + yaw_change_idx
+            best_case = case_name
+    
     # compare_results_df.sort_values(by=("TotalRunningOptimizationCostMean", "mean"), ascending=True).groupby(level=0)[("TotalRunningOptimizationCostMean", "mean")]
     compare_results_df[("TotalRunningOptimizationCostMean", "mean")]
 
