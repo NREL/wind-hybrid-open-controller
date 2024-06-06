@@ -15,7 +15,8 @@ from whoc.case_studies.process_case_studies import process_simulations, plot_sim
 
 print(18)
 if __name__ == "__main__":
-    REGENERATE_WIND_FIELD = False
+    REGENERATE_WIND_FIELD = True
+    REGENERATE_LUT = False
     RUN_SIMULATIONS = True
     POST_PROCESS = True
 
@@ -59,7 +60,7 @@ if __name__ == "__main__":
         if (MULTI == "mpi" and (comm_rank := MPI.COMM_WORLD.Get_rank()) == 0) or (MULTI != "mpi"):
             print(f"running initialize_simulations")
         
-            case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = initialize_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS, debug=DEBUG)
+            case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = initialize_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, regenerate_lut=REGENERATE_LUT, n_seeds=N_SEEDS, debug=DEBUG)
         
         print(62)
         if PARALLEL:

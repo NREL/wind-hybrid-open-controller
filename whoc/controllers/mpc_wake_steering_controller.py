@@ -1,28 +1,21 @@
 from time import perf_counter
 import copy
 from collections import defaultdict
-import os
-# TODO update LUT for turbine breakdown, update mpc model with disabled turbines
+# TODO update LUT for turbine breakdown
 import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
 from pyoptsparse import Optimization, SLSQP
-from pyoptsparse.pyOpt_history import History
+# from pyoptsparse.pyOpt_history import History
 from scipy.optimize import linprog, basinhopping
 from scipy.integrate import dblquad
 from scipy.signal import lfilter
 from itertools import product
 
-import whoc
 from whoc.controllers.controller_base import ControllerBase
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
 from whoc.wind_field.WindField import WindField, generate_wind_preview
 
 from floris.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
-
-# from floris_dev.tools import FlorisModel as FlorisModelDev
-# from floris_dev.tools.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
 
 # TODO change constraints to be probabilistic and use freestream wind speed
 
@@ -113,13 +106,6 @@ class YawOptimizationSRRHC(YawOptimizationSR):
 		# Ensure format [incompatible with _subset notation]
 		yaw_angles = self._unpack_variable(yaw_angles, subset=True)
 
-		# Calculate solutions
-		# turbine_powers = np.zeros_like(yaw_angles[:, 0, :])
-		# fmodel_subset.core.farm.set_yaw_angles(fmodel_subset.core.farm.yaw_angles)
-		# fmodel_subset.set_operation(
-		#     yaw_angles=yaw_angles,
-		#     disable_turbines=self.offline_status,
-		# )
 		fmodel_subset.set(wind_directions=wd_array, wind_speeds=ws_array, turbulence_intensities=ti_array, 
 					  yaw_angles=yaw_angles, disable_turbines=current_offline_status)
 		
@@ -262,7 +248,7 @@ class YawOptimizationSRRHC(YawOptimizationSR):
 				
 				# if we are solving an optimization problem constrainted by the dynamic state equation, constrain the alowwable range of yaw angles accordingly
 				if constrain_yaw_dynamics:
-					current_yaw_offsets = self.fmodel.core.flow_field.wind_directions - current_yaw_setpoints
+					# current_yaw_offsets = self.fmodel.core.flow_field.wind_directions - current_yaw_setpoints
 					self._yaw_lbs = np.max([current_yaw_offsets - (self.dt * self.yaw_rate), self._yaw_lbs], axis=0)
 					self._yaw_ubs = np.min([current_yaw_offsets + (self.dt * self.yaw_rate), self._yaw_ubs], axis=0)
 
@@ -314,7 +300,6 @@ class YawOptimizationSRRHC(YawOptimizationSR):
 				
 				norm_turbine_powers = np.reshape(norm_turbine_powers, (self.Ny_passes[Nii], self.n_wind_preview_samples, self.n_horizon, self.nturbs))
 				
-				# TODO this should be average over all samples or just the predicted average value?
 				cost_states = np.sum(-0.5 * np.mean(norm_turbine_powers, axis=1)**2 * self.Q, axis=(1, 2))[:, np.newaxis]
 				cost_control_inputs = np.sum(0.5 * control_inputs**2 * self.R, axis=(1, 2))[:, np.newaxis]
 				cost_terms = np.stack([cost_states, cost_control_inputs], axis=2) # axis=3
@@ -911,11 +896,12 @@ class MPC(ControllerBase):
 			# yaw angles will be set to initial values
 			if self.verbose:
 				print("Bad wind direction measurement received, reverting to previous measurement.")
+
 		# TODO MISHA this is a patch up for AMR wind initialization problem
 		elif (abs(self.current_time % self.dt) == 0.0) or (np.all(self.controls_dict["yaw_angles"] == self.yaw_IC) and (self.current_time == self.simulation_dt * 2)):
 			if self.verbose:
 				print(f"unfiltered wind directions = {current_wind_direction}")
-			if self.current_time > 0.:
+			if self.current_time > 0.0:
 				# update initial state self.mi_model.initial_state
 				# TODO MISHA should be able to get this from measurements dict
 				current_yaw_angles = self.controls_dict["yaw_angles"]
@@ -926,7 +912,8 @@ class MPC(ControllerBase):
 				current_filtered_measurements = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"], self.lpf_alpha)])
 				self.filtered_measurements["wind_directions"].append(current_filtered_measurements[0, -1])
 				# self.filtered_measurements["wind_directions"][:, 0] -  self.historic_measurements["wind_directions"][-int(self.dt // self.simulation_dt):, 0]
-				current_wind_direction = current_filtered_measurements[0, -1] # TODO need freestream, but this is just choosing front turbine, could chose front turbine based on last wind direction, or based on average wind direction
+				# TODO need freestream, but this is just choosing front turbine, could chose front turbine based on last wind direction, or based on average wind direction
+				current_wind_direction = current_filtered_measurements[0, -1]
 				
 			if self.verbose:
 				print(f"{'filtered' if self.use_filt else 'unfiltered'} wind direction = {current_wind_direction}")

@@ -47,7 +47,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
     opt_cost_ts = []
     opt_cost_terms_ts = []
 
-    n_time_steps = int(kwargs["wind_field_config"]["simulation_max_time"] / input_dict["dt"])
+    n_time_steps = int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] / input_dict["dt"])
     greedy_fi.env.set(wind_speeds=kwargs["wind_mag_ts"][:n_time_steps], 
                     wind_directions=kwargs["wind_dir_ts"][:n_time_steps],
                     turbulence_intensities=[greedy_fi.env.core.flow_field.turbulence_intensities[0]] * n_time_steps,
@@ -61,7 +61,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
     t = 0
     k = 0
     
-    while t < kwargs["wind_field_config"]["simulation_max_time"]:
+    while t < input_dict["hercules_comms"]["helics"]["config"]["stoptime"]:
 
         # recompute controls and step floris forward by ctrl.dt
         # reiniitialize FLORIS interface with for current disturbances and disturbance up to (and excluding) next controls computation
@@ -186,9 +186,9 @@ def simulate_controller(controller_class, input_dict, **kwargs):
     running_opt_cost_terms_ts[:, 1] = np.sum(np.stack([0.5 * (norm_yaw_angle_changes[:, i])**2 * R for i in range(ctrl.n_turbines)], axis=1), axis=1)
 
     results_df = pd.DataFrame(data={
-        "CaseName": [kwargs["case_name"]] *  int(kwargs["wind_field_config"]["simulation_max_time"] // input_dict["dt"]),
-        "WindSeed": [kwargs["wind_case_idx"]] * int(kwargs["wind_field_config"]["simulation_max_time"] // input_dict["dt"]),
-        "Time": np.arange(0, kwargs["wind_field_config"]["simulation_max_time"], input_dict["dt"]),
+        "CaseName": [kwargs["case_name"]] *  int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] // input_dict["dt"]),
+        "WindSeed": [kwargs["wind_case_idx"]] * int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] // input_dict["dt"]),
+        "Time": np.arange(0, input_dict["hercules_comms"]["helics"]["config"]["stoptime"], input_dict["dt"]),
         "FreestreamWindMag": kwargs["wind_mag_ts"][:yaw_angles_ts.shape[0]],
         "FreestreamWindDir": kwargs["wind_dir_ts"][:yaw_angles_ts.shape[0]],
         "FilteredFreestreamWindDir": first_ord_filter(kwargs["wind_dir_ts"][:yaw_angles_ts.shape[0]], 
