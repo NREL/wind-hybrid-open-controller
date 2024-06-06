@@ -260,7 +260,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
     wind_field_config["simulation_sampling_time"] = input_dict["dt"]
     
     # wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
-    wind_field_config["n_preview_steps"] = int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] / input_dict["dt"]) \
+    wind_field_config["n_preview_steps"] = int(wind_field_config["simulation_max_time"] / input_dict["dt"]) \
         + max(case_studies["horizon_length"]["n_horizon"]["vals"]) * int(input_dict["controller"]["dt"] / input_dict["dt"])
     wind_field_config["n_samples_per_init_seed"] = 1
     wind_field_config["regenerate_distribution_params"] = False
