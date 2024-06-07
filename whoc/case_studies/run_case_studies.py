@@ -15,7 +15,7 @@ from whoc.case_studies.process_case_studies import process_simulations, plot_sim
 
 print(18)
 if __name__ == "__main__":
-    REGENERATE_WIND_FIELD = True
+    REGENERATE_WIND_FIELD = False
     REGENERATE_LUT = False
     RUN_SIMULATIONS = True
     POST_PROCESS = True

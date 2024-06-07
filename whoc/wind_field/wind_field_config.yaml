@@ -1,5 +1,5 @@
 # ensure there is enough power reference preview steps left before the full 24 hour mark
-simulation_max_time: 10800
+simulation_max_time: 3600
 simulation_sampling_time: 0.5
 n_wind_field_cases: 6
 
