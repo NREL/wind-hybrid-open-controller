@@ -14,7 +14,7 @@ from functools import partial
 
 from whoc import __file__ as whoc_file
 from whoc.wind_field.WindField import plot_ts
-from whoc.wind_field.WindField import generate_multi_wind_ts, WindField, write_abl_forcing_velocity_timetable, first_ord_filter
+from whoc.wind_field.WindField import generate_multi_wind_ts, WindField, write_abl_velocity_timetable, first_ord_filter
 from whoc.postprocess_case_studies import plot_wind_field_ts
 from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
@@ -266,7 +266,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
     wind_field_config["regenerate_distribution_params"] = False
     wind_field_config["distribution_params_path"] = os.path.join(STORAGE_DIR, "wind_field_data", "wind_preview_distribution_params.pkl")  
     wind_field_config["time_series_dt"] = 1
-
+    # TODO HIGH pad csv files with mean values for amr
     # TODO check that wind field has same dt or interpolate...
     seed = 0
     if len(wind_field_filenames) < n_seeds or regenerate_wind_field:
@@ -277,7 +277,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         if not os.path.exists(wind_field_dir):
             os.makedirs(wind_field_dir)
         wind_field_data = generate_multi_wind_ts(full_wf, wind_field_dir, init_seeds=[seed + i for i in range(n_seeds)])
-        write_abl_forcing_velocity_timetable([wfd.df for wfd in wind_field_data], wind_field_dir) # then use these timetables in amr precursor
+        write_abl_velocity_timetable([wfd.df for wfd in wind_field_data], wind_field_dir) # then use these timetables in amr precursor
         lpf_alpha = np.exp(-(1 / input_dict["controller"]["lpf_time_const"]) * input_dict["dt"])
         plot_wind_field_ts(wind_field_data[0].df, wind_field_dir, filter_func=partial(first_ord_filter, alpha=lpf_alpha))
         plot_ts(wind_field_data[0].df, wind_field_dir)

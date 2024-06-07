@@ -207,7 +207,7 @@ def plot_wind_field_ts(data_df, save_path, filter_func=None):
         ax_wind[1].set(title='Wind Speed [m/s]', xlabel='Time [s]', xlim=(0, seed_df["Time"].max() + seed_df["Time"].diff().iloc[1]))
         ax_wind[0].legend()
     # fig_wind.tight_layout()
-    fig_wind.savefig(save_path)
+    fig_wind.savefig(os.path.join(save_path, "wind_mag_dir_ts.png"))
     # fig_wind.show()
 
     return fig_wind, ax_wind
