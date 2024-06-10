@@ -1,48 +1,7 @@
 CaseFamily,CaseName,0
-cost_func_tuning,alpha_0.0,1.1561163413054363
-baseline_controllers,Greedy,1.149136839662853
-cost_func_tuning,alpha_0.05,1.1400915321265883
-slsqp_solver,SLSQP_nu_1.0,1.137140272549788
-horizon_length,N_p = 14,1.134765470130633
-slsqp_solver,SLSQP_nu_0.1,1.1346585769047899
-horizon_length,N_p = 6,1.1333248218417982
-slsqp_solver,SLSQP_nu_0.0001,1.1328800951335618
-slsqp_solver,SLSQP_nu_0.001,1.1324694875451866
-horizon_length,N_p = 12,1.132290349192759
-stochastic_preview_type,Stochastic_100,1.132290349192759
-slsqp_solver,SLSQP_nu_0.01,1.132290349192759
-wind_preview_type,Stochastic,1.132290349192759
-baseline_controllers,MPC_without_Filter,1.132290349192759
-baseline_controllers,MPC_without_state_cons,1.132290349192759
-cost_func_tuning,alpha_0.1,1.132290349192759
-baseline_controllers,MPC_with_Filter,1.1321179068689748
-stochastic_preview_type,Stochastic_200,1.1320499784999878
-horizon_length,N_p = 10,1.131930569131666
-stochastic_preview_type,Stochastic_50,1.1309777572895339
-horizon_length,N_p = 8,1.1309502577964494
-wind_preview_type,Perfect,1.1289606465354212
-stochastic_preview_type,Stochastic_25,1.1284025309287515
-cost_func_tuning,alpha_0.15,1.1256374429069123
-stochastic_preview_type,Stochastic_10,1.125189595806518
-cost_func_tuning,alpha_0.2,1.1220409399138698
-cost_func_tuning,alpha_0.25,1.121424426632698
-cost_func_tuning,alpha_0.3,1.1170504291930239
-cost_func_tuning,alpha_0.35,1.1138017987123516
-wind_preview_type,Persistent,1.108793990457723
-cost_func_tuning,alpha_0.45,1.1036885998580666
-cost_func_tuning,alpha_0.4,1.1023966240556675
-cost_func_tuning,alpha_0.5,1.1003653198557566
-baseline_controllers,LUT,1.0868920657384185
-cost_func_tuning,alpha_0.55,1.0858715393098262
-cost_func_tuning,alpha_0.6,1.0826280514842612
-cost_func_tuning,alpha_0.65,1.072744653407156
-cost_func_tuning,alpha_0.7,1.0561872734256357
-cost_func_tuning,alpha_0.75,1.0418608304139285
-cost_func_tuning,alpha_0.8,1.013296102634523
-cost_func_tuning,alpha_0.85,0.9818164778859738
-cost_func_tuning,alpha_0.9,0.9547715517999333
-cost_func_tuning,alpha_0.95,0.9041715577914925
-cost_func_tuning,alpha_1.0,0.8655690013796846
-baseline_controllers,MPC_without_dyn_state_cons,0.7607012549916585
-slsqp_solver,SLSQP_nu_0.0,-1.952004476488385
-stochastic_preview_type,Persistent,-1.9662316110794618
+baseline_controllers,LUT,1.2583211652886728
+baseline_controllers,MPC_with_Filter,1.1609313887711366
+baseline_controllers,MPC_without_state_cons,1.1561342623691073
+baseline_controllers,MPC_without_Filter,1.1555810981825216
+baseline_controllers,Greedy,1.104553087718681
+baseline_controllers,MPC_without_dyn_state_cons,0.7267613653439572

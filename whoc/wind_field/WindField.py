@@ -659,15 +659,15 @@ def write_abl_velocity_timetable(dfs, save_path, boundary_starttime=7200.0):
     for d, df in enumerate(dfs):
         df = df[["Time", "FreestreamWindMag", "FreestreamWindDir"]]
         df["FreestreamWindDir"] = (270.0 - df["FreestreamWindDir"]) % 360.0
-        df.loc[df["FreestreamWindDir"] > 180.0, "FreestreamWindDir"] = df.loc[df["FreestreamWindDir"] > 180.0, "FreestreamWindDir"] - 360.0
-        
-        dt = df["Time"].iloc[1] - df["Time"].iloc[0]
-        init_time = np.arange(0, boundary_starttime, dt)
-        mean_df = pd.DataFrame({"Time": init_time,
-                                "FreestreamWindMag": [df["FreestreamWindMag"].iloc[0]] * len(init_time),
-                                "FreestreamWindDir": [df["FreestreamWindDir"].iloc[0]] * len(init_time)})
-        df["Time"] = np.arange(boundary_starttime, int(len(df.index) // dt), dt)
-        pd.concat([mean_df, df])
+        # df.loc[df["FreestreamWindDir"] > 180.0, "FreestreamWindDir"] = df.loc[df["FreestreamWindDir"] > 180.0, "FreestreamWindDir"] - 360.0
+        # df.loc[df["FreestreamWindDir"] < 0.0, "FreestreamWindDir"] = df.loc[df["FreestreamWindDir"] < 0.0, "FreestreamWindDir"] + 360.0
+        # dt = df["Time"].iloc[1] - df["Time"].iloc[0]
+        # init_time = np.arange(0, boundary_starttime, dt)
+        # mean_df = pd.DataFrame({"Time": init_time,
+        #                         "FreestreamWindMag": [df["FreestreamWindMag"].iloc[0]] * len(init_time),
+        #                         "FreestreamWindDir": [df["FreestreamWindDir"].iloc[0]] * len(init_time)})
+        df["Time"] = df["Time"] + boundary_starttime
+        # pd.concat([mean_df, df])
         
         df.to_csv(os.path.join(save_path, f"abl_velocity_timetable_{d}.csv"), index=False)
 

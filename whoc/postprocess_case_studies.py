@@ -262,9 +262,11 @@ def plot_opt_cost_ts(data_df, save_path):
 
     return fig_opt_cost, ax_opt_cost
 
-def plot_power_ts(data_df, save_path):
+def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True):
     colors = sns.color_palette(palette='Paired')
-    fig, ax = plt.subplots(2, 1, sharex=True, figsize=(15.12, 7.98))
+
+    fig, ax = plt.subplots(int(include_yaw + include_power), 1, sharex=True, figsize=(15.12, 7.98))
+    ax = np.atleast_1d(ax)
     # fig.set_size_inches(10, 5)
     
     turbine_wind_direction_cols = sorted([col for col in data_df.columns if "TurbineWindDir_" in col])
@@ -278,24 +280,42 @@ def plot_power_ts(data_df, save_path):
             continue
         seed_df = data_df.loc[data_df["WindSeed"] == seed].sort_values(by="Time")
         
-        ax[0].plot(seed_df["Time"], seed_df["FreestreamWindDir"], label="Freestream wind dir.", color="black")
-        ax[0].plot(seed_df["Time"], seed_df["FilteredFreestreamWindDir"], label="Filtered freestream wind dir.", color="black", linestyle="--")
+        if include_yaw:
+            ax_idx = 0
+            ax[ax_idx].plot(seed_df["Time"], seed_df["FreestreamWindDir"], label="Freestream wind dir.", color="black")
+            ax[ax_idx].plot(seed_df["Time"], seed_df["FilteredFreestreamWindDir"], label="Filtered freestream wind dir.", color="black", linestyle="--")
             
         # Direction
         for t, (wind_dir_col, power_col, yaw_col, color) in enumerate(zip(turbine_wind_direction_cols, turbine_power_cols, yaw_angle_cols, cycle(colors))):
-            ax[0].plot(seed_df["Time"], seed_df[yaw_col], color=color, label="T{0:01d} yaw setpoint".format(t), linestyle=":")
-            if t == 0:
-                ax[1].fill_between(seed_df["Time"], seed_df[power_col] / 1e3, color=color, label="T{0:01d} power".format(t))
-            else:
-                ax[1].fill_between(seed_df["Time"], seed_df[turbine_power_cols[:t+1]].sum(axis=1) / 1e3, 
-                                  seed_df[turbine_power_cols[:t]].sum(axis=1)  / 1e3,
-                    color=color, label="T{0:01d} power".format(t))
-        ax[1].plot(seed_df["Time"], seed_df[turbine_power_cols].sum(axis=1) / 1e3, color="black", label="Farm power")
+            
+            if include_yaw:
+                ax_idx = 0
+                ax[ax_idx].plot(seed_df["Time"], seed_df[yaw_col], color=color, label="T{0:01d} yaw setpoint".format(t), linestyle=":")
+
+            if include_power:
+                next_ax_idx = (1 if include_yaw else 0)
+                if t == 0:
+                    ax[next_ax_idx].fill_between(seed_df["Time"], seed_df[power_col] / 1e3, color=color, label="T{0:01d} power".format(t))
+                else:
+                    ax[next_ax_idx].fill_between(seed_df["Time"], seed_df[turbine_power_cols[:t+1]].sum(axis=1) / 1e3, 
+                                    seed_df[turbine_power_cols[:t]].sum(axis=1)  / 1e3,
+                        color=color, label="T{0:01d} power".format(t))
+        
+        if include_power:
+            next_ax_idx = (1 if include_yaw else 0)
+            ax[next_ax_idx].plot(seed_df["Time"], seed_df[turbine_power_cols].sum(axis=1) / 1e3, color="black", label="Farm power")
     
-    ax[0].set(title="Wind Direction / Yaw Angle [deg]", xlim=(0, int((seed_df["Time"].max() + seed_df["Time"].diff().iloc[1]) // 1)), ylim=(245, 295))
-    ax[0].legend(ncols=2, loc="upper left")
-    ax[1].set(xlabel="Time [s]", title="Turbine Powers [MW]")
-    ax[1].legend(ncols=2)
+    if include_yaw:
+        ax_idx = 0
+        ax[ax_idx].set(title="Wind Direction / Yaw Angle [deg]", xlim=(0, int((seed_df["Time"].max() + seed_df["Time"].diff().iloc[1]) // 1)), ylim=(245, 295))
+        ax[ax_idx].legend(ncols=2, loc="lower right")
+        if not include_power:
+            ax[ax_idx].set(xlabel="Time [s]", title="Turbine Powers [MW]")
+    
+    if include_power:
+        next_ax_idx = (1 if include_yaw else 0)
+        ax[next_ax_idx].set(xlabel="Time [s]", title="Turbine Powers [MW]")
+        ax[next_ax_idx].legend(ncols=2, loc="lower right")
 
     results_dir = os.path.dirname(save_path)
     fig.suptitle("_".join([os.path.basename(results_dir), data_df["CaseName"].iloc[0].replace('/', '_'), "yaw_power_ts"]))
