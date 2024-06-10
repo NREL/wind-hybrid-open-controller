@@ -165,9 +165,9 @@ def simulate_controller(controller_class, input_dict, **kwargs):
 
         yaw_angles_ts = np.vstack(yaw_angles_ts)
         yaw_angles_change_ts = np.diff(yaw_angles_ts, axis=0)
-        yaw_angles_change_ts = yaw_angles_change_ts[n_future_steps:, :]
-        yaw_angles_ts = yaw_angles_ts[n_future_steps + 1:, :]
-        turbine_powers_ts = np.vstack(turbine_powers_ts)[n_future_steps + 1:, :]
+        yaw_angles_change_ts = yaw_angles_change_ts[:-n_future_steps, :]
+        yaw_angles_ts = yaw_angles_ts[:-(n_future_steps + 1), :]
+        turbine_powers_ts = np.vstack(turbine_powers_ts)[:-(n_future_steps + 1), :]
 
     # greedy_turbine_powers_ts = np.vstack(greedy_turbine_powers_ts)
     # opt_cost_terms_ts = np.vstack(opt_cost_terms_ts)
@@ -258,7 +258,7 @@ if __name__ == "__main__":
         N_SEEDS = 6
 
     # intialization code
-    if (MULTI == "mpi" and (comm_rank := MPI.COMM_WORLD.Get_rank())== 0) or (MULTI != "mpi"):
+    if (MULTI == "mpi" and (comm_rank := MPI.COMM_WORLD.Get_rank()) == 0) or (MULTI != "mpi"):
 
         for case_family in case_families:
             case_studies[case_family]["wind_case_idx"] = {"group": 2, "vals": [i for i in range(N_SEEDS)]}
