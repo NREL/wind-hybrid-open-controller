@@ -37,6 +37,7 @@ if not os.path.exists(STORAGE_DIR):
 case_studies = {
     "baseline_controllers": {"seed": {"group": 0, "vals": [0]},
                             #  "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
+                                "dt": {"group": 1, "vals": [0.5, 0.5, 60.0, 60.0, 60.0, 60.0]},
                                 "case_names": {"group": 1, "vals": ["LUT", "Greedy", "MPC_with_Filter", "MPC_without_Filter", "MPC_without_state_cons", "MPC_without_dyn_state_cons"]},
                                 # "case_names": {"group": 1, "vals": ["MPC_with_Filter", "MPC_without_Filter"]},
                                 # "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
@@ -58,7 +59,7 @@ case_studies = {
                           },
     "slsqp_solver_sweep": {"seed": {"group": 0, "vals": [0]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
-                          "nu": {"group": 1, "vals": list(np.logspace(-4, 0, 5))},
+                          "nu": {"group": 1, "vals": list(np.logspace(-5, -1, 5))},
                           "n_wind_preview_samples": {"group": 2, "vals": [10, 25, 50, 100, 200]},
                         #   "case_names": {"group": 3, "vals": [f"SLSQP_nu_{np.round(nu, 4)}_nsamples_{n_samples}_alpha_{alpha}" 
                         #                                       for nu in list(np.logspace(-4, 0, 5))
@@ -109,7 +110,7 @@ case_studies = {
                           "controller_class": {"group": 0, "vals": ["MPC"]},
                         "case_names": {"group": 1, "vals": ["Perfect", "Persistent", "Stochastic"]},
                         #  "case_names": {"group": 1, "vals": ["Stochastic"]},
-                         "wind_preview_type": {"group": 1, "vals": ["perfect", "persistent", "stochastic"]}, 
+                         "wind_preview_type": {"group": 1, "vals": ["perfect", "persistent", "stochastic"]}
                         #   "wind_preview_type": {"group": 1, "vals": ["stochastic"]}
                           },
     "lut_warm_start": {"seed": {"group": 0, "vals": [0]},
@@ -152,7 +153,13 @@ case_studies = {
                        "controller_class": {"group": 0, "vals": ["MPC"]},
                        "case_names": {"group": 1, "vals": [f"N_p = {n}" for n in [6, 8, 10, 12, 14]]},
                        "n_horizon": {"group": 1, "vals": [6, 8, 10, 12, 14]}
-                    }
+                    },
+    "test_nu_preview": {"seed": {"group": 0, "vals": [0]},
+                          "controller_class": {"group": 0, "vals": ["MPC"]},
+                        "case_names": {"group": 1, "vals": ["Stochastic", "Perfect", "Persistent"]},
+                         "wind_preview_type": {"group": 1, "vals": ["stochastic", "perfect", "persistent"]}, 
+                          "nu": {"group": 0, "vals": [.01]}
+                          }
 }
 
 def convert_str(val):
@@ -290,7 +297,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
     if os.path.exists(wind_field_dir):
         for f, fn in enumerate(wind_field_filenames):
             wind_field_data.append(pd.read_csv(fn, index_col=0))
-
+            
             if WIND_TYPE == "step":
                 # n_rows = len(wind_field_data[-1].index)
                 wind_field_data[-1].loc[:15, f"FreestreamWindMag"] = 8.0
@@ -298,7 +305,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                 wind_field_data[-1].loc[:45, f"FreestreamWindDir"] = 260.0
                 wind_field_data[-1].loc[45:, f"FreestreamWindDir"] = 270.0
     
-    
+    # write_abl_velocity_timetable(wind_field_data, wind_field_dir)
     
     # true wind disturbance time-series
     #plot_wind_field_ts(pd.concat(wind_field_data), os.path.join(wind_field_fig_dir, "seeds.png"))
@@ -352,7 +359,8 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                 else:
                     input_dicts[start_case_idx + c]["controller"][property_name] = property_value
 
-            with io.open(os.path.join(results_dir, f"input_config_{c}.yaml"), 'w', encoding='utf8') as fp:
+            fn = f'input_config_case_{"_".join([f"{key}_{val if (type(val) is str or type(val) is np.str_) else np.round(val, 4)}" for key, val in case_lists[c].items() if key not in ["wind_case_idx", "seed"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"]}.yaml'.replace("/", "_")
+            with io.open(os.path.join(results_dir, fn), 'w', encoding='utf8') as fp:
                 yaml.dump(input_dicts[start_case_idx + c], fp, default_flow_style=False, allow_unicode=True)
 
     # instantiate controller and run_simulations simulation
@@ -374,7 +382,8 @@ case_families = ["baseline_controllers", "solver_type",
                     "horizon_length", "breakdown_robustness",
                     "scalability", "cost_func_tuning", 
                     "stochastic_preview_type", 
-                    "perfect_preview_type", "slsqp_solver_sweep"]
+                    "perfect_preview_type", "slsqp_solver_sweep",
+                    "test_nu_preview"]
     
 if __name__ == "__main__":
     REGENERATE_WIND_FIELD = True

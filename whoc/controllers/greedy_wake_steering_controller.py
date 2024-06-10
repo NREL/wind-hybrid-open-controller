@@ -88,8 +88,8 @@ class GreedyController(ControllerBase):
 				print("Bad wind direction measurement received, reverting to previous measurement.")
 		# TODO MISHA this is a patch up for AMR wind initialization problem
 		elif (abs(self.current_time % self.simulation_dt) == 0.0) or (np.all(self.controls_dict["yaw_angles"] == self.yaw_IC) and self.current_time == self.simulation_dt * 2):
-			# TODO HIGH should really be pulling this from amr wind
-			current_wind_directions = np.broadcast_to(self.wind_dir_ts[int(self.current_time // self.simulation_dt)], (self.n_turbines,))
+			# current_wind_directions = np.broadcast_to(self.wind_dir_ts[int(self.current_time // self.simulation_dt)], (self.n_turbines,))
+			current_wind_directions = self.measurements_dict["wind_directions"]
 
 			if self.verbose:
 				print(f"unfiltered wind directions = {current_wind_directions[-1, :]}")
@@ -100,13 +100,7 @@ class GreedyController(ControllerBase):
 				
 			# if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
 			if self.current_time < 180. or not self.use_filt:
-				if len(current_wind_directions) == 0:
-					if self.verbose:
-						print("Bad wind direction measurement received, reverting to previous measurement.")
-					wind_dirs = self.wd_store
-				else:
-					wind_dirs = current_wind_directions
-					self.wd_store = list(wind_dirs)
+				wind_dirs = current_wind_directions
 					
 			else:
 				# use filtered wind direction and speed
@@ -118,6 +112,10 @@ class GreedyController(ControllerBase):
 				
 			# TODO MISHA can't rely on receiving yaw_angles from measurements?
 			current_yaw_setpoints = self.controls_dict["yaw_angles"]
+
+			if any(self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints)):
+				print(f"Greedy Controller turbines {np.where(self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints))[0]} have reached their target setpoint")
+
 			# flip the boolean value of those turbines which were actively yawing towards a previous setpoint, but now have reached that setpoint
 			self.is_yawing[self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints)] = False
 
@@ -125,17 +123,28 @@ class GreedyController(ControllerBase):
 
 			target_yaw_setpoints = np.rint(wind_dirs / self.yaw_increment) * self.yaw_increment
 
-			# stores target setpoints from prevoius compute_controls calls, update only those elements which are not already yawing towards a previous setpoint
-			self.previous_target_yaw_setpoints[~self.is_yawing] = target_yaw_setpoints[~self.is_yawing]
-
 			# change the turbine yaw setpoints that have surpassed the threshold difference AND are not already yawing towards a previous setpoint
-			change_idx = (np.abs(current_yaw_setpoints - target_yaw_setpoints) > self.deadband_thr) & ~self.is_yawing
-	
-			new_yaw_setpoints[change_idx] = target_yaw_setpoints[change_idx]
+			is_target_changing = (np.abs(target_yaw_setpoints - current_yaw_setpoints) > self.deadband_thr) & ~self.is_yawing
 
-			self.is_yawing[change_idx] = True
+			if any(is_target_changing):
+				print(f"Greedy Controller starting to yaw turbines {np.where(is_target_changing)[0]} from {current_yaw_setpoints[is_target_changing]} to {target_yaw_setpoints[is_target_changing]} at time {self.current_time}")
 			
-			constrained_yaw_setpoints = np.clip(new_yaw_setpoints, current_yaw_setpoints - self.simulation_dt * self.yaw_rate, current_yaw_setpoints + self.simulation_dt * self.yaw_rate)
+			if any(self.is_yawing):
+				print(f"Greedy Controller continuing to yaw turbines {np.where(self.is_yawing)[0]} from {current_yaw_setpoints[self.is_yawing]} to {self.previous_target_yaw_setpoints[self.is_yawing]} at time {self.current_time}")
+			
+	
+			new_yaw_setpoints[is_target_changing] = target_yaw_setpoints[is_target_changing]
+			new_yaw_setpoints[self.is_yawing] = self.previous_target_yaw_setpoints[self.is_yawing].copy()
+			
+			# stores target setpoints from prevoius compute_controls calls, update only those elements which are not already yawing towards a previous setpoint
+			self.previous_target_yaw_setpoints = np.rint(new_yaw_setpoints / self.yaw_increment) * self.yaw_increment
+
+			# else:
+			# 	print(f"Greedy Controller current_setpoints = {current_yaw_setpoints}, \n previous_target_yaw_setpoints = {self.previous_target_yaw_setpoints}, \n target_setpoints={target_yaw_setpoints}")
+			
+			self.is_yawing[is_target_changing] = True
+			
+			constrained_yaw_setpoints = np.clip(new_yaw_setpoints, current_yaw_setpoints - self.dt * self.yaw_rate, current_yaw_setpoints + self.dt * self.yaw_rate)
 			constrained_yaw_setpoints = np.rint(constrained_yaw_setpoints / self.yaw_increment) * self.yaw_increment
 			
 			self.controls_dict = {"yaw_angles": list(constrained_yaw_setpoints)}

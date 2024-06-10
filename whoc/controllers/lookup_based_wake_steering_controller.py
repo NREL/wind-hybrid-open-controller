@@ -161,10 +161,10 @@ class LookupBasedWakeSteeringController(ControllerBase):
 		if self.verbose:
 			print(f"self.current_time == {self.current_time}")
 
-		# TODO high should be pulling from measurements
-		current_wind_direction = self.wind_dir_ts[int(self.current_time // self.simulation_dt)]
-		current_wind_speed = self.wind_mag_ts[int(self.current_time // self.simulation_dt)]
-
+		current_wind_direction = self.measurements_dict["amr_wind_direction"]
+		current_wind_speed = self.measurements_dict["amr_wind_speed"]
+		# current_wind_direction = self.wind_dir_ts[int(self.current_time // self.simulation_dt)]
+		# current_wind_speed = self.wind_mag_ts[int(self.current_time // self.simulation_dt)]
 		if self.use_filt:
 			self.historic_measurements["wind_directions"].append(current_wind_direction)
 			self.historic_measurements["wind_directions"] = self.historic_measurements["wind_directions"][-int((self.lpf_time_const // self.simulation_dt) * 1e3):]
@@ -179,7 +179,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			# if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
 			if self.verbose:
 				print(f"unfiltered wind direction = {current_wind_direction}")
-			if self.current_time < 180 or not self.use_filt:
+			if self.current_time < 180. or not self.use_filt:
 				wind_dir = current_wind_direction
 				wind_speed = current_wind_speed
 			else:
@@ -197,6 +197,9 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			current_yaw_setpoints = self.controls_dict["yaw_angles"] # TODO is this available in measurements_dict?
 			
 			# flip the boolean value of those turbines which were actively yawing towards a previous setpoint, but now have reached that setpoint
+			if any(self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints)):
+				print(f"LUT Controller turbines {np.where(self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints))[0]} have reached their target setpoint")
+			
 			self.is_yawing[self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints)] = False
 
 			new_yaw_setpoints = np.array(current_yaw_setpoints)
@@ -204,23 +207,33 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			target_yaw_offsets = self.wake_steering_interpolant(wind_dir, wind_speed)
 			target_yaw_setpoints = np.rint((wind_dir - target_yaw_offsets) / self.yaw_increment) * self.yaw_increment
 
-			# stores target setpoints from prevoius compute_controls calls, update only those elements which are not already yawing towards a previous setpoint
-			self.previous_target_yaw_setpoints[~self.is_yawing] = target_yaw_setpoints[~self.is_yawing]
-
 			# change the turbine yaw setpoints that have surpassed the threshold difference AND are not already yawing towards a previous setpoint
-			change_idx = (np.abs(current_yaw_setpoints - target_yaw_setpoints) > self.deadband_thr) & ~self.is_yawing
+			is_target_changing = (np.abs(target_yaw_setpoints - current_yaw_setpoints) > self.deadband_thr) & ~self.is_yawing
 
-			new_yaw_setpoints[change_idx] = target_yaw_setpoints[change_idx]
-
-			self.is_yawing[change_idx] = True
-
-			constrained_yaw_setpoints = np.clip(new_yaw_setpoints, current_yaw_setpoints - self.simulation_dt * self.yaw_rate, current_yaw_setpoints + self.simulation_dt * self.yaw_rate)
+			if any(is_target_changing):
+				print(f"LUT Controller starting to yaw turbines {np.where(is_target_changing)[0]} from {current_yaw_setpoints[is_target_changing]} to {target_yaw_setpoints[is_target_changing]} at time {self.current_time}")
 			
-			if np.all(np.diff(constrained_yaw_setpoints) == 0) and not np.all(np.diff(new_yaw_setpoints) == 0):
-				print(f"Note: all yaw angles have been constrained by the yaw rate equally at time {self.current_time}")
+			if any(self.is_yawing):
+				print(f"LUT Controller continuing to yaw turbines {np.where(self.is_yawing)[0]} from {current_yaw_setpoints[self.is_yawing]} to {self.previous_target_yaw_setpoints[self.is_yawing]} at time {self.current_time}")
 			
-			if not len(change_idx):
-				print(f"Note: no yaw angle setpoints surpass the deadband threshold at time {self.current_time}")
+			# else:
+			# 	print(f"LUT Controller current_setpoints = {current_yaw_setpoints}, \n previous_target_yaw_setpoints = {self.previous_target_yaw_setpoints}, \n target_setpoints={target_yaw_setpoints}")
+			
+			new_yaw_setpoints[is_target_changing] = target_yaw_setpoints[is_target_changing]
+			new_yaw_setpoints[self.is_yawing] = self.previous_target_yaw_setpoints[self.is_yawing].copy()
+
+			# stores target setpoints from prevoius compute_controls calls, update only those elements which are not already yawing towards a previous setpoint
+			self.previous_target_yaw_setpoints = np.rint(new_yaw_setpoints / self.yaw_increment) * self.yaw_increment
+
+			self.is_yawing[is_target_changing] = True
+
+			constrained_yaw_setpoints = np.clip(new_yaw_setpoints, current_yaw_setpoints - self.dt * self.yaw_rate, current_yaw_setpoints + self.dt * self.yaw_rate)
+			
+			# if np.all(np.diff(constrained_yaw_setpoints) == 0) and not np.all(np.diff(new_yaw_setpoints) == 0):
+			# 	print(f"Note: all yaw angles have been constrained by the yaw rate equally at time {self.current_time}")
+			
+			# if not len(is_target_changing):
+			# 	print(f"Note: no yaw angle setpoints surpass the deadband threshold at time {self.current_time}")
 
 			constrained_yaw_setpoints = np.rint(constrained_yaw_setpoints / self.yaw_increment) * self.yaw_increment
 
