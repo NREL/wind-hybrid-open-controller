@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=amr_precursor_0
-#SBATCH --time=24:00:00
+#SBATCH --time=96:00:00
 ##SBATCH --partition=debug
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=104
@@ -28,7 +28,29 @@ spack load amr-wind+helics
 #rm logamr
 echo "Starting AMR-Wind job at: " $(date) >> logamr
 echo $SLURM_NTASKS
+
 # Now go back to scratch folder and launch the job
 srun /home/ahenry/toolboxes/whoc_env/amr-wind/spack-build-bmx2pfy/amr_wind amr_precursor_original_0.inp
 echo "Finished precursor 0 at:" $(date) >> logamr
-mv /projects/ssc/ahenry/amr_precursors/post_processing /projects/ssc/ahenry/amr_precursors/post_processing_0
+mv /home/ahenry/toolboxes/whoc_env/wind-hybrid-open-controller/examples/post_processing /projects/ssc/ahenry/amr_precursors/post_processing_0
+
+srun /home/ahenry/toolboxes/whoc_env/amr-wind/spack-build-bmx2pfy/amr_wind amr_precursor_original_1.inp
+echo "Finished precursor 2 at:" $(date) >> logamr
+mv /home/ahenry/toolboxes/whoc_env/wind-hybrid-open-controller/examples/post_processing /projects/ssc/ahenry/amr_precursors/post_processing_1
+
+srun /home/ahenry/toolboxes/whoc_env/amr-wind/spack-build-bmx2pfy/amr_wind amr_precursor_original_2.inp
+echo "Finished precursor 2 at:" $(date) >> logamr
+mv /home/ahenry/toolboxes/whoc_env/wind-hybrid-open-controller/examples/post_processing /projects/ssc/ahenry/amr_precursors/post_processing_2
+
+srun /home/ahenry/toolboxes/whoc_env/amr-wind/spack-build-bmx2pfy/amr_wind amr_precursor_original_3.inp
+echo "Finished precursor 3 at:" $(date) >> logamr
+mv /home/ahenry/toolboxes/whoc_env/wind-hybrid-open-controller/examples/post_processing /projects/ssc/ahenry/amr_precursors/post_processing_3
+
+srun /home/ahenry/toolboxes/whoc_env/amr-wind/spack-build-bmx2pfy/amr_wind amr_precursor_original_4.inp
+echo "Finished precursor 4 at:" $(date) >> logamr
+mv /home/ahenry/toolboxes/whoc_env/wind-hybrid-open-controller/examples/post_processing /projects/ssc/ahenry/amr_precursors/post_processing_4
+
+srun /home/ahenry/toolboxes/whoc_env/amr-wind/spack-build-bmx2pfy/amr_wind amr_precursor_original_5.inp
+echo "Finished precursor 5 at:" $(date) >> logamr
+mv /home/ahenry/toolboxes/whoc_env/wind-hybrid-open-controller/examples/post_processing /projects/ssc/ahenry/amr_precursors/post_processing_5
+
