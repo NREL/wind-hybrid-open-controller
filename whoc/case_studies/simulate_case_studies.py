@@ -165,7 +165,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
 
         yaw_angles_ts = np.vstack(yaw_angles_ts)
         yaw_angles_change_ts = np.diff(yaw_angles_ts, axis=0)
-        yaw_angles_change_ts = yaw_angles_change_ts[:-n_future_steps, :]
+        yaw_angles_change_ts = yaw_angles_change_ts[:(-n_future_steps) or None, :]
         yaw_angles_ts = yaw_angles_ts[:-(n_future_steps + 1), :]
         turbine_powers_ts = np.vstack(turbine_powers_ts)[:-(n_future_steps + 1), :]
 
