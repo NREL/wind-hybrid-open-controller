@@ -69,7 +69,7 @@ zhi.temperature                          = 0.003
 ICNS.source_terms                        = BoussinesqBuoyancy CoriolisForcing ABLForcing
 incflo.velocity                          = 8.0 0.0. 0.0 # 6.928203230275509 4.0 0.0 # TODO WHAT DOES THIS DO, WILL FREESTREAM WIND VARY
 ABLForcing.abl_forcing_height            = 90.0 #150 TODO shouldn't this be at turbine hub height? => yes
-ABLForcing.velocity_timetable            = "/projects/ssc/ahenry/whoc/amr_precursors/wind_field_data/raw_data/abl_forcing_velocity_timetable_5.csv" # CHANGE ME FOR NEW SEED
+ABLForcing.velocity_timetable            = "/projects/ssc/ahenry/whoc/amr_precursors/wind_field_data/raw_data/abl_velocity_timetable_5.csv" # CHANGE ME FOR NEW SEED
 CoriolisForcing.latitude 				 = 41.3
 BoussinesqBuoyancy.reference_temperature = 300.0
 ABL.reference_temperature                = 300.0
