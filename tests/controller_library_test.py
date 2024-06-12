@@ -62,8 +62,9 @@ test_hercules_dict = {
         }
     },
     "py_sims": {
-        "test_battery": {"outputs": {"power": 10.0, "soc": 0.3}}, "inputs": {},
+        "test_battery": {"outputs": {"power": 10.0, "soc": 0.3}, "charge_rate":20},
         "test_solar": {"outputs": {"power_mw": 1.0, "dni": 1000.0, "aoi": 30.0}},
+        "inputs": {},
     },
     "external_signals": {"wind_power_reference": 1000.0, "plant_power_reference": 1000.0},
 }
@@ -245,4 +246,4 @@ def test_HybridSupervisoryControllerSkeleton():
     test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [500, 500]
     test_controller.step(test_hercules_dict) # Run the controller once to update measurements
     supervisory_control_output = test_controller.supervisory_control()
-    assert np.allclose(supervisory_control_output, [20, 50, -30])
+    assert np.allclose(supervisory_control_output, [10500.0, 10500.0, 1000.0]) # To charge battery

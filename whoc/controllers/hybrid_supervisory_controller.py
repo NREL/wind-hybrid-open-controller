@@ -37,7 +37,10 @@ class HybridSupervisoryControllerSkeleton(ControllerBase):
         self.battery_controller = battery_controller
 
         # Set constants
-        self.battery_charge_rate = interface.battery_charge_rate
+        py_sims = list(input_dict["py_sims"].keys())
+        battery_name = [ps for ps in py_sims if "battery" in ps][0]
+        self.battery_charge_rate = input_dict["py_sims"][battery_name]["charge_rate"]*1000
+        # Change battery charge rate to kW
 
         # Initialize Power references
         self.wind_reference = 0
@@ -126,9 +129,9 @@ class HybridSupervisoryControllerSkeleton(ControllerBase):
             if self.wind_reference > (self.prev_wind_power+0.05*self.wind_reference):
                 wind_reference = self.wind_reference
             else:
-                wind_reference = wind_power - K   
+                wind_reference = wind_power - K
 
-        print('Power reference values', wind_reference, solar_reference, battery_reference)
+        print("Power reference values (wind, solar, battery)", wind_reference, solar_reference, battery_reference)
 
         self.prev_solar_power = solar_power
         self.prev_wind_power = wind_power
