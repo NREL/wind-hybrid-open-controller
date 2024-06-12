@@ -1,3 +1,4 @@
 from whoc.interfaces.hercules_actuator_disk_interface import HerculesADInterface
+from whoc.interfaces.hercules_hybrid_actuator_disk_interface import HerculesHybridADInterface
 from whoc.interfaces.hercules_wind_battery_interface import HerculesWindBatteryInterface
 from whoc.interfaces.rosco_zmq_interface import ROSCO_ZMQInterface

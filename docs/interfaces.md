@@ -28,6 +28,14 @@ the WHOC controllers submodule; and that `controller` should be passed to the
 Hercules `Emulator` upon its instantiation. Support transmitting yaw angles 
 and power setpoints to wind turbines.
 
+### HerculesHybridADInterface
+For direct python communication with Hercules, when simulating a hybrid 
+wind/solar/battery plant. Currently, intended for use with the
+`HybridSupervisoryControllerBaseline`, while full closed-loop supervisory
+controllers for hybrid power plants are built out. Supports sending power
+reference signals to each wind turbine in a wind farm, as well as a bulk power
+signal to the solar farm and a bulk power signal to the battery.
+
 ### ROSCO_ZMQInterface
 For sending and receiving communications from one or more ROSCO instances 
 (which are likely connected to OpenFAST and FAST.Farm). Uses ZeroMQ to pass
