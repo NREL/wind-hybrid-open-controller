@@ -36,6 +36,17 @@ class HybridSupervisoryControllerSkeleton(ControllerBase):
         self.solar_controller = solar_controller
         self.battery_controller = battery_controller
 
+        # Set constants
+        self.battery_charge_rate = interface.battery_charge_rate
+
+        # Initialize Power references
+        self.wind_reference = 0
+        self.solar_reference = 0
+        self.battery_reference = 0
+
+        self.prev_wind_power = 0
+        self.prev_solar_power = 0
+
     def compute_controls(self):
         # Run supervisory control logic
         wind_reference, solar_reference, battery_reference = self.supervisory_control()
@@ -72,6 +83,7 @@ class HybridSupervisoryControllerSkeleton(ControllerBase):
         wind_power = np.array(self.measurements_dict["wind_turbine_powers"]).sum()
         solar_power = self.measurements_dict["solar_power"]
         battery_power = self.measurements_dict["battery_power"] # noqa: F841
+        plant_power_reference = self.measurements_dict["plant_power_reference"] # noqa: F841
         wind_speed = self.measurements_dict["wind_speed"] # noqa: F841
         battery_soc = self.measurements_dict["battery_soc"] # noqa: F841
         solar_dni = self.measurements_dict["solar_dni"] # direct normal irradiance # noqa: F841
@@ -82,9 +94,51 @@ class HybridSupervisoryControllerSkeleton(ControllerBase):
         print("Measured powers (wind, solar, battery):", wind_power, solar_power, battery_power)
         print("Reference power:", reference_power)
 
-        # Placeholder for supervisory control logic
-        wind_reference = 20 # kW
-        solar_reference = 50 # kW, not currently working
-        battery_reference = -30 # kW, Negative requests discharging, positive requests charging
+        # Calculate battery reference value
+        battery_reference = (wind_power + solar_power) - plant_power_reference
+
+        # Decide control gain:
+        if (wind_power + solar_power) < (plant_power_reference+self.battery_charge_rate)\
+            and battery_power > 0:
+            if battery_soc>0.89:
+                K = ((wind_power + solar_power) - plant_power_reference) / 2
+            else:
+                K = ((wind_power+solar_power) - (plant_power_reference+self.battery_charge_rate))/2
+        else:
+            K = ((wind_power + solar_power) - plant_power_reference) / 2
+
+
+        if (wind_power + solar_power) > (plant_power_reference+self.battery_charge_rate) or \
+            ((wind_power + solar_power) > (plant_power_reference) and battery_soc>0.89):
+            
+            # go down
+            wind_reference = wind_power - K
+            solar_reference = solar_power - K
+        else: 
+            # go up
+            # Is the resource saturated?
+            if self.solar_reference > (self.prev_solar_power+0.05*self.solar_reference):
+                solar_reference = self.solar_reference
+            else:
+                # If not, ask for more power
+                solar_reference = solar_power - K
+
+            if self.wind_reference > (self.prev_wind_power+0.05*self.wind_reference):
+                wind_reference = self.wind_reference
+            else:
+                wind_reference = wind_power - K   
+
+        print('Power reference values', wind_reference, solar_reference, battery_reference)
+
+        self.prev_solar_power = solar_power
+        self.prev_wind_power = wind_power
+        self.wind_reference = wind_reference
+        self.solar_reference = solar_reference
+        self.battery_reference = battery_reference
+
+        # # Placeholder for supervisory control logic
+        # wind_reference = 20000 # kW
+        # solar_reference = 5000 # kW, not currently working
+        # battery_reference = -30 # kW, Negative requests discharging, positive requests charging
 
         return wind_reference, solar_reference, battery_reference
