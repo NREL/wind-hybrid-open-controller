@@ -17,7 +17,7 @@ import numpy as np
 from whoc.controllers.controller_base import ControllerBase
 
 
-class HybridSupervisoryControllerSkeleton(ControllerBase):
+class HybridSupervisoryControllerBaseline(ControllerBase):
     def __init__(
             self,
             interface,
@@ -131,7 +131,10 @@ class HybridSupervisoryControllerSkeleton(ControllerBase):
             else:
                 wind_reference = wind_power - K
 
-        print("Power reference values (wind, solar, battery)", wind_reference, solar_reference, battery_reference)
+        print(
+            "Power reference values (wind, solar, battery)",
+            wind_reference, solar_reference, battery_reference
+        )
 
         self.prev_solar_power = solar_power
         self.prev_wind_power = wind_power

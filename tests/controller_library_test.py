@@ -15,7 +15,7 @@ import numpy as np
 
 # import pandas as pd
 from whoc.controllers import (
-    HybridSupervisoryControllerSkeleton,
+    HybridSupervisoryControllerBaseline,
     LookupBasedWakeSteeringController,
     WindBatteryController,
     WindFarmPowerDistributingController,
@@ -81,7 +81,7 @@ def test_controller_instantiation():
     _ = WindBatteryController(interface=test_interface, input_dict=test_hercules_dict)
     _ = WindFarmPowerDistributingController(interface=test_interface, input_dict=test_hercules_dict)
     _ = WindFarmPowerTrackingController(interface=test_interface, input_dict=test_hercules_dict)
-    _ = HybridSupervisoryControllerSkeleton(interface=test_interface, input_dict=test_hercules_dict)
+    _ = HybridSupervisoryControllerBaseline(interface=test_interface, input_dict=test_hercules_dict)
 
 
 # def test_LookupBasedWakeSteeringController():
@@ -234,10 +234,10 @@ def test_WindFarmPowerTrackingController():
     )
     assert (test_power_setpoints_a < test_power_setpoints).all()
 
-def test_HybridSupervisoryControllerSkeleton():
+def test_HybridSupervisoryControllerBaseline():
     test_interface = HerculesHybridADInterface(test_hercules_dict)
 
-    test_controller = HybridSupervisoryControllerSkeleton(
+    test_controller = HybridSupervisoryControllerBaseline(
         interface=test_interface, input_dict=test_hercules_dict
     )
 

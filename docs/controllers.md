@@ -49,14 +49,11 @@ simple proportional control appears sufficient currently. However, these may be 
 later date if needed. The `proportional_gain` for the controller may be provided on instantiation,
 and defaults to `proportional_gain = 1`.
 
-### HybridSupervisoryControllerSkeleton
+### HybridSupervisoryControllerBaseline
 
-Placeholder for a closed-loop supervisory controller for a hybrid wind/solar/battery plant.
-Reads in current power production from wind, solar, and battery, as well as a few atmospheric
-variables, as well as a plant power reference. Currently, arbitrarily sets the lower level wind 
-power, solar power, and battery power references. Those references are then handled by the
+Simple closed-loop supervisory controller for a hybrid wind/solar/battery plant.
+Reads in current power production from wind, solar, and battery, as well as a plant power reference. Contains logic to increase the power references sent to wind, solar, and battery if the power reference is not met, and to charge the battery if there is a power surplus from wind and solar. Those references are then handled by the
 operational controllers for wind, solar, and battery, which are assigned to the
-`HybridSupervisoryControllerSkeleton` on instantiation to distribute the bulk references to each
-asset amongst the individual generators. Currently, only wind actually distributes the power. 
-Intended for replacement by both a simple closed-loop supervisory controller and a more advanced
-supervisory controller.
+`HybridSupervisoryControllerBaseline` on instantiation to distribute the bulk references to each
+asset amongst the individual generators. Currently, only wind actually distributes the power.
+Intended as a baseline for comparison by a more advanced supervisory controller.

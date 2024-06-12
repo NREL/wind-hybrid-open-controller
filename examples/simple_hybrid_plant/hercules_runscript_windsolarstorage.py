@@ -19,7 +19,7 @@ from hercules.py_sims import PySims
 from hercules.utilities import load_yaml
 from whoc.controllers import (
     BatteryPassthroughController,
-    HybridSupervisoryControllerSkeleton,
+    HybridSupervisoryControllerBaseline,
     SolarPassthroughController,
     WindFarmPowerTrackingController,
 )
@@ -34,7 +34,7 @@ print("Setting up controller.")
 wind_controller = WindFarmPowerTrackingController(interface, input_dict)
 solar_controller = SolarPassthroughController(interface, input_dict)
 battery_controller = BatteryPassthroughController(interface, input_dict)
-controller = HybridSupervisoryControllerSkeleton(
+controller = HybridSupervisoryControllerBaseline(
     interface,
     input_dict,
     wind_controller=wind_controller,
