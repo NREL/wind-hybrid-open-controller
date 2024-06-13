@@ -23,7 +23,7 @@ source $SPACK_MANAGER/start.sh
 spack-start
 quick-activate /home/ahenry/toolboxes/whoc_env
 PATH=$PATH:/home/ahenry/toolboxes/whoc_env/amr-wind/spack-build-bmx2pfy
-spack load amr-wind+helics
+spack load amr-wind
 
 #rm logamr
 echo "Starting AMR-Wind job at: " $(date) >> logamr
