@@ -567,8 +567,8 @@ class MPC(ControllerBase):
 					# dir_preview = (270.0 - (dir_preview * (180 / np.pi))) % 360.0
 					# mean_dirs = dir_preview
 
-					wind_preview_probs = norm.pdf(uv_combs[:, :, 0], loc=distribution_params[0], scale=std_u) \
-					 	* norm.pdf(uv_combs[:, :, 1], loc=distribution_params[1], scale=std_v)
+					wind_preview_probs = (norm.pdf(uv_combs[:, :, 0], loc=distribution_params[0], scale=std_u) \
+					 	* norm.pdf(uv_combs[:, :, 1], loc=distribution_params[1], scale=std_v))
 
 					# add values and marginal probabilities corresponding to n_wind_preview_samples division of gaussian
 					# wind_preview_probs = []
@@ -1813,7 +1813,7 @@ class MPC(ControllerBase):
 					sens["cost"]["states"].append(
 								# np.average(np.sum(-(self.norm_turbine_powers[:, j, :]) * self.Q * self.norm_turbine_powers_states_drvt[:, j, :, i], axis=1), weights=self.wind_preview_stat_probs)
 								# sum over turbine powers and samples
-								np.sum(-self.norm_turbine_powers[:, j, :] * self.Q * self.norm_turbine_powers_states_drvt[:, j, :, i] * self.wind_preview_stat_probs[:, j])
+								np.sum(-self.norm_turbine_powers[:, j, :] * self.Q * self.norm_turbine_powers_states_drvt[:, j, :, i] * self.wind_preview_stat_probs[:, j, np.newaxis])
 								)
 							
 			
