@@ -283,12 +283,17 @@ class WindField:
         """
         n_preview_steps = n_horizon * controller_dt/simulation_dt = number of simulation steps in the prediction control horizon
         """
-        np.random.seed(init_seed)
+        # np.random.seed(init_seed)
         # initialize at random wind speed
-        init_val = [
-            np.random.choice(np.arange(self.wind_speed_u_range[0], self.wind_speed_u_range[1], self.wind_speed_var)),
-            np.random.choice(np.arange(self.wind_speed_v_range[0], self.wind_speed_v_range[1], self.wind_speed_var))
-        ]
+        # init_val = [
+        #     np.random.choice(np.arange(self.wind_speed_u_range[0], self.wind_speed_u_range[1], self.wind_speed_var)),
+        #     np.random.choice(np.arange(self.wind_speed_v_range[0], self.wind_speed_v_range[1], self.wind_speed_var))
+        # ]
+        # TODO no longer using init_seed
+        init_val = np.array([
+            self.wind_speed_u_range[0] + ((self.wind_speed_u_range[1] - self.wind_speed_u_range[0]) / 2), 
+            self.wind_speed_v_range[0] + ((self.wind_speed_v_range[1] - self.wind_speed_v_range[0]) / 2)])
+
         # n_time_steps = int(self.simulation_max_time // self.simulation_dt) + self.n_preview_steps
         generate_incrementally = False
 
@@ -704,7 +709,7 @@ def fit_amr_distribution(distribution_params_path, case_folders=None, abl_stats_
     u_preview_samples = []
     v_preview_samples = []
 
-    n_horizon = 10
+    n_horizon = 12
     controller_dt = 60
     simulation_dt = 0.5
     n_preview_steps = int(n_horizon * controller_dt // simulation_dt)

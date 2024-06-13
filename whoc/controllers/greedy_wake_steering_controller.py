@@ -2,7 +2,6 @@
 Greedy controller class. Given wind speed components ux and uy for some future prediction horizon at each wind turbine,
 Output yaw angles equal to those wind directions
 """
-# TODO should sampling frequency be every second for greedy controller? MISHA
 import numpy as np
 
 from scipy.signal import lfilter
@@ -64,7 +63,6 @@ class GreedyController(ControllerBase):
 		return np.array([[[wind_directions[i, j] for t in range(self.n_turbines)] for j in range(wind_directions.shape[1])] for i in range(wind_directions.shape[0])])
 	
 	def compute_controls(self):
-		# TODO MISHA should we check this at every simulation step rather than every 60, for threshold changes?
 
 		if (self._last_measured_time is not None) and self._last_measured_time == self.measurements_dict["time"]:
 			return
@@ -86,7 +84,7 @@ class GreedyController(ControllerBase):
 			# yaw angles will be set to initial values
 			if self.verbose:
 				print("Bad wind direction measurement received, reverting to previous measurement.")
-		# TODO MISHA this is a patch up for AMR wind initialization problem
+		
 		elif (abs(self.current_time % self.simulation_dt) == 0.0) or (np.all(self.controls_dict["yaw_angles"] == self.yaw_IC) and self.current_time == self.simulation_dt * 2):
 			# current_wind_directions = np.broadcast_to(self.wind_dir_ts[int(self.current_time // self.simulation_dt)], (self.n_turbines,))
 			current_wind_directions = self.measurements_dict["wind_directions"]
@@ -110,7 +108,7 @@ class GreedyController(ControllerBase):
 			if self.verbose:
 				print(f"{'filtered' if self.use_filt else 'unfiltered'} wind directions = {wind_dirs}")
 				
-			# TODO MISHA can't rely on receiving yaw_angles from measurements?
+			
 			current_yaw_setpoints = self.controls_dict["yaw_angles"]
 
 			if any(self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints)):
@@ -292,7 +290,6 @@ class GreedyController(ControllerBase):
 # 									 "turbulence_intensity": turbulence_intensity_ts[k]})
 		
 # 		if False and k == 5:
-# 			# TODO why does fi_greedy.env.floris.flow_field.u/v not change from 270 with changing freestream wind direction?
 # 			# Using the FlorisInterface functions, get 2D slices.
 # 			horizontal_plane = fi_greedy.env.calculate_horizontal_plane(
 # 				height=90.0,
@@ -332,5 +329,5 @@ class GreedyController(ControllerBase):
 # 	ax[1].plot(time_ts[:int(wind_field_config["simulation_max_time"] // input_dict["dt"]) - 1], yaw_angles_ts)
 # 	fig.show()
 
-# # TODO plot video of horizontal plane
+# # plot video of horizontal plane
 # # fi_greedy.env.calculate_horizontal_plane()
