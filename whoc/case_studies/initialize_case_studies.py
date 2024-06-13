@@ -61,7 +61,7 @@ case_studies = {
     "slsqp_solver_sweep": {"seed": {"group": 0, "vals": [0]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
                           "nu": {"group": 1, "vals": [10**x for x in range(-5, 0, 1)]},
-                          "n_wind_preview_samples": {"group": 2, "vals": [10, 25, 50, 100, 200]},
+                          "n_wind_preview_samples": {"group": 2, "vals": [1, 3, 5, 10, 20]},
                         #   "case_names": {"group": 3, "vals": [f"SLSQP_nu_{np.round(nu, 4)}_nsamples_{n_samples}_alpha_{alpha}" 
                         #                                       for nu in list(np.logspace(-4, 0, 5))
                         #                                       for n_samples in [10, 25, 50, 100, 200]
