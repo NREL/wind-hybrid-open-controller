@@ -47,11 +47,8 @@ if __name__ == "__main__":
     for case_family in case_families:
         case_studies[case_family]["wind_case_idx"] = {"group": max(d["group"] for d in case_studies[case_family].values()) + 1, "vals": [i for i in range(N_SEEDS)]}
 
-    # MISHA QUESTION how to make AMR-Wind wait for control solution?
-    # run_simulations(["baseline_controllers"], REGENERATE_WIND_FIELD)
-    # mp.set_start_method('fork')
     os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "true"
-    # run_simulations(["perfect_preview_type"], REGENERATE_WIND_FIELD)
+    
     print([case_families[i] for i in CASE_FAMILY_IDX])
     if RUN_SIMULATIONS:
         print(55)
@@ -95,7 +92,6 @@ if __name__ == "__main__":
                                                 case_family="_".join(case_name_lists[c].split("_")[:-1]), seed=case_lists[c]["seed"],
                                                 wind_field_config=wind_field_config, verbose=False))
         
-        # save_simulations(case_lists, case_name_lists, results)
     print(97)
     if (MULTI == "mpi" and (comm_rank := MPI.COMM_WORLD.Get_rank()) == 0) or (MULTI != "mpi"):
         if POST_PROCESS:

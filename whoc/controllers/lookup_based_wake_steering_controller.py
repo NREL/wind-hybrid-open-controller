@@ -75,7 +75,6 @@ class LookupBasedWakeSteeringController(ControllerBase):
 
 		# For startup
 		self.previous_target_yaw_setpoints = self.controls_dict["yaw_angles"]
-		self.wd_store = [270.]*self.n_turbines # TODO: update this?
 	
 	def _first_ord_filter(self, x, alpha):
 		
@@ -147,6 +146,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 		)
 	
 	def compute_controls(self):
+		# TODO update LUT for turbine breakdown
 		if (self._last_measured_time is not None) and self._last_measured_time == self.measurements_dict["time"]:
 			return
 
@@ -174,7 +174,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			# yaw angles will be set to initial values
 			if self.verbose:
 				print("Bad wind direction measurement received, reverting to previous measurement.")
-		# TODO MISHA this is a patch up for AMR wind initialization problem
+		
 		elif (abs(self.current_time % self.simulation_dt) == 0.0) or (np.all(self.controls_dict["yaw_angles"] == self.yaw_IC) and self.current_time == self.simulation_dt * 2):
 			# if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
 			if self.verbose:
@@ -194,7 +194,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			if self.verbose:
 				print(f"{'filtered' if self.use_filt else 'unfiltered'} wind direction = {wind_dir}")
 			
-			current_yaw_setpoints = self.controls_dict["yaw_angles"] # TODO is this available in measurements_dict?
+			current_yaw_setpoints = self.controls_dict["yaw_angles"]
 			
 			# flip the boolean value of those turbines which were actively yawing towards a previous setpoint, but now have reached that setpoint
 			if any(self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints)):
@@ -239,37 +239,6 @@ class LookupBasedWakeSteeringController(ControllerBase):
 
 			self.controls_dict = {"yaw_angles": list(constrained_yaw_setpoints)}
 		
-		return None
-
-	def compute_controls_old(self):
-		self.wake_steering_angles()
-
-	def wake_steering_angles(self):
-		
-		# Handle possible bad data
-		wind_directions = self.measurements_dict["wind_directions"][0, :] if self.measurements_dict["wind_directions"].ndim == 2 else self.measurements_dict["wind_directions"]
-		wind_speeds = [8.0]*self.n_turbines # TODO: enable extraction of wind speed in Hercules
-		if not wind_directions: # Recieved empty or None
-			if self.verbose:
-				print("Bad wind direction measurement received, reverting to previous measurement.")
-			wind_directions = self.wd_store
-		else:
-			self.wd_store = wind_directions
-		
-		# look up wind direction
-		if self.wake_steering_interpolant is None:
-			yaw_setpoint = wind_directions
-		else:
-			interpolated_angles = self.wake_steering_interpolant(
-				wind_directions,
-				wind_speeds,
-				None
-			)
-			yaw_offsets = np.diag(interpolated_angles)
-			yaw_setpoint = (np.array(wind_directions) - yaw_offsets).tolist()
-
-		self.controls_dict = {"yaw_angles": yaw_setpoint}
-
 		return None
 
 def get_yaw_angles_interpolant(df_opt, ramp_up_ws=[4, 5], ramp_down_ws=[10, 12], minimum_yaw_angle=None, maximum_yaw_angle=None):
@@ -381,7 +350,6 @@ def get_yaw_angles_interpolant(df_opt, ramp_up_ws=[4, 5], ramp_down_ws=[10, 12],
 
 # if __name__ == "__main__":
 	
-#     # TODO how to pass controller to floris here
 #     # # Clear old log files for clarity
 #     # rm loghercules logfloris
 #     # # Set up the helics broker

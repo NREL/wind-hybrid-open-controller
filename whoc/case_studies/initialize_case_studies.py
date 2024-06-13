@@ -38,6 +38,7 @@ case_studies = {
     "baseline_controllers": {"seed": {"group": 0, "vals": [0]},
                             #  "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                                 "dt": {"group": 1, "vals": [0.5, 0.5, 60.0, 60.0, 60.0, 60.0]},
+                                # "dt": {"group": 1, "vals": [0.5, 0.5]},
                                 "case_names": {"group": 1, "vals": ["LUT", "Greedy", "MPC_with_Filter", "MPC_without_Filter", "MPC_without_state_cons", "MPC_without_dyn_state_cons"]},
                                 # "case_names": {"group": 1, "vals": ["MPC_with_Filter", "MPC_without_Filter"]},
                                 # "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
@@ -45,9 +46,9 @@ case_studies = {
                                 "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController", "MPC", "MPC", "MPC", "MPC"]},
                                 # "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
                                 "use_filtered_wind_dir": {"group": 1, "vals": [True, True, True, False, False, False]},
-                                "use_state_cons": {"group": 1, "vals": [True, True, True, True, False, True]},
-                                "use_dyn_state_cons": {"group": 1, "vals": [True, True, True, True, True, False]},
-                                # "use_filtered_wind_dir": {"group": 1, "vals": [True, False]},
+                                # "use_state_cons": {"group": 1, "vals": [True, True, True, True, False, True]},
+                                # "use_dyn_state_cons": {"group": 1, "vals": [True, True, True, True, True, False]},
+                                # "use_filtered_wind_dir": {"group": 0, "vals": [True]},
                                 # "use_state_cons": {"group": 1, "vals": [True]},
                                 # "use_dyn_state_cons": {"group": 1, "vals": [False]},
                                 # "use_filt": {"group": 1, "vals": [True, True]}},
@@ -85,7 +86,7 @@ case_studies = {
                     # "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
                              "wind_preview_type": {"group": 0, "vals": ["stochastic"]}, 
-                             "warm_start": {"group": 0, "vals": ["greedy"]}, 
+                            #  "warm_start": {"group": 0, "vals": ["greedy"]}, 
                         #   "case_names": {"group": 1, "vals": ["ZSGD", "SLSQP", "Sequential SLSQP", "Sequential Refine"]},
                          "case_names": {"group": 1, "vals": ["SLSQP", "Sequential SLSQP", "Sequential Refine"]},
                         #    "solver": {"group": 1, "vals": ["zsgd", "slsqp", "sequential_slsqp", "serial_refine"]},
@@ -141,11 +142,11 @@ case_studies = {
           "offline_probability": {"group": 1, "vals": list(np.linspace(0, 0.5, N_COST_FUNC_TUNINGS))}
         },
     "scalability": {"seed": {"group": 0, "vals": [0]},
-                    "num_turbines": {"group": 1, "vals": [3, 9, 25, 100]},
                     "controller_class": {"group": 0, "vals": ["MPC"]},
+                    "case_names": {"group": 1, "vals": ["3 Turbines", "9 Turbines", "25 Turbines", "100 Turbines"]},
+                    "num_turbines": {"group": 1, "vals": [3, 9, 25, 100]},
                     "lut_path": {"group": 1, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{nturb}.csv") for nturb in [3, 9, 25, 100]]},
-                    "case_names": {"group": 1, "vals": ["3 Turbines", "9 Turbines", "25 Turbines", "100 Turbines"]},
                     "floris_input_file": {"group": 1, "vals": [os.path.join(os.path.dirname(whoc_file), "../examples/mpc_wake_steering_florisstandin", 
                                                              f"floris_gch_{i}.yaml") for i in [3, 9, 25, 100]]},
     },
@@ -154,11 +155,18 @@ case_studies = {
                        "case_names": {"group": 1, "vals": [f"N_p = {n}" for n in [6, 8, 10, 12, 14]]},
                        "n_horizon": {"group": 1, "vals": [6, 8, 10, 12, 14]}
                     },
-    "test_nu_preview": {"seed": {"group": 0, "vals": [0]},
-                          "controller_class": {"group": 0, "vals": ["MPC"]},
-                        "case_names": {"group": 1, "vals": ["Stochastic", "Perfect", "Persistent"]},
-                         "wind_preview_type": {"group": 1, "vals": ["stochastic", "perfect", "persistent"]}, 
-                          "nu": {"group": 0, "vals": [.01]}
+    "test_nu_preview": { "seed": {"group": 0, "vals": [0]},
+                         "controller_class": {"group": 0, "vals": ["MPC"]},
+                         "case_names": {"group": 1, "vals": ["Stat-Based", "Sample-Based"]},
+                         "wind_preview_type": {"group": 1, "vals": ["stochastic", "stochastic"]},
+                         "alpha": {"group": 0, "vals": [0.7]},
+                         "nu": {"group": 0, "vals": [0.01]},
+                         "num_turbines": {"group": 0, "vals": [3]},
+                         "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{nturb}.csv") for nturb in [3]]},
+                         "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), "../examples/mpc_wake_steering_florisstandin", 
+                                                             f"floris_gch_{i}.yaml") for i in [3]]},
+                          "n_wind_preview_samples": {"group": 1, "vals": [5, 1]}
                           }
 }
 
@@ -273,7 +281,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
     wind_field_config["regenerate_distribution_params"] = False
     wind_field_config["distribution_params_path"] = os.path.join(STORAGE_DIR, "wind_field_data", "wind_preview_distribution_params.pkl")  
     wind_field_config["time_series_dt"] = 1
-    # TODO HIGH pad csv files with mean values for amr
+    
     # TODO check that wind field has same dt or interpolate...
     seed = 0
     if len(wind_field_filenames) < n_seeds or regenerate_wind_field:
@@ -358,8 +366,11 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                     input_dicts[start_case_idx + c]["controller"][property_name] = str(property_value)
                 else:
                     input_dicts[start_case_idx + c]["controller"][property_name] = property_value
-
-            fn = f'input_config_case_{"_".join([f"{key}_{val if (type(val) is str or type(val) is np.str_) else np.round(val, 4)}" for key, val in case_lists[c].items() if key not in ["wind_case_idx", "seed"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"]}.yaml'.replace("/", "_")
+            # TODO why are baseline configs being added to other directories
+            fn = f'input_config_case_{"_".join([f"{key}_{val if (type(val) is str or type(val) is np.str_) else np.round(val, 5)}" for key, val in case.items() if key not in ["wind_case_idx", "seed"]]) if "case_names" not in case else case["case_names"]}.yaml'.replace("/", "_")
+            if "LUT" in fn and "baseline_controllers" not in results_dir:
+                print("oh no")
+            
             with io.open(os.path.join(results_dir, fn), 'w', encoding='utf8') as fp:
                 yaml.dump(input_dicts[start_case_idx + c], fp, default_flow_style=False, allow_unicode=True)
 
@@ -387,6 +398,7 @@ case_families = ["baseline_controllers", "solver_type",
     
 if __name__ == "__main__":
     REGENERATE_WIND_FIELD = True
+    REGENERATE_LUT = False
     # TODO replace these with proper command line args
     # comm_rank = MPI.COMM_WORLD.Get_rank()
     if sys.argv[2].lower() == "mpi":
@@ -412,4 +424,4 @@ if __name__ == "__main__":
 
         # MISHA QUESTION how to make AMR-Wind wait for control solution?
         print([case_families[i] for i in CASE_FAMILY_IDX])
-        case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = initialize_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, n_seeds=N_SEEDS, debug=DEBUG)
+        case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = initialize_simulations([case_families[i] for i in CASE_FAMILY_IDX], regenerate_wind_field=REGENERATE_WIND_FIELD, regenerate_lut=REGENERATE_LUT, n_seeds=N_SEEDS, debug=DEBUG)

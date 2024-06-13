@@ -62,7 +62,7 @@ def process_simulations(results_dirs):
         yaw_change_case_names.index(best_case)
 
     # compare_results_df.sort_values(by=("TotalRunningOptimizationCostMean", "mean"), ascending=True).groupby(level=0)[("TotalRunningOptimizationCostMean", "mean")]
-    compare_results_df[("TotalRunningOptimizationCostMean", "mean")]
+    compare_results_df[("TotalRunningOptimizationCostMean", "mean")].sort_values(ascending=True)
 
     (compare_results_df[("FarmPowerMean", "mean")].sort_values(ascending=False) * 1e-7).to_csv("./mpc_configs_maxpower.csv")
     (compare_results_df[("YawAngleChangeAbsMean", "mean")].sort_values(ascending=True)).to_csv("./mpc_configs_minyaw.csv")
@@ -71,7 +71,7 @@ def process_simulations(results_dirs):
 
     # compare_results_df.groupby("CaseFamily", group_keys=False).apply(lambda x: x.sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True).head(3))[("RelativeTotalRunningOptimizationCostMean", "mean")]
     compare_results_df.groupby("CaseFamily", group_keys=False).apply(lambda x: x.sort_values(by=("RelativeYawAngleChangeAbsMean", "mean"), ascending=True).head(3))[("RelativeYawAngleChangeAbsMean", "mean")]
-    compare_results_df.groupby("CaseFamily", group_keys=False).apply(lambda x: x.sort_values(by=("RelativeFarmPowerMean", "mean"), ascending=False).head(3))[("RelativeFarmPowerMean", "mean")]
+    compare_results_df.groupby("CaseFamily", group_keys=False).apply(lambda x: x.sort_values(by=("RelativeFarmPowerMean", "mean"), ascending=False).head(6))[("RelativeFarmPowerMean", "mean")]
     
     if "breakdown_robustness" in compare_results_df.index.get_level_values("CaseFamily"):
         plot_breakdown_robustness(compare_results_df, case_studies, STORAGE_DIR)
@@ -145,14 +145,14 @@ def plot_simulations(results_dirs):
             data_case_name = re.findall(r"(?<=case_)(.*)(?=_seed)", data_fn)[0]
             assert input_case_name == data_case_name
 
-            with open(os.path.join(results_dir, input_fn), 'r') as fp:
-                input_config = yaml.safe_load(fp)
+            # with open(os.path.join(results_dir, input_fn), 'r') as fp:
+            #     input_config = yaml.safe_load(fp)
 
-            if not (
-                ((case_family == "baseline_controllers") and ("time_series_results_case_Greedy_seed_0.csv" in data_fn))
-                or ((case_family == "baseline_controllers") and ("time_series_results_case_LUT_seed_0.csv" in data_fn))
-                or ((case_family == "slsqp_solver_sweep") and ("time_series_results_case_alpha_0.995_controller_class_MPC_n_wind_preview_samples_50_nu_1.0_solver_slsqp_seed_0.csv" in data_fn))):
-                continue
+            # if not (
+            #     ((case_family == "baseline_controllers") and ("time_series_results_case_Greedy_seed_0.csv" in data_fn))
+            #     or ((case_family == "baseline_controllers") and ("time_series_results_case_LUT_seed_0.csv" in data_fn))
+            #     or ((case_family == "slsqp_solver_sweep") and ("time_series_results_case_alpha_0.995_controller_class_MPC_n_wind_preview_samples_50_nu_1.0_solver_slsqp_seed_0.csv" in data_fn))):
+            #     continue
             
             case_name = f"{case_family}_{data_case_name}"
             df = results_dfs[case_name]

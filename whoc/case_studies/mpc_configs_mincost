@@ -1,7 +1,4 @@
 CaseFamily,CaseName,0
-baseline_controllers,LUT,1.2583211652886728
-baseline_controllers,MPC_with_Filter,1.1609313887711366
-baseline_controllers,MPC_without_state_cons,1.1561342623691073
-baseline_controllers,MPC_without_Filter,1.1555810981825216
-baseline_controllers,Greedy,1.104553087718681
-baseline_controllers,MPC_without_dyn_state_cons,0.7267613653439572
+test_nu_preview,Persistent,1.0024757212608
+test_nu_preview,Perfect,0.910691211178995
+test_nu_preview,Stochastic,0.6234524107089678

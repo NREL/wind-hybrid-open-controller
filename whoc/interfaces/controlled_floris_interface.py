@@ -68,7 +68,7 @@ class ControlledFlorisModel(InterfaceBase):
         """ abstract method from Interface class """
         time_step = int((self.time // self.dt) % self.env.core.flow_field.n_findex)
         # mags = np.sqrt(self.env.core.flow_field.u**2 + self.env.core.flow_field.v**2 + self.env.core.flow_field.w**2)
-        mag = np.sqrt(self.env.core.flow_field.u[time_step]**2)
+        mag = np.sqrt(self.env.core.flow_field.u[time_step, :, :, :]**2)
         mag = np.mean(mag.reshape(*mag.shape[:1], -1), axis=1)
         direction = np.tile(self.env.core.flow_field.wind_directions[time_step], (self.n_turbines,))
         offline_mask = np.isclose(self.env.core.farm.power_setpoints[time_step], 0, atol=1e-3)
@@ -118,17 +118,14 @@ class ControlledFlorisModel(InterfaceBase):
     def send_controls(self, hercules_dict, **controls):
         """ abstract method from Interface class """
         # if control_dt time has passed, pass yaw_setpoint_trajectory to floris model and flush controls buffer. Otherwise, add controls angles to buffer.
-        
+        self.current_yaw_setpoints = np.vstack([self.current_yaw_setpoints, controls["yaw_angles"]])
         if self.run_floris:
+            self.current_yaw_setpoints = self.current_yaw_setpoints[1:, :]
             yaw_offsets = self.env.core.flow_field.wind_directions[:, np.newaxis] - self.current_yaw_setpoints
             # yaw_offsets = self.env.core.flow_field.wind_directions[:, np.newaxis] - controls["yaw_angles"]
             self.env.set(yaw_angles=yaw_offsets, disable_turbines=self.offline_status)
             self.env.run()
             self.current_yaw_setpoints = self.current_yaw_setpoints[-1:, :]
-            # self.current_yaw_setpoints = np.zeros((0, self.n_turbines))
-        else:
-            self.current_yaw_setpoints = np.vstack([self.current_yaw_setpoints,
-                                                    controls["yaw_angles"]])
 
         return controls
     
@@ -199,7 +196,7 @@ if __name__ == '__main__':
     # axarr = axarr.flatten()
     horizontal_plane = fi_greedy.env.calculate_horizontal_plane(height=90.0)
                                                                 # yaw_angles=np.array([[[-30, -20, -10, 0, 10, 20, 30, 20, 10]]]))
-    #TODO yawa angles are adjusted to fit inertial frame of reference ...
+    # yaw angles are adjusted to fit inertial frame of reference ...
     wakeviz.plot_turbines_with_fi(fi_greedy.env, ax=ax)
     wakeviz.visualize_cut_plane(
         horizontal_plane,

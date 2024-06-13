@@ -29,7 +29,6 @@ def simulate_controller(controller_class, input_dict, **kwargs):
     kwargs["wind_field_config"]["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
 
     ctrl = controller_class(fi, input_dict=input_dict, **kwargs)
-    # TODO use coroutines or threading for hercules interfaces
     # optionally warm-start with LUT solution
     
     yaw_angles_ts = []
@@ -84,7 +83,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
         
         fi.run_floris = False
         # only step yaw angles by up to yaw_rate * input_dict["dt"] for each time-step
-        # TODO run this in a loop, in compute_controls, update controls dict every 0.5 seconds, but store and run floris set every 60s in ControllerFlorisInterface
+        # run this in a loop, in compute_controls, update controls dict every 0.5 seconds, but store and run floris set every 60s in ControllerFlorisInterface
         for tt in np.arange(t, t + ctrl.dt, input_dict["dt"]):
             fi.time = tt
             if tt == (t + ctrl.dt - input_dict["dt"]):
@@ -96,9 +95,10 @@ def simulate_controller(controller_class, input_dict, **kwargs):
             turbine_powers_ts += [ctrl.measurements_dict["turbine_powers"]]
             turbine_wind_mag_ts += [ctrl.measurements_dict["wind_speeds"]]
             turbine_wind_dir_ts += [ctrl.measurements_dict["wind_directions"]]
-            turbine_offline_status_ts += [np.isclose(ctrl.measurements_dict["turbine_powers"], 0, atol=1e-3)]
+            turbine_offline_status_ts += [fi.offline_status]
+            # turbine_offline_status_ts += [np.isclose(ctrl.measurements_dict["turbine_powers"], 0, atol=1e-3)]
         
-        assert np.all(np.vstack(turbine_offline_status_ts)[-int(ctrl.dt // input_dict["dt"]):, :] == fi.offline_status)
+        # assert np.all(np.vstack(turbine_offline_status_ts)[-int(ctrl.dt // input_dict["dt"]):, :] == fi.offline_status)
 
         end_time = perf_counter()
 
