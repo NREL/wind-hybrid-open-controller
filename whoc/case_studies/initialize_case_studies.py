@@ -157,16 +157,16 @@ case_studies = {
                     },
     "test_nu_preview": { "seed": {"group": 0, "vals": [0]},
                          "controller_class": {"group": 0, "vals": ["MPC"]},
-                         "case_names": {"group": 1, "vals": ["Stat-Based", "Sample-Based"]},
-                         "wind_preview_type": {"group": 1, "vals": ["stochastic", "stochastic"]},
-                         "alpha": {"group": 0, "vals": [0.7]},
+                         "case_names": {"group": 1, "vals": ["Perfect", "Stat-Based", "Sample-Based"]},
+                         "wind_preview_type": {"group": 1, "vals": ["perfect", "stochastic", "stochastic"]},
+                         "alpha": {"group": 0, "vals": [1.0]},
                          "nu": {"group": 0, "vals": [0.01]},
                          "num_turbines": {"group": 0, "vals": [3]},
                          "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lut_{nturb}.csv") for nturb in [3]]},
                          "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), "../examples/mpc_wake_steering_florisstandin", 
                                                              f"floris_gch_{i}.yaml") for i in [3]]},
-                          "n_wind_preview_samples": {"group": 1, "vals": [5, 1]}
+                          "n_wind_preview_samples": {"group": 1, "vals": [1, 5, 1]}
                           }
 }
 
