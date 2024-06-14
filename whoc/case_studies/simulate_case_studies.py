@@ -4,6 +4,7 @@ import numpy as np
 import os
 from time import perf_counter
 import sys
+# from memory_profiler import profile
 
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 from whoc.controllers.mpc_wake_steering_controller import MPC
@@ -12,6 +13,7 @@ from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWa
 from whoc.case_studies.initialize_case_studies import case_studies, STORAGE_DIR, case_families
 from whoc.wind_field.WindField import first_ord_filter
 
+@profile
 def simulate_controller(controller_class, input_dict, **kwargs):
     print(f"Running instance of {controller_class.__name__} - {kwargs['case_name']} with wind seed {kwargs['wind_case_idx']}")
     # Load a FLORIS object for AEP calculations
@@ -95,10 +97,10 @@ def simulate_controller(controller_class, input_dict, **kwargs):
             turbine_powers_ts += [ctrl.measurements_dict["turbine_powers"]]
             turbine_wind_mag_ts += [ctrl.measurements_dict["wind_speeds"]]
             turbine_wind_dir_ts += [ctrl.measurements_dict["wind_directions"]]
-            turbine_offline_status_ts += [fi.offline_status]
-            # turbine_offline_status_ts += [np.isclose(ctrl.measurements_dict["turbine_powers"], 0, atol=1e-3)]
+            # turbine_offline_status_ts += [fi.offline_status[tt, :]]
+            turbine_offline_status_ts += [np.isclose(ctrl.measurements_dict["turbine_powers"], 0, atol=1e-3)]
         
-        # assert np.all(np.vstack(turbine_offline_status_ts)[-int(ctrl.dt // input_dict["dt"]):, :] == fi.offline_status)
+        assert np.all(np.vstack(turbine_offline_status_ts)[-int(ctrl.dt // input_dict["dt"]):, :] == fi.offline_status)
 
         end_time = perf_counter()
 

@@ -18,7 +18,7 @@ if __name__ == "__main__":
     REGENERATE_WIND_FIELD = False
     REGENERATE_LUT = False
     RUN_SIMULATIONS = True
-    POST_PROCESS = True
+    POST_PROCESS = False
 
     DEBUG = sys.argv[1].lower() == "debug"
     # if sys.argv[2].lower() == "dask":

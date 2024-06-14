@@ -60,13 +60,15 @@ case_studies = {
                           },
     "slsqp_solver_sweep": {"seed": {"group": 0, "vals": [0]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
-                          "nu": {"group": 1, "vals": [10**x for x in range(-5, 0, 1)]},
-                          "n_wind_preview_samples": {"group": 2, "vals": [1, 3, 5, 10, 20]},
+                        #   "nu": {"group": 1, "vals": [10**x for x in range(-5, 0, 1)]},
+                        #   "n_wind_preview_samples": {"group": 2, "vals": [1, 3, 5, 10, 20]},
+
+                        "n_wind_preview_samples": {"group": 2, "vals": [20]},
                         #   "case_names": {"group": 3, "vals": [f"SLSQP_nu_{np.round(nu, 4)}_nsamples_{n_samples}_alpha_{alpha}" 
                         #                                       for nu in list(np.logspace(-4, 0, 5))
                         #                                       for n_samples in [10, 25, 50, 100, 200]
                         #                                       for alpha in list(np.linspace(0, 1.0, 11))]},
-                          "alpha": {"group": 3, "vals": list(np.linspace(0.005, 0.995, 11))},
+                        #   "alpha": {"group": 3, "vals": list(np.linspace(0.005, 0.995, 11))},
                            "solver": {"group": 0, "vals": ["slsqp"]}
                           },
     "sequential_slsqp_solver": {"seed": {"group": 0, "vals": [0]},
@@ -265,7 +267,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         os.makedirs(wind_field_dir)
 
     if debug:
-        input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = 480
+        input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = 60
     else:
         input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = 3600
 
@@ -366,10 +368,8 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                     input_dicts[start_case_idx + c]["controller"][property_name] = str(property_value)
                 else:
                     input_dicts[start_case_idx + c]["controller"][property_name] = property_value
-            # TODO why are baseline configs being added to other directories
+                    
             fn = f'input_config_case_{"_".join([f"{key}_{val if (type(val) is str or type(val) is np.str_) else np.round(val, 5)}" for key, val in case.items() if key not in ["wind_case_idx", "seed"]]) if "case_names" not in case else case["case_names"]}.yaml'.replace("/", "_")
-            if "LUT" in fn and "baseline_controllers" not in results_dir:
-                print("oh no")
             
             with io.open(os.path.join(results_dir, fn), 'w', encoding='utf8') as fp:
                 yaml.dump(input_dicts[start_case_idx + c], fp, default_flow_style=False, allow_unicode=True)
