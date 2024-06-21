@@ -4,7 +4,8 @@ import numpy as np
 import os
 from time import perf_counter
 import sys
-# from memory_profiler import profile
+from memory_profiler import profile
+import gc
 
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 from whoc.controllers.mpc_wake_steering_controller import MPC
@@ -13,7 +14,7 @@ from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWa
 from whoc.case_studies.initialize_case_studies import case_studies, STORAGE_DIR, case_families
 from whoc.wind_field.WindField import first_ord_filter
 
-@profile
+#@profile
 def simulate_controller(controller_class, input_dict, **kwargs):
     print(f"Running instance of {controller_class.__name__} - {kwargs['case_name']} with wind seed {kwargs['wind_case_idx']}")
     # Load a FLORIS object for AEP calculations
@@ -234,6 +235,9 @@ def simulate_controller(controller_class, input_dict, **kwargs):
         os.makedirs(results_dir)
 
     results_df.to_csv(os.path.join(results_dir, f"time_series_results_case_{kwargs['case_name']}_seed_{kwargs['wind_case_idx']}.csv".replace("/", "_")))
+
+    del ctrl
+    gc.collect()
     
     return results_df
 

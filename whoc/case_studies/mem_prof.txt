@@ -1,0 +1,35 @@
+(100000, 3)
+(100000,)
+Filename: /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/whoc/case_studies/test_floris.py
+
+Line #    Mem usage    Increment  Occurrences   Line Contents
+=============================================================
+     5    172.3 MiB    172.3 MiB           1   @profile
+     6                                         def run_floris():
+     7                                           # Load the Floris model
+     8    173.2 MiB      0.9 MiB           1       fmodel = FlorisModel("/Users/ahenry/Documents/toolboxes/floris/examples/inputs/gch.yaml")
+     9                                         
+    10    173.2 MiB      0.0 MiB           1       N = 100000
+    11    173.2 MiB      0.0 MiB           1       np.random.seed(0)
+    12                                         
+    13                                             # Set up inflow wind conditions
+    14    175.3 MiB      0.0 MiB           2       time_series = TimeSeries(
+    15    174.5 MiB      1.3 MiB           1           wind_directions=270 + 30 * np.random.randn(N),
+    16    174.5 MiB      0.0 MiB           1           wind_speeds=8 + 2 * np.random.randn(N),
+    17    175.3 MiB      0.8 MiB           1           turbulence_intensities=0.06 + 0.02 * np.random.randn(N),
+    18                                             )
+    19                                         
+    20                                             # Set the wind conditions for the model
+    21    534.0 MiB    358.7 MiB           1       fmodel.set(wind_data=time_series)
+    22                                         
+    23                                             # Run the calculations
+    24   1721.0 MiB   1187.0 MiB           1       fmodel.run()
+    25   1828.3 MiB    107.3 MiB           1       fmodel.run()
+    26                                         
+    27                                             # Extract turbine and farm powers
+    28   1828.3 MiB      0.0 MiB           1       turbine_powers = fmodel.get_turbine_powers() / 1000.0
+    29   1828.3 MiB      0.0 MiB           1       farm_power = fmodel.get_farm_power() / 1000.0
+    30   1828.3 MiB      0.0 MiB           1       print(turbine_powers.shape)
+    31   1828.3 MiB      0.0 MiB           1       print(farm_power.shape)
+
+
