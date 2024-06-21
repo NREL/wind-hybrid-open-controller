@@ -37,7 +37,7 @@ if not os.path.exists(STORAGE_DIR):
 case_studies = {
     "baseline_controllers": {"seed": {"group": 0, "vals": [0]},
                             #  "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
-                                "dt": {"group": 1, "vals": [0.5, 0.5, 60.0, 60.0, 60.0, 60.0]},
+                                "dt": {"group": 1, "vals": [5, 5, 60.0, 60.0, 60.0, 60.0]},
                                 # "dt": {"group": 1, "vals": [0.5, 0.5]},
                                 "case_names": {"group": 1, "vals": ["LUT", "Greedy", "MPC_with_Filter", "MPC_without_Filter", "MPC_without_state_cons", "MPC_without_dyn_state_cons"]},
                                 # "case_names": {"group": 1, "vals": ["MPC_with_Filter", "MPC_without_Filter"]},
@@ -60,15 +60,18 @@ case_studies = {
                           },
     "slsqp_solver_sweep": {"seed": {"group": 0, "vals": [0]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
-                        #   "nu": {"group": 1, "vals": [10**x for x in range(-5, 0, 1)]},
-                        #   "n_wind_preview_samples": {"group": 2, "vals": [1, 3, 5, 10, 20]},
-
-                        "n_wind_preview_samples": {"group": 2, "vals": [20]},
+                            "nu": {"group": 1, "vals": [10**x for x in range(-5, 0, 1)]},
+                            "n_wind_preview_samples": {"group": 2, "vals": [3, 5, 7, 9]},
+                            "alpha": {"group": 3, "vals": list(np.linspace(0.005, 0.995, 11))},
+                        # "nu": {"group": 1, "vals": [10**x for x in [0.1]]},
+                        # "n_wind_preview_samples": {"group": 2, "vals": [9]},
+                        #  "alpha": {"group": 3, "vals": [0.1]},
                         #   "case_names": {"group": 3, "vals": [f"SLSQP_nu_{np.round(nu, 4)}_nsamples_{n_samples}_alpha_{alpha}" 
                         #                                       for nu in list(np.logspace(-4, 0, 5))
                         #                                       for n_samples in [10, 25, 50, 100, 200]
                         #                                       for alpha in list(np.linspace(0, 1.0, 11))]},
-                        #   "alpha": {"group": 3, "vals": list(np.linspace(0.005, 0.995, 11))},
+                           
+                           
                            "solver": {"group": 0, "vals": ["slsqp"]}
                           },
     "sequential_slsqp_solver": {"seed": {"group": 0, "vals": [0]},
@@ -96,8 +99,9 @@ case_studies = {
                           },
     "stochastic_preview_type": {"seed": {"group": 0, "vals": [0]},
                           "controller_class": {"group": 0, "vals": ["MPC"]},
-                          "case_names": {"group": 1, "vals": [f"Stochastic_{d}" for d in [10, 25, 50, 100, 200]]},
-                           "n_wind_preview_samples": {"group": 1, "vals": [10, 25, 50, 100, 200]}
+                          "case_names": {"group": 1, "vals": [f"StochasticInterval_{d}" for d in [10, 25, 50, 100, 200]] + [f"StochasticSample_{d}" for d in [3, 5, 7]]},
+                          "wind_preview_type": {"group": 1, "vals": ["stochastic_interval"] * 5 + ["stochastic_sample"] * 3},
+                           "n_wind_preview_samples": {"group": 1, "vals": [10, 25, 50, 100, 200] + [3, 5, 7]}
                           },
     "persistent_preview_type": {"seed": {"group": 0, "vals": [0]},
                           "controller_class": {"group": 0, "vals": ["MPC"]},
@@ -111,9 +115,10 @@ case_studies = {
                           },
     "wind_preview_type": {"seed": {"group": 0, "vals": [0]},
                           "controller_class": {"group": 0, "vals": ["MPC"]},
-                        "case_names": {"group": 1, "vals": ["Perfect", "Persistent", "Stochastic"]},
+                        "case_names": {"group": 1, "vals": ["Perfect", "Persistent", "Stochastic Interval", "Stochastic Sample"]},
+                        "n_wind_preview_samples": {"group": 1, "vals": [1, 1, 5, 100]},
                         #  "case_names": {"group": 1, "vals": ["Stochastic"]},
-                         "wind_preview_type": {"group": 1, "vals": ["perfect", "persistent", "stochastic"]}
+                         "wind_preview_type": {"group": 1, "vals": ["perfect", "persistent", "stochastic_interval", "stochastic_sample"]}
                         #   "wind_preview_type": {"group": 1, "vals": ["stochastic"]}
                           },
     "lut_warm_start": {"seed": {"group": 0, "vals": [0]},
@@ -267,7 +272,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         os.makedirs(wind_field_dir)
 
     if debug:
-        input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = 60
+        input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = 480
     else:
         input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = 3600
 
@@ -388,13 +393,14 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
 # 0, 1, 2, 3, 4, 8, 9
 # 0, 2, 4, 7, 8, 9
 # 0, 2, 10
+# 8
 case_families = ["baseline_controllers", "solver_type",
                     "wind_preview_type", "warm_start", 
                     "horizon_length", "breakdown_robustness",
                     "scalability", "cost_func_tuning", 
                     "stochastic_preview_type", 
                     "perfect_preview_type", "slsqp_solver_sweep",
-                    "test_nu_preview"]
+                    "test_nu_preview", "serial_refine_solver"]
     
 if __name__ == "__main__":
     REGENERATE_WIND_FIELD = True

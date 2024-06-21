@@ -10,6 +10,7 @@ Need csv containing 'true' wake characteristics at each turbine (variables) at e
 # cd ...
 # sbatch ...
 import pickle
+import gc
 
 import whoc
 from functools import partial
@@ -20,6 +21,8 @@ import pandas as pd
 from concurrent.futures import ProcessPoolExecutor, wait
 import scipy
 import os
+
+from memory_profiler import profile
 
 import yaml
 from array import array
@@ -101,16 +104,11 @@ class WindField:
             [0, 1], size=(self.simulation_max_time_steps, self.num_turbines),
             p=[self.offline_probability, 1 - self.offline_probability])
     
+    # @profile
     def _generate_wind_preview_distribution_params(self, regenerate_params=False):
         if os.path.exists(self.distribution_params_path) and not regenerate_params:
             with open(self.distribution_params_path, "rb") as fp:
                 wind_preview_distribution_params = pickle.load(fp)
-
-            for key in ["mean_u", "mean_v"]:
-                wind_preview_distribution_params[key] = wind_preview_distribution_params[key][:(self.n_preview_steps + self.preview_dt)]
-            
-            for key in ["cov_u", "cov_v"]:
-                wind_preview_distribution_params[key] = wind_preview_distribution_params[key][:(self.n_preview_steps + self.preview_dt), :(self.n_preview_steps + self.preview_dt)]
 
         if not os.path.exists(self.distribution_params_path) or regenerate_params or len(wind_preview_distribution_params["mean_u"]) < (self.n_preview_steps + self.preview_dt):
             # compute mean, variance, covariance ahead of time
@@ -191,17 +189,35 @@ class WindField:
             # ax.yaxis.set_ticklabels(class_names,rotation=0, fontsize = 10)
             plt.show()
         
-        return wind_preview_distribution_params
+        short_wind_preview_distribution_params = {}
+        for key in ["mean_u", "mean_v"]:
+            # short_wind_preview_distribution_params[key] = np.array(wind_preview_distribution_params[key][:(self.n_preview_steps + self.preview_dt)])
+            short_wind_preview_distribution_params[key] = np.array(wind_preview_distribution_params[key][:(self.n_preview_steps + self.preview_dt):self.time_series_dt])
+            # del wind_preview_distribution_params[key]
+            # gc.collect(wind_preview_distribution_params[key])
+            
+        for key in ["cov_u", "cov_v"]:
+            short_wind_preview_distribution_params[key] = np.array(wind_preview_distribution_params[key][:(self.n_preview_steps + self.preview_dt):self.time_series_dt, :(self.n_preview_steps + self.preview_dt):self.time_series_dt])
+            # del wind_preview_distribution_params[key]
+        
+        del wind_preview_distribution_params
+        gc.collect()
+
+        return short_wind_preview_distribution_params
     
     def _sample_wind_preview(self, current_measurements, noise_func=np.random.multivariate_normal, noise_args=None, return_params=True):
         """
         corr(X) = (diag(Kxx))^(-0.5)Kxx(diag(Kxx))^(-0.5)
         low variance and high covariance => high correlation
         """
-        mean_u = self.wind_preview_distribution_params["mean_u"][:self.n_preview_steps + self.preview_dt:self.time_series_dt]
-        mean_v = self.wind_preview_distribution_params["mean_v"][:self.n_preview_steps + self.preview_dt:self.time_series_dt]
-        cov_u = self.wind_preview_distribution_params["cov_u"][:self.n_preview_steps + self.preview_dt:self.time_series_dt, :self.n_preview_steps + self.preview_dt:self.time_series_dt]
-        cov_v = self.wind_preview_distribution_params["cov_v"][:self.n_preview_steps + self.preview_dt:self.time_series_dt, :self.n_preview_steps + self.preview_dt:self.time_series_dt]
+        # mean_u = self.wind_preview_distribution_params["mean_u"][:self.n_preview_steps + self.preview_dt:self.time_series_dt]
+        # mean_v = self.wind_preview_distribution_params["mean_v"][:self.n_preview_steps + self.preview_dt:self.time_series_dt]
+        # cov_u = self.wind_preview_distribution_params["cov_u"][:self.n_preview_steps + self.preview_dt:self.time_series_dt, :self.n_preview_steps + self.preview_dt:self.time_series_dt]
+        # cov_v = self.wind_preview_distribution_params["cov_v"][:self.n_preview_steps + self.preview_dt:self.time_series_dt, :self.n_preview_steps + self.preview_dt:self.time_series_dt]
+        mean_u = self.wind_preview_distribution_params["mean_u"]
+        mean_v = self.wind_preview_distribution_params["mean_v"]
+        cov_u = self.wind_preview_distribution_params["cov_u"]
+        cov_v = self.wind_preview_distribution_params["cov_v"]
 
         # assert len(mean_u) == self.n_preview_steps + self.preview_dt
 

@@ -19,7 +19,7 @@ import pandas as pd
 from scipy.interpolate import LinearNDInterpolator
 import floris.flow_visualization as wakeviz
 import matplotlib.pyplot as plt
-
+from memory_profiler import profile
 
 
 class ControlledFlorisModel(InterfaceBase):
@@ -90,7 +90,7 @@ class ControlledFlorisModel(InterfaceBase):
         """ abstract method from Interface class """
         ctrl_dict["yaw_angles"] = np.float64(ctrl_dict["yaw_angles"])
         return ctrl_dict
-
+    
     def step(self, disturbances, ctrl_dict=None, seed=None):
         np.random.seed(seed)
         # get factor to multiply ai_factor with based on offline probabilities
@@ -115,6 +115,8 @@ class ControlledFlorisModel(InterfaceBase):
         self.env.run()
 
         return disturbances
+    
+    #@profile
     def send_controls(self, hercules_dict, **controls):
         """ abstract method from Interface class """
         # if control_dt time has passed, pass yaw_setpoint_trajectory to floris model and flush controls buffer. Otherwise, add controls angles to buffer.

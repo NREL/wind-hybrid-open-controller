@@ -1,5 +1,3 @@
-print(1)
-
 import os
 import sys
 
@@ -13,7 +11,6 @@ from whoc.case_studies.initialize_case_studies import initialize_simulations, ca
 from whoc.case_studies.simulate_case_studies import simulate_controller
 from whoc.case_studies.process_case_studies import process_simulations, plot_simulations
 
-print(18)
 if __name__ == "__main__":
     REGENERATE_WIND_FIELD = False
     REGENERATE_LUT = False

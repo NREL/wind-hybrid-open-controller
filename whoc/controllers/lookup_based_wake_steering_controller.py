@@ -16,6 +16,9 @@ import numpy as np
 import pandas as pd
 import os
 import re
+import gc
+
+from memory_profiler import profile
 
 from whoc.controllers.controller_base import ControllerBase
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
@@ -82,11 +85,11 @@ class LookupBasedWakeSteeringController(ControllerBase):
 		a = [1, -alpha]
 		return lfilter(b, a, x)
 	
+	# @profile
 	def _optimize_lookup_table(self, lut_path=None, generate_lut=True):
 		if not generate_lut and lut_path is not None and os.path.exists(lut_path):
 			df_lut = pd.read_csv(lut_path, index_col=0)
-			df_lut["yaw_angles_opt"] = [[float(f) for f in re.findall(r"-*\d+\.\d*", s)] for i, s in
-										df_lut["yaw_angles_opt"].items()]
+			df_lut["yaw_angles_opt"] = df_lut["yaw_angles_opt"].apply(lambda s: np.array(re.findall(r"-*\d+\.\d*", s), dtype=float))
 		else:
 			# if csv to load from is not given, optimize
 			# LUT optimizer wind field options
@@ -122,7 +125,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			df_copy_lb = df_lut[df_lut["wind_speed"] == 6.0].copy()
 			df_copy_ub = df_lut[df_lut["wind_speed"] == 13.0].copy()
 			df_copy_lb["wind_speed"] = 5.0
-			df_copy_ub["wind_speed"] = 14.0
+			df_copy_lb["wind_speed"] = 14.0
 			df_copy_lb["yaw_angles_opt"] *= 0.0
 			df_copy_ub["yaw_angles_opt"] *= 0.0
 			df_lut = pd.concat([df_copy_lb, df_lut, df_copy_ub], axis=0).reset_index(drop=True)
