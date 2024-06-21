@@ -25,4 +25,4 @@ MPICC="cc -shared" pip install --force-reinstall --no-cache-dir --no-binary=mpi4
 #echo "running process_case_studies.py"
 #python process_case_studies.py nodebug mpi parallel 0 1 2 3 4 5 6 7
 #srun -n $MAXWORKERS python run_case_studies.py debug mpi parallel 0 1 2 3 4 5 6 7
-srun -n $MAXWORKERS  python run_case_studies.py debug mpi parallel 0 1 2 3 4 5 6 7
+srun -n $MAXWORKERS  python run_case_studies.py debug mpi parallel 10
