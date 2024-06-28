@@ -25,18 +25,19 @@ from memory_profiler import profile
 class ControlledFlorisModel(InterfaceBase):
     def __init__(self, yaw_limits, dt, yaw_rate, config_path, offline_probability=0.0, floris_version='v4'):
         super().__init__()
+        self.floris_config_path = config_path
         self.yaw_limits = yaw_limits
         self.yaw_rate = yaw_rate
         self.time = 0
         self.dt = dt
         self.floris_version = floris_version
         self.offline_probability = offline_probability
-        self._load_floris(config_path)
+        self._load_floris()
 
         self.current_yaw_setpoints = np.zeros((0, self.n_turbines))
     
-    def _load_floris(self, config_path):
-        self.env = FlorisModel(config_path)  # GCH model matched to the default "legacy_gauss" of V2
+    def _load_floris(self):
+        self.env = FlorisModel(self.floris_config_path)  # GCH model matched to the default "legacy_gauss" of V2
         self.n_turbines = self.env.core.farm.n_turbines
         
         return self

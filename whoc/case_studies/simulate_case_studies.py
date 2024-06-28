@@ -5,7 +5,10 @@ import os
 from time import perf_counter
 import sys
 from memory_profiler import profile
-import gc
+
+from concurrent.futures import ProcessPoolExecutor, wait
+from mpi4py import MPI
+from mpi4py.futures import MPICommExecutor
 
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 from whoc.controllers.mpc_wake_steering_controller import MPC
@@ -236,8 +239,8 @@ def simulate_controller(controller_class, input_dict, **kwargs):
 
     results_df.to_csv(os.path.join(results_dir, f"time_series_results_case_{kwargs['case_name']}_seed_{kwargs['wind_case_idx']}.csv".replace("/", "_")))
 
-    del ctrl
-    gc.collect()
+    # del ctrl
+    # gc.collect()
     
     return results_df
 
@@ -245,11 +248,11 @@ if __name__ == "__main__":
     
     if sys.argv[2].lower() == "mpi":
         MULTI = "mpi"
-        from mpi4py import MPI
-        from mpi4py.futures import MPICommExecutor
+        # from mpi4py import MPI
+        # from mpi4py.futures import MPICommExecutor
     else:
         MULTI = "cf"
-        from concurrent.futures import ProcessPoolExecutor
+        # from concurrent.futures import ProcessPoolExecutor
 
     DEBUG = sys.argv[1].lower() == "debug"
     PARALLEL = sys.argv[3].lower() == "parallel"
@@ -302,7 +305,7 @@ if __name__ == "__main__":
                                             case_name=case_lists[c]["case_names"], case_family="_".join(case_name_lists[c].split("_")[:-1]),
                                             lut_path=case_lists[c]["lut_path"], generate_lut=case_lists[c]["generate_lut"], seed=case_lists[c]["seed"], wind_field_config=wind_field_config, verbose=False)
                     for c, d in enumerate(input_dicts)]
-            # cf_wait(futures)
+            wait(futures)
             results = [fut.result() for fut in futures]
 
         print("run_simulations line 626")

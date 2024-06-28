@@ -1,3 +1,13 @@
+# TODO HIGH 1) Profile stochastic_interval, stochastic_sample and check gradients X
+# TODO HIGH 2) Check debug version of all case studies on local machine
+# TODO HIGH 3) Run full version of all case studies on Kestrel
+# TODO HIGH 4) Generate figures and table for FLORIS results
+
+# TODO MEDIUM 1) Generate 6 x AMR precursors, download outputs, and fit to Gaussian curve
+# TODO MEDIUM 2) Run AMR + Greedy, LUT controllers
+# TODO MEDIUM 3) Generate AMR + Greedy, LUT controller results
+# TODO MEDIUM 4) Run AMR + MPC controller and generate results
+
 import os
 # from mpi4py import MPI
 import pickle
@@ -15,7 +25,7 @@ from functools import partial
 from whoc import __file__ as whoc_file
 from whoc.wind_field.WindField import plot_ts
 from whoc.wind_field.WindField import generate_multi_wind_ts, WindField, write_abl_velocity_timetable, first_ord_filter
-from whoc.postprocess_case_studies import plot_wind_field_ts
+from whoc.case_studies.process_case_studies import plot_wind_field_ts
 from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 
@@ -23,7 +33,8 @@ from hercules.utilities import load_yaml
 
 # from warnings import simplefilter
 # simplefilter('error')
-N_COST_FUNC_TUNINGS = 21
+# N_COST_FUNC_TUNINGS = 21
+N_COST_FUNC_TUNINGS = 6 # TODO HIGH increase for non-debug mode
 
 if sys.platform == "linux":
     STORAGE_DIR = "/projects/ssc/ahenry/whoc/floris_case_studies"
@@ -74,10 +85,26 @@ case_studies = {
                            
                            "solver": {"group": 0, "vals": ["slsqp"]}
                           },
+    "slsqp_solver_sweep_small": {"seed": {"group": 0, "vals": [0]},
+                             "controller_class": {"group": 0, "vals": ["MPC"]},
+                             "wind_preview_type": {"group": 1, "vals": ["stochastic_interval"] * 3 + ["stochastic_sample"] * 3},
+                             "n_wind_preview_samples": {"group": 1, "vals": [3, 5, 7, 25, 50, 100]},
+                             "nu": {"group": 2, "vals": [10**x for x in range(-3, 0, 1)]},
+                             "alpha": {"group": 3, "vals": list(np.linspace(0.005, 0.995, 3))},
+                        # "nu": {"group": 1, "vals": [10**x for x in [0.1]]},
+                        # "n_wind_preview_samples": {"group": 2, "vals": [9]},
+                        #  "alpha": {"group": 3, "vals": [0.1]},
+                        #   "case_names": {"group": 3, "vals": [f"SLSQP_nu_{np.round(nu, 4)}_nsamples_{n_samples}_alpha_{alpha}" 
+                        #                                       for nu in list(np.logspace(-4, 0, 5))
+                        #                                       for n_samples in [10, 25, 50, 100, 200]
+                        #                                       for alpha in list(np.linspace(0, 1.0, 11))]},
+                           
+                           
+                           "solver": {"group": 0, "vals": ["slsqp"]}
+                          },
     "sequential_slsqp_solver": {"seed": {"group": 0, "vals": [0]},
                           "controller_class": {"group": 0, "vals": ["MPC"]},
                           "n_horizon": {"group": 0, "vals": [5]}, 
-                          "wind_preview_type": {"group": 0, "vals": ["stochastic"]},
                           "case_names": {"group": 1, "vals": ["Sequential SLSQP"]},
                           "solver": {"group": 1, "vals": ["sequential_slsqp"]}
                           },
@@ -96,12 +123,34 @@ case_studies = {
                          "case_names": {"group": 1, "vals": ["SLSQP", "Sequential SLSQP", "Sequential Refine"]},
                         #    "solver": {"group": 1, "vals": ["zsgd", "slsqp", "sequential_slsqp", "serial_refine"]},
                               "solver": {"group": 1, "vals": ["slsqp", "sequential_slsqp", "serial_refine"]}
-                          },
+    },
+    "yaw_offset_study": {"seed": {"group": 0, "vals": [0]},
+                          "controller_class": {"group": 1, "vals": ["MPC", "MPC", "LookupBasedWakeSteeringController"]},
+                          "case_names": {"group": 1, "vals":[f"StochasticInterval_1_3turb", f"StochasticInterval_3turb", f"LUT_3turb"]},
+                          "wind_preview_type": {"group": 1, "vals": ["stochastic_interval"] * 3},
+                           "n_wind_preview_samples": {"group": 1, "vals": [1, 3, 1]},
+                           "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_{3}.yaml")]},
+                            "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{3}.csv")]}
+    },
     "stochastic_preview_type": {"seed": {"group": 0, "vals": [0]},
                           "controller_class": {"group": 0, "vals": ["MPC"]},
-                          "case_names": {"group": 1, "vals": [f"StochasticInterval_{d}" for d in [10, 25, 50, 100, 200]] + [f"StochasticSample_{d}" for d in [3, 5, 7]]},
-                          "wind_preview_type": {"group": 1, "vals": ["stochastic_interval"] * 5 + ["stochastic_sample"] * 3},
-                           "n_wind_preview_samples": {"group": 1, "vals": [10, 25, 50, 100, 200] + [3, 5, 7]}
+                          "case_names": {"group": 1, "vals": [f"StochasticInterval_{d}" for d in [1, 3, 5, 7]] + [f"StochasticSample_{d}" for d in [25, 50, 100]]},
+                          "wind_preview_type": {"group": 1, "vals": ["stochastic_interval"] * 4 + ["stochastic_sample"] * 3},
+                           "n_wind_preview_samples": {"group": 1, "vals": [1, 3, 5, 7] + [25, 50, 100]}
+    },
+    "stochastic_preview_type_small": {"seed": {"group": 0, "vals": [0]},
+                          "controller_class": {"group": 0, "vals": ["MPC"]},
+                          "case_names": {"group": 1, "vals": [f"StochasticSample_{d}" for d in [100]] + [f"StochasticInterval_{d}" for d in [3]]},
+                          "wind_preview_type": {"group": 1, "vals": ["stochastic_sample"] * 1 + ["stochastic_interval"] * 1},
+                           "n_wind_preview_samples": {"group": 1, "vals": [500] + [3]},
+                           "nu": {"group": 0, "vals": [0.01]},
+                           "alpha": {"group": 0, "vals": [0.9]},
+                           "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_{3}.yaml")]},
+                            "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{3}.csv")]},
                           },
     "persistent_preview_type": {"seed": {"group": 0, "vals": [0]},
                           "controller_class": {"group": 0, "vals": ["MPC"]},
@@ -115,10 +164,10 @@ case_studies = {
                           },
     "wind_preview_type": {"seed": {"group": 0, "vals": [0]},
                           "controller_class": {"group": 0, "vals": ["MPC"]},
-                        "case_names": {"group": 1, "vals": ["Perfect", "Persistent", "Stochastic Interval", "Stochastic Sample"]},
-                        "n_wind_preview_samples": {"group": 1, "vals": [1, 1, 5, 100]},
+                        "case_names": {"group": 1, "vals": ["Perfect", "Persistent"] + ["Stochastic Interval"] * 3 + ["Stochastic Sample"] * 3},
+                        "n_wind_preview_samples": {"group": 1, "vals": [1, 1, 3, 5, 7, 25, 50, 100]},
                         #  "case_names": {"group": 1, "vals": ["Stochastic"]},
-                         "wind_preview_type": {"group": 1, "vals": ["perfect", "persistent", "stochastic_interval", "stochastic_sample"]}
+                         "wind_preview_type": {"group": 1, "vals": ["perfect", "persistent"] + ["stochastic_interval"] * 3 + ["stochastic_sample"] * 3}
                         #   "wind_preview_type": {"group": 1, "vals": ["stochastic"]}
                           },
     "lut_warm_start": {"seed": {"group": 0, "vals": [0]},
@@ -390,17 +439,21 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                      "wind_mag_ts": wind_mag_ts, "wind_dir_ts": wind_dir_ts}, fp)
 
     return case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts
-# 0, 1, 2, 3, 4, 8, 9
+# 0, 1, 2, 3, 4, 5, 6, 7
 # 0, 2, 4, 7, 8, 9
 # 0, 2, 10
 # 8
+# 1, 2, 3, 5, 6 7
+# 0, 2, 11
+# 0, 8
 case_families = ["baseline_controllers", "solver_type",
                     "wind_preview_type", "warm_start", 
                     "horizon_length", "breakdown_robustness",
                     "scalability", "cost_func_tuning", 
-                    "stochastic_preview_type", 
-                    "perfect_preview_type", "slsqp_solver_sweep",
-                    "test_nu_preview", "serial_refine_solver"]
+                    "stochastic_preview_type", "stochastic_preview_type_small",
+                    "perfect_preview_type", "slsqp_solver_sweep_small",
+                    "test_nu_preview", "serial_refine_solver", 
+                    "sequential_slsqp_solver", "yaw_offset_study"]
     
 if __name__ == "__main__":
     REGENERATE_WIND_FIELD = True

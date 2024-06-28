@@ -479,7 +479,7 @@ def generate_wind_preview(wf, current_freestream_measurements, simulation_time_s
     # define noise preview
     # noise_func = wf._sample_wind_preview(noise_func=np.random.multivariate_normal, noise_args=None)
 
-    wind_preview_data = defaultdict(list)
+    # wind_preview_data = defaultdict(list)
 
     if return_params:
             cond_mean_u, cond_mean_v, cond_cov_u, cond_cov_v = wind_preview_generator(current_measurements=current_freestream_measurements, return_params=return_params)
@@ -500,12 +500,14 @@ def generate_wind_preview(wf, current_freestream_measurements, simulation_time_s
         # compute freestream wind direction angle from above, clockwise from north
         dir_preview = np.arctan2(v_preview, u_preview)
         dir_preview = (270.0 - (dir_preview * (180.0 / np.pi))) % 360.0
+        wind_preview_data = {"FreestreamWindMag": mag_preview, 
+                             "FreestreamWindDir": dir_preview}
         
-        for j in range(int((wf.n_preview_steps + wf.preview_dt) // wf.time_series_dt)):
-            wind_preview_data[f"FreestreamWindSpeedU_{j}"] += list(u_preview[:, j])
-            wind_preview_data[f"FreestreamWindSpeedV_{j}"] += list(v_preview[:, j])
-            wind_preview_data[f"FreestreamWindMag_{j}"] += list(mag_preview[:, j])
-            wind_preview_data[f"FreestreamWindDir_{j}"] += list(dir_preview[:, j])
+        # for j in range(int((wf.n_preview_steps + wf.preview_dt) // wf.time_series_dt)):
+        #     wind_preview_data[f"FreestreamWindSpeedU_{j}"] += list(u_preview[:, j])
+        #     wind_preview_data[f"FreestreamWindSpeedV_{j}"] += list(v_preview[:, j])
+        #     wind_preview_data[f"FreestreamWindMag_{j}"] += list(mag_preview[:, j])
+        #     wind_preview_data[f"FreestreamWindDir_{j}"] += list(dir_preview[:, j])
         
         return wind_preview_data
 
