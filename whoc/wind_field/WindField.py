@@ -106,6 +106,7 @@ class WindField:
     
     # @profile
     def _generate_wind_preview_distribution_params(self, regenerate_params=False):
+        # TODO just compute this on the fly...
         if os.path.exists(self.distribution_params_path) and not regenerate_params:
             with open(self.distribution_params_path, "rb") as fp:
                 wind_preview_distribution_params = pickle.load(fp)

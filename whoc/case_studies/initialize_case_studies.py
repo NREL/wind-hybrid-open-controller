@@ -37,7 +37,7 @@ if sys.platform == "linux":
     #     # Kestrel
     #     STORAGE_DIR = "/projects/ssc/ahenry/whoc/floris_case_studies"
     # elif os.getlogin() == "aohe7145":
-    #     STORAGE_DIR = "/projects/aohe7145/whoc/floris_case_studies"
+    #     STORAGE_DIR = "/projects/aohe7145/toolboxes/wind-hybrid-open-controller/whoc/floris_case_studies"
 elif sys.platform == "darwin":
     N_COST_FUNC_TUNINGS = 6
     # STORAGE_DIR = "/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/floris_case_studies"
@@ -97,7 +97,7 @@ case_studies = {
                            "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_{3}.yaml")]},
                             "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{3}.csv")]}
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv")]}
     },
     "stochastic_preview_type": {"seed": {"group": 0, "vals": [0]},
                           "controller_class": {"group": 0, "vals": ["MPC"]},
@@ -115,7 +115,7 @@ case_studies = {
                            "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_{3}.yaml")]},
                             "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{3}.csv")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv")]},
                           },
     "persistent_preview_type": {"seed": {"group": 0, "vals": [0]},
                           "controller_class": {"group": 0, "vals": ["MPC"]},
@@ -154,7 +154,7 @@ case_studies = {
          "num_turbines": {"group": 0, "vals": [25]}, 
          "controller_class": {"group": 0, "vals": ["MPC"]},
          "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{25}.csv")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{25}.csv")]},
           "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_{25}.yaml")]},
           "case_names": {"group": 1, "vals": [f"{f*100:04.1f}% Chance of Breakdown" for f in list(np.linspace(0, 0.5, N_COST_FUNC_TUNINGS))]},
@@ -165,7 +165,7 @@ case_studies = {
                     "case_names": {"group": 1, "vals": ["3 Turbines", "9 Turbines", "25 Turbines", "100 Turbines"]},
                     "num_turbines": {"group": 1, "vals": [3, 9, 25, 100]},
                     "lut_path": {"group": 1, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{nturb}.csv") for nturb in [3, 9, 25, 100]]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{nturb}.csv") for nturb in [3, 9, 25, 100]]},
                     "floris_input_file": {"group": 1, "vals": [os.path.join(os.path.dirname(whoc_file), "../examples/mpc_wake_steering_florisstandin", 
                                                              f"floris_gch_{i}.yaml") for i in [3, 9, 25, 100]]},
     },
@@ -182,7 +182,7 @@ case_studies = {
                          "nu": {"group": 0, "vals": [0.01]},
                          "num_turbines": {"group": 0, "vals": [3]},
                          "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                                        f"../examples/mpc_wake_steering_florisstandin/lut_{nturb}.csv") for nturb in [3]]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{nturb}.csv") for nturb in [3]]},
                          "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), "../examples/mpc_wake_steering_florisstandin", 
                                                              f"floris_gch_{i}.yaml") for i in [3]]},
                           "n_wind_preview_samples": {"group": 1, "vals": [1, 5, 1]}
