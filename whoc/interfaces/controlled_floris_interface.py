@@ -19,8 +19,6 @@ import pandas as pd
 from scipy.interpolate import LinearNDInterpolator
 import floris.flow_visualization as wakeviz
 import matplotlib.pyplot as plt
-from memory_profiler import profile
-
 
 class ControlledFlorisModel(InterfaceBase):
     def __init__(self, yaw_limits, dt, yaw_rate, config_path, offline_probability=0.0, floris_version='v4'):

@@ -2,7 +2,6 @@ import pandas as pd
 import os
 import yaml
 import re
-import sys
 import matplotlib.pyplot as plt
 
 import numpy as np
@@ -17,7 +16,6 @@ import seaborn as sns
 sns.set_theme(style="darkgrid", rc={'figure.figsize':(4,4)})
 
 from whoc import __file__ as whoc_file
-
 
 def get_results_data(results_dirs):
     # from whoc.wind_field.WindField import first_ord_filter
@@ -338,8 +336,24 @@ def plot_yaw_power_ts(data_df, turbine_indices, save_path, seed=0):
 
 
 def plot_yaw_power_distribution(data_df, save_path):
+
     """
     For each controller class (categorical, along x-axis), plot the distribution of total farm powers and total absolute yaw angle changes over all time-steps and seeds (different subplots), plot their angle changes and powers vs time with a combo plot for each turbine.
+
+    results_path = os.path.join(os.path.dirname(whoc_file), "..", "examples")
+    # TODO how to find particular seed
+    results_dirs = [(controller_class, 0, os.path.join(results_path, controller_dir, "outputs", "hercules_output.csv"))
+                    # for seed in range(6)
+                    for controller_class, controller_dir in [("Greedy", "greedy_wake_steering_florisstandin"), 
+                                                             ("LUT", "lookup-based_wake_steering_florisstandin"), 
+                                                             ("MPC", "mpc_wake_steering_florisstandin")]]
+    input_dict = load_yaml(os.path.join(os.path.dirname(whoc_file), "../examples/hercules_input_001.yaml"))
+    data_df = read_amr_outputs(results_dirs, input_dict)
+    
+    turbine_indices = [0, 1, 5, 6]
+    wind_field_fig_dir = os.path.join(os.path.dirname(whoc_file), '../examples/wind_field_data/figs') 
+    plot_yaw_power_ts(data_df, turbine_indices, os.path.join(wind_field_fig_dir, "amr_yaw_power_ts.png"))
+    plot_yaw_power_distribution(data_df,  os.path.join(wind_field_fig_dir, "amr_yaw_power_dist.png"))
     """
     plt.figure(1)
     ax1 = sns.catplot(x="ControllerClass", y="FarmAbsoluteYawAngleChange", data=data_df, kind="boxen")
@@ -554,7 +568,7 @@ def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, 
                 # turbine_wind_dirs = case_df[turbine_wind_direction_cols[turbine_idx]].sort_values(by="Time")
                 freestream_wind_dirs = case_df["FreestreamWindDir"]
 
-                turbine_powers = case_df[turbine_power_cols[turbine_idx]]
+                turbine_powers = case_df[turbine_power_cols[turbine_idx]] / 1e6
                 if "LUT" in case_name:
                     ax[subplot_idx].scatter(freestream_wind_dirs, turbine_powers, label=f"{case_label} Simulation", color=colors[len(case_names)], marker=".", s=5)
                 else:
@@ -688,15 +702,15 @@ def plot_cost_function_pareto_curve(data_summary_df, case_studies, save_dir):
     sub_df = data_summary_df.loc[data_summary_df.index.get_level_values("CaseFamily") == "cost_func_tuning_alpha", :]
     sub_df.reset_index(level="CaseName", inplace=True)
     sub_df.loc[:, "CaseName"] = [float(x[-1]) for x in sub_df["CaseName"].str.split("_")]
-    sub_df[("RelativeFarmPowerMean", "mean")] = sub_df[("RelativeFarmPowerMean", "mean")] / 1e6
-    sub_df[("RelativeFarmPowerMean", "min")] = sub_df[("RelativeFarmPowerMean", "min")] / 1e6
-    sub_df[("RelativeFarmPowerMean", "max")] = sub_df[("RelativeFarmPowerMean", "max")] / 1e6
+    sub_df[("FarmPowerMean", "mean")] = sub_df[("FarmPowerMean", "mean")] / 1e6
+    sub_df[("FarmPowerMean", "min")] = sub_df[("FarmPowerMean", "min")] / 1e6
+    sub_df[("FarmPowerMean", "max")] = sub_df[("FarmPowerMean", "max")] / 1e6
 
     # Plot "RelativeFarmPowerMean" vs. "RelativeYawAngleChangeAbsMean" for all "SolverType" == "cost_func_tuning"
-    ax = sns.scatterplot(data=sub_df, x=("RelativeYawAngleChangeAbsMean", "mean"), y=("RelativeFarmPowerMean", "mean"),
+    ax = sns.scatterplot(data=sub_df, x=("YawAngleChangeAbsMean", "mean"), y=("FarmPowerMean", "mean"),
                     size="CaseName", #size_order=reversed(sub_df["CaseName"].to_numpy()),
                     ax=ax)
-    ax.set(xlabel="Mean Absolute Relative Yaw Angle Change [$^\\circ$]", ylabel="Mean Relative Farm Power [MW]")
+    ax.set(xlabel="Mean Absolute Yaw Angle Change [$^\\circ$]", ylabel="Mean Farm Power [MW]")
     ax.collections[0].set_sizes(ax.collections[0].get_sizes() * 5)
     ax.legend([], [], frameon=False)
     fig.savefig(os.path.join(save_dir, "cost_function_pareto_curve.png"))
@@ -705,21 +719,21 @@ def plot_breakdown_robustness(data_summary_df, case_studies, save_dir):
     # TODO could also make countplot and plot all time-step data points for different values of probability
     # TODO update based on new data_summary_df format
     """
-    plot mean relative farm level power vs mean relative sum of absolute yaw changes for different values of breakdown probability
+    plot mean farm level power vs mean relative sum of absolute yaw changes for different values of breakdown probability
     """
     
     sub_df = data_summary_df.loc[data_summary_df.index.get_level_values("CaseFamily") == "breakdown_robustness", :]
     sub_df.reset_index(level="CaseName", inplace=True)
-    sub_df[("RelativeFarmPowerMean", "mean")] = sub_df[("RelativeFarmPowerMean", "mean")] / 1e6
-    sub_df[("RelativeFarmPowerMean", "min")] = sub_df[("RelativeFarmPowerMean", "min")] / 1e6
-    sub_df[("RelativeFarmPowerMean", "max")] = sub_df[("RelativeFarmPowerMean", "max")] / 1e6
+    sub_df[("FarmPowerMean", "mean")] = sub_df[("FarmPowerMean", "mean")] / 1e6
+    sub_df[("FarmPowerMean", "min")] = sub_df[("FarmPowerMean", "min")] / 1e6
+    sub_df[("FarmPowerMean", "max")] = sub_df[("FarmPowerMean", "max")] / 1e6
     # sub_df["CaseName"] = [case_studies["breakdown_robustness"]["case_names"]["vals"][int(solver_type.split("_")[-1])] for solver_type in sub_df["SolverType"]]
 
     # Plot "RelativeFarmPowerMean" vs. "RelativeYawAngleChangeAbsMean" for all "SolverType" == "cost_func_tuning"
     fig, ax = plt.subplots(1, figsize=(10.29,  5.5))
-    sns.scatterplot(data=sub_df, x=("RelativeYawAngleChangeAbsMean", "mean"), y=("RelativeFarmPowerMean", "mean"), size="CaseName", 
+    sns.scatterplot(data=sub_df, x=("YawAngleChangeAbsMean", "mean"), y=("FarmPowerMean", "mean"), size="CaseName", 
                     size_order=reversed(sub_df["CaseName"]), ax=ax)
-    ax.set(xlabel="Mean Absolute Relative Yaw Angle Change [$^\\circ$]", ylabel="Mean Relative Farm Power [MW]")
+    ax.set(xlabel="Mean Absolute Yaw Angle Change [$^\\circ$]", ylabel="Mean Farm Power [MW]")
     # ax.legend()
     ax.legend_.set_title("Chance of Breakdown")
     ax.collections[0].set_sizes(ax.collections[0].get_sizes() * 5)
@@ -731,44 +745,3 @@ def plot_breakdown_robustness(data_summary_df, case_studies, save_dir):
     ax.legend_.texts[4].set_text("0%")
 
     fig.savefig(os.path.join(save_dir, "breakdown_robustness.png"))
-
-# if __name__ == "__main__":
-#     DEBUG = sys.argv[1].lower() == "debug"
-
-#     if len(sys.argv) > 4:
-#         CASE_FAMILY_IDX = [int(i) for i in sys.argv[4:]]
-#     else:
-#         CASE_FAMILY_IDX = list(range(len(case_families)))
-
-#     if DEBUG:
-#         N_SEEDS = 1
-#     else:
-#         N_SEEDS = 6
-
-#     for case_family in case_families:
-#         case_studies[case_family]["wind_case_idx"] = {"group": 2, "vals": [i for i in range(N_SEEDS)]}
-
-#     # run_simulations(["perfect_preview_type"], REGENERATE_WIND_FIELD)
-#     print([case_families[i] for i in CASE_FAMILY_IDX])
-
-#     results_dirs = [os.path.join(STORAGE_DIR, case_families[i]) for i in CASE_FAMILY_IDX]
-
-#     # compute stats over all seeds
-#     process_simulations(results_dirs)
-
-#     plot_simulations(results_dirs[0:2])
-
-#     results_path = os.path.join(os.path.dirname(whoc_file), "..", "examples")
-#     # TODO how to find particular seed
-#     results_dirs = [(controller_class, 0, os.path.join(results_path, controller_dir, "outputs", "hercules_output.csv"))
-#                     # for seed in range(6)
-#                     for controller_class, controller_dir in [("Greedy", "greedy_wake_steering_florisstandin"), 
-#                                                              ("LUT", "lookup-based_wake_steering_florisstandin"), 
-#                                                              ("MPC", "mpc_wake_steering_florisstandin")]]
-#     input_dict = load_yaml(os.path.join(os.path.dirname(whoc_file), "../examples/hercules_input_001.yaml"))
-#     data_df = read_amr_outputs(results_dirs, input_dict)
-    
-#     turbine_indices = [0, 1, 5, 6]
-#     wind_field_fig_dir = os.path.join(os.path.dirname(whoc_file), '../examples/wind_field_data/figs') 
-#     plot_yaw_power_ts(data_df, turbine_indices, os.path.join(wind_field_fig_dir, "amr_yaw_power_ts.png"))
-#     plot_yaw_power_distribution(data_df,  os.path.join(wind_field_fig_dir, "amr_yaw_power_dist.png"))
