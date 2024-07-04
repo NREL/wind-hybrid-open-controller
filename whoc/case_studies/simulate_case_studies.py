@@ -232,7 +232,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
         "TotalRunningOptimizationCost": np.sum(running_opt_cost_terms_ts, axis=1),
     })
 
-    results_dir = os.path.join(STORAGE_DIR, kwargs['case_family'])
+    results_dir = os.path.join(kwargs["save_dir"], kwargs['case_family'])
 
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
