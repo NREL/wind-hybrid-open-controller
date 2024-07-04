@@ -883,8 +883,8 @@ class MPC(ControllerBase):
 
 			self.fi._load_floris()
 			# TODO update floris_model, warm start LUT for turbine breakdown
-			if any(self.offline_status):
-				print("hi")
+			# if any(self.offline_status):
+			# 	print("hi")
 			self.fi.env.set(
 				wind_directions=np.tile(self.wind_preview_samples[f"FreestreamWindDir"][:, 1:].flatten(), (n_wind_preview_repeats,)),
 				wind_speeds=np.tile(self.wind_preview_samples[f"FreestreamWindMag"][:, 1:].flatten(), (n_wind_preview_repeats,)),
