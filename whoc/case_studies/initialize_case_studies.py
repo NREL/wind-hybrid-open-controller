@@ -62,7 +62,7 @@ case_studies = {
                             "wind_preview_type": {"group": 1, "vals": ["stochastic_interval"] * 3 + ["stochastic_sample"] * 3},
                             "n_wind_preview_samples": {"group": 1, "vals": [3, 5, 7, 25, 50, 100]},
                             "nu": {"group": 2, "vals": [10**x for x in range(-5, 0, 1)]},
-                            "alpha": {"group": 3, "vals": list(np.linspace(0.005, 0.995, 11))}
+                            "alpha": {"group": 3, "vals": list(np.linspace(0.005, 0.995, 12))}
                           },
     "slsqp_solver_sweep_small": {"seed": {"group": 0, "vals": [0]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
@@ -405,7 +405,8 @@ case_families = ["baseline_controllers", "solver_type",
                     "wind_preview_type", "warm_start", 
                     "horizon_length", "breakdown_robustness",
                     "scalability", "cost_func_tuning", 
+                    "yaw_offset_study", "slsqp_solver_sweep",
                     "stochastic_preview_type", "stochastic_preview_type_small",
                     "perfect_preview_type", "slsqp_solver_sweep_small",
                     "test_nu_preview", "serial_refine_solver", 
-                    "sequential_slsqp_solver", "yaw_offset_study"]
+                    "sequential_slsqp_solver"]
