@@ -14,7 +14,7 @@ from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 from whoc.controllers.mpc_wake_steering_controller import MPC
 from whoc.controllers.greedy_wake_steering_controller import GreedyController
 from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
-from whoc.case_studies.initialize_case_studies import case_studies, STORAGE_DIR, case_families
+from whoc.case_studies.initialize_case_studies import case_studies, case_families
 from whoc.wind_field.WindField import first_ord_filter
 
 #@profile
