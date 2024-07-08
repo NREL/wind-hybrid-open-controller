@@ -15,7 +15,7 @@ from whoc.controllers.controller_base import ControllerBase
 class GreedyController(ControllerBase):
 	def __init__(self, interface, input_dict, verbose=False, **kwargs):
 		super().__init__(interface, verbose=verbose)
-		self.n_turbines = input_dict["controller"]["num_turbines"]
+		self.n_turbines = interface.n_turbines #input_dict["controller"]["num_turbines"]
 		self.yaw_limits = input_dict["controller"]["yaw_limits"]
 		self.yaw_rate = input_dict["controller"]["yaw_rate"]
 		self.yaw_increment = input_dict["controller"]["yaw_increment"]
@@ -25,6 +25,7 @@ class GreedyController(ControllerBase):
 		self.historic_measurements = {"wind_directions": np.zeros((0, self.n_turbines))}
 		
 		self.lpf_time_const = input_dict["controller"]["lpf_time_const"]
+		self.lpf_start_time = input_dict["controller"]["lpf_start_time"]
 		self.lpf_alpha = np.exp(-(1 / input_dict["controller"]["lpf_time_const"]) * input_dict["dt"])
 		self.deadband_thr = input_dict["controller"]["deadband_thr"]
 		self.use_filt = input_dict["controller"]["use_filtered_wind_dir"]
@@ -97,7 +98,7 @@ class GreedyController(ControllerBase):
 					current_wind_directions])[-int((self.lpf_time_const // self.simulation_dt) * 1e3):, :]
 				
 			# if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
-			if self.current_time < 180. or not self.use_filt:
+			if self.current_time < self.lpf_start_time or not self.use_filt:
 				wind_dirs = current_wind_directions
 					
 			else:
@@ -142,7 +143,7 @@ class GreedyController(ControllerBase):
 			
 			self.is_yawing[is_target_changing] = True
 			
-			constrained_yaw_setpoints = np.clip(new_yaw_setpoints, current_yaw_setpoints - self.dt * self.yaw_rate, current_yaw_setpoints + self.dt * self.yaw_rate)
+			constrained_yaw_setpoints = np.clip(new_yaw_setpoints, current_yaw_setpoints - self.simulation_dt * self.yaw_rate, current_yaw_setpoints + self.simulation_dt * self.yaw_rate)
 			constrained_yaw_setpoints = np.rint(constrained_yaw_setpoints / self.yaw_increment) * self.yaw_increment
 			
 			self.controls_dict = {"yaw_angles": list(constrained_yaw_setpoints)}

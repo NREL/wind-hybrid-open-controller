@@ -5,13 +5,16 @@ import os
 from time import perf_counter
 import sys
 from memory_profiler import profile
-import gc
+
+from concurrent.futures import ProcessPoolExecutor, wait
+from mpi4py import MPI
+from mpi4py.futures import MPICommExecutor
 
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 from whoc.controllers.mpc_wake_steering_controller import MPC
 from whoc.controllers.greedy_wake_steering_controller import GreedyController
 from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
-from whoc.case_studies.initialize_case_studies import case_studies, STORAGE_DIR, case_families
+from whoc.case_studies.initialize_case_studies import case_studies, case_families
 from whoc.wind_field.WindField import first_ord_filter
 
 #@profile
@@ -229,89 +232,14 @@ def simulate_controller(controller_class, input_dict, **kwargs):
         "TotalRunningOptimizationCost": np.sum(running_opt_cost_terms_ts, axis=1),
     })
 
-    results_dir = os.path.join(STORAGE_DIR, kwargs['case_family'])
+    results_dir = os.path.join(kwargs["save_dir"], kwargs['case_family'])
 
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
     results_df.to_csv(os.path.join(results_dir, f"time_series_results_case_{kwargs['case_name']}_seed_{kwargs['wind_case_idx']}.csv".replace("/", "_")))
 
-    del ctrl
-    gc.collect()
+    # del ctrl
+    # gc.collect()
     
     return results_df
-
-if __name__ == "__main__":
-    
-    if sys.argv[2].lower() == "mpi":
-        MULTI = "mpi"
-        from mpi4py import MPI
-        from mpi4py.futures import MPICommExecutor
-    else:
-        MULTI = "cf"
-        from concurrent.futures import ProcessPoolExecutor
-
-    DEBUG = sys.argv[1].lower() == "debug"
-    PARALLEL = sys.argv[3].lower() == "parallel"
-    if len(sys.argv) > 4:
-        CASE_FAMILY_IDX = [int(i) for i in sys.argv[4:]]
-    else:
-        CASE_FAMILY_IDX = list(range(len(case_families)))
-
-    if DEBUG:
-        N_SEEDS = 1
-    else:
-        N_SEEDS = 6
-
-    # intialization code
-    if (MULTI == "mpi" and (comm_rank := MPI.COMM_WORLD.Get_rank()) == 0) or (MULTI != "mpi"):
-
-        for case_family in case_families:
-            case_studies[case_family]["wind_case_idx"] = {"group": 2, "vals": [i for i in range(N_SEEDS)]}
-
-        os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "true"
-        # run_simulations(["perfect_preview_type"], REGENERATE_WIND_FIELD)
-        print([case_families[i] for i in CASE_FAMILY_IDX])
-
-        if os.path.exists(os.path.join(STORAGE_DIR, "init_simulations.pkl")):
-            with open(os.path.join(STORAGE_DIR, "init_simulations.pkl"), "rb") as fp:
-                tmp = pickle.load(fp)
-                case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = tuple(tmp.values())
-        else:
-            raise FileNotFoundError("run initialize_case_studies.py to generate init_simulation.pkl")
-
-        # run simulations
-        print(f"about to submit calls to simulate_controller")
-        
-    if PARALLEL:
-        if MULTI == "mpi":
-            comm_size = MPI.COMM_WORLD.Get_size()
-            # comm_rank = MPI.COMM_WORLD.Get_rank()
-            # node_name = MPI.Get_processor_name()
-            executor = MPICommExecutor(MPI.COMM_WORLD, root=0)
-        else:
-            executor = ProcessPoolExecutor()
-        with executor as run_simulations_exec:
-            if MULTI == "mpi":
-                run_simulations_exec.max_workers = comm_size
-            print(f"run_simulations line 618 with {run_simulations_exec._max_workers} workers")
-            # for MPIPool executor, (waiting as if shutdown() were called with wait set to True)
-            futures = [run_simulations_exec.submit(simulate_controller, 
-                                            controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
-                                            wind_case_idx=case_lists[c]["wind_case_idx"], wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
-                                            case_name=case_lists[c]["case_names"], case_family="_".join(case_name_lists[c].split("_")[:-1]),
-                                            lut_path=case_lists[c]["lut_path"], generate_lut=case_lists[c]["generate_lut"], seed=case_lists[c]["seed"], wind_field_config=wind_field_config, verbose=False)
-                    for c, d in enumerate(input_dicts)]
-            # cf_wait(futures)
-            results = [fut.result() for fut in futures]
-
-        print("run_simulations line 626")
-
-    else:
-        results = []
-        for c, d in enumerate(input_dicts):
-            results.append(simulate_controller(controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
-                                                wind_case_idx=case_lists[c]["wind_case_idx"], wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
-                                                case_name=case_lists[c]["case_names"], case_family="_".join(case_name_lists[c].split("_")[:-1]),
-                                                lut_path=case_lists[c]["lut_path"], generate_lut=case_lists[c]["generate_lut"], seed=case_lists[c]["seed"],
-                                                wind_field_config=wind_field_config, verbose=False))
