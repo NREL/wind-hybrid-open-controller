@@ -62,7 +62,8 @@ case_studies = {
                             "wind_preview_type": {"group": 1, "vals": ["stochastic_interval"] * 3 + ["stochastic_sample"] * 3},
                             "n_wind_preview_samples": {"group": 1, "vals": [3, 5, 7, 25, 50, 100]},
                             "nu": {"group": 2, "vals": [10**x for x in range(-5, 0, 1)]},
-                            "alpha": {"group": 3, "vals": list(np.linspace(0.005, 0.995, 12))}
+                            # "alpha": {"group": 0, "vals": [0.8]}
+                            # "alpha": {"group": 3, "vals": list(np.linspace(0.005, 0.995, 12))}
                           },
     "slsqp_solver_sweep_small": {"seed": {"group": 0, "vals": [0]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
@@ -401,6 +402,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
 
     return case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts
 
+# 0, 9
 case_families = ["baseline_controllers", "solver_type",
                     "wind_preview_type", "warm_start", 
                     "horizon_length", "breakdown_robustness",
