@@ -16,7 +16,6 @@ import numpy as np
 import pandas as pd
 import os
 import re
-import gc
 
 from memory_profiler import profile
 
@@ -33,7 +32,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 		super().__init__(interface, verbose=verbose)
 		self.simulation_dt = input_dict["dt"]
 		self.dt = input_dict["controller"]["dt"]  # Won't be needed here, but generally good to have
-		self.n_turbines = input_dict["controller"]["num_turbines"]
+		self.n_turbines = interface.n_turbines #input_dict["controller"]["num_turbines"]
 		self.turbines = range(self.n_turbines)
 		self.historic_measurements = {"wind_directions": [],
 									  "wind_speeds": []}
@@ -42,6 +41,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 		# self.ws_lpf_alpha = np.exp(-input_dict["controller"]["ws_lpf_omega_c"] * input_dict["controller"]["lpf_T"])
 		self.use_filt = input_dict["controller"]["use_lut_filtered_wind_dir"]
 		self.lpf_time_const = input_dict["controller"]["lpf_time_const"]
+		self.lpf_start_time = input_dict["controller"]["lpf_start_time"]
 		self.lpf_alpha = np.exp(-(1 / input_dict["controller"]["lpf_time_const"]) * input_dict["dt"])
 		self.deadband_thr = input_dict["controller"]["deadband_thr"]
 		self.floris_input_file = input_dict["controller"]["floris_input_file"]
@@ -143,8 +143,8 @@ class LookupBasedWakeSteeringController(ControllerBase):
 		# pd.unique(df_lut.iloc[np.where(np.any(np.vstack(df_lut["yaw_angles_opt"].array) != 0, axis=1))[0]]["wind_direction"])
 		# Derive linear interpolant from solution space
 		self.wake_steering_interpolant = LinearNDInterpolator(
-			points=df_lut[["wind_direction", "wind_speed"]],
-			values=np.vstack(df_lut["yaw_angles_opt"]),
+			points=df_lut[["wind_direction", "wind_speed"]].values,
+			values=np.vstack(df_lut["yaw_angles_opt"].values),
 			fill_value=0.0,
 		)
 	
@@ -182,7 +182,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			# if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
 			if self.verbose:
 				print(f"unfiltered wind direction = {current_wind_direction}")
-			if self.current_time < 180. or not self.use_filt:
+			if self.current_time < self.lpf_start_time or not self.use_filt:
 				wind_dir = current_wind_direction
 				wind_speed = current_wind_speed
 			else:
@@ -201,7 +201,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			
 			# flip the boolean value of those turbines which were actively yawing towards a previous setpoint, but now have reached that setpoint
 			if any(self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints)):
-				print(f"LUT Controller turbines {np.where(self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints))[0]} have reached their target setpoint")
+				print(f"LUT Controller turbines {np.where(self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints))[0]} have reached their target setpoint at time {self.current_time}")
 			
 			self.is_yawing[self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints)] = False
 
@@ -230,7 +230,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 
 			self.is_yawing[is_target_changing] = True
 
-			constrained_yaw_setpoints = np.clip(new_yaw_setpoints, current_yaw_setpoints - self.dt * self.yaw_rate, current_yaw_setpoints + self.dt * self.yaw_rate)
+			constrained_yaw_setpoints = np.clip(new_yaw_setpoints, current_yaw_setpoints - self.simulation_dt * self.yaw_rate, current_yaw_setpoints + self.simulation_dt * self.yaw_rate)
 			
 			# if np.all(np.diff(constrained_yaw_setpoints) == 0) and not np.all(np.diff(new_yaw_setpoints) == 0):
 			# 	print(f"Note: all yaw angles have been constrained by the yaw rate equally at time {self.current_time}")
