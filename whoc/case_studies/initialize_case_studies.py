@@ -52,11 +52,16 @@ case_studies = {
                                 "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController", "MPC", "MPC", "MPC", "MPC"]},
                                 "use_filtered_wind_dir": {"group": 1, "vals": [True, True, True, False, False, False]},
                           },
-    "greedy": {"seed": {"group": 0, "vals": [0]},
-            #    "wind_case_idx": {"group": 2, "vals": [i for i in range(N_SEEDS)]},
-                                "case_names": {"group": 1, "vals": ["Greedy"]},
-                                "controller_class": {"group": 1, "vals": ["GreedyController"]}
-                          },
+    "lut": {"seed": {"group": 0, "vals": [0]},
+            "case_names": {"group": 0, "vals": ["LUT"]},
+            "controller_class": {"group": 0, "vals": ["LookupBasedWakeSteeringController"]},
+            "dt": {"group": 0, "vals": [5]},
+            "use_filtered_wind_dir": {"group": 0, "vals": [True]},
+            "lut_path": {"group": 0, "vals": 
+                            [os.path.join(os.path.dirname(whoc_file), f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv")]},
+            "floris_input_file": {"group": 0, "vals": 
+                                    [os.path.join(os.path.dirname(whoc_file), "../examples/mpc_wake_steering_florisstandin", f"floris_gch_{3}.yaml")]},
+            },
     "slsqp_solver_sweep": {"seed": {"group": 0, "vals": [0]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
                             "wind_preview_type": {"group": 1, "vals": ["stochastic_interval"] * 3 + ["stochastic_sample"] * 3},
@@ -164,7 +169,6 @@ case_studies = {
     "scalability": {"seed": {"group": 0, "vals": [0]},
                     "controller_class": {"group": 0, "vals": ["MPC"]},
                     "case_names": {"group": 1, "vals": ["3 Turbines", "9 Turbines", "25 Turbines", "100 Turbines"]},
-                    "num_turbines": {"group": 1, "vals": [3, 9, 25, 100]},
                     "lut_path": {"group": 1, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{nturb}.csv") for nturb in [3, 9, 25, 100]]},
                     "floris_input_file": {"group": 1, "vals": [os.path.join(os.path.dirname(whoc_file), "../examples/mpc_wake_steering_florisstandin", 
@@ -411,4 +415,4 @@ case_families = ["baseline_controllers", "solver_type",
                     "stochastic_preview_type", "stochastic_preview_type_small",
                     "perfect_preview_type", "slsqp_solver_sweep_small",
                     "test_nu_preview", "serial_refine_solver", 
-                    "sequential_slsqp_solver"]
+                    "sequential_slsqp_solver", "lut"]
