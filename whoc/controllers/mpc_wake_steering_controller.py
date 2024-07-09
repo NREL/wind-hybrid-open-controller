@@ -879,7 +879,6 @@ class MPC(ControllerBase):
 			# TODO is this a valid way to check for amr-wind
 			current_powers = self.measurements_dict["turbine_powers"]
 			self.offline_status = np.isclose(current_powers, 0.0)
-			self.offline_status = np.broadcast_to(self.offline_status, (self.fi.env.core.flow_field.n_findex, self.n_turbines))
 
 			self.fi._load_floris()
 			# TODO update floris_model, warm start LUT for turbine breakdown
@@ -890,7 +889,7 @@ class MPC(ControllerBase):
 				wind_speeds=np.tile(self.wind_preview_samples[f"FreestreamWindMag"][:, 1:].flatten(), (n_wind_preview_repeats,)),
 				turbulence_intensities=np.tile([self.fi.env.core.flow_field.turbulence_intensities[0]] * self.n_wind_preview_samples * self.n_horizon, (n_wind_preview_repeats,))
 			)
-
+			self.offline_status = np.broadcast_to(self.offline_status, (self.fi.env.core.flow_field.n_findex, self.n_turbines))
 			# compute greedy turbine powers with zero offset
 			self.fi.env.set_operation(
 				# yaw_angles=np.zeros((self.n_wind_preview_samples * self.n_horizon, self.n_turbines)),
