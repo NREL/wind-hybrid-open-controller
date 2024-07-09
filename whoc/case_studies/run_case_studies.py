@@ -39,18 +39,15 @@ if __name__ == "__main__":
         case_studies[case_family]["wind_case_idx"] = {"group": max(d["group"] for d in case_studies[case_family].values()) + 1, "vals": [i for i in range(args.n_seeds)]}
 
     os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "true"
-    
-    print([case_families[i] for i in args.case_ids])
+
     if args.run_simulations:
-        # print(55)
         # run simulations
         
         if (args.multiprocessor == "mpi" and (comm_rank := MPI.COMM_WORLD.Get_rank()) == 0) or (args.multiprocessor != "mpi") or not args.parallel:
-            print(f"running initialize_simulations")
-        
+            print(f"running initialize_simulations for case_ids {[case_families[i] for i in args.case_ids]}")
+            
             case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = initialize_simulations([case_families[i] for i in args.case_ids], regenerate_wind_field=args.generate_wind_field, regenerate_lut=args.generate_lut, n_seeds=args.n_seeds, stoptime=args.stoptime, save_dir=args.save_dir)
         
-        # print(62)
         if args.parallel:
             if args.multiprocessor == "mpi":
                 comm_size = MPI.COMM_WORLD.Get_size()
@@ -72,7 +69,7 @@ if __name__ == "__main__":
                                                 case_name="_".join([f"{key}_{val if (type(val) is str or type(val) is np.str_) else np.round(val, 5)}" for key, val in case_lists[c].items() if key not in ["wind_case_idx", "seed"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
                                                 case_family="_".join(case_name_lists[c].split("_")[:-1]), seed=case_lists[c]["seed"], wind_field_config=wind_field_config, verbose=False, save_dir=args.save_dir)
                         for c, d in enumerate(input_dicts)]
-                # wait(futures)
+                
                 _ = [fut.result() for fut in futures]
 
         else:
@@ -82,8 +79,7 @@ if __name__ == "__main__":
                                                 case_name="_".join([f"{key}_{val if (type(val) is str or type(val) is np.str_) else np.round(val, 5)}" for key, val in case_lists[c].items() if key not in ["wind_case_idx", "seed"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
                                                 case_family="_".join(case_name_lists[c].split("_")[:-1]), seed=case_lists[c]["seed"],
                                                 wind_field_config=wind_field_config, verbose=False, save_dir=args.save_dir)
-        
-    # print(97)
+    
     if (args.postprocess_simulations) and ((args.multiprocessor != "mpi") or (args.multiprocessor == "mpi" and (comm_rank := MPI.COMM_WORLD.Get_rank()) == 0)):
         
         results_dirs = [os.path.join(args.save_dir, case_families[i]) for i in args.case_ids]
