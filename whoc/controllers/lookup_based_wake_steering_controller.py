@@ -200,7 +200,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			current_yaw_setpoints = self.controls_dict["yaw_angles"]
 			
 			# flip the boolean value of those turbines which were actively yawing towards a previous setpoint, but now have reached that setpoint
-			if any(self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints)):
+			if self.verbose and any(self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints)):
 				print(f"LUT Controller turbines {np.where(self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints))[0]} have reached their target setpoint at time {self.current_time}")
 			
 			self.is_yawing[self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints)] = False
@@ -213,10 +213,10 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			# change the turbine yaw setpoints that have surpassed the threshold difference AND are not already yawing towards a previous setpoint
 			is_target_changing = (np.abs(target_yaw_setpoints - current_yaw_setpoints) > self.deadband_thr) & ~self.is_yawing
 
-			if any(is_target_changing):
+			if self.verbose and any(is_target_changing):
 				print(f"LUT Controller starting to yaw turbines {np.where(is_target_changing)[0]} from {current_yaw_setpoints[is_target_changing]} to {target_yaw_setpoints[is_target_changing]} at time {self.current_time}")
 			
-			if any(self.is_yawing):
+			if self.verbose and any(self.is_yawing):
 				print(f"LUT Controller continuing to yaw turbines {np.where(self.is_yawing)[0]} from {current_yaw_setpoints[self.is_yawing]} to {self.previous_target_yaw_setpoints[self.is_yawing]} at time {self.current_time}")
 			
 			# else:

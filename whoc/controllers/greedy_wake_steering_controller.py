@@ -112,7 +112,7 @@ class GreedyController(ControllerBase):
 			
 			current_yaw_setpoints = self.controls_dict["yaw_angles"]
 
-			if any(self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints)):
+			if self.verbose and any(self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints)):
 				print(f"Greedy Controller turbines {np.where(self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints))[0]} have reached their target setpoint")
 
 			# flip the boolean value of those turbines which were actively yawing towards a previous setpoint, but now have reached that setpoint
@@ -125,10 +125,10 @@ class GreedyController(ControllerBase):
 			# change the turbine yaw setpoints that have surpassed the threshold difference AND are not already yawing towards a previous setpoint
 			is_target_changing = (np.abs(target_yaw_setpoints - current_yaw_setpoints) > self.deadband_thr) & ~self.is_yawing
 
-			if any(is_target_changing):
+			if self.verbose and any(is_target_changing):
 				print(f"Greedy Controller starting to yaw turbines {np.where(is_target_changing)[0]} from {current_yaw_setpoints[is_target_changing]} to {target_yaw_setpoints[is_target_changing]} at time {self.current_time}")
 			
-			if any(self.is_yawing):
+			if self.verbose and any(self.is_yawing):
 				print(f"Greedy Controller continuing to yaw turbines {np.where(self.is_yawing)[0]} from {current_yaw_setpoints[self.is_yawing]} to {self.previous_target_yaw_setpoints[self.is_yawing]} at time {self.current_time}")
 			
 	
@@ -138,9 +138,6 @@ class GreedyController(ControllerBase):
 			# stores target setpoints from prevoius compute_controls calls, update only those elements which are not already yawing towards a previous setpoint
 			self.previous_target_yaw_setpoints = np.rint(new_yaw_setpoints / self.yaw_increment) * self.yaw_increment
 
-			# else:
-			# 	print(f"Greedy Controller current_setpoints = {current_yaw_setpoints}, \n previous_target_yaw_setpoints = {self.previous_target_yaw_setpoints}, \n target_setpoints={target_yaw_setpoints}")
-			
 			self.is_yawing[is_target_changing] = True
 			
 			constrained_yaw_setpoints = np.clip(new_yaw_setpoints, current_yaw_setpoints - self.simulation_dt * self.yaw_rate, current_yaw_setpoints + self.simulation_dt * self.yaw_rate)
