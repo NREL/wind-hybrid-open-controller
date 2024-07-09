@@ -84,11 +84,11 @@ if __name__ == "__main__":
                                                 wind_field_config=wind_field_config, verbose=False, save_dir=args.save_dir)
         
     # print(97)
-    if (args.multiprocessor == "mpi" and (comm_rank := MPI.COMM_WORLD.Get_rank()) == 0) or (args.multi_processor != "mpi"):
-        if args.postprocess_simulations:
-            results_dirs = [os.path.join(args.save_dir, case_families[i]) for i in args.case_ids]
-            
-            # compute stats over all seeds
-            process_simulations(results_dirs, case_families, args.save_dir)
-            
-            plot_simulations(results_dirs, args.save_dir)
+    if (args.postprocess_simulations) and ((args.multiprocessor != "mpi") or (args.multiprocessor == "mpi" and (comm_rank := MPI.COMM_WORLD.Get_rank()) == 0)):
+        
+        results_dirs = [os.path.join(args.save_dir, case_families[i]) for i in args.case_ids]
+        
+        # compute stats over all seeds
+        process_simulations(results_dirs, case_families, args.save_dir)
+        
+        plot_simulations(results_dirs, args.save_dir)
