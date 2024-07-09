@@ -238,8 +238,6 @@ def simulate_controller(controller_class, input_dict, **kwargs):
         os.makedirs(results_dir)
 
     results_df.to_csv(os.path.join(results_dir, f"time_series_results_case_{kwargs['case_name']}_seed_{kwargs['wind_case_idx']}.csv".replace("/", "_")))
-
-    # del ctrl
-    # gc.collect()
+    print(f"Saved {f'time_series_results_case_{kwargs['case_name']}_seed_{kwargs['wind_case_idx']}.csv'}")
     
     return results_df

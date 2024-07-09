@@ -25,7 +25,8 @@ from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 from scipy.interpolate import LinearNDInterpolator
 from scipy.signal import lfilter
 
-from floris.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
+# from floris.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
+from floris.optimization.yaw_optimization.yaw_optimizer_scipy import YawOptimizationScipy
 
 class LookupBasedWakeSteeringController(ControllerBase):
 	def __init__(self, interface, input_dict, verbose=False, **kwargs):
@@ -110,14 +111,9 @@ class LookupBasedWakeSteeringController(ControllerBase):
 				turbulence_intensities=[fi_lut.env.core.flow_field.turbulence_intensities[0]] * len(ws_grid.flatten())
 			)
 			
-			# Pour this into a parallel computing interface
-			# fi_lut.parallelize()
-			
-			yaw_opt = YawOptimizationSR(fi_lut.env, 
+			yaw_opt = YawOptimizationScipy(fi_lut.env, 
 										minimum_yaw_angle=self.yaw_limits[0],
-										maximum_yaw_angle=self.yaw_limits[1],
-										# yaw_angles_baseline=np.zeros((len(wind_directions_lut), len(wind_speeds_lut), self.n_turbines)),
-										Ny_passes=[12, 10, 8, 4])
+										maximum_yaw_angle=self.yaw_limits[1])
 			df_lut = yaw_opt.optimize()
 			
 			# Assume linear ramp up at 5-6 m/s and ramp down at 13-14 m/s,
