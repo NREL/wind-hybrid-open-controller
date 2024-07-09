@@ -154,16 +154,21 @@ def plot_simulations(results_dirs, save_dir):
     
     for r, results_dir in enumerate(results_dirs):
         input_filenames = [fn for fn in os.listdir(results_dir) if "input_config" in fn]
-        input_case_names = [re.findall(r"(?<=case_)(.*)(?=.yaml)", input_fn)[0] for input_fn in input_filenames]
-        data_filenames = sorted([fn for fn in os.listdir(results_dir) if ("time_series_results" in fn 
-                                and re.findall(r"(?<=case_)(.*)(?=_seed)", fn)[0] in input_case_names)], 
-                                key=lambda data_fn: input_case_names.index(re.findall(r"(?<=case_)(.*)(?=_seed)", data_fn)[0]))
+        # input_case_names = [re.findall(r"(?<=case_)(.*)(?=.yaml)", input_fn)[0] for input_fn in input_filenames]
+        # data_filenames = sorted([fn for fn in os.listdir(results_dir) if ("time_series_results" in fn 
+        #                         and re.findall(r"(?<=case_)(.*)(?=_seed)", fn)[0] in input_case_names)], 
+        #                         key=lambda data_fn: input_case_names.index(re.findall(r"(?<=case_)(.*)(?=_seed)", data_fn)[0]))
         # for f, (input_fn, data_fn) in enumerate(zip(input_filenames, data_filenames)):
-        for f, data_fn in enumerate(data_filenames):
+        # for f, data_fn in enumerate(data_filenames):
+        for f, input_fn in enumerate(input_filenames):
             case_family = os.path.basename(results_dir)
-            # input_case_name = re.findall(r"(?<=case_)(.*)(?=.yaml)", input_fn)[0]
-            data_case_name = re.findall(r"(?<=case_)(.*)(?=_seed)", data_fn)[0]
-            input_fn = f"input_config_case_{data_case_name}.yaml"
+            # data_case_name = re.findall(r"(?<=case_)(.*)(?=_seed)", data_fn)[0]
+            # input_fn = f"input_config_case_{data_case_name}.yaml"
+            case_name = re.findall(r"(?<=input_config_case_)(.*)(?=.yaml)", input_fn)[0]
+            # case_family = os.path.basename(results_dir)
+            # # input_case_name = re.findall(r"(?<=case_)(.*)(?=.yaml)", input_fn)[0]
+            # data_case_name = re.findall(r"(?<=case_)(.*)(?=_seed)", data_fn)[0]
+            # input_fn = f"input_config_case_{data_case_name}.yaml"
             # assert input_case_name == data_case_name
             
             if not (
@@ -175,7 +180,7 @@ def plot_simulations(results_dirs, save_dir):
             with open(os.path.join(results_dir, input_fn), 'r') as fp:
                 input_config = yaml.safe_load(fp)
 
-            case_name = f"{case_family}_{data_case_name}"
+            case_name = f"{case_family}_{case_name}"
             df = results_dfs[case_name]
             # df.loc[df.CaseName == "alpha_0.995_controller_class_MPC_n_wind_preview_samples_7_nu_0.1_solver_slsqp_wind_preview_type_stochastic_interval", "FarmPower"]
             # if "Time" not in df.columns:
@@ -283,56 +288,56 @@ def read_amr_outputs(results_paths, hercules_dict):
 
     return df
 
-def plot_yaw_power_ts(data_df, turbine_indices, save_path, seed=0):
-    """
-    For each controller class (different lineplots), and for a select few turbine_indices (different subplots), plot their angle changes and powers vs time with a combo plot for each turbine.
-    """
-    n_rows = int(np.floor(np.sqrt(len(turbine_indices))))
-    if np.sqrt(len(turbine_indices)) % 1.0 == 0:
-        fig1, ax1 = plt.subplots(n_rows, n_rows, sharex=True, sharey=True)
-    else:
-        fig1, ax1 = plt.subplots(n_rows, n_rows + 1, sharex=True, sharey=True)
-    ax1 = ax1.flatten()
+# def plot_yaw_power_ts(data_df, turbine_indices, save_path, seed=0):
+#     """
+#     For each controller class (different lineplots), and for a select few turbine_indices (different subplots), plot their angle changes and powers vs time with a combo plot for each turbine.
+#     """
+#     n_rows = int(np.floor(np.sqrt(len(turbine_indices))))
+#     if np.sqrt(len(turbine_indices)) % 1.0 == 0:
+#         fig1, ax1 = plt.subplots(n_rows, n_rows, sharex=True, sharey=True)
+#     else:
+#         fig1, ax1 = plt.subplots(n_rows, n_rows + 1, sharex=True, sharey=True)
+#     ax1 = ax1.flatten()
     
-    # data_df = data_df.melt()
+#     # data_df = data_df.melt()
 
-    for i in range(len(turbine_indices)):
-        ax1[i] = sns.lineplot(x="Time", y=f"TurbineYawAngleChange_{turbine_indices[i]}", hue="ControllerClass", data=data_df.loc[data_df["WindSeed"] == seed], 
-                              color=sns.color_palette()[0],
-                              ax=ax1[i], sort=False, legend=i==0)
-        ax1[i].xaxis.label.set_text(f"Time [s]")
-        ax1[i].title.set_text(f"Turbine {turbine_indices[i]}Absolute Yaw Angle Change [$^\\circ$]")
-        # ax1[i].yaxis.label.set_color(ax1[i].get_lines()[0].get_color())
-        # ax1[i].tick_params(axis="y", color=ax1[i].get_lines()[0].get_color())
-    ax1[0].legend(loc="upper right")
-    # ax2 = []
-    # for i in range(len(turbine_indices)):
-    #     ax2.append(ax1[i].twinx())
+#     for i in range(len(turbine_indices)):
+#         ax1[i] = sns.lineplot(x="Time", y=f"TurbineYawAngleChange_{turbine_indices[i]}", hue="ControllerClass", data=data_df.loc[data_df["WindSeed"] == seed], 
+#                               color=sns.color_palette()[0],
+#                               ax=ax1[i], sort=False, legend=i==0)
+#         ax1[i].xaxis.label.set_text(f"Time [s]")
+#         ax1[i].title.set_text(f"Turbine {turbine_indices[i]}Absolute Yaw Angle Change [$^\\circ$]")
+#         # ax1[i].yaxis.label.set_color(ax1[i].get_lines()[0].get_color())
+#         # ax1[i].tick_params(axis="y", color=ax1[i].get_lines()[0].get_color())
+#     ax1[0].legend(loc="upper right")
+#     # ax2 = []
+#     # for i in range(len(turbine_indices)):
+#     #     ax2.append(ax1[i].twinx())
 
-    if np.sqrt(len(turbine_indices)) % 1.0 == 0:
-        fig2, ax2 = plt.subplots(n_rows, n_rows, sharex=True, sharey=True)
-    else:
-        fig2, ax2 = plt.subplots(n_rows, n_rows + 1, sharex=True, sharey=True)
-    ax2 = ax2.flatten()
+#     if np.sqrt(len(turbine_indices)) % 1.0 == 0:
+#         fig2, ax2 = plt.subplots(n_rows, n_rows, sharex=True, sharey=True)
+#     else:
+#         fig2, ax2 = plt.subplots(n_rows, n_rows + 1, sharex=True, sharey=True)
+#     ax2 = ax2.flatten()
 
-    for i in range(len(turbine_indices)):
-        ax2[i] = sns.lineplot(x="Time", y=f"TurbinePower_{turbine_indices[i]}", hue="ControllerClass", data=data_df.loc[data_df["WindSeed"] == seed], 
-                              color=sns.color_palette()[1],
-                              ax=ax2[i], sort=False, legend=i==0)
-        ax2[i].xaxis.label.set_text(f"Time [s]")
-        ax2[i].title.set_text(f"Turbine {turbine_indices[i]} Power [MW]")
-        # ax2[i].yaxis.label.set_color(ax2[i].get_lines()[0].get_color())
-        # ax2[i].tick_params(axis="y", color=ax2[i].get_lines()[0].get_color())
+#     for i in range(len(turbine_indices)):
+#         ax2[i] = sns.lineplot(x="Time", y=f"TurbinePower_{turbine_indices[i]}", hue="ControllerClass", data=data_df.loc[data_df["WindSeed"] == seed], 
+#                               color=sns.color_palette()[1],
+#                               ax=ax2[i], sort=False, legend=i==0)
+#         ax2[i].xaxis.label.set_text(f"Time [s]")
+#         ax2[i].title.set_text(f"Turbine {turbine_indices[i]} Power [MW]")
+#         # ax2[i].yaxis.label.set_color(ax2[i].get_lines()[0].get_color())
+#         # ax2[i].tick_params(axis="y", color=ax2[i].get_lines()[0].get_color())
 
-    ax2[0].legend(loc="upper right")
+#     ax2[0].legend(loc="upper right")
 
-    fig1.set_size_inches((11.2, 4.8))
-    fig1.show()
-    fig1.savefig(save_path.replace(".png", "_abs_yaw_change.png"))
+#     fig1.set_size_inches((11.2, 4.8))
+#     fig1.show()
+#     fig1.savefig(save_path.replace(".png", "_abs_yaw_change.png"))
 
-    fig2.set_size_inches((11.2, 4.8))
-    fig2.show()
-    fig2.savefig(save_path.replace(".png", "_power.png"))
+#     fig2.set_size_inches((11.2, 4.8))
+#     fig2.show()
+#     fig2.savefig(save_path.replace(".png", "_power.png"))
 
 
 def plot_yaw_power_distribution(data_df, save_path):
