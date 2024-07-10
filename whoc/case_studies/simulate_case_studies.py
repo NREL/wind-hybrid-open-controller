@@ -33,9 +33,9 @@ def simulate_controller(controller_class, input_dict, **kwargs):
                                         config_path=input_dict["controller"]["floris_input_file"])
     
     kwargs["wind_field_config"]["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
-
+    print(f"simulation_case_studies line 36")
     ctrl = controller_class(fi, input_dict=input_dict, **kwargs)
-    # optionally warm-start with LUT solution
+    print(f"simulation_case_studies line 38")
     
     yaw_angles_ts = []
     yaw_angles_change_ts = []
@@ -65,7 +65,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
     # for k, t in enumerate(np.arange(0, kwargs["wind_field_config"]["simulation_max_time"], input_dict["dt"])):
     t = 0
     k = 0
-    
+    print(f"simulation_case_studies line 68")
     while t < input_dict["hercules_comms"]["helics"]["config"]["stoptime"]:
 
         # recompute controls and step floris forward by ctrl.dt
@@ -94,8 +94,10 @@ def simulate_controller(controller_class, input_dict, **kwargs):
             fi.time = tt
             if tt == (t + ctrl.dt - input_dict["dt"]):
                 fi.run_floris = True
-            ctrl.step()
             
+            print(f"simulation_case_studies line 98")
+            ctrl.step()
+            print(f"simulation_case_studies line 100")
             # Note these are results from previous time step
             yaw_angles_ts += [ctrl.measurements_dict["yaw_angles"]]
             turbine_powers_ts += [ctrl.measurements_dict["turbine_powers"]]
