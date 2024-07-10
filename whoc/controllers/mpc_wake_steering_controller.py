@@ -2,6 +2,7 @@ from time import perf_counter
 import copy
 import numpy as np
 from pyoptsparse import Optimization, SLSQP
+from mpi4py import MPI
 # from pyoptsparse.pyOpt_history import History
 from scipy.optimize import linprog, basinhopping
 from scipy.integrate import dblquad
@@ -730,9 +731,9 @@ class MPC(ControllerBase):
 		dyn_state_jac, state_jac = self.con_sens_rules(n_solve_turbines)
 		sens_rules = self.generate_sens_rules(solve_turbine_ids, downstream_turbine_ids, dyn_state_jac, state_jac)
 		if use_sens_rules:
-			pyopt_prob = Optimization("Wake Steering MPC", opt_rules, sens=sens_rules)
+			pyopt_prob = Optimization("Wake Steering MPC", opt_rules, sens=sens_rules, comm=MPI.COMM_SELF)
 		else:
-			pyopt_prob = Optimization("Wake Steering MPC", opt_rules, sens="CD")
+			pyopt_prob = Optimization("Wake Steering MPC", opt_rules, sens="CD", comm=MPI.COMM_SELF)
 		
 		# add design variables
 		pyopt_prob.addVarGroup("states", n_solve_states,
@@ -1373,7 +1374,7 @@ class MPC(ControllerBase):
 			# no Falses with states part of cost only, no Falses for control inputs only
 			np.where(~np.isclose(grad_nosens_res[0]["cost"]["control_inputs"], np.array(grad_sens_res["cost"]["control_inputs"])))
 		print(f"mpc_wake_steering_controller line 1375")
-		self.pyopt_prob.comm.rank = 0
+		#self.pyopt_prob.comm.rank = 0
 		sol = self.optimizer(self.pyopt_prob) #, storeHistory=f"{os.path.dirname(whoc.__file__)}/floris_case_studies/optimizer_histories/custom_sens_{current_time}.hst") # timeLimit=self.dt) #, sens=sens_rules) #, sensMode='pgc')
 		print(f"mpc_wake_steering_controller line 1377")
 		if run_cd_sens:
