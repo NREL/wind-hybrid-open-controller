@@ -55,7 +55,7 @@ solver:
 
   ###
   # Options for the turbine type selected above. See the solver documentation for available parameters.
-  turbine_grid_points: 3
+  turbine_grid_points: 1
 
 ###
 # Configure the turbine types and their placement within the wind farm.
