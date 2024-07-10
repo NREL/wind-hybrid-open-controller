@@ -47,6 +47,12 @@ elif sys.platform == "darwin":
 # sequential_pyopt is best solver, stochastic is best preview type
 case_studies = {
     "baseline_controllers": {"seed": {"group": 0, "vals": [0]},
+                                "dt": {"group": 1, "vals": [5, 5]},
+                                "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
+                                "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
+                                  "use_filtered_wind_dir": {"group": 1, "vals": [True, True]},
+                          },
+     "baseline_plus_controllers": {"seed": {"group": 0, "vals": [0]},
                                 "dt": {"group": 1, "vals": [5, 5, 60.0, 60.0, 60.0, 60.0]},
                                 "case_names": {"group": 1, "vals": ["LUT", "Greedy", "MPC_with_Filter", "MPC_without_Filter", "MPC_without_state_cons", "MPC_without_dyn_state_cons"]},
                                 "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController", "MPC", "MPC", "MPC", "MPC"]},
