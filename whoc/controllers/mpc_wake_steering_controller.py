@@ -443,11 +443,10 @@ class MPC(ControllerBase):
 		
 		self.optimizer_idx = optimizer_idx
 		# TODO set time-limit
-		print(f"mpc_wake_steering_controller line 445")
+		
 		self.optimizer = SLSQP(options={"IPRINT": 0 if verbose else -1, 
 										"MAXIT": input_dict["controller"]["max_iter"], 
 										"ACC": input_dict["controller"]["acc"]})
-		print(f"mpc_wake_steering_controller line 449")
 
 		self.dt = input_dict["controller"]["dt"]
 		self.simulation_dt = input_dict["dt"]
@@ -656,7 +655,7 @@ class MPC(ControllerBase):
 		self.fi = ControlledFlorisModel(yaw_limits=self.yaw_limits, dt=self.dt, yaw_rate=self.yaw_rate, 
 								  config_path=input_dict["controller"]["floris_input_file"])
 		# self.floris_proc = Process(target=run_floris_proc, args=(self.fi.env,))
-		print(f"mpc_wake_steering_controller line 685")
+		
 		if self.solver == "serial_refine":
 			# self.fi_opt = FlorisModelDev(input_dict["controller"]["floris_input_file"]) #.replace("floris", "floris_dev"))
 			if self.warm_start == "lut":
@@ -667,7 +666,6 @@ class MPC(ControllerBase):
 			# self.pyopt_prob_nosens = self.setup_slsqp_solver(np.arange(self.n_turbines), use_sens_rules=False)
 		elif self.solver == "zsgd":
 			pass
-		print(f"mpc_wake_steering_controller line 669")
 
 	def _first_ord_filter(self, x, alpha):
 		
@@ -775,7 +773,7 @@ class MPC(ControllerBase):
 		"""
 		solve OCP to minimize objective over future horizon
 		"""
-		print(f"mpc_wake_steering_controller line 777")
+		
 		# TODO HIGH only run compute_controls when new amr reading comes in (ie with new timestamp), also in LUT and Greedy, keep track of curent_time independently of measurements_dict
 		# current_wind_directions = np.atleast_2d(self.measurements_dict["wind_directions"])
 		if (self._last_measured_time is not None) and self._last_measured_time == self.measurements_dict["time"]:
@@ -911,7 +909,7 @@ class MPC(ControllerBase):
 				yaw_star = self.sr_solve()
 			elif self.solver == "zsgd":
 				yaw_star = self.zsgd_solve()
-			print(f"mpc_wake_steering_controller line 913")
+			
 			# check constraints
 			# assert np.isclose(sum(self.opt_sol["states"][:self.n_turbines] - (self.initial_state + self.opt_sol["control_inputs"][:self.n_turbines] * (self.yaw_rate / self.yaw_norm_const) * self.dt)), 0, atol=1e-2)
 			# init_dyn_state_cons = (sum(self.opt_sol["states"][:self.n_turbines] - (self.initial_state + self.opt_sol["control_inputs"][:self.n_turbines] * (self.yaw_rate / self.yaw_norm_const) * self.dt)))
@@ -1373,10 +1371,9 @@ class MPC(ControllerBase):
 			print(np.where(~np.isclose(grad_nosens_res[0]["cost"]["states"], np.array(grad_sens_res["cost"]["states"]), atol=1e-5)))
 			# no Falses with states part of cost only, no Falses for control inputs only
 			np.where(~np.isclose(grad_nosens_res[0]["cost"]["control_inputs"], np.array(grad_sens_res["cost"]["control_inputs"])))
-		print(f"mpc_wake_steering_controller line 1375")
-		#self.pyopt_prob.comm.rank = 0
+		
 		sol = self.optimizer(self.pyopt_prob) #, storeHistory=f"{os.path.dirname(whoc.__file__)}/floris_case_studies/optimizer_histories/custom_sens_{current_time}.hst") # timeLimit=self.dt) #, sens=sens_rules) #, sensMode='pgc')
-		print(f"mpc_wake_steering_controller line 1377")
+		
 		if run_cd_sens:
 			sol_nosens = self.optimizer(self.pyopt_prob_nosens, sensStep=0.01)
 			s_diff = np.vstack([sol.xStar["states"] - self.init_sol["states"], sol_nosens.xStar["states"] - self.init_sol["states"]]).T
