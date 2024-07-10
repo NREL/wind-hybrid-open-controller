@@ -38,7 +38,7 @@ if __name__ == "__main__":
     for case_family in case_families:
         case_studies[case_family]["wind_case_idx"] = {"group": max(d["group"] for d in case_studies[case_family].values()) + 1, "vals": [i for i in range(args.n_seeds)]}
 
-    os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "true"
+    # os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "false"
 
     if args.run_simulations:
         # run simulations
@@ -61,7 +61,7 @@ if __name__ == "__main__":
                 if args.multiprocessor == "mpi":
                     run_simulations_exec.max_workers = comm_size
                     
-                print(f"run_simulations line 78 with {run_simulations_exec._max_workers} workers")
+                print(f"run_simulations line 64 with {run_simulations_exec._max_workers} workers")
                 # for MPIPool executor, (waiting as if shutdown() were called with wait set to True)
                 futures = [run_simulations_exec.submit(simulate_controller, 
                                                 controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
