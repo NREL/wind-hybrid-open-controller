@@ -43,6 +43,25 @@ def process_simulations(results_dirs, case_studies, save_dir):
     results_dfs = get_results_data(results_dirs) # TODO change save name of compare_results_df
     compare_results_df = compare_simulations(results_dfs, save_dir)
     compare_results_df.sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True)[("RelativeTotalRunningOptimizationCostMean", "mean")]
+    compare_results_df.sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True)[("YawAngleChangeAbsMean", "mean")]
+    compare_results_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False)[("FarmPowerMean", "mean")]
+
+    compare_results_df[("FarmPowerMean", "mean")]
+    mpc_df = compare_results_df.iloc[compare_results_df.index.get_level_values("CaseFamily") == "slsqp_solver_sweep"]  
+    lut_df = compare_results_df.iloc[compare_results_df.index.get_level_values("CaseName") == "LUT"] 
+    greedy_df = compare_results_df.iloc[compare_results_df.index.get_level_values("CaseName") == "Greedy"]
+
+    better_than_lut_df = mpc_df.loc[(mpc_df[("FarmPowerMean", "mean")] > lut_df[("FarmPowerMean", "mean")].iloc[0]) & (mpc_df[("YawAngleChangeAbsMean", "mean")] < lut_df[("YawAngleChangeAbsMean", "mean")].iloc[0]), [("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True).reset_index(level="CaseFamily", drop=True)
+    # print(mpc_df.loc[(mpc_df[("FarmPowerMean", "mean")] > greedy_df[("FarmPowerMean", "mean")].iloc[0]) & (mpc_df[("YawAngleChangeAbsMean", "mean")] < greedy_df[("YawAngleChangeAbsMean", "mean")].iloc[0]), ("RelativeTotalRunningOptimizationCostMean", "mean")].sort_values(ascending=True))
+    better_than_greedy_df = mpc_df.loc[(mpc_df[("FarmPowerMean", "mean")] > greedy_df[("FarmPowerMean", "mean")].iloc[0]), [("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True).reset_index(level="CaseFamily", drop=True)
+    better_than_greedy_df = better_than_greedy_df.loc[better_than_greedy_df.index.isin(better_than_lut_df.index)]
+    best_idx_sum = np.inf
+    best_case = None
+    for best_lut_idx, best_lut_case_name in enumerate(better_than_lut_df.index):
+        best_greedy_idx = np.where(better_than_greedy_df.index == best_lut_case_name)[0][0]
+        if best_lut_idx + best_greedy_idx < best_idx_sum:
+            best_case = best_lut_case_name
+    better_than_lut_df.iloc[0]._name
     # a = compare_results_df.loc[compare_results_df[("YawAngleChangeAbsMean", "mean")] > 0, :].sort_values(by=("FarmPowerMean", "mean"), ascending=False)[("FarmPowerMean", "mean")] * 1e-7
     # b = compare_results_df.loc[compare_results_df[("YawAngleChangeAbsMean", "mean")] > 0, :].sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True)[("YawAngleChangeAbsMean", "mean")]
     
