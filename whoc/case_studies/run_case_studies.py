@@ -7,7 +7,7 @@ from whoc.controllers.greedy_wake_steering_controller import GreedyController
 from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
 from whoc.case_studies.initialize_case_studies import initialize_simulations, case_families, case_studies
 from whoc.case_studies.simulate_case_studies import simulate_controller
-from whoc.case_studies.process_case_studies import process_simulations, plot_simulations
+from whoc.case_studies.process_case_studies import process_simulations, plot_simulations, plot_wind_farm
 
 from mpi4py import MPI
 from mpi4py.futures import MPICommExecutor
@@ -28,6 +28,7 @@ if __name__ == "__main__":
     parser.add_argument("-ns", "--n_seeds", type=int, default=6)
     parser.add_argument("-m", "--multiprocessor", type=str, choices=["mpi", "cf"], default="mpi")
     parser.add_argument("-sd", "--save_dir", type=str)
+    parser.add_argument("-rrs", "--rerun_simulations", action="store_true")
     # "/projects/ssc/ahenry/whoc/floris_case_studies" on kestrel
     # "/projects/aohe7145/whoc/floris_case_studies" on curc
     # "/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/floris_case_studies" on mac
@@ -67,7 +68,7 @@ if __name__ == "__main__":
                                                 controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
                                                 wind_case_idx=case_lists[c]["wind_case_idx"], wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
                                                 case_name="_".join([f"{key}_{val if (type(val) is str or type(val) is np.str_) else np.round(val, 5)}" for key, val in case_lists[c].items() if key not in ["wind_case_idx", "seed"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
-                                                case_family="_".join(case_name_lists[c].split("_")[:-1]), seed=case_lists[c]["seed"], wind_field_config=wind_field_config, verbose=False, save_dir=args.save_dir)
+                                                case_family="_".join(case_name_lists[c].split("_")[:-1]), seed=case_lists[c]["seed"], wind_field_config=wind_field_config, verbose=False, save_dir=args.save_dir, rerun_simulations=args.rerun_simulations)
                         for c, d in enumerate(input_dicts)]
                 
                 _ = [fut.result() for fut in futures]
@@ -83,6 +84,12 @@ if __name__ == "__main__":
     if (args.postprocess_simulations) and ((args.multiprocessor != "mpi") or (args.multiprocessor == "mpi" and (comm_rank := MPI.COMM_WORLD.Get_rank()) == 0)):
         
         results_dirs = [os.path.join(args.save_dir, case_families[i]) for i in args.case_ids]
+
+        # if "scalability" in case_families
+        if case_families.index(args.case_ids) in args.case_ids:
+            floris_input_files = case_studies["scalability"]["floris_input_file"]["vals"]
+            lut_paths = case_studies["scalability"]["lut_path"]["vals"]
+            plot_wind_farm(floris_input_files, lut_paths, args.save_dir)
         
         # compute stats over all seeds
         process_simulations(results_dirs, case_families, args.save_dir)

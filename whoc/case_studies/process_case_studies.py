@@ -15,7 +15,56 @@ import yaml
 import seaborn as sns
 sns.set_theme(style="darkgrid", rc={'figure.figsize':(4,4)})
 
+import floris.layout_visualization as layoutviz
+from floris import FlorisModel
+from floris.flow_visualization import visualize_cut_plane
+
+from scipy.interpolate import LinearNDInterpolator
+
 from whoc import __file__ as whoc_file
+
+def plot_wind_farm(floris_input_files, lut_paths, save_dir):
+
+    # fig, axarr = plt.subplots(int(len(floris_input_files)**0.5), int(len(floris_input_files)**0.5), figsize=(16, 10))
+    # axarr = axarr.flatten()
+
+    for floris_input_file, lut_path in zip(floris_input_files, lut_paths):
+        fig, ax = plt.subplots(1, 1, figsize=(16, 10))
+
+        df_lut = pd.read_csv(lut_path, index_col=0)
+        df_lut["yaw_angles_opt"] = df_lut["yaw_angles_opt"].apply(lambda s: np.array(re.findall(r"-*\d+\.\d*", s), dtype=float))
+        wake_steering_interpolant = LinearNDInterpolator(
+                points=df_lut[["wind_direction", "wind_speed"]].values,
+                values=np.vstack(df_lut["yaw_angles_opt"].values),
+                fill_value=0.0,
+            )
+
+        MIN_WS = 1.0
+        MAX_WS = 8.0
+
+        fmodel = FlorisModel(floris_input_file)
+        fmodel.set(wind_directions=[270.0], wind_speeds=[8.0], turbulence_intensities=[0.08])
+        lut_angles = wake_steering_interpolant([270.0], [8.0])
+        fmodel.set_operation(yaw_angles=lut_angles)
+        # Plot 2: Show a particular flow case
+        turbine_names = [f"T{i}" for i in range(fmodel.n_turbines)]
+        # layoutviz.plot_turbine_points(fmodel, ax=ax)
+        # layoutviz.plot_turbine_labels(
+        #     fmodel, ax=ax, turbine_names=turbine_names, show_bbox=True, bbox_dict={"facecolor": "r"}
+        # )
+
+        # Plot 2: Show turbine rotors on flow
+        horizontal_plane = fmodel.calculate_horizontal_plane(height=90.0)
+        visualize_cut_plane(horizontal_plane, ax=ax, min_speed=MIN_WS, max_speed=MAX_WS)
+        layoutviz.plot_turbine_rotors(fmodel, ax=ax, yaw_angles=lut_angles)
+
+        # if a > 1:
+        ax.set(xlabel="$x$ [m]")
+        
+        # if a == 0 or a == 2:
+        ax.set(ylabel="$y$ [m]")
+    
+        fig.savefig(os.path.join(save_dir, f"wind_farm_plot_{fmodel.n_turbines}.png"))
 
 def get_results_data(results_dirs):
     # from whoc.wind_field.WindField import first_ord_filter
