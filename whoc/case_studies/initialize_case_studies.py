@@ -173,11 +173,20 @@ case_studies = {
         },
     "scalability": {"seed": {"group": 0, "vals": [0]},
                     "controller_class": {"group": 0, "vals": ["MPC"]},
-                    "case_names": {"group": 1, "vals": ["3 Turbines", "9 Turbines", "25 Turbines", "100 Turbines"]},
+                    # "case_names": {"group": 1, "vals": ["3 Turbines", "9 Turbines", "25 Turbines", "100 Turbines"]},
+                    "case_names": {"group": 1, "vals": ["9 Turbines", "25 Turbines", "100 Turbines"]},
+                    "generate_lut": {"group": 0, "vals": [True]},
+                    # "lut_path": {"group": 1, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                    #                                                     f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{nturb}.csv") for nturb in [3, 9, 25, 100]]},
                     "lut_path": {"group": 1, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{nturb}.csv") for nturb in [3, 9, 25, 100]]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{nturb}.csv") for nturb in [9, 25, 100]]},
+                    # "floris_input_file": {"group": 1, "vals": [os.path.join(os.path.dirname(whoc_file), "../examples/mpc_wake_steering_florisstandin", 
+                    #                                          f"floris_gch_{i}.yaml") for i in [3, 9, 25, 100]]
                     "floris_input_file": {"group": 1, "vals": [os.path.join(os.path.dirname(whoc_file), "../examples/mpc_wake_steering_florisstandin", 
-                                                             f"floris_gch_{i}.yaml") for i in [3, 9, 25, 100]]},
+                                                             f"floris_gch_{i}.yaml") for i in [l9, 25, 100]]
+                                                             
+                                                             },
+                                                             
     },
     "horizon_length": {"seed": {"group": 0, "vals": [0]},
                        "controller_class": {"group": 0, "vals": ["MPC"]},
