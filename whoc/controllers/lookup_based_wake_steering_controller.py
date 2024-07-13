@@ -113,7 +113,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			
 			yaw_opt = YawOptimizationScipy(fi_lut.env, 
 										minimum_yaw_angle=self.yaw_limits[0],
-										maximum_yaw_angle=self.yaw_limits[1])
+										maximum_yaw_angle=self.yaw_limits[1], parallel=True)
 			df_lut = yaw_opt.optimize()
 			
 			# Assume linear ramp up at 5-6 m/s and ramp down at 13-14 m/s,

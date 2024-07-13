@@ -28,7 +28,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
     fn = f"time_series_results_case_{kwargs['case_name']}_seed_{kwargs['wind_case_idx']}.csv".replace("/", "_")
 
     if not kwargs["rerun_simulations"] and os.path.exists(os.path.join(results_dir, fn)):
-        results_df = pd.from_csv(os.path.join(results_dir, fn))
+        results_df = pd.read_csv(os.path.join(results_dir, fn))
         print(f"Loaded existing {fn} since rerun_simulations argument is true")
         return results_df
     
