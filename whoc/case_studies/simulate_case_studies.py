@@ -1,20 +1,9 @@
-import pickle
 import pandas as pd
 import numpy as np
 import os
 from time import perf_counter
-import sys
-from memory_profiler import profile
-
-from concurrent.futures import ProcessPoolExecutor, wait
-from mpi4py import MPI
-from mpi4py.futures import MPICommExecutor
 
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
-from whoc.controllers.mpc_wake_steering_controller import MPC
-from whoc.controllers.greedy_wake_steering_controller import GreedyController
-from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
-from whoc.case_studies.initialize_case_studies import case_studies, case_families
 from whoc.wind_field.WindField import first_ord_filter
 
 #@profile
@@ -26,7 +15,8 @@ def simulate_controller(controller_class, input_dict, **kwargs):
         os.makedirs(results_dir)
 
     fn = f"time_series_results_case_{kwargs['case_name']}_seed_{kwargs['wind_case_idx']}.csv".replace("/", "_")
-
+    print(f'rerun_simulations = {kwargs["rerun_simulations"]}')
+    print(f'does {os.path.join(results_dir, fn)} exist = {os.path.exists(os.path.join(results_dir, fn))}')
     if not kwargs["rerun_simulations"] and os.path.exists(os.path.join(results_dir, fn)):
         results_df = pd.read_csv(os.path.join(results_dir, fn))
         print(f"Loaded existing {fn} since rerun_simulations argument is true")
@@ -77,7 +67,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
     # for k, t in enumerate(np.arange(0, kwargs["wind_field_config"]["simulation_max_time"], input_dict["dt"])):
     t = 0
     k = 0
-    print(f"simulation_case_studies line 68")
+    
     while t < input_dict["hercules_comms"]["helics"]["config"]["stoptime"]:
 
         # recompute controls and step floris forward by ctrl.dt
