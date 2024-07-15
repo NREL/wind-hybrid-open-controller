@@ -15,8 +15,8 @@ def simulate_controller(controller_class, input_dict, **kwargs):
         os.makedirs(results_dir)
 
     fn = f"time_series_results_case_{kwargs['case_name']}_seed_{kwargs['wind_case_idx']}.csv".replace("/", "_")
-    print(f'rerun_simulations = {kwargs["rerun_simulations"]}')
-    print(f'does {os.path.join(results_dir, fn)} exist = {os.path.exists(os.path.join(results_dir, fn))}')
+    # print(f'rerun_simulations = {kwargs["rerun_simulations"]}')
+    # print(f'does {os.path.join(results_dir, fn)} exist = {os.path.exists(os.path.join(results_dir, fn))}')
     if not kwargs["rerun_simulations"] and os.path.exists(os.path.join(results_dir, fn)):
         results_df = pd.read_csv(os.path.join(results_dir, fn))
         print(f"Loaded existing {fn} since rerun_simulations argument is true")
