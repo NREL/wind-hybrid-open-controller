@@ -92,12 +92,12 @@ case_studies = {
                           },
     "serial_refine_solver": {"seed": {"group": 0, "vals": [0]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
-                          "case_names": {"group": 1, "vals": ["Sequential Refine"]},
-                           "solver": {"group": 1, "vals": ["serial_refine"]}
+                          "case_names": {"group": 0, "vals": ["Sequential Refine"]},
+                           "solver": {"group": 0, "vals": ["serial_refine"]}
                           },
     "solver_type": {"seed": {"group": 0, "vals": [0]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
-                             "wind_preview_type": {"group": 0, "vals": ["stochastic"]}, 
+                             "wind_preview_type": {"group": 0, "vals": ["stochastic_interval"]}, 
                          "case_names": {"group": 1, "vals": ["SLSQP", "Sequential SLSQP", "Sequential Refine"]},
                               "solver": {"group": 1, "vals": ["slsqp", "sequential_slsqp", "serial_refine"]}
     },
@@ -420,7 +420,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
 
     return case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts
 
-# 0, 9
+# 1, 3, 6
 case_families = ["baseline_controllers", "solver_type",
                     "wind_preview_type", "warm_start", 
                     "horizon_length", "breakdown_robustness",
