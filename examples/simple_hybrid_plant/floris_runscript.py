@@ -10,5 +10,10 @@ if len(sys.argv) < 2:
 # This is the name of the file to read
 amr_input_file = sys.argv[1]
 print(f"Running FLORIS standin with input file: {amr_input_file}")
+if len(sys.argv) > 2:
+    amr_standin_data_file = sys.argv[2]
+    print(f"Using standin data for AMR-Wind from file: {amr_standin_data_file}")
+else:
+    amr_standin_data_file = None
 
-launch_floris(amr_input_file)
+launch_floris(amr_input_file, amr_standin_data_file)

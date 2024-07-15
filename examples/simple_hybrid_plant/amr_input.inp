@@ -1,7 +1,7 @@
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
 #            SIMULATION STOP            #
 #.......................................#
-time.stop_time               =   100.0     # Max (simulated) time to evolve
+time.stop_time               =   60.0     # Max (simulated) time to evolve
 time.max_step                =   -1          # Max number of time steps
 
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
@@ -157,7 +157,17 @@ Actuator.UniformCtDisk.diameters_to_sample = 1.0
 Actuator.UniformCtDisk.num_points_r = 20
 Actuator.UniformCtDisk.num_points_t = 5
 
+Actuator.UniformCtDisk.yaw = 160.0
 
-Actuator.labels = T00 T01 
-Actuator.T00.base_position = 0.0 0.0 0.0
-Actuator.T01.base_position = 1000.0 0.0 0.0
+Actuator.labels                            = T00 T01 T02 T03 T04 T05 T06 T07 T08 T09           
+
+Actuator.T00.base_position = 1000.0 1500.0 0.0
+Actuator.T01.base_position = 1000.0 2500.0 0.0
+Actuator.T02.base_position = 1000.0 3500.0 0.0
+Actuator.T03.base_position = 2000.0 1500.0 0.0
+Actuator.T04.base_position = 2000.0 2500.0 0.0
+Actuator.T05.base_position = 2000.0 3500.0 0.0
+Actuator.T06.base_position = 3000.0 1500.0 0.0
+Actuator.T07.base_position = 3000.0 2500.0 0.0
+Actuator.T08.base_position = 3000.0 3500.0 0.0
+Actuator.T09.base_position = 1000.0 4500.0 0.0
