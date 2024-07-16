@@ -107,7 +107,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
             # turbine_offline_status_ts += [fi.offline_status[tt, :]]
             turbine_offline_status_ts += [np.isclose(ctrl.measurements_dict["turbine_powers"], 0, atol=1e-3)]
         
-        assert np.all(np.vstack(turbine_offline_status_ts)[-int(ctrl.dt // input_dict["dt"]):, :] == fi.offline_status)
+        assert np.all(np.vstack(turbine_offline_status_ts)[-int(ctrl.dt // input_dict["dt"]):, :] == fi.offline_status), "collected turbine_offline_status_ts should be equal to fi.offline_status in simulate_controllers"
 
         end_time = perf_counter()
 
