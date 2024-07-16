@@ -1253,7 +1253,7 @@ class MPC(ControllerBase):
 			self.init_sol["control_inputs"] = (self.init_sol["states"] - self.opt_sol["states"]) * (self.yaw_norm_const / (self.yaw_rate * self.dt))
 			
 		elif self.warm_start == "greedy":
-			self.init_sol["states"] = [(self.wind_preview_intervals[f"FreestreamWindDir"][int(self.wind_preview_intervals[f"FreestreamWindDir"].shape[0] // 2), 1:] / self.yaw_norm_const) for i in range(self.n_turbines)]
+			self.init_sol["states"] = np.concatenate([(self.wind_preview_intervals[f"FreestreamWindDir"][int(self.wind_preview_intervals[f"FreestreamWindDir"].shape[0] // 2), 1:] / self.yaw_norm_const) for i in range(self.n_turbines)])
 			self.init_sol["control_inputs"] = (self.init_sol["states"] - self.opt_sol["states"]) * (self.yaw_norm_const / (self.yaw_rate * self.dt))
 
 		if self.basin_hop:
