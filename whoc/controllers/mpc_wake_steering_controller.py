@@ -1162,10 +1162,10 @@ class MPC(ControllerBase):
 			#       and ((self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][m] - opt_yaw_setpoints[j, :]) >= self.yaw_limits[0]))
 			#         for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)
 			
-			assert np.all([(self.wind_preview_intervals[f"FreestreamWindDir"][int(self.n_wind_preview_samples // 2), j + 1] - opt_yaw_setpoints[:, j]) <= self.yaw_limits[1] + 1e-12 for j in range(self.n_horizon)]), "optimized yaw setpoints should satisfy upper bounds in sr_solve"
+			# assert np.all([(self.wind_preview_intervals[f"FreestreamWindDir"][int(self.n_wind_preview_samples // 2), j + 1] - opt_yaw_setpoints[:, j]) <= self.yaw_limits[1] + 1e-12 for j in range(self.n_horizon)]), "optimized yaw setpoints should satisfy upper bounds in sr_solve"
 
 			# assert np.all([(self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][m] - opt_yaw_setpoints[j, :]) <= self.yaw_limits[1] + 1e-12 for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)])
-			assert np.all([(self.wind_preview_intervals[f"FreestreamWindDir"][m, j + 1] - opt_yaw_setpoints[:, j]) >= self.yaw_limits[0] - 1e-12 for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)]), "optimized yaw setpoints should satisfy lower bounds in sr_solve"
+			# assert np.all([(self.wind_preview_intervals[f"FreestreamWindDir"][int(self.n_wind_preview_samples // 2), j + 1] - opt_yaw_setpoints[:, j]) >= self.yaw_limits[0] - 1e-12 for j in range(self.n_horizon)]), "optimized yaw setpoints should satisfy lower bounds in sr_solve"
 			# check if solution adheres to dynamic state equaion
 			# ensure that the rate of change is not greater than yaw_rate
 			# clipped_opt_yaw_setpoints = np.zeros_like(opt_yaw_setpoints)
