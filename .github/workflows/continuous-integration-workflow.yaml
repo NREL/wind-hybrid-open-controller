@@ -25,7 +25,7 @@ jobs:
     # - uses: pre-commit/action@v3.0.0
     - name: Run ruff
       run: |
-        ruff .
+        ruff check .
         ruff format
     - name: Run tests and collect coverage
       run: |
