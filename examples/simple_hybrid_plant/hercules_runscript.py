@@ -1,6 +1,5 @@
 import sys
 
-from hercules.controller_standin import ControllerStandin
 from hercules.emulator import Emulator
 from hercules.py_sims import PySims
 from hercules.utilities import load_yaml
@@ -11,7 +10,6 @@ from whoc.controllers import (
     WindFarmPowerTrackingController,
 )
 from whoc.interfaces.hercules_hybrid_actuator_disk_interface import HerculesHybridADInterface
-
 
 input_dict = load_yaml(sys.argv[1])
 # input_dict["output_file"] = "hercules_output_hybrid.csv"
