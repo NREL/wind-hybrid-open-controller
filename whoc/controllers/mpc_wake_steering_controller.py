@@ -309,8 +309,8 @@ class YawOptimizationSRRHC(YawOptimizationSR):
 				init_yaw_setpoint_change = -(evaluation_grid_tmp[:, :, 0, :] - current_yaw_offsets[np.newaxis, : ,:])[:, :, np.newaxis, :]
 				subsequent_yaw_setpoint_changes = -np.diff(evaluation_grid_tmp, axis=2)
 
-				assert np.isclose(np.sum(np.diff(init_yaw_setpoint_change, axis=1)), 0.0)
-				assert np.isclose(np.sum(np.diff(subsequent_yaw_setpoint_changes, axis=1)), 0.0)
+				assert np.isclose(np.sum(np.diff(init_yaw_setpoint_change, axis=1)), 0.0), "dynamic state equation for first time-step in horizon should be satisfied in YawOptimizationSRRHC.optimize"
+				assert np.isclose(np.sum(np.diff(subsequent_yaw_setpoint_changes, axis=1)), 0.0), "dynamic state equation for subsequent time-step in horizon should be satisfied in YawOptimizationSRRHC.optimize"
 
 				control_inputs = np.concatenate([init_yaw_setpoint_change[:, 0, :, :], subsequent_yaw_setpoint_changes[:, 0, :, :]], axis=1) * (1 / (self.yaw_rate * self.dt))
 				
@@ -361,7 +361,7 @@ class YawOptimizationSRRHC(YawOptimizationSR):
 					),
 					axis=0
 				)
-				assert np.sum(np.diff(np.reshape(yaw_angles_opt_new, (self.n_wind_preview_samples, self.n_horizon, self.nturbs)), axis=0)) == 0.0
+				assert np.sum(np.diff(np.reshape(yaw_angles_opt_new, (self.n_wind_preview_samples, self.n_horizon, self.nturbs)), axis=0)) == 0.0, "optimized yaw offsets should be equal over multiple wind samples in YawOptimizationSRRHC.optimize"
 
 				cost_terms_opt_prev = self._cost_terms_opt_subset
 				cost_opt_prev = self._cost_opt_subset
@@ -415,7 +415,7 @@ class YawOptimizationSRRHC(YawOptimizationSR):
 				self._turbine_power_opt_subset = turbine_powers_opt
 				self._yaw_angles_opt_subset = yaw_angles_opt
 
-				assert np.sum(np.diff(np.reshape(yaw_angles_opt, (self.n_wind_preview_samples, self.n_horizon, self.nturbs)), axis=0)) == 0.
+				assert np.sum(np.diff(np.reshape(yaw_angles_opt, (self.n_wind_preview_samples, self.n_horizon, self.nturbs)), axis=0)) == 0., "optimized yaw offsets should be equal over multiple wind samples in YawOptimizationSRRHC.optimize"
 
 		# Finalize optimization, i.e., retrieve full solutions
 		df_opt = self._finalize()
@@ -491,7 +491,7 @@ class MPC(ControllerBase):
 
 		self.seed = kwargs["seed"] if "seed" in kwargs else None
 		np.random.seed(seed=self.seed)
-		
+
 		if input_dict["controller"]["wind_preview_type"].lower() in ['stochastic_sample', 'stochastic_interval', 'persistent', 'perfect']:
 			self.wind_preview_type = input_dict["controller"]["wind_preview_type"].lower()
 		else:
@@ -801,7 +801,7 @@ class MPC(ControllerBase):
 			self.historic_measurements["wind_directions"] = np.append(self.historic_measurements["wind_directions"],
 															current_wind_direction)[-int((self.lpf_time_const // self.simulation_dt) * 1e3):]
 			
-		assert np.all(self.wind_dir_ts[:len(self.historic_measurements["wind_directions"])] == self.historic_measurements["wind_directions"])
+		assert np.all(self.wind_dir_ts[:len(self.historic_measurements["wind_directions"])] == self.historic_measurements["wind_directions"]), "collected historic wind_direction measurements should be equal to actual historci wind_direction measurements in MPC.compute_controls"
 		if len(self.measurements_dict["wind_directions"]) == 0 or np.all(np.isclose(self.measurements_dict["wind_directions"], 0)):
 			# yaw angles will be set to initial values
 			if self.verbose:
@@ -1149,23 +1149,23 @@ class MPC(ControllerBase):
 			# mean value
 			opt_yaw_setpoints = self.wind_preview_intervals[f"FreestreamWindDir"][int(self.n_wind_preview_samples // 2), 1:] - np.vstack(opt_yaw_offsets_df["yaw_angles_opt"].values).T
 			
-			assert np.all(np.isclose(self.fi.env.core.flow_field.wind_directions - np.array(self.wind_preview_intervals[f"FreestreamWindDir"][:, 1:].flatten()), 0.0))
+			assert np.all(np.isclose(self.fi.env.core.flow_field.wind_directions - np.array(self.wind_preview_intervals[f"FreestreamWindDir"][:, 1:].flatten()), 0.0)), "FLORIS wind directions should come from self.wind_preview_intervals in sr_solve"
 			opt_cost = opt_yaw_offsets_df["cost"].to_numpy()
 			opt_cost_terms[:, 0] = opt_yaw_offsets_df["cost_states"].to_numpy()
 			opt_cost_terms[:, 1] = opt_yaw_offsets_df["cost_control_inputs"].to_numpy()
 
 			# check that all yaw offsets are within limits, possible issue above
-			assert np.all(np.vstack(opt_yaw_offsets_df["yaw_angles_opt"].to_numpy()) <= self.yaw_limits[1]) and np.all(np.vstack(opt_yaw_offsets_df["yaw_angles_opt"].to_numpy()) >= self.yaw_limits[0])
+			assert np.all(np.vstack(opt_yaw_offsets_df["yaw_angles_opt"].to_numpy()) <= self.yaw_limits[1]) and np.all(np.vstack(opt_yaw_offsets_df["yaw_angles_opt"].to_numpy()) >= self.yaw_limits[0]), "optimized yaw offsets should satisfy upper and lower bounds in sr_solve"
 			
 			# assert np.all(
 			#     (((self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][m] - opt_yaw_setpoints[j, :]) <= self.yaw_limits[1]) 
 			#       and ((self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][m] - opt_yaw_setpoints[j, :]) >= self.yaw_limits[0]))
 			#         for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)
 			
-			assert np.all([(self.wind_preview_intervals[f"FreestreamWindDir"][int(self.n_wind_preview_samples // 2), j + 1] - opt_yaw_setpoints[:, j]) <= self.yaw_limits[1] + 1e-12 for j in range(self.n_horizon)])
+			assert np.all([(self.wind_preview_intervals[f"FreestreamWindDir"][int(self.n_wind_preview_samples // 2), j + 1] - opt_yaw_setpoints[:, j]) <= self.yaw_limits[1] + 1e-12 for j in range(self.n_horizon)]), "optimized yaw setpoints should satisfy upper bounds in sr_solve"
 
 			# assert np.all([(self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][m] - opt_yaw_setpoints[j, :]) <= self.yaw_limits[1] + 1e-12 for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)])
-			assert np.all([(self.wind_preview_intervals[f"FreestreamWindDir"][m, j + 1] - opt_yaw_setpoints[:, j]) >= self.yaw_limits[0] - 1e-12 for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)])
+			assert np.all([(self.wind_preview_intervals[f"FreestreamWindDir"][m, j + 1] - opt_yaw_setpoints[:, j]) >= self.yaw_limits[0] - 1e-12 for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon)]), "optimized yaw setpoints should satisfy lower bounds in sr_solve"
 			# check if solution adheres to dynamic state equaion
 			# ensure that the rate of change is not greater than yaw_rate
 			# clipped_opt_yaw_setpoints = np.zeros_like(opt_yaw_setpoints)
@@ -1396,14 +1396,14 @@ class MPC(ControllerBase):
 			# assert np.all(c_dir[:, 0] == c_dir[:, 1])
 		
 		# check if optimal solution is on boundary anywhere.
-		assert not any(var.value > var.upper or var.value < var.lower for var in sol.variables["states"]) or any(var.value > var.upper or var.value < var.lower for var in sol.variables["control_inputs"])
+		assert not any(var.value > var.upper or var.value < var.lower for var in sol.variables["states"]) or any(var.value > var.upper or var.value < var.lower for var in sol.variables["control_inputs"]), "optimization variables should satisfy upper bounds in slsqp_solve"
 
 		# sol = MPC.optimizers[self.optimizer_idx](self.pyopt_prob, sens="FD")
 		self.pyopt_sol_obj = sol
 		self.opt_sol = {k: v[:] for k, v in sol.xStar.items()}
 		self.opt_code = sol.optInform
 		# self.opt_cost = sol.fStar
-		assert sum(self.opt_cost_terms) == self.opt_cost
+		assert sum(self.opt_cost_terms) == self.opt_cost, "sum of self.opt_cost_terms should equal self.opt_cost in slsqp_solve"
 		# solution is scaled by yaw limit
 		# yaw_setpoints = ((self.initial_state * self.yaw_norm_const) + (self.yaw_rate * self.dt * self.opt_sol["control_inputs"][:self.n_turbines]))
 		yaw_setpoints = self.opt_sol["states"][:self.n_turbines] * self.yaw_norm_const
