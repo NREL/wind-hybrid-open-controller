@@ -177,6 +177,7 @@ case_studies = {
                     "dt": {"group": 1, "vals": [60, 5, 5]},
                     "use_filtered_wind_dir": {"group": 1, "vals": [False, True, True]},
                     # "case_names": {"group": 2, "vals": ["3 Turbines", "9 Turbines", "25 Turbines"]},
+                    "num_turbines": {"group": 2, "vals": [3, 9, 25]},
                     "lut_path": {"group": 2, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{nturb}.csv") for nturb in [3, 9, 25]]},
                     "floris_input_file": {"group": 2, "vals": [os.path.join(os.path.dirname(whoc_file), "../examples/mpc_wake_steering_florisstandin", 
@@ -402,7 +403,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                 else:
                     input_dicts[start_case_idx + c]["controller"][property_name] = property_value
                     
-            fn = f'input_config_case_{"_".join([f"{key}_{val if (type(val) is str or type(val) is np.str_) else np.round(val, 5)}" for key, val in case.items() if key not in ["wind_case_idx", "seed"]]) if "case_names" not in case else case["case_names"]}.yaml'.replace("/", "_")
+            fn = f'input_config_case_{"_".join([f"{key}_{val if (type(val) is str or type(val) is np.str_) else np.round(val, 5)}" for key, val in case.items() if key not in ["wind_case_idx", "seed", "use_filtered_wind_dir", "floris_input_file", "dt", "lut_path"]]) if "case_names" not in case else case["case_names"]}.yaml'.replace("/", "_")
             
             with io.open(os.path.join(results_dir, fn), 'w', encoding='utf8') as fp:
                 yaml.dump(input_dicts[start_case_idx + c], fp, default_flow_style=False, allow_unicode=True)
