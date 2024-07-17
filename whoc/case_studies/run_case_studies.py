@@ -23,10 +23,9 @@ if __name__ == "__main__":
     parser.add_argument("-glut", "--generate_lut", action="store_true")
     parser.add_argument("-rs", "--run_simulations", action="store_true")
     parser.add_argument("-ps", "--postprocess_simulations", action="store_true")
-    parser.add_argument("-p", "--parallel", action="store_true")
     parser.add_argument("-st", "--stoptime", type=float, default=3600)
     parser.add_argument("-ns", "--n_seeds", type=int, default=6)
-    parser.add_argument("-m", "--multiprocessor", type=str, choices=["mpi", "cf"], default="mpi")
+    parser.add_argument("-m", "--multiprocessor", type=str, choices=["mpi", "cf"])
     parser.add_argument("-sd", "--save_dir", type=str)
     parser.add_argument("-rrs", "--rerun_simulations", action="store_true")
     # "/projects/ssc/ahenry/whoc/floris_case_studies" on kestrel
@@ -44,12 +43,12 @@ if __name__ == "__main__":
     if args.run_simulations:
         # run simulations
         
-        if (args.multiprocessor == "mpi" and (comm_rank := MPI.COMM_WORLD.Get_rank()) == 0) or (args.multiprocessor != "mpi") or not args.parallel:
+        if (args.multiprocessor == "mpi" and (comm_rank := MPI.COMM_WORLD.Get_rank()) == 0) or (args.multiprocessor != "mpi") or (args.multiprocessor is None):
             print(f"running initialize_simulations for case_ids {[case_families[i] for i in args.case_ids]}")
             
             case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts = initialize_simulations([case_families[i] for i in args.case_ids], regenerate_wind_field=args.generate_wind_field, regenerate_lut=args.generate_lut, n_seeds=args.n_seeds, stoptime=args.stoptime, save_dir=args.save_dir)
         
-        if args.parallel:
+        if args.multiprocessor is not None:
             if args.multiprocessor == "mpi":
                 comm_size = MPI.COMM_WORLD.Get_size()
                 # comm_rank = MPI.COMM_WORLD.Get_rank()
