@@ -101,6 +101,11 @@ case_studies = {
                          "case_names": {"group": 1, "vals": ["SLSQP", "Sequential SLSQP", "Sequential Refine"]},
                               "solver": {"group": 1, "vals": ["slsqp", "sequential_slsqp", "serial_refine"]}
     },
+     "solver_type_test": {"seed": {"group": 0, "vals": [0]},
+                             "controller_class": {"group": 0, "vals": ["MPC"]},
+                             "wind_preview_type": {"group": 1, "vals": ["stochastic_interval", "stochastic_sample"]}, 
+                              "solver": {"group": 2, "vals": ["serial_refine"]} #, "sequential_slsqp", "slsqp"]}
+    },
     "yaw_offset_study": {"seed": {"group": 0, "vals": [0]},
                           "controller_class": {"group": 1, "vals": ["MPC", "MPC", "LookupBasedWakeSteeringController"]},
                           "case_names": {"group": 1, "vals":[f"StochasticInterval_1_3turb", f"StochasticInterval_5_3turb", f"LUT_3turb"]},
@@ -329,6 +334,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
             os.makedirs(wind_field_dir)
         wind_field_data = generate_multi_wind_ts(full_wf, wind_field_dir, init_seeds=[seed + i for i in range(n_seeds)])
         write_abl_velocity_timetable([wfd.df for wfd in wind_field_data], wind_field_dir) # then use these timetables in amr precursor
+        # write_abl_velocity_timetable(wind_field_data, wind_field_dir) # then use these timetables in amr precursor
         lpf_alpha = np.exp(-(1 / input_dict["controller"]["lpf_time_const"]) * input_dict["dt"])
         plot_wind_field_ts(wind_field_data[0].df, wind_field_dir, filter_func=partial(first_ord_filter, alpha=lpf_alpha))
         plot_ts(wind_field_data[0].df, wind_field_dir)
@@ -427,4 +433,5 @@ case_families = ["baseline_controllers", "solver_type",
                     "stochastic_preview_type", "stochastic_preview_type_small",
                     "perfect_preview_type", "slsqp_solver_sweep_small",
                     "test_nu_preview", "serial_refine_solver", 
-                    "sequential_slsqp_solver", "lut"]
+                    "sequential_slsqp_solver", "lut",
+                    "solver_type_test"]
