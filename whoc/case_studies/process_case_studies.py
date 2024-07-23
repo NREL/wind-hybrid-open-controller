@@ -20,6 +20,8 @@ from floris import FlorisModel
 from floris.flow_visualization import visualize_cut_plane
 
 from scipy.interpolate import LinearNDInterpolator
+from scipy.interpolate import UnivariateSpline
+from scipy.interpolate import interp1d
 
 from whoc import __file__ as whoc_file
 
@@ -66,117 +68,75 @@ def plot_wind_farm(floris_input_files, lut_paths, save_dir):
     
         fig.savefig(os.path.join(save_dir, f"wind_farm_plot_{fmodel.n_turbines}.png"))
 
-def get_results_data(results_dirs):
+def read_time_series_data(results_path):
     # from whoc.wind_field.WindField import first_ord_filter
-    results_dfs = {}
-    for results_dir in results_dirs:
-        case_family = os.path.split(os.path.basename(results_dir))[-1]
-        for f, fn in enumerate([fn for fn in os.listdir(results_dir) if ".csv" in fn]):
-            seed = int(re.findall(r"(?<=seed\_)(\d*)", fn)[0])
-            case_name = re.findall(r"(?<=case_)(.*)(?=_seed)", fn)[0]
+    # for results_dir in results_dirs:
+    # case_family = os.path.split(os.path.dirname(results_path))[-1]
+    # for f, fn in enumerate([fn for fn in os.listdir(results_dir) if ".csv" in fn]):
+    # fn = os.path.basename(results_path)
+    # seed = int(re.findall(r"(?<=seed\_)(\d*)", fn)[0])
+    # case_name = re.findall(r"(?<=case_)(.*)(?=_seed)", fn)[0]
 
-            df = pd.read_csv(os.path.join(results_dir, fn), index_col=0)
-
-            # df["FilteredFreestreamWindDir"] = first_ord_filter(df["FreestreamWindDir"])
-            # df.to_csv(os.path.join(results_dir, f"time_series_results_case_{r}.csv"))
-            case_tag = f"{case_family}_{case_name}"
-            if case_tag not in results_dfs:
-                results_dfs[case_tag] = df
-            else:
-                results_dfs[case_tag] = pd.concat([results_dfs[case_tag], df])
+    df = pd.read_csv(results_path, index_col=0)
+    # df["CaseFamily"] = case_family 
+    # df.to_csv(results_path)
+    # results_df.append(df)
+        
+        # df["FilteredFreestreamWindDir"] = first_ord_filter(df["FreestreamWindDir"])
+        # df.to_csv(os.path.join(results_dir, f"time_series_results_case_{r}.csv"))
+        # case_tag = f"{case_family}_{case_name}"
+        # if case_tag not in results:
+        #     results[case_tag] = df
+        # else:
+        #     results[case_tag] = pd.concat([results[case_tag], df])
 
         # results_dfs[case_tag].to_csv(os.path.join(results_dir, fn))
-    return results_dfs
+    return df
 
-def process_simulations(results_dirs, case_studies, save_dir):
-    results_dfs = get_results_data(results_dirs) # TODO change save name of compare_results_df
-    compare_results_df = compare_simulations(results_dfs, save_dir)
-    compare_results_df.sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True)[("RelativeTotalRunningOptimizationCostMean", "mean")]
-    compare_results_df.sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True)[("YawAngleChangeAbsMean", "mean")]
-    compare_results_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False)[("FarmPowerMean", "mean")]
+def generate_outputs(agg_results_df, save_dir):
 
-    compare_results_df[("FarmPowerMean", "mean")]
-    mpc_df = compare_results_df.iloc[compare_results_df.index.get_level_values("CaseFamily") == "slsqp_solver_sweep"]  
-    lut_df = compare_results_df.iloc[compare_results_df.index.get_level_values("CaseName") == "LUT"] 
-    greedy_df = compare_results_df.iloc[compare_results_df.index.get_level_values("CaseName") == "Greedy"]
+    # agg_results_df.sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True)[("RelativeTotalRunningOptimizationCostMean", "mean")]
+    # agg_results_df.sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True)[("YawAngleChangeAbsMean", "mean")]
+    # agg_results_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False)[("FarmPowerMean", "mean")]
 
-    better_than_lut_df = mpc_df.loc[(mpc_df[("FarmPowerMean", "mean")] > lut_df[("FarmPowerMean", "mean")].iloc[0]) & (mpc_df[("YawAngleChangeAbsMean", "mean")] < lut_df[("YawAngleChangeAbsMean", "mean")].iloc[0]), [("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True).reset_index(level="CaseFamily", drop=True)
-    # print(mpc_df.loc[(mpc_df[("FarmPowerMean", "mean")] > greedy_df[("FarmPowerMean", "mean")].iloc[0]) & (mpc_df[("YawAngleChangeAbsMean", "mean")] < greedy_df[("YawAngleChangeAbsMean", "mean")].iloc[0]), ("RelativeTotalRunningOptimizationCostMean", "mean")].sort_values(ascending=True))
-    better_than_greedy_df = mpc_df.loc[(mpc_df[("FarmPowerMean", "mean")] > greedy_df[("FarmPowerMean", "mean")].iloc[0]), [("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True).reset_index(level="CaseFamily", drop=True)
-    better_than_greedy_df = better_than_greedy_df.loc[better_than_greedy_df.index.isin(better_than_lut_df.index)]
-    best_idx_sum = np.inf
-    best_case = None
-    for best_lut_idx, best_lut_case_name in enumerate(better_than_lut_df.index):
-        best_greedy_idx = np.where(better_than_greedy_df.index == best_lut_case_name)[0][0]
-        if best_lut_idx + best_greedy_idx < best_idx_sum:
-            best_case = best_lut_case_name
-    better_than_lut_df.iloc[0]._name
-    # a = compare_results_df.loc[compare_results_df[("YawAngleChangeAbsMean", "mean")] > 0, :].sort_values(by=("FarmPowerMean", "mean"), ascending=False)[("FarmPowerMean", "mean")] * 1e-7
-    # b = compare_results_df.loc[compare_results_df[("YawAngleChangeAbsMean", "mean")] > 0, :].sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True)[("YawAngleChangeAbsMean", "mean")]
+    # agg_results_df[("FarmPowerMean", "mean")]
+
+
+    # agg_results_df.sort_values(by=("TotalRunningOptimizationCostMean", "mean"), ascending=True).groupby(level=0)[("TotalRunningOptimizationCostMean", "mean")]
+    agg_results_df[("TotalRunningOptimizationCostMean", "mean")].sort_values(ascending=True)
+
+    (-(agg_results_df[("FarmPowerMean", "mean")] * 1e-8) + (agg_results_df[("YawAngleChangeAbsMean", "mean")])).sort_values(ascending=True)
+    (agg_results_df[("FarmPowerMean", "mean")].sort_values(ascending=False)).to_csv("./mpc_configs_maxpower.csv")
+    (agg_results_df[("YawAngleChangeAbsMean", "mean")].sort_values(ascending=True)).to_csv("./mpc_configs_minyaw.csv")
+    ((agg_results_df[("FarmPowerMean", "mean")] * 1e-7) - agg_results_df[("YawAngleChangeAbsMean", "mean")]).sort_values(ascending=False).to_csv("./mpc_configs_mincost")
+    ((agg_results_df[("FarmPowerMean", "mean")] * 1e-7) / agg_results_df[("YawAngleChangeAbsMean", "mean")]).sort_values(ascending=False).to_csv("./mpc_configs_max_power_yaw_ratio.csv")
+
+    # agg_results_df.groupby("CaseFamily", group_keys=False).apply(lambda x: x.sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True).head(3))[("RelativeTotalRunningOptimizationCostMean", "mean")]
+    x = agg_results_df.loc[agg_results_df[("RelativeYawAngleChangeAbsMean", "mean")] > 0, :].groupby("CaseFamily", group_keys=False).apply(lambda x: x.sort_values(by=("RelativeYawAngleChangeAbsMean", "mean"), ascending=True).head(10))[("RelativeYawAngleChangeAbsMean", "mean")]
+    y = agg_results_df.groupby("CaseFamily", group_keys=False).apply(lambda x: x.sort_values(by=("RelativeFarmPowerMean", "mean"), ascending=False).head(10))[("RelativeFarmPowerMean", "mean")]
     
-    # mask, idx = compare_results_df.index.get_loc_level("slsqp_solver_sweep", level="CaseFamily")
-    if 0:
-        a = compare_results_df.loc[pd.IndexSlice["slsqp_solver_sweep_small", :], :].sort_values(by=("FarmPowerMean", "mean"), ascending=False)
-        b = compare_results_df.loc[pd.IndexSlice["slsqp_solver_sweep_small", :], :].sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True)
-        a = a.loc[a[("YawAngleChangeAbsMean", "mean")] > 0, :][("FarmPowerMean", "mean")] * 1e-7
-        b = b.loc[b[("YawAngleChangeAbsMean", "mean")] > 0, :][("YawAngleChangeAbsMean", "mean")]
-        
-        # best case prioritizing high farm_power
-        farm_power_case_names = [ind[1] for ind in a.index]
-        yaw_change_case_names = [ind[1] for ind in b.index]
-        min_index = len(yaw_change_case_names)
-        best_case = None
-        for farm_power_idx, (case_family, case_name) in enumerate(a.index.values):
-            print(f"farm_power_idx = {farm_power_idx}")
-            yaw_change_idx = yaw_change_case_names.index(case_name)
-            print(f"yaw_change_idx = {yaw_change_idx}")
-            if farm_power_idx + yaw_change_idx < min_index:
-                print(f"min_index, farm_power_idx, yaw_change_idx = {min_index, farm_power_idx, yaw_change_idx}")
-                min_index = farm_power_idx + yaw_change_idx
-                best_case = case_name # 'alpha_0.995_controller_class_MPC_n_wind_preview_samples_50_nu_1.0_solver_slsqp'
-        
-        farm_power_case_names.index(best_case)
-        yaw_change_case_names.index(best_case)
 
-    # compare_results_df.sort_values(by=("TotalRunningOptimizationCostMean", "mean"), ascending=True).groupby(level=0)[("TotalRunningOptimizationCostMean", "mean")]
-    compare_results_df[("TotalRunningOptimizationCostMean", "mean")].sort_values(ascending=True)
-
-    (-(compare_results_df[("FarmPowerMean", "mean")] * 1e-8) + (compare_results_df[("YawAngleChangeAbsMean", "mean")])).sort_values(ascending=True)
-    (compare_results_df[("FarmPowerMean", "mean")].sort_values(ascending=False)).to_csv("./mpc_configs_maxpower.csv")
-    (compare_results_df[("YawAngleChangeAbsMean", "mean")].sort_values(ascending=True)).to_csv("./mpc_configs_minyaw.csv")
-    ((compare_results_df[("FarmPowerMean", "mean")] * 1e-7) - compare_results_df[("YawAngleChangeAbsMean", "mean")]).sort_values(ascending=False).to_csv("./mpc_configs_mincost")
-    ((compare_results_df[("FarmPowerMean", "mean")] * 1e-7) / compare_results_df[("YawAngleChangeAbsMean", "mean")]).sort_values(ascending=False).to_csv("./mpc_configs_max_power_yaw_ratio.csv")
-
-    # compare_results_df.groupby("CaseFamily", group_keys=False).apply(lambda x: x.sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True).head(3))[("RelativeTotalRunningOptimizationCostMean", "mean")]
-    x = compare_results_df.loc[compare_results_df[("RelativeYawAngleChangeAbsMean", "mean")] > 0, :].groupby("CaseFamily", group_keys=False).apply(lambda x: x.sort_values(by=("RelativeYawAngleChangeAbsMean", "mean"), ascending=True).head(10))[("RelativeYawAngleChangeAbsMean", "mean")]
-    y = compare_results_df.groupby("CaseFamily", group_keys=False).apply(lambda x: x.sort_values(by=("RelativeFarmPowerMean", "mean"), ascending=False).head(10))[("RelativeFarmPowerMean", "mean")]
-    
-    if "breakdown_robustness" in compare_results_df.index.get_level_values("CaseFamily"):
-        plot_breakdown_robustness(compare_results_df, case_studies, save_dir)
-
-    if "scalability" in compare_results_df.index.get_level_values("CaseFamily"):
-        plot_cost_function_pareto_curve(compare_results_df, case_studies, save_dir)
 
     # generate results table in tex
-    # solver_type_df = compare_results_df.loc[compare_results_df.index.get_level_values("CaseFamily") == "solver_type", :].reset_index("CaseName")
+    # solver_type_df = agg_results_df.loc[agg_results_df.index.get_level_values("CaseFamily") == "solver_type", :].reset_index("CaseName")
     # solver_type_df.loc[solver_type_df.CaseName == 'SLSQP', ("RelativeYawAngleChangeAbsMean", "mean")]
 
-    x = compare_results_df.loc[(compare_results_df.index.get_level_values("CaseFamily") != "scalability") & (compare_results_df.index.get_level_values("CaseFamily") != "breakdown_robustness"), :]
+    x = agg_results_df.loc[(agg_results_df.index.get_level_values("CaseFamily") != "scalability") & (agg_results_df.index.get_level_values("CaseFamily") != "breakdown_robustness"), :]
     # x = x.loc[:, x.columns.get_level_values(1) == "mean"]
     x = x.loc[:, ("RelativeTotalRunningOptimizationCostMean", "mean")]
     x = x.groupby("CaseFamily", group_keys=False).nsmallest(3)
     # Set alpha to 0.1, n_horizon to 12, solver to SLSQP, warm-start to LUT
 
-    get_result = lambda case_family, case_name, parameter: compare_results_df.loc[(compare_results_df.index.get_level_values("CaseFamily") == case_family) & (compare_results_df.index.get_level_values("CaseName") == case_name), (parameter, "mean")].iloc[0]
+    get_result = lambda case_family, case_name, parameter: agg_results_df.loc[(agg_results_df.index.get_level_values("CaseFamily") == case_family) & (agg_results_df.index.get_level_values("CaseName") == case_name), (parameter, "mean")].iloc[0]
     # get_result('solver_type', 'SLSQP', 'RelativeYawAngleChangeAbsMean')
     # get_result('solver_type', 'SLSQP', 'RelativeFarmPowerMean')
     # get_result('solver_type', 'SLSQP', 'TotalRunningOptimizationCostMean')
     # get_result('solver_type', 'SLSQP', 'OptimizationConvergenceTimeMean')
 
-    if all(col in compare_results_df.index.get_level_values("CaseFamily") for col in ["baseline_controllers", "solver_type",
-                    "wind_preview_type", "warm_start", 
-                    "horizon_length", "breakdown_robustness",
-                    "scalability", "cost_func_tuning"]):
+    if all(col in agg_results_df.index.get_level_values("CaseFamily") for col in 
+           ["baseline_controllers", "solver_type",
+             "wind_preview_type", "warm_start", 
+              "horizon_length", "scalability"]):
         compare_results_latex = (
         f"\\begin{{tabular}}{{l|lllll}}\n"
         f"\\textbf{{Case Family}} & \\textbf{{Case Name}} & \\thead{{\\textbf{{Relative Mean}} \\\\ \\textbf{{Farm Power [MW]}}}}                                                                    & \\thead{{\\textbf{{Relative Mean Absolute}} \\\\ \\textbf{{Yaw Angle Change [$^\\circ$]}}}}                    & \\thead{{\\textbf{{Relative}} \\\\ \\textbf{{Mean Cost [-]}}}}                                                        & \\thead{{\\textbf{{Mean}} \\\\ \\textbf{{Convergence Time [s]}}}} \\\\ \\hline \n"
@@ -191,12 +151,11 @@ def process_simulations(results_dirs, case_studies, save_dir):
         f"&                                                        Previous Solution        & ${get_result('warm_start', 'Previous', 'RelativeFarmPowerMean') / 1e6:.3f}$                            & ${get_result('warm_start', 'Previous', 'RelativeYawAngleChangeAbsMean'):.3f}$                            & ${get_result('warm_start', 'Previous', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                               & ${int(get_result('warm_start', 'Previous', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \\hline \n"
         f"\\multirow{{4}}{{*}}{{\\textbf{{Wind Farm Size}}}}       & $3 \\times 1$           & ${get_result('scalability', '3 Turbines', 'RelativeFarmPowerMean') / 1e6:.3f}$                         & ${get_result('scalability', '3 Turbines', 'RelativeYawAngleChangeAbsMean'):.3f}$                         & ${get_result('scalability', '3 Turbines', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                            & ${int(get_result('scalability', '3 Turbines', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
         f"&                                                        $\\bm{{3 \\times 3}}$    & ${get_result('scalability', '9 Turbines', 'RelativeFarmPowerMean') / 1e6:.3f}$                         & ${get_result('scalability', '9 Turbines', 'RelativeYawAngleChangeAbsMean'):.3f}$                         & ${get_result('scalability', '9 Turbines', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                            & ${int(get_result('scalability', '9 Turbines', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-        f"&                                                        $5 \\times 5$            & ${get_result('scalability', '25 Turbines', 'RelativeFarmPowerMean') / 1e6:.3f}$                        & ${get_result('scalability', '25 Turbines', 'RelativeYawAngleChangeAbsMean'):.3f}$                        & ${get_result('scalability', '25 Turbines', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                           & ${int(get_result('scalability', '25 Turbines', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-        f"&                                                        $10 \\times 10$          & ${get_result('scalability', '100 Turbines', 'RelativeFarmPowerMean') / 1e6:.3f}$                       & ${get_result('scalability', '100 Turbines', 'RelativeYawAngleChangeAbsMean'):.3f}$                       & ${get_result('scalability', '100 Turbines', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                          & ${int(get_result('scalability', '100 Turbines', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \\hline \n"
+        f"&                                                        $5 \\times 5$            & ${get_result('scalability', '25 Turbines', 'RelativeFarmPowerMean') / 1e6:.3f}$                        & ${get_result('scalability', '25 Turbines', 'RelativeYawAngleChangeAbsMean'):.3f}$                        & ${get_result('scalability', '25 Turbines', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                           & ${int(get_result('scalability', '25 Turbines', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \\hline \n"
         f"\\multirow{{5}}{{*}}{{\\textbf{{Horizon Length}}}}       & $6$                     & ${get_result('horizon_length_N', 'N_p = 6', 'RelativeFarmPowerMean') / 1e6:.3f}$                       & ${get_result('horizon_length_N', 'N_p = 6', 'RelativeYawAngleChangeAbsMean'):.3f}$                       & ${get_result('horizon_length_N', 'N_p = 6', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                          & ${int(get_result('horizon_length_N', 'N_p = 6', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
         f"&                                                        $8$                      & ${get_result('horizon_length_N', 'N_p = 8', 'RelativeFarmPowerMean') / 1e6:.3f}$                       & ${get_result('horizon_length_N', 'N_p = 8', 'RelativeYawAngleChangeAbsMean'):.3f}$                       & ${get_result('horizon_length_N', 'N_p = 8', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                          & ${int(get_result('horizon_length_N', 'N_p = 8', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-        f"&                                                        $\\bm{{10}}$             & ${get_result('horizon_length_N', 'N_p = 10', 'RelativeFarmPowerMean') / 1e6:.3f}$                      & ${get_result('horizon_length_N', 'N_p = 10', 'RelativeYawAngleChangeAbsMean'):.3f}$                      & ${get_result('horizon_length_N', 'N_p = 10', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                         & ${int(get_result('horizon_length_N', 'N_p = 10', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-        f"&                                                        $12$                     & ${get_result('horizon_length_N', 'N_p = 12', 'RelativeFarmPowerMean') / 1e6:.3f}$                      & ${get_result('horizon_length_N', 'N_p = 12', 'RelativeYawAngleChangeAbsMean'):.3f}$                      & ${get_result('horizon_length_N', 'N_p = 12', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                         & ${int(get_result('horizon_length_N', 'N_p = 12', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+        f"&                                                        $10$             & ${get_result('horizon_length_N', 'N_p = 10', 'RelativeFarmPowerMean') / 1e6:.3f}$                             & ${get_result('horizon_length_N', 'N_p = 10', 'RelativeYawAngleChangeAbsMean'):.3f}$                      & ${get_result('horizon_length_N', 'N_p = 10', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                         & ${int(get_result('horizon_length_N', 'N_p = 10', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+        f"&                                                        $\\bm{{12}}$                     & ${get_result('horizon_length_N', 'N_p = 12', 'RelativeFarmPowerMean') / 1e6:.3f}$              & ${get_result('horizon_length_N', 'N_p = 12', 'RelativeYawAngleChangeAbsMean'):.3f}$                      & ${get_result('horizon_length_N', 'N_p = 12', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                         & ${int(get_result('horizon_length_N', 'N_p = 12', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
         f"&                                                        $14$                     & ${get_result('horizon_length_N', 'N_p = 14', 'RelativeFarmPowerMean') / 1e6:.3f}$                      & ${get_result('horizon_length_N', 'N_p = 14', 'RelativeYawAngleChangeAbsMean'):.3f}$                      & ${get_result('horizon_length_N', 'N_p = 14', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                         & ${int(get_result('horizon_length_N', 'N_p = 14', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \\hline \n"
         # f"\multirow{{5}}{{*}}{{\\textbf{{Probability of Turbine Failure}}}} & $\\bm{{0\%}}$ & ${get_result('breakdown_robustness', '00.0% Chance of Breakdown', 'RelativeFarmPowerMean') / 1e6:.3f}$ & ${get_result('breakdown_robustness', '00.0% Chance of Breakdown', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${get_result('breakdown_robustness', '00.0% Chance of Breakdown', 'RelativeTotalRunningOptimizationCostMean'):.3f}$    & ${int(get_result('breakdown_robustness', '00.0% Chance of Breakdown', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
         # f"&                                                                  $1\%$          & ${get_result('breakdown_robustness', '02.5% Chance of Breakdown', 'RelativeFarmPowerMean') / 1e6:.3f}$ & ${get_result('breakdown_robustness', '02.5% Chance of Breakdown', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${get_result('breakdown_robustness', '02.5% Chance of Breakdown', 'RelativeTotalRunningOptimizationCostMean'):.3f}$    & ${int(get_result('breakdown_robustness', '02.5% Chance of Breakdown', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
@@ -207,49 +166,45 @@ def process_simulations(results_dirs, case_studies, save_dir):
         )
         with open(os.path.join(save_dir, "comparison_time_series_results_table.tex"), "w") as fp:
             fp.write(compare_results_latex)
-    
 
-def plot_simulations(results_dirs, save_dir):
+def plot_simulations(time_series_df, plotting_cases, save_dir):
     # TODO delete all extra files in directories before rerunning simulations
-    results_dfs = get_results_data(results_dirs)
     
-    # plot yaw vs wind dir TODO only for three turbine cases
-    case_names = ["yaw_offset_study_LUT_3turb", "yaw_offset_study_StochasticInterval_1_3turb", "yaw_offset_study_StochasticInterval_3turb"]
-    case_labels = ["LUT", "Deterministic", "Stochastic"]
-    plot_yaw_offset_wind_direction(results_dfs, case_names, case_labels,
-                                   os.path.join(os.path.dirname(whoc_file), f"../examples/mpc_wake_steering_florisstandin/lut_{3}.csv"), 
-                                   os.path.join(save_dir, f"yawoffset_winddir_ts.png"), plot_turbine_ids=[0, 1, 2], include_yaw=True, include_power=True)
-    
-    for r, results_dir in enumerate(results_dirs):
-        input_filenames = [fn for fn in os.listdir(results_dir) if "input_config" in fn]
-        # input_case_names = [re.findall(r"(?<=case_)(.*)(?=.yaml)", input_fn)[0] for input_fn in input_filenames]
-        # data_filenames = sorted([fn for fn in os.listdir(results_dir) if ("time_series_results" in fn 
-        #                         and re.findall(r"(?<=case_)(.*)(?=_seed)", fn)[0] in input_case_names)], 
-        #                         key=lambda data_fn: input_case_names.index(re.findall(r"(?<=case_)(.*)(?=_seed)", data_fn)[0]))
-        # for f, (input_fn, data_fn) in enumerate(zip(input_filenames, data_filenames)):
-        # for f, data_fn in enumerate(data_filenames):
-        for f, input_fn in enumerate(input_filenames):
-            case_family = os.path.basename(results_dir)
+    for case_family in pd.unique(time_series_df["CaseFamily"]):
+        case_family_df = time_series_df.loc[(time_series_df["CaseFamily"] == case_family), :]
+        for case_name in pd.unique(case_family_df["CaseName"]):
+            if (case_family, case_name) not in plotting_cases:
+                continue
+            case_name_df = case_family_df.loc[case_family_df["CaseName"] == case_name, :]
+            input_fn = [fn for fn in os.listdir(os.path.join(save_dir, case_family)) if "input_config" in fn and case_name in fn][0]
+            # input_case_names = [re.findall(r"(?<=case_)(.*)(?=.yaml)", input_fn)[0] for input_fn in input_filenames]
+            # data_filenames = sorted([fn for fn in os.listdir(results_dir) if ("time_series_results" in fn 
+            #                         and re.findall(r"(?<=case_)(.*)(?=_seed)", fn)[0] in input_case_names)], 
+            #                         key=lambda data_fn: input_case_names.index(re.findall(r"(?<=case_)(.*)(?=_seed)", data_fn)[0]))
+            # for f, (input_fn, data_fn) in enumerate(zip(input_filenames, data_filenames)):
+            # for f, data_fn in enumerate(data_filenames):
+            # for f, input_fn in enumerate(input_filenames):
+                # case_family = os.path.basename(results_dir)
             # data_case_name = re.findall(r"(?<=case_)(.*)(?=_seed)", data_fn)[0]
             # input_fn = f"input_config_case_{data_case_name}.yaml"
-            case_name = re.findall(r"(?<=input_config_case_)(.*)(?=.yaml)", input_fn)[0]
+            # case_name = re.findall(r"(?<=input_config_case_)(.*)(?=.yaml)", input_fn)[0]
             # case_family = os.path.basename(results_dir)
             # # input_case_name = re.findall(r"(?<=case_)(.*)(?=.yaml)", input_fn)[0]
             # data_case_name = re.findall(r"(?<=case_)(.*)(?=_seed)", data_fn)[0]
             # input_fn = f"input_config_case_{data_case_name}.yaml"
             # assert input_case_name == data_case_name
             
-            if not (
-                # ((case_family == "baseline_controllers") and ("time_series_results_case_Greedy_seed_0.csv" in data_fn)) or
-                ((case_family == "baseline_controllers") and ("time_series_results_case_LUT_seed_0.csv" in data_fn)) or
-                ((case_family == "slsqp_solver_sweep_small") and ("time_series_results_case_alpha_0.995_controller_class_MPC_n_wind_preview_samples_7_nu_0.1_solver_slsqp_wind_preview_type_stochastic_interval_seed_0.csv" in data_fn))):
-                continue
+            # if not (
+            #     # ((case_family == "baseline_controllers") and ("time_series_results_case_Greedy_seed_0.csv" in data_fn)) or
+            #     ((case_family == "baseline_controllers") and ("time_series_results_case_LUT_seed_0.csv" in data_fn)) or
+            #     ((case_family == "slsqp_solver_sweep_small") and ("time_series_results_case_alpha_0.995_controller_class_MPC_n_wind_preview_samples_7_nu_0.1_solver_slsqp_wind_preview_type_stochastic_interval_seed_0.csv" in data_fn))):
+            #     continue
             
-            with open(os.path.join(results_dir, input_fn), 'r') as fp:
+            with open(os.path.join(save_dir, case_family, input_fn), 'r') as fp:
                 input_config = yaml.safe_load(fp)
 
-            case_name = f"{case_family}_{case_name}"
-            df = results_dfs[case_name]
+            # case_tag = f"{case_family}_{case_name}"
+            # df = results_dfs[case_tag]
             # df.loc[df.CaseName == "alpha_0.995_controller_class_MPC_n_wind_preview_samples_7_nu_0.1_solver_slsqp_wind_preview_type_stochastic_interval", "FarmPower"]
             # if "Time" not in df.columns:
             #     df["Time"] = np.arange(0, 3600.0 - 60.0, 60.0)
@@ -264,7 +219,7 @@ def plot_simulations(results_dirs, save_dir):
             # fig, _ = plot_opt_cost_ts(df, os.path.join(results_dir, f"opt_costs_ts_{input_config['controller']['case_names'].replace('/', '_')}.png"))
             # fig.suptitle("_".join([os.path.basename(results_dir), input_config['controller']['case_names'].replace('/', '_'), "opt_costs_ts"]))
         
-            fig, _ = plot_yaw_power_ts(df, os.path.join(results_dir, f"yaw_power_ts_{case_name}.png"), include_power=True, controller_dt=input_config["controller"]["dt"])
+            fig, _ = plot_yaw_power_ts(case_name_df, os.path.join(save_dir, case_family, f"yaw_power_ts_{case_name}.png"), include_power=True, controller_dt=input_config["controller"]["dt"])
     
     
     # lut_df = results_dfs[f"{'baseline_controllers'}_{'LUT'}"]
@@ -448,60 +403,64 @@ def plot_yaw_power_distribution(data_df, save_path):
     # fig1.set_size_inches((11.2, 4.8))
     # fig2.set_size_inches((11.2, 4.8))
 
-def compare_simulations(results_dfs, save_dir):
-    result_summary_dict = defaultdict(list)
+# def process_all_time_series(results_dfs, save_dir):
+#     result_summary = []
+#     for df_name, results_df in results_dfs.items():
+#         result_summary.append(process_case(df_name, results_df, save_dir))
 
-    for df_name, results_df in results_dfs.items():
-        # res = ResultsSummary(YawAngleChangeAbsSum=results_df[[c for c in results_df.columns if "YawAngleChange" in c]].abs().sum().to_numpy().sum(),
-        #                      FarmPowerSum=results_df["FarmPower"].sum(),
-        #                      TotalOptimizationCostSum=results_df["TotalOptimizationCost"].sum(),
-        #                      ConvergenceTimeSum=results_df["ConvergenceTime"].sum())
-        
-        case_family = df_name.replace(f"_{results_df['CaseName'].iloc[0]}", "")
-        case_name = results_df['CaseName'].iloc[0]
-        input_fn = f"input_config_case_{case_name}.yaml"
-        
-        with open(os.path.join(save_dir, case_family, input_fn), 'r') as fp:
-            input_config = yaml.safe_load(fp)
-
-        if "lpf_start_time" in input_config["controller"]:
-            lpf_start_time = input_config["controller"]["lpf_start_time"]
-        else:
-            lpf_start_time = 180.0
-
-        for seed in pd.unique(results_df["WindSeed"]):
-
-            seed_df = results_df.loc[(results_df["WindSeed"] == seed) & (results_df.Time >= lpf_start_time), :]
-            
-            yaw_angles_change_ts = seed_df[sorted(list([c for c in results_df.columns if "TurbineYawAngleChange_" in c]))]
-            turbine_offline_status_ts = seed_df[sorted(list([c for c in results_df.columns if "TurbineOfflineStatus_" in c]))]
-            turbine_power_ts = seed_df[sorted(list([c for c in results_df.columns if "TurbinePower_" in c]))]
-            # TODO doesn't work for some case families
-            result_summary_dict["CaseFamily"].append(case_family)
-            result_summary_dict["CaseName"].append(seed_df["CaseName"].iloc[0])
-            result_summary_dict["WindSeed"].append(seed)
-            # result_summary_dict["YawAngleChangeAbsSum"].append(results_df[[c for c in results_df.columns if "YawAngleChange" in c]].abs().sum().to_numpy().sum())
-            result_summary_dict["YawAngleChangeAbsMean"].append(yaw_angles_change_ts.abs().sum(axis=1).mean())
-            result_summary_dict["RelativeYawAngleChangeAbsMean"].append(((yaw_angles_change_ts.abs().to_numpy() * np.logical_not(turbine_offline_status_ts)).sum(axis=1) / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean())
-            # result_summary_dict["FarmPowerSum"].append(results_df["FarmPower"].sum())
-            result_summary_dict["FarmPowerMean"].append(turbine_power_ts.sum(axis=1).mean())
-            result_summary_dict["RelativeFarmPowerMean"].append(((turbine_power_ts.to_numpy() * np.logical_not(turbine_offline_status_ts)).sum(axis=1) / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean())
-            # result_summary_dict["TotalRunningOptimizationCostSum"].append(results_df["TotalRunningOptimizationCost"].sum())
-            result_summary_dict["TotalRunningOptimizationCostMean"].append(seed_df["TotalRunningOptimizationCost"].mean())
-            result_summary_dict["RelativeTotalRunningOptimizationCostMean"].append((seed_df["TotalRunningOptimizationCost"] / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean())
-
-            result_summary_dict["RelativeRunningOptimizationCostTerm_0"].append((seed_df["RunningOptimizationCostTerm_0"] / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean())
-            result_summary_dict["RelativeRunningOptimizationCostTerm_1"].append((seed_df["RunningOptimizationCostTerm_1"] / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean())
-
-            result_summary_dict["OptimizationConvergenceTimeMean"].append(seed_df["OptimizationConvergenceTime"].mean())
-        # result_summary_dict["OptimizationConvergenceTimeSum"].append(results_df["OptimizationConvergenceTime"].sum())
+#     result_summary_df = pd.DataFrame(result_summary, 
+                                    #  columns=["CaseFamily", "CaseName", "WindSeed",
+                                            #   "YawAngleChangeAbsMean", "RelativeYawAngleChangeAbsMean",
+                                            #   "FarmPowerMean", "RelativeFarmPowerMean", 
+                                            #   "TotalRunningOptimizationCostMean", "RelativeTotalRunningOptimizationCostMean",
+                                            #   "RelativeRunningOptimizationCostTerm_0", "RelativeRunningOptimizationCostTerm_1"])
+#     result_summary_df = result_summary_df.groupby(by=["CaseFamily", "CaseName"])[[col for col in result_summary_df.columns if col not in ["CaseFamily", "CaseName", "WindSeed"]]].agg(["min", "max", "mean"])
     
-    result_summary_df = pd.DataFrame(result_summary_dict)
-    result_summary_df = result_summary_df.groupby(by=["CaseFamily", "CaseName"])[[col for col in result_summary_df.columns if col not in ["CaseFamily", "CaseName", "WindSeed"]]].agg(["min", "max", "mean"])
-    
-    result_summary_df.to_csv(os.path.join(save_dir, f"comparison_time_series_results.csv"))
+#     result_summary_df.to_csv(os.path.join(save_dir, f"comparison_time_series_results.csv"))
 
-    return result_summary_df
+#     return result_summary_df
+
+def aggregate_time_series_data(case_df, save_dir):
+    """
+    Process csv data (all wind seeds) for single case name and single case family, from single diretory in floris_case_studies
+    """
+    result_summary = []
+    case_family = case_df["CaseFamily"].iloc[0]
+    # case_family = df_name.replace(f"_{results_df['CaseName'].iloc[0]}", "")
+    case_name = case_df['CaseName'].iloc[0]
+    input_fn = f"input_config_case_{case_name}.yaml"
+    
+    with open(os.path.join(save_dir, case_family, input_fn), 'r') as fp:
+        input_config = yaml.safe_load(fp)
+
+    if "lpf_start_time" in input_config["controller"]:
+        lpf_start_time = input_config["controller"]["lpf_start_time"]
+    else:
+        lpf_start_time = 180.0
+    for seed in pd.unique(case_df["WindSeed"]):
+
+        seed_df = case_df.loc[(case_df["WindSeed"] == seed) & (case_df.Time >= lpf_start_time), :]
+        
+        yaw_angles_change_ts = seed_df[sorted(list([c for c in case_df.columns if "TurbineYawAngleChange_" in c]))]
+        turbine_offline_status_ts = seed_df[sorted(list([c for c in case_df.columns if "TurbineOfflineStatus_" in c]))]
+        turbine_power_ts = seed_df[sorted(list([c for c in case_df.columns if "TurbinePower_" in c]))]
+        
+        result_summary.append((seed_df["CaseFamily"].iloc[0], seed_df["CaseName"].iloc[0], seed, 
+                               yaw_angles_change_ts.abs().sum(axis=1).mean(), 
+                               ((yaw_angles_change_ts.abs().to_numpy() * np.logical_not(turbine_offline_status_ts)).sum(axis=1) / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean(),
+                               turbine_power_ts.sum(axis=1).mean(), 
+                               ((turbine_power_ts.to_numpy() * np.logical_not(turbine_offline_status_ts)).sum(axis=1) / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean(),
+                               seed_df["TotalRunningOptimizationCost"].mean(), 
+                               (seed_df["TotalRunningOptimizationCost"] / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean(),
+                               (seed_df["RunningOptimizationCostTerm_0"] / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean(),
+                               (seed_df["RunningOptimizationCostTerm_1"] / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean(),
+                               seed_df["OptimizationConvergenceTime"].mean()))
+    return pd.DataFrame(result_summary, columns=["CaseFamily", "CaseName", "WindSeed",
+                                              "YawAngleChangeAbsMean", "RelativeYawAngleChangeAbsMean",
+                                              "FarmPowerMean", "RelativeFarmPowerMean", 
+                                              "TotalRunningOptimizationCostMean", "RelativeTotalRunningOptimizationCostMean",
+                                              "RelativeRunningOptimizationCostTerm_0", "RelativeRunningOptimizationCostTerm_1",
+                                              "OptimizationConvergenceTime"])
 
 def plot_wind_field_ts(data_df, save_path, filter_func=None):
     fig_wind, ax_wind = plt.subplots(2, 1, sharex=True, figsize=(15.12, 7.98))
@@ -572,7 +531,7 @@ def plot_opt_cost_ts(data_df, save_path):
 
     return fig_opt_cost, ax_opt_cost
 
-def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, save_path, plot_turbine_ids, include_yaw=True, include_power=True):
+def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, save_path, plot_turbine_ids, include_yaw=True, include_power=True, interpolate=True):
     """
     Plot yaw offset vs wind-direction based on the lookup-table (line), 
     and scatter plots of MPC stochastic_interval with n_wind_preview_samples=1 (assuming mean value),
@@ -593,31 +552,63 @@ def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, 
                 ax.append(plt.subplot(int(include_yaw + include_power), len(plot_turbine_ids), subplot_idx + 1, sharex=ax[0], sharey=ax[0]))
 
             for case_name, case_label, color in zip(case_names, case_labels, cycle(colors)):
-                case_df = data_dfs[case_name]
+                case_df = data_dfs.loc[(data_dfs["CaseFamily"] == "yaw_offset_study") & (data_dfs["CaseName"] == case_name), :]
                 # turbine_wind_direction_cols = sorted([col for col in case_df.columns if "TurbineWindDir_" in col])
                 yaw_angle_cols = sorted([col for col in case_df.columns if "TurbineYawAngle_" in col])
 
                 # turbine_wind_dirs = case_df[turbine_wind_direction_cols[turbine_idx]].sort_values(by="Time")
                 freestream_wind_dirs = case_df["FreestreamWindDir"]
-
                 yaw_offsets = freestream_wind_dirs - case_df[yaw_angle_cols[turbine_idx]]
+
+                sort_idx = np.argsort(freestream_wind_dirs)
+                freestream_wind_dirs = freestream_wind_dirs.iloc[sort_idx].reset_index(drop=True) 
+                yaw_offsets = yaw_offsets.iloc[sort_idx].reset_index(drop=True).rename("YawOffset")
+
+                df = pd.concat([freestream_wind_dirs, yaw_offsets], axis=1)
+
+                if interpolate:
+                    df = df.groupby("FreestreamWindDir")["YawOffset"].mean().reset_index()
+                    # interp = UnivariateSpline(freestream_wind_dirs, yaw_offsets)
+                    interp = interp1d(df["FreestreamWindDir"], df["YawOffset"])
+                    freestream_wind_dirs = np.arange(np.ceil(df["FreestreamWindDir"].min()), np.floor(df["FreestreamWindDir"].max()), 0.1)
+                    df = pd.DataFrame(data={"FreestreamWindDir": freestream_wind_dirs,
+                                           "YawOffset": interp(freestream_wind_dirs)})
+
                 if "LUT" in case_name:
-                    ax[subplot_idx].scatter(freestream_wind_dirs, yaw_offsets, label=f"{case_name} Simulation", color=colors[len(case_names)], marker=".", s=5)
+                    # ax[subplot_idx].scatter(freestream_wind_dirs, yaw_offsets, label=f"{case_name} Simulation", color=colors[len(case_names)], marker=".")
+                    sns.scatterplot(data=df, ax=ax[subplot_idx], x="FreestreamWindDir", y="YawOffset", label=f"{case_label} Simulation", color=colors[len(case_names)], marker=".")
                 else:
-                    ax[subplot_idx].scatter(freestream_wind_dirs, yaw_offsets, label=f"{case_name} Simulation", color=color, marker=".", s=5)
+                    # ax[subplot_idx].scatter(freestream_wind_dirs, yaw_offsets, label=f"{case_name} Simulation", color=color, marker=".")
+                    sns.scatterplot(data=df, ax=ax[subplot_idx], x="FreestreamWindDir", y="YawOffset", label=f"{case_label} Simulation", color=color, marker=".")
+                
+                # ax[subplot_idx].legend([], [], frameon=False)
         
         df_lut = pd.read_csv(lut_path, index_col=0)
         df_lut["yaw_angles_opt"] = df_lut["yaw_angles_opt"].apply(lambda s: np.array(re.findall(r"-*\d+\.\d*", s), dtype=float))
         lut_yawoffsets = np.vstack(df_lut["yaw_angles_opt"].values)
         lut_winddirs = df_lut["wind_direction"].values
+        df = pd.DataFrame(data={"FreestreamWindDir": lut_winddirs, 
+                                **{f"YawOffset_{i}": lut_yawoffsets[:, i] for i in plot_turbine_ids}})
+
         for col_idx, turbine_idx in enumerate(plot_turbine_ids):
-            ax[col_idx].scatter(lut_winddirs, lut_yawoffsets[:, turbine_idx], label="LUT", color=colors[len(case_names)], marker=">", s=20)
+            # ax[col_idx].scatter(lut_winddirs, lut_yawoffsets[:, turbine_idx], label="LUT", color=colors[len(case_names)], marker=">")
+            sns.scatterplot(data=df, ax=ax[col_idx], x="FreestreamWindDir", y=f"YawOffset_{turbine_idx}", label=f"LUT", color=colors[len(case_names)], marker="^")
             ax[col_idx].set(xlim=(250., 290.))
             if not include_power:
                 ax[col_idx].set(xlabel="Freestream Wind Direction [$^\\circ$]")
+            else:
+                ax[col_idx].set(xlabel="") 
+            
+            if col_idx != len(plot_turbine_ids) - 1:
+                ax[col_idx].legend([], [], frameon=False)
+            
+            if col_idx != 0:
+                ax[col_idx].set(ylabel="")
+            # else:
+            #     ax.legend()
         
         ax[0].set(ylabel="Yaw Offset [$^\\circ$]")
-        ax[0].legend()
+        # ax[0].legend()
 
     if include_power:
         for col_idx, turbine_idx in enumerate(plot_turbine_ids):
@@ -634,20 +625,41 @@ def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, 
                     ax.append(plt.subplot(int(include_yaw + include_power), len(plot_turbine_ids), subplot_idx + 1, sharex=ax[0], sharey=ax[0]))
 
             for case_name, case_label, color in zip(case_names, case_labels, cycle(colors)):
-                case_df = data_dfs[case_name]
+                case_df = data_dfs.loc[(data_dfs["CaseFamily"] == "yaw_offset_study") & (data_dfs["CaseName"] == case_name), :]
                 # turbine_wind_direction_cols = sorted([col for col in case_df.columns if "TurbineWindDir_" in col])
                 turbine_power_cols = sorted([col for col in case_df.columns if "TurbinePower_" in col])
 
                 # turbine_wind_dirs = case_df[turbine_wind_direction_cols[turbine_idx]].sort_values(by="Time")
                 freestream_wind_dirs = case_df["FreestreamWindDir"]
-
                 turbine_powers = case_df[turbine_power_cols[turbine_idx]] / 1e6
+
+                sort_idx = np.argsort(freestream_wind_dirs)
+                freestream_wind_dirs = freestream_wind_dirs.iloc[sort_idx].reset_index(drop=True)
+                turbine_powers = turbine_powers.iloc[sort_idx].reset_index(drop=True).rename("TurbinePower")
+
+                df = pd.concat([freestream_wind_dirs, turbine_powers], axis=1)
+                
+                if interpolate:
+                    # interp = UnivariateSpline(freestream_wind_dirs, turbine_powers)
+                    df = df.groupby("FreestreamWindDir")["TurbinePower"].mean().reset_index() 
+                    interp = interp1d(df["FreestreamWindDir"], df["TurbinePower"])
+                    freestream_wind_dirs = np.arange(np.ceil(df["FreestreamWindDir"].min()), np.floor(df["FreestreamWindDir"].max()), 0.1)
+                    df = pd.DataFrame(data={"FreestreamWindDir": freestream_wind_dirs,
+                                           "TurbinePower": interp(freestream_wind_dirs)})
                 if "LUT" in case_name:
-                    ax[subplot_idx].scatter(freestream_wind_dirs, turbine_powers, label=f"{case_label} Simulation", color=colors[len(case_names)], marker=".", s=5)
+                    # ax[subplot_idx].scatter(freestream_wind_dirs, turbine_powers, label=f"{case_label} Simulation", color=colors[len(case_names)], marker=".")
+                    sns.scatterplot(data=df, ax=ax[subplot_idx], x="FreestreamWindDir", y="TurbinePower", label=f"{case_label} Simulation", color=colors[len(case_names)], marker=".")
                 else:
-                    ax[subplot_idx].scatter(freestream_wind_dirs, turbine_powers, label=f"{case_label} Simulation", color=color, marker=".", s=5)
+                    # ax[subplot_idx].scatter(freestream_wind_dirs, turbine_powers, label=f"{case_label} Simulation", color=color, marker=".")
+                    sns.scatterplot(data=df, ax=ax[subplot_idx], x="FreestreamWindDir", y="TurbinePower", label=f"{case_label} Simulation", color=color, marker=".")
         
+                if not include_yaw and col_idx != len(plot_turbine_ids) - 1:
+                    ax[subplot_idx].legend([], [], frameon=False)
+                elif include_yaw:
+                    ax[subplot_idx].legend([], [], frameon=False) 
+
         ax[-len(plot_turbine_ids)].set(ylabel="Turbine Power [MW]")
+                
 
     results_dir = os.path.dirname(save_path)
     fig.suptitle("_".join([os.path.basename(results_dir), "yawoffset_winddir_ts"]))
@@ -703,7 +715,7 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
     
     if include_yaw:
         ax_idx = 0
-        ax[ax_idx].set(title="Wind Direction / Yaw Angle [$^\\circ$]", xlim=(0, int((seed_df["Time"].max() + seed_df["Time"].diff().iloc[1]) // 1)), ylim=(245, 295))
+        ax[ax_idx].set(title="Wind Direction / Yaw Angle [$^\\circ$]", xlim=(0, int((seed_df["Time"].max() + seed_df["Time"].diff().iloc[1]) // 1)), ylim=(240, 300))
         ax[ax_idx].legend(ncols=2, loc="lower right")
         if not include_power:
             ax[ax_idx].set(xlabel="Time [s]", title="Turbine Powers [MW]")
@@ -764,15 +776,20 @@ def barplot_opt_cost(data_summary_df, save_dir, relative=False):
     fig.savefig(os.path.join(save_dir, f'opt_cost_comparison.png'))
     # fig.show()
 
-def plot_cost_function_pareto_curve(data_summary_df, case_studies, save_dir):
+def plot_cost_function_pareto_curve(data_summary_df, save_dir):
    
     """
     plot mean farm level power vs mean sum of absolute yaw changes for different values of alpha
     """
-    # TODO update based on new data_summary_df format
+    
 
     fig, ax = plt.subplots(1, figsize=(10.29,  5.5))
-    sub_df = data_summary_df.loc[data_summary_df.index.get_level_values("CaseFamily") == "cost_func_tuning_alpha", :]
+    baseline_df = data_summary_df.loc[data_summary_df.index.get_level_values("CaseFamily") == "baseline_controllers", :].copy().reset_index(level="CaseName", inplace=False)
+    baseline_df[("FarmPowerMean", "mean")] = baseline_df[("FarmPowerMean", "mean")] / 1e6
+    baseline_df[("FarmPowerMean", "min")] = baseline_df[("FarmPowerMean", "min")] / 1e6
+    baseline_df[("FarmPowerMean", "max")] = baseline_df[("FarmPowerMean", "max")] / 1e6
+
+    sub_df = data_summary_df.loc[data_summary_df.index.get_level_values("CaseFamily") == "cost_func_tuning", :].copy()
     sub_df.reset_index(level="CaseName", inplace=True)
     sub_df.loc[:, "CaseName"] = [float(x[-1]) for x in sub_df["CaseName"].str.split("_")]
     sub_df[("FarmPowerMean", "mean")] = sub_df[("FarmPowerMean", "mean")] / 1e6
@@ -783,38 +800,83 @@ def plot_cost_function_pareto_curve(data_summary_df, case_studies, save_dir):
     ax = sns.scatterplot(data=sub_df, x=("YawAngleChangeAbsMean", "mean"), y=("FarmPowerMean", "mean"),
                     size="CaseName", #size_order=reversed(sub_df["CaseName"].to_numpy()),
                     ax=ax)
-    ax.set(xlabel="Mean Absolute Yaw Angle Change [$^\\circ$]", ylabel="Mean Farm Power [MW]")
     ax.collections[0].set_sizes(ax.collections[0].get_sizes() * 5)
     ax.legend([], [], frameon=False)
+    ax.set(xlabel="Mean Absolute Yaw Angle Change [$^\\circ$]", ylabel="Mean Farm Power [MW]")
+
+    for (idx, row), m in zip(baseline_df.iterrows(), ["^", "s"]):
+        ax.scatter(x=[row[("YawAngleChangeAbsMean", "mean")]], 
+                   y=[row[("FarmPowerMean", "mean")]], 
+                   label=row["CaseName"].iloc[0], s=np.max(ax.collections[0].get_sizes()), marker=m)
+    h, l = ax.get_legend_handles_labels()
+    ax.legend(h[-2:], l[-2:]) 
+        
     fig.savefig(os.path.join(save_dir, "cost_function_pareto_curve.png"))
 
-def plot_breakdown_robustness(data_summary_df, case_studies, save_dir):
+def plot_breakdown_robustness(data_summary_df, save_dir):
     # TODO could also make countplot and plot all time-step data points for different values of probability
-    # TODO update based on new data_summary_df format
+    
     """
     plot mean farm level power vs mean relative sum of absolute yaw changes for different values of breakdown probability
     """
     
-    sub_df = data_summary_df.loc[data_summary_df.index.get_level_values("CaseFamily") == "breakdown_robustness", :]
+    # baseline_df = data_summary_df.loc[data_summary_df.index.get_level_values("CaseFamily") == "baseline_controllers", :].copy().reset_index(level="CaseName", inplace=False)
+    # baseline_df[("RelativeFarmPowerMean", "mean")] = baseline_df[("RelativeFarmPowerMean", "mean")] / 1e6
+    # baseline_df[("RelativeFarmPowerMean", "min")] = baseline_df[("RelativeFarmPowerMean", "min")] / 1e6
+    # baseline_df[("RelativeFarmPowerMean", "max")] = baseline_df[("RelativeFarmPowerMean", "max")] / 1e6
+
+    greedy_df = data_summary_df.loc[(data_summary_df.index.get_level_values("CaseFamily") == "breakdown_robustness") & 
+                                      ((data_summary_df.index.get_level_values("CaseName").str.contains("GreedyController"))), :].copy()
+    lut_df = data_summary_df.loc[(data_summary_df.index.get_level_values("CaseFamily") == "breakdown_robustness") &
+                                       (data_summary_df.index.get_level_values("CaseName").str.contains("LookupBasedWakeSteeringController")), :].copy()
+    # baseline_df.reset_index(level="CaseName", inplace=True)
+    greedy_df[("RelativeFarmPowerMean", "mean")] = greedy_df[("RelativeFarmPowerMean", "mean")] / 1e6
+    greedy_df[("RelativeFarmPowerMean", "min")] = greedy_df[("RelativeFarmPowerMean", "min")] / 1e6
+    greedy_df[("RelativeFarmPowerMean", "max")] = greedy_df[("RelativeFarmPowerMean", "max")] / 1e6
+    lut_df[("RelativeFarmPowerMean", "mean")] = lut_df[("RelativeFarmPowerMean", "mean")] / 1e6
+    lut_df[("RelativeFarmPowerMean", "min")] = lut_df[("RelativeFarmPowerMean", "min")] / 1e6
+    lut_df[("RelativeFarmPowerMean", "max")] = lut_df[("RelativeFarmPowerMean", "max")] / 1e6
+
+    greedy_df.sort_values(by="CaseName", inplace=True)
+    lut_df.sort_values(by="CaseName", inplace=True)
+
+    sub_df = data_summary_df.loc[(data_summary_df.index.get_level_values("CaseFamily") == "breakdown_robustness") & 
+                                 (data_summary_df.index.get_level_values("CaseName").str.contains("MPC")), :].copy()
     sub_df.reset_index(level="CaseName", inplace=True)
-    sub_df[("FarmPowerMean", "mean")] = sub_df[("FarmPowerMean", "mean")] / 1e6
-    sub_df[("FarmPowerMean", "min")] = sub_df[("FarmPowerMean", "min")] / 1e6
-    sub_df[("FarmPowerMean", "max")] = sub_df[("FarmPowerMean", "max")] / 1e6
+    sub_df.loc[:, "CaseName"] = [float(x[-1]) for x in sub_df["CaseName"].str.split("_")]
+    sub_df[("RelativeFarmPowerMean", "mean")] = sub_df[("RelativeFarmPowerMean", "mean")] / 1e6
+    sub_df[("RelativeFarmPowerMean", "min")] = sub_df[("RelativeFarmPowerMean", "min")] / 1e6
+    sub_df[("RelativeFarmPowerMean", "max")] = sub_df[("RelativeFarmPowerMean", "max")] / 1e6
+    sub_df.sort_values(by="CaseName", inplace=True)
     # sub_df["CaseName"] = [case_studies["breakdown_robustness"]["case_names"]["vals"][int(solver_type.split("_")[-1])] for solver_type in sub_df["SolverType"]]
 
     # Plot "RelativeFarmPowerMean" vs. "RelativeYawAngleChangeAbsMean" for all "SolverType" == "cost_func_tuning"
     fig, ax = plt.subplots(1, figsize=(10.29,  5.5))
-    sns.scatterplot(data=sub_df, x=("YawAngleChangeAbsMean", "mean"), y=("FarmPowerMean", "mean"), size="CaseName", 
-                    size_order=reversed(sub_df["CaseName"]), ax=ax)
-    ax.set(xlabel="Mean Absolute Yaw Angle Change [$^\\circ$]", ylabel="Mean Farm Power [MW]")
-    # ax.legend()
-    ax.legend_.set_title("Chance of Breakdown")
-    ax.collections[0].set_sizes(ax.collections[0].get_sizes() * 5)
+    sns.scatterplot(data=sub_df, x=("RelativeYawAngleChangeAbsMean", "mean"), y=("RelativeFarmPowerMean", "mean"), size="CaseName", ax=ax)
+                    # size_order=reversed(sub_df["CaseName"]), ax=ax)
     
-    ax.legend_.texts[0].set_text("50%")
-    ax.legend_.texts[1].set_text("20%")
-    ax.legend_.texts[2].set_text("5%")
-    ax.legend_.texts[3].set_text("2.5%")
-    ax.legend_.texts[4].set_text("0%")
+    ax.set(xlabel="Mean Absolute Yaw Angle Change / No. Active Turbines [$^\\circ$]", ylabel="Mean Farm Power / No. Active Turbines [MW]")
+
+    sns.scatterplot(data=greedy_df, x=("RelativeYawAngleChangeAbsMean", "mean"), y=("RelativeFarmPowerMean", "mean"), size="CaseName", ax=ax, marker="^")
+    sns.scatterplot(data=lut_df, x=("RelativeYawAngleChangeAbsMean", "mean"), y=("RelativeFarmPowerMean", "mean"), size="CaseName", ax=ax, marker="s")
+
+    # for (idx, row), m in zip(baseline_df.iterrows(), ["^", "s"]):
+    #     ax.scatter(x=[row[("RelativeYawAngleChangeAbsMean", "mean")]], 
+    #                y=[row[("RelativeFarmPowerMean", "mean")]], 
+    #                label=row["CaseName"].iloc[0], s=np.mean(ax.collections[0].get_sizes()), marker=m)
+    h, l = ax.get_legend_handles_labels()
+    greedy_idx = [i for i in range(len(l)) if "GreedyController" in l[i]][-1]
+    lut_idx = [i for i in range(len(l)) if "LookupBasedWakeSteeringController" in l[i]][-1]
+    ax.legend([h[greedy_idx], h[lut_idx]], ["Greedy", "LUT"]) 
+    ax.collections[0].set_sizes(ax.collections[0].get_sizes() * 5)
+    # ax.legend()
+    # ax.legend_.set_title("Chance of Breakdown") d
+    # ax.collections[0].set_sizes(ax.collections[0].get_sizes() * 5)
+    
+    # ax.legend_.texts[0].set_text("50%")
+    # ax.legend_.texts[1].set_text("20%")
+    # ax.legend_.texts[2].set_text("5%")
+    # ax.legend_.texts[3].set_text("2.5%")
+    # ax.legend_.texts[4].set_text("0%")
 
     fig.savefig(os.path.join(save_dir, "breakdown_robustness.png"))
