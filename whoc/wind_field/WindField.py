@@ -17,6 +17,7 @@ from functools import partial
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.legend as mlegend
+import seaborn as sns
 import numpy as np
 import pandas as pd
 from concurrent.futures import ProcessPoolExecutor, wait
@@ -139,10 +140,13 @@ class WindField:
             # var_u = np.array([(((self.wind_speed_u_range[1] - self.wind_speed_u_range[0]) * p) / 3)**2 * (1. + j*0.02) for j in range(0, n_preview_steps + preview_dt)])
             # var_v = np.array([(((self.wind_speed_v_range[1] - self.wind_speed_v_range[0]) * p) / 3)**2 * (1. + j*0.02) for j in range(0, n_preview_steps + preview_dt)])
             # QUESTION: we want growing uncertainty in prediction further along in the prediction horizon, not growing variation - should variance remain the same?
-            p = 0.4
+            p = 0.4 # 0.4
             q = 0.000
-            var_u = np.array([(((self.wind_speed_u_range[1] - self.wind_speed_u_range[0]) * p * (2. - np.exp(-q * j))) / 3)**2  for j in range(0, self.n_preview_steps + self.preview_dt)])
-            var_v = np.array([(((self.wind_speed_v_range[1] - self.wind_speed_v_range[0]) * p * (2. - np.exp(-q * j))) / 3)**2 for j in range(0, self.n_preview_steps + self.preview_dt)])
+            # var_u = np.array([(((self.wind_speed_u_range[1] - self.wind_speed_u_range[0]) * p * (2. - np.exp(-q * j))) / 3)**2  for j in range(0, self.n_preview_steps + self.preview_dt)])
+            # var_v = np.array([(((self.wind_speed_v_range[1] - self.wind_speed_v_range[0]) * p * (2. - np.exp(-q * j))) / 3)**2 for j in range(0, self.n_preview_steps + self.preview_dt)])
+
+            var_u = np.array([(((self.wind_speed_u_range[1] - self.wind_speed_u_range[0]) * p) / 3)**2  for j in range(0, self.n_preview_steps + self.preview_dt)])
+            var_v = np.array([(((self.wind_speed_v_range[1] - self.wind_speed_v_range[0]) * p) / 3)**2 for j in range(0, self.n_preview_steps + self.preview_dt)])
 
             # cov = np.diag(np.concatenate([var_u, var_v]))
             

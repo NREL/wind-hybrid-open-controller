@@ -12,7 +12,7 @@ offline_probability: 0.0
 wind_speed:
   range: [6.0, 8.0]
   u_range: [6.0, 8.0]
-  v_range: [-2.0, 2.0]
+  v_range: [-4.0, 4.0]
   var: 0.2
   # probability of wind speed/direction changing (1/2 for increase 1/2 for decrease)
   change_probability: 0.25

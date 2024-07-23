@@ -195,6 +195,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
     running_opt_cost_terms_ts[:, 1] = np.sum(np.stack([0.5 * (norm_yaw_angle_changes[:, i])**2 * R for i in range(ctrl.n_turbines)], axis=1), axis=1)
 
     results_df = pd.DataFrame(data={
+        "CaseFamily": [kwargs["case_family"]] *  int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] // input_dict["dt"]), 
         "CaseName": [kwargs["case_name"]] *  int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] // input_dict["dt"]),
         "WindSeed": [kwargs["wind_case_idx"]] * int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] // input_dict["dt"]),
         "Time": np.arange(0, input_dict["hercules_comms"]["helics"]["config"]["stoptime"], input_dict["dt"]),

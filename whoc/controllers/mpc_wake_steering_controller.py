@@ -1580,7 +1580,7 @@ class MPC(ControllerBase):
 				# all_yawed_turbine_powers[current_yaw_offsets.shape[0]:, :]
 				# yawed_turbine_powers = all_yawed_turbine_powers[:current_yaw_offsets.shape[0], :]
 				# plus_perturbed_yawed_turbine_powers = all_yawed_turbine_powers[current_yaw_offsets.shape[0]:, :]
-				# all_yaw_offsets[current_yaw_offsets.shape[0]:, :]
+				
 				norm_turbine_power_diff = np.divide((all_yawed_turbine_powers[n_wind_samples:, :] - all_yawed_turbine_powers[:current_yaw_offsets.shape[0], :]), 
 												self.greedy_yaw_turbine_powers[n_wind_samples:, :],
 													where=self.greedy_yaw_turbine_powers[n_wind_samples:, :]!=0,
