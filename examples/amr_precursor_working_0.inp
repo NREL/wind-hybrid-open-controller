@@ -3,6 +3,10 @@
 #.......................................#
 time.stop_time                           = 10800.0     # Max (simulated) time to evolve
 time.max_step                            = -1          # Max number of time steps
+
+#¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
+#         TIME STEP COMPUTATION         #
+#.......................................#
 time.fixed_dt                            = 0.5         # Use this constant dt if > 0
 time.cfl                                 = 0.95        # CFL factor
 
@@ -11,17 +15,17 @@ time.cfl                                 = 0.95        # CFL factor
 #.......................................#
 time.plot_interval                       = 3600       # Steps between plot files
 time.checkpoint_interval                 = 3600       # Steps between checkpoint files
-io.check_file                            = "/projects/ssc/ahenry/whoc/amr_precursors/output_files_1/chk"
-io.plot_file                             = "/projects/ssc/ahenry/whoc/amr_precursors/output_files_1/plt"
-ABL.bndry_file                           = "/projects/ssc/ahenry/whoc/amr_precursors/bndry_files_1"
+io.check_file                            = "/projects/ssc/ahenry/whoc/amr_precursors/output_files_0/chk"
+io.plot_file                             = "/projects/ssc/ahenry/whoc/amr_precursors/output_files_0/plt"
+ABL.bndry_file                           = "/projects/ssc/ahenry/whoc/amr_precursors/bndry_file_0.nc"
 ABL.bndry_io_mode                        = 0
 ABL.bndry_planes                         = ylo xlo
 ABL.bndry_output_start_time              = 7200.0
-ABL.bndry_var_names                      = velocity temperature
-ABL.bndry_output_format                  = native
+ABL.bndry_var_names                      = velocity temperature tke
+ABL.bndry_output_format                  = native # OR netcdf??
 ABL.stats_output_frequency               = 1                   
 ABL.stats_output_format                  = netcdf
-ABLForcing.forcing_timetable_output_file = "/projects/ssc/ahenry/whoc/amr_precursors/forcing_files_1"
+ABLForcing.forcing_timetable_output_file = "/projects/ssc/ahenry/whoc/amr_precursors/forcing_files_0.txt"
 ABLForcing.forcing_timetable_start_time  = 7200.0
 
 
@@ -58,18 +62,14 @@ zhi.type                                 = "slip_wall"
 zhi.temperature_type                     = "fixed_gradient"
 zhi.temperature                          = 0.003
 
-#¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
-#        ADAPTIVE MESH REFINEMENT       #
-#.......................................#
-
 
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
 #           BOUNDARY LAYER              #
 #.......................................#
 ICNS.source_terms                        = BoussinesqBuoyancy CoriolisForcing ABLForcing
-incflo.velocity                          = 8.0 0.0. 0.0 # 6.928203230275509 4.0 0.0 # TODO WHAT DOES THIS DO, WILL FREESTREAM WIND VARY
-ABLForcing.abl_forcing_height            = 90.0 #150 TODO shouldn't this be at turbine hub height? => yes
-ABLForcing.velocity_timetable            = "/projects/ssc/ahenry/whoc/floris_case_studies/wind_field_data/raw_data/abl_velocity_timetable_1.csv" # CHANGE ME FOR NEW SEED
+incflo.velocity                          = 6.928203230275509 4.0 0.0
+ABLForcing.abl_forcing_height            = 90.0
+ABLForcing.velocity_timetable            = "/projects/ssc/ahenry/whoc/floris_case_studies/wind_field_data/raw_data/abl_velocity_timetable_0.csv" # CHANGE ME FOR NEW SEED
 CoriolisForcing.latitude 				 = 41.3
 BoussinesqBuoyancy.reference_temperature = 300.0
 ABL.reference_temperature                = 300.0
@@ -77,7 +77,7 @@ ABL.temperature_heights                  = 0.0 700.0 800.0 1280.0
 ABL.temperature_values                   = 300.0 300.0 308.0 309.44
 ABL.perturb_temperature                  = false
 ABL.cutoff_height                        = 50.0
-ABL.perturb_velocity                     = true # COULD ALTERNATIVELY (TO VELOCITY_TIMETABLE) CHANGE THE NEXT FIVE PARAMS FOR NEW SEEDS
+ABL.perturb_velocity                     = true
 ABL.perturb_ref_height                   = 50.0
 ABL.Uperiods                             = 25.0
 ABL.Vperiods                             = 25.0
@@ -89,29 +89,3 @@ ABL.surface_temp_flux                    = 0.00
 ABL.normal_direction                     = 2
 ABL.wall_shear_stress_type               = "Moeng"
 
-# Whether to use helics
-helics.activated                         = false
-
-#¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
-#              SAMPLING                 #
-#.......................................#
-incflo.post_processing                   = samplingPlane samplingLine
-
-samplingPlane.output_frequency           = 10
-samplingPlane.labels                     = z_plane
-samplingPlane.fields                     = velocity temperature
-samplingPlane.z_plane.type               = PlaneSampler
-samplingPlane.z_plane.axis1              = 5110 0.0 0.0
-samplingPlane.z_plane.axis2              = 0.0 5110 0.0
-samplingPlane.z_plane.origin             = 5.0 5.0 0.0
-samplingPlane.z_plane.num_points         = 512 512
-samplingPlane.z_plane.normal             = 0.0 0.0 1.0
-samplingPlane.z_plane.offsets            = 5.0 90.0 150.0 255.0
-
-samplingLine.output_frequency            = 1
-samplingLine.labels                      = z_line
-samplingLine.fields                      = velocity temperature
-samplingLine.z_line.type                 = LineSampler
-samplingLine.z_line.num_points           = 128
-samplingLine.z_line.start                = 5.0 5.0 5.0
-samplingLine.z_line.end                  = 5.0 5.0 1275.0
