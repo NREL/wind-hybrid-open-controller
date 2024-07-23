@@ -449,7 +449,7 @@ class MPC(ControllerBase):
 		self.yaw_limits = input_dict["controller"]["yaw_limits"]
 		# self.maxabs_yaw_limit = np.max(np.abs(self.yaw_limits))
 		self.yaw_norm_const = 360.0
-		self.decay_factor = -np.log(1e-6) / ((90. - np.max(np.abs(self.yaw_limits))) / self.yaw_norm_const)
+		self.decay_factor = -np.log(1e-6) / (90. - np.max(np.abs(self.yaw_limits)))
 		self.yaw_rate = input_dict["controller"]["yaw_rate"]
 		self.yaw_increment = input_dict["controller"]["yaw_increment"]
 		self.alpha = input_dict["controller"]["alpha"]
@@ -521,8 +521,11 @@ class MPC(ControllerBase):
 					wind_preview_data = {"FreestreamWindMag": np.zeros((n_intervals**2, self.n_horizon + 1)), 
 						  "FreestreamWindDir": np.zeros((n_intervals**2, self.n_horizon + 1))}
 
-					std_divisions = np.linspace(-max_std_dev, max_std_dev, n_intervals)
-
+					if n_intervals > 1:
+						std_divisions = np.linspace(-max_std_dev, max_std_dev, n_intervals)
+					else:
+						std_divisions = np.array([0])
+					
 					mag = np.linalg.norm([current_freestream_measurements[0], current_freestream_measurements[1]])
 					wind_preview_data[f"FreestreamWindMag"][:, 0] = [mag] * n_intervals**2
 					
@@ -1573,10 +1576,12 @@ class MPC(ControllerBase):
 
 				# if effective yaw is greater than90, set negative powers, sim to interior point method, gradual penalty above 30deg offsets TEST
 				# all_yaw_offsets[n_wind_samples:, :].shape[0]
-				neg_decay = np.exp(-self.decay_factor * (self.yaw_limits[0] - all_yaw_offsets[all_yaw_offsets < self.yaw_limits[0]]) / self.yaw_norm_const)
-				pos_decay = np.exp(-self.decay_factor * (all_yaw_offsets[all_yaw_offsets > self.yaw_limits[1]] - self.yaw_limits[1]) / self.yaw_norm_const)
-				all_yawed_turbine_powers[np.where(all_yaw_offsets < self.yaw_limits[0])[0], :] = all_yawed_turbine_powers[np.where(all_yaw_offsets < self.yaw_limits[0])[0], :] * neg_decay[:, np.newaxis]
-				all_yawed_turbine_powers[np.where(all_yaw_offsets > self.yaw_limits[1])[0], :] = all_yawed_turbine_powers[np.where(all_yaw_offsets > self.yaw_limits[1])[0], :] * pos_decay[:, np.newaxis]
+				neg_idx = all_yaw_offsets < self.yaw_limits[0]
+				pos_idx = all_yaw_offsets > self.yaw_limits[1]
+				neg_decay = np.exp(-self.decay_factor * (self.yaw_limits[0] - all_yaw_offsets[neg_idx]))
+				pos_decay = np.exp(-self.decay_factor * (all_yaw_offsets[pos_idx] - self.yaw_limits[1]))
+				all_yawed_turbine_powers[np.where(all_yaw_offsets < self.yaw_limits[0])[0], :] = all_yawed_turbine_powers[np.where(neg_idx)[0], :] * neg_decay[:, np.newaxis]
+				all_yawed_turbine_powers[np.where(all_yaw_offsets > self.yaw_limits[1])[0], :] = all_yawed_turbine_powers[np.where(pos_idx)[0], :] * pos_decay[:, np.newaxis]
 				# all_yawed_turbine_powers[current_yaw_offsets.shape[0]:, :]
 				# yawed_turbine_powers = all_yawed_turbine_powers[:current_yaw_offsets.shape[0], :]
 				# plus_perturbed_yawed_turbine_powers = all_yawed_turbine_powers[current_yaw_offsets.shape[0]:, :]
@@ -1609,12 +1614,14 @@ class MPC(ControllerBase):
 				all_yawed_turbine_powers = self.fi.env.get_turbine_powers()[:, influenced_turbine_ids]
 				
 				# compute the power decays for all wind conditionas (rows) and all turbines (cols) that exceed the yaw offset bounds in the negative and postive direction
-				neg_decay = np.exp(-self.decay_factor * (self.yaw_limits[0] - all_yaw_offsets[all_yaw_offsets < self.yaw_limits[0]]) / self.yaw_norm_const)
-				pos_decay = np.exp(-self.decay_factor * (all_yaw_offsets[all_yaw_offsets > self.yaw_limits[1]] - self.yaw_limits[1]) / self.yaw_norm_const)
+				neg_idx = all_yaw_offsets < self.yaw_limits[0]
+				pos_idx = all_yaw_offsets > self.yaw_limits[1]
+				neg_decay = np.exp(-self.decay_factor * (self.yaw_limits[0] - all_yaw_offsets[neg_idx]))
+				pos_decay = np.exp(-self.decay_factor * (all_yaw_offsets[pos_idx] - self.yaw_limits[1]))
 
 				# for any wind condition (row) where any single turbine exceeds the yaw offset bounds in the negative or postive direction, apply the same decay to all turbine powers for that wind condition
-				all_yawed_turbine_powers[np.where(all_yaw_offsets < self.yaw_limits[0])[0], :] = all_yawed_turbine_powers[np.where(all_yaw_offsets < self.yaw_limits[0])[0], :] * neg_decay[:, np.newaxis]
-				all_yawed_turbine_powers[np.where(all_yaw_offsets > self.yaw_limits[1])[0], :] = all_yawed_turbine_powers[np.where(all_yaw_offsets > self.yaw_limits[1])[0], :] * pos_decay[:, np.newaxis]
+				all_yawed_turbine_powers[np.where(all_yaw_offsets < self.yaw_limits[0])[0], :] = all_yawed_turbine_powers[np.where(neg_idx)[0], :] * neg_decay[:, np.newaxis]
+				all_yawed_turbine_powers[np.where(all_yaw_offsets > self.yaw_limits[1])[0], :] = all_yawed_turbine_powers[np.where(pos_idx)[0], :] * pos_decay[:, np.newaxis]
 				
 				# yawed_turbine_powers = all_yawed_turbine_powers[:current_yaw_offsets.shape[0], :]
 				# nominally, second dimension would be of size self.n_turbines, but in sequential_slsqp case, it includes all turbines in solve_turbine_ids and in downstream_turbine_ids, since we are assuming those are the ones influenced by the solve_turbine_id optimization variables

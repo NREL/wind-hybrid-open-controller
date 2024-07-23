@@ -163,11 +163,11 @@ if __name__ == "__main__":
 
             if case_families.index("yaw_offset_study") in args.case_ids:
                 # plot yaw vs wind dir
-                case_names = ["LUT_3turb", "StochasticInterval_1_3turb", "StochasticInterval_5_3turb"]
-                case_labels = ["LUT", "Deterministic", "Stochastic"]
+                case_names = ["LUT_3turb", "StochasticInterval_1_3turb", "StochasticInterval_5_3turb", "StochasticSample_25_3turb"]
+                case_labels = ["LUT", "MPC, mean wind preview", "Stochastic, 5 interval wind preview", "Stochastic, 25 sample wind preview"]
                 plot_yaw_offset_wind_direction(time_series_df, case_names, case_labels,
-                                            os.path.join(os.path.dirname(whoc.__file__), f"../examples/mpc_wake_steering_florisstandin/lut_{3}.csv"), 
-                                            os.path.join(args.save_dir, f"yawoffset_winddir_ts.png"), plot_turbine_ids=[0, 1, 2], include_yaw=True, include_power=True)
+                                            os.path.join(os.path.dirname(whoc.__file__), f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv"), 
+                                            os.path.join(args.save_dir, "yaw_offset_study", f"yawoffset_winddir_ts.png"), plot_turbine_ids=[0, 1, 2], include_yaw=True, include_power=True)
             
             if (case_families.index("slsqp_solver_sweep") in args.case_ids) and (case_families.index("baseline_controllers") in args.case_ids):
                 mpc_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily") == "slsqp_solver_sweep"]  

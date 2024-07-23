@@ -20,6 +20,8 @@ from floris import FlorisModel
 from floris.flow_visualization import visualize_cut_plane
 
 from scipy.interpolate import LinearNDInterpolator
+from scipy.interpolate import UnivariateSpline
+from scipy.interpolate import interp1d
 
 from whoc import __file__ as whoc_file
 
@@ -529,7 +531,7 @@ def plot_opt_cost_ts(data_df, save_path):
 
     return fig_opt_cost, ax_opt_cost
 
-def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, save_path, plot_turbine_ids, include_yaw=True, include_power=True):
+def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, save_path, plot_turbine_ids, include_yaw=True, include_power=True, interpolate=True):
     """
     Plot yaw offset vs wind-direction based on the lookup-table (line), 
     and scatter plots of MPC stochastic_interval with n_wind_preview_samples=1 (assuming mean value),
@@ -556,25 +558,57 @@ def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, 
 
                 # turbine_wind_dirs = case_df[turbine_wind_direction_cols[turbine_idx]].sort_values(by="Time")
                 freestream_wind_dirs = case_df["FreestreamWindDir"]
-
                 yaw_offsets = freestream_wind_dirs - case_df[yaw_angle_cols[turbine_idx]]
+
+                sort_idx = np.argsort(freestream_wind_dirs)
+                freestream_wind_dirs = freestream_wind_dirs.iloc[sort_idx].reset_index(drop=True) 
+                yaw_offsets = yaw_offsets.iloc[sort_idx].reset_index(drop=True).rename("YawOffset")
+
+                df = pd.concat([freestream_wind_dirs, yaw_offsets], axis=1)
+
+                if interpolate:
+                    df = df.groupby("FreestreamWindDir")["YawOffset"].mean().reset_index()
+                    # interp = UnivariateSpline(freestream_wind_dirs, yaw_offsets)
+                    interp = interp1d(df["FreestreamWindDir"], df["YawOffset"])
+                    freestream_wind_dirs = np.arange(np.ceil(df["FreestreamWindDir"].min()), np.floor(df["FreestreamWindDir"].max()), 0.1)
+                    df = pd.DataFrame(data={"FreestreamWindDir": freestream_wind_dirs,
+                                           "YawOffset": interp(freestream_wind_dirs)})
+
                 if "LUT" in case_name:
-                    ax[subplot_idx].scatter(freestream_wind_dirs, yaw_offsets, label=f"{case_name} Simulation", color=colors[len(case_names)], marker=".", s=5)
+                    # ax[subplot_idx].scatter(freestream_wind_dirs, yaw_offsets, label=f"{case_name} Simulation", color=colors[len(case_names)], marker=".")
+                    sns.scatterplot(data=df, ax=ax[subplot_idx], x="FreestreamWindDir", y="YawOffset", label=f"{case_label} Simulation", color=colors[len(case_names)], marker=".")
                 else:
-                    ax[subplot_idx].scatter(freestream_wind_dirs, yaw_offsets, label=f"{case_name} Simulation", color=color, marker=".", s=5)
+                    # ax[subplot_idx].scatter(freestream_wind_dirs, yaw_offsets, label=f"{case_name} Simulation", color=color, marker=".")
+                    sns.scatterplot(data=df, ax=ax[subplot_idx], x="FreestreamWindDir", y="YawOffset", label=f"{case_label} Simulation", color=color, marker=".")
+                
+                # ax[subplot_idx].legend([], [], frameon=False)
         
         df_lut = pd.read_csv(lut_path, index_col=0)
         df_lut["yaw_angles_opt"] = df_lut["yaw_angles_opt"].apply(lambda s: np.array(re.findall(r"-*\d+\.\d*", s), dtype=float))
         lut_yawoffsets = np.vstack(df_lut["yaw_angles_opt"].values)
         lut_winddirs = df_lut["wind_direction"].values
+        df = pd.DataFrame(data={"FreestreamWindDir": lut_winddirs, 
+                                **{f"YawOffset_{i}": lut_yawoffsets[:, i] for i in plot_turbine_ids}})
+
         for col_idx, turbine_idx in enumerate(plot_turbine_ids):
-            ax[col_idx].scatter(lut_winddirs, lut_yawoffsets[:, turbine_idx], label="LUT", color=colors[len(case_names)], marker=">", s=20)
+            # ax[col_idx].scatter(lut_winddirs, lut_yawoffsets[:, turbine_idx], label="LUT", color=colors[len(case_names)], marker=">")
+            sns.scatterplot(data=df, ax=ax[col_idx], x="FreestreamWindDir", y=f"YawOffset_{turbine_idx}", label=f"LUT", color=colors[len(case_names)], marker="^")
             ax[col_idx].set(xlim=(250., 290.))
             if not include_power:
                 ax[col_idx].set(xlabel="Freestream Wind Direction [$^\\circ$]")
+            else:
+                ax[col_idx].set(xlabel="") 
+            
+            if col_idx != len(plot_turbine_ids) - 1:
+                ax[col_idx].legend([], [], frameon=False)
+            
+            if col_idx != 0:
+                ax[col_idx].set(ylabel="")
+            # else:
+            #     ax.legend()
         
         ax[0].set(ylabel="Yaw Offset [$^\\circ$]")
-        ax[0].legend()
+        # ax[0].legend()
 
     if include_power:
         for col_idx, turbine_idx in enumerate(plot_turbine_ids):
@@ -591,20 +625,41 @@ def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, 
                     ax.append(plt.subplot(int(include_yaw + include_power), len(plot_turbine_ids), subplot_idx + 1, sharex=ax[0], sharey=ax[0]))
 
             for case_name, case_label, color in zip(case_names, case_labels, cycle(colors)):
-                case_df = data_dfs[case_name]
+                case_df = data_dfs.loc[(data_dfs["CaseFamily"] == "yaw_offset_study") & (data_dfs["CaseName"] == case_name), :]
                 # turbine_wind_direction_cols = sorted([col for col in case_df.columns if "TurbineWindDir_" in col])
                 turbine_power_cols = sorted([col for col in case_df.columns if "TurbinePower_" in col])
 
                 # turbine_wind_dirs = case_df[turbine_wind_direction_cols[turbine_idx]].sort_values(by="Time")
                 freestream_wind_dirs = case_df["FreestreamWindDir"]
-
                 turbine_powers = case_df[turbine_power_cols[turbine_idx]] / 1e6
+
+                sort_idx = np.argsort(freestream_wind_dirs)
+                freestream_wind_dirs = freestream_wind_dirs.iloc[sort_idx].reset_index(drop=True)
+                turbine_powers = turbine_powers.iloc[sort_idx].reset_index(drop=True).rename("TurbinePower")
+
+                df = pd.concat([freestream_wind_dirs, turbine_powers], axis=1)
+                
+                if interpolate:
+                    # interp = UnivariateSpline(freestream_wind_dirs, turbine_powers)
+                    df = df.groupby("FreestreamWindDir")["TurbinePower"].mean().reset_index() 
+                    interp = interp1d(df["FreestreamWindDir"], df["TurbinePower"])
+                    freestream_wind_dirs = np.arange(np.ceil(df["FreestreamWindDir"].min()), np.floor(df["FreestreamWindDir"].max()), 0.1)
+                    df = pd.DataFrame(data={"FreestreamWindDir": freestream_wind_dirs,
+                                           "TurbinePower": interp(freestream_wind_dirs)})
                 if "LUT" in case_name:
-                    ax[subplot_idx].scatter(freestream_wind_dirs, turbine_powers, label=f"{case_label} Simulation", color=colors[len(case_names)], marker=".", s=5)
+                    # ax[subplot_idx].scatter(freestream_wind_dirs, turbine_powers, label=f"{case_label} Simulation", color=colors[len(case_names)], marker=".")
+                    sns.scatterplot(data=df, ax=ax[subplot_idx], x="FreestreamWindDir", y="TurbinePower", label=f"{case_label} Simulation", color=colors[len(case_names)], marker=".")
                 else:
-                    ax[subplot_idx].scatter(freestream_wind_dirs, turbine_powers, label=f"{case_label} Simulation", color=color, marker=".", s=5)
+                    # ax[subplot_idx].scatter(freestream_wind_dirs, turbine_powers, label=f"{case_label} Simulation", color=color, marker=".")
+                    sns.scatterplot(data=df, ax=ax[subplot_idx], x="FreestreamWindDir", y="TurbinePower", label=f"{case_label} Simulation", color=color, marker=".")
         
+                if not include_yaw and col_idx != len(plot_turbine_ids) - 1:
+                    ax[subplot_idx].legend([], [], frameon=False)
+                elif include_yaw:
+                    ax[subplot_idx].legend([], [], frameon=False) 
+
         ax[-len(plot_turbine_ids)].set(ylabel="Turbine Power [MW]")
+                
 
     results_dir = os.path.dirname(save_path)
     fig.suptitle("_".join([os.path.basename(results_dir), "yawoffset_winddir_ts"]))
