@@ -107,7 +107,7 @@ case_studies = {
                               "solver": {"group": 2, "vals": ["serial_refine"]} #, "sequential_slsqp", "slsqp"]}
     },
     "yaw_offset_study": {"seed": {"group": 0, "vals": [0]},
-                          "controller_class": {"group": 1, "vals": ["MPC", "MPC", "LookupBasedWakeSteeringController"]},
+                          "controller_class": {"group": 1, "vals": ["MPC", "MPC", "LookupBasedWakeSteeringController", "MPC"]},
                           "case_names": {"group": 1, "vals":[f"StochasticInterval_1_3turb", f"StochasticInterval_5_3turb", f"LUT_3turb", f"StochasticSample_25_3turb"]},
                           "wind_preview_type": {"group": 1, "vals": ["stochastic_interval"] * 3 + ["stochastic_sample"]},
                            "n_wind_preview_samples": {"group": 1, "vals": [1, 5, 1, 25]},
@@ -423,7 +423,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
 
     return case_lists, case_name_lists, input_dicts, wind_field_config, wind_mag_ts, wind_dir_ts
 
-# 1, 3, 6
+# 0, 1, 2, 3, 6
 case_families = ["baseline_controllers", "solver_type",
                     "wind_preview_type", "warm_start", 
                     "horizon_length", "breakdown_robustness",
