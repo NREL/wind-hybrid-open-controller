@@ -156,6 +156,8 @@ if __name__ == "__main__":
                 floris_input_files = case_studies["scalability"]["floris_input_file"]["vals"]
                 lut_paths = case_studies["scalability"]["lut_path"]["vals"]
                 plot_wind_farm(floris_input_files, lut_paths, args.save_dir)
+            
+            if (case_families.index("baseline_controllers") in args.case_ids) and (case_families.index("cost_func_tuning") in args.case_ids):
                 plot_cost_function_pareto_curve(agg_dfs, args.save_dir)
 
             if case_families.index("breakdown_robustness") in args.case_ids:
@@ -169,7 +171,7 @@ if __name__ == "__main__":
                                             os.path.join(os.path.dirname(whoc.__file__), f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv"), 
                                             os.path.join(args.save_dir, "yaw_offset_study", f"yawoffset_winddir_ts.png"), plot_turbine_ids=[0, 1, 2], include_yaw=True, include_power=True)
             
-            if (case_families.index("slsqp_solver_sweep") in args.case_ids) and (case_families.index("baseline_controllers") in args.case_ids):
+            if (case_families.index("baseline_controllers") in args.case_ids) and (case_families.index("slsqp_solver_sweep") in args.case_ids):
                 mpc_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily") == "slsqp_solver_sweep"]  
                 lut_df = agg_dfs.iloc[(agg_dfs.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_dfs.index.get_level_values("CaseName") == "LUT")] 
                 greedy_df = agg_dfs.iloc[(agg_dfs.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_dfs.index.get_level_values("CaseName") == "Greedy")]
@@ -186,4 +188,7 @@ if __name__ == "__main__":
                                                   ("baseline_controllers", "LUT"),
                                                   ("baseline_controllers", "Greedy")], args.save_dir)
 
-            generate_outputs(agg_dfs, args.save_dir)
+            if all(case_families.index(cf) in args.case_ids for cf in ["baseline_controllers", "solver_type",
+             "wind_preview_type", "warm_start", 
+              "horizon_length", "scalability"]):
+                generate_outputs(agg_dfs, args.save_dir)

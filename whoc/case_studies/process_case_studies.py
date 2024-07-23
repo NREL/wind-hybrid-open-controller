@@ -133,11 +133,11 @@ def generate_outputs(agg_results_df, save_dir):
     # get_result('solver_type', 'SLSQP', 'TotalRunningOptimizationCostMean')
     # get_result('solver_type', 'SLSQP', 'OptimizationConvergenceTimeMean')
 
-    if all(col in agg_results_df.index.get_level_values("CaseFamily") for col in 
-           ["baseline_controllers", "solver_type",
-             "wind_preview_type", "warm_start", 
-              "horizon_length", "scalability"]):
-        compare_results_latex = (
+    # if all(col in agg_results_df.index.get_level_values("CaseFamily") for col in 
+    #        ["baseline_controllers", "solver_type",
+    #          "wind_preview_type", "warm_start", 
+    #           "horizon_length", "scalability"]):
+    compare_results_latex = (
         f"\\begin{{tabular}}{{l|lllll}}\n"
         f"\\textbf{{Case Family}} & \\textbf{{Case Name}} & \\thead{{\\textbf{{Relative Mean}} \\\\ \\textbf{{Farm Power [MW]}}}}                                                                    & \\thead{{\\textbf{{Relative Mean Absolute}} \\\\ \\textbf{{Yaw Angle Change [$^\\circ$]}}}}                    & \\thead{{\\textbf{{Relative}} \\\\ \\textbf{{Mean Cost [-]}}}}                                                        & \\thead{{\\textbf{{Mean}} \\\\ \\textbf{{Convergence Time [s]}}}} \\\\ \\hline \n"
         f"\\multirow{{3}}{{*}}{{\\textbf{{Solver}}}} & Greedy                     & ${get_result('baseline_controllers', 'Greedy', 'RelativeFarmPowerMean') / 1e6:.3f}$                              & ${get_result('solver_type', 'Greedy', 'RelativeYawAngleChangeAbsMean'):.3f}$                              & ${get_result('solver_type', 'Greedy', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                                 & ${int(get_result('solver_type', 'Greedy', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
@@ -167,7 +167,7 @@ def generate_outputs(agg_results_df, save_dir):
         # f"&                                                                  $20\%$         & ${get_result('breakdown_robustness', '50.0% Chance of Breakdown', 'RelativeFarmPowerMean') / 1e6:.3f}$ & ${get_result('breakdown_robustness', '50.0% Chance of Breakdown', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${get_result('breakdown_robustness', '50.0% Chance of Breakdown', 'RelativeTotalRunningOptimizationCostMean'):.3f}$    & ${int(get_result('breakdown_robustness', '50.0% Chance of Breakdown', 'OptimizationConvergenceTimeMean')):d}$ \n"
         f"\\end{{tabular}}"
         )
-        with open(os.path.join(save_dir, "comparison_time_series_results_table.tex"), "w") as fp:
+    with open(os.path.join(save_dir, "comparison_time_series_results_table.tex"), "w") as fp:
             fp.write(compare_results_latex)
 
 def plot_simulations(time_series_df, plotting_cases, save_dir):
@@ -789,15 +789,15 @@ def plot_cost_function_pareto_curve(data_summary_df, save_dir):
     fig, ax = plt.subplots(1, figsize=(10.29,  5.5))
     baseline_df = data_summary_df.loc[data_summary_df.index.get_level_values("CaseFamily") == "baseline_controllers", :].copy().reset_index(level="CaseName", inplace=False)
     baseline_df[("FarmPowerMean", "mean")] = baseline_df[("FarmPowerMean", "mean")] / 1e6
-    baseline_df[("FarmPowerMean", "min")] = baseline_df[("FarmPowerMean", "min")] / 1e6
-    baseline_df[("FarmPowerMean", "max")] = baseline_df[("FarmPowerMean", "max")] / 1e6
+    # baseline_df[("FarmPowerMean", "min")] = baseline_df[("FarmPowerMean", "min")] / 1e6
+    # baseline_df[("FarmPowerMean", "max")] = baseline_df[("FarmPowerMean", "max")] / 1e6
 
     sub_df = data_summary_df.loc[data_summary_df.index.get_level_values("CaseFamily") == "cost_func_tuning", :].copy()
     sub_df.reset_index(level="CaseName", inplace=True)
     sub_df.loc[:, "CaseName"] = [float(x[-1]) for x in sub_df["CaseName"].str.split("_")]
     sub_df[("FarmPowerMean", "mean")] = sub_df[("FarmPowerMean", "mean")] / 1e6
-    sub_df[("FarmPowerMean", "min")] = sub_df[("FarmPowerMean", "min")] / 1e6
-    sub_df[("FarmPowerMean", "max")] = sub_df[("FarmPowerMean", "max")] / 1e6
+    # sub_df[("FarmPowerMean", "min")] = sub_df[("FarmPowerMean", "min")] / 1e6
+    # sub_df[("FarmPowerMean", "max")] = sub_df[("FarmPowerMean", "max")] / 1e6
 
     # Plot "RelativeFarmPowerMean" vs. "RelativeYawAngleChangeAbsMean" for all "SolverType" == "cost_func_tuning"
     ax = sns.scatterplot(data=sub_df, x=("YawAngleChangeAbsMean", "mean"), y=("FarmPowerMean", "mean"),

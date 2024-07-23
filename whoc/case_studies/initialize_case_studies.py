@@ -146,7 +146,9 @@ case_studies = {
                           },
     "wind_preview_type": {"seed": {"group": 0, "vals": [0]},
                           "controller_class": {"group": 0, "vals": ["MPC"]},
-                        "case_names": {"group": 1, "vals": ["Perfect", "Persistent"] + ["Stochastic Interval"] * 3 + ["Stochastic Sample"] * 3},
+                        "case_names": {"group": 1, "vals": ["Perfect", "Persistent", 
+                                                            "Stochastic Interval 3", "Stochastic Interval 5", "Stochastic Interval 7", 
+                                                            "Stochastic Sample 25", "Stochastic Sample 50", "Stochastic Sample 100"]},
                         "n_wind_preview_samples": {"group": 1, "vals": [1, 1, 3, 5, 7, 25, 50, 100]},
                          "wind_preview_type": {"group": 1, "vals": ["perfect", "persistent"] + ["stochastic_interval"] * 3 + ["stochastic_sample"] * 3}
                           },
