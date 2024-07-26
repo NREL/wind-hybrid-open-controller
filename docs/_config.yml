@@ -4,7 +4,7 @@
 title: Wind Hybrid Open Controller
 author: National Renewable Energy Laboratory
 # logo: herc.png
-copyright: '2023'
+copyright: '2024'
 only_build_toc_files: false
 
 # Force re-execution of notebooks on each build.
@@ -36,37 +36,3 @@ html:
   google_analytics_id: G-BJZY823DHG
 
 
-# Sphinx for API doc generation
-sphinx:
-  extra_extensions:
-  - 'sphinx.ext.autodoc'
-  - 'sphinx.ext.autosummary'
-  - 'sphinx.ext.viewcode'
-  - 'sphinx_autodoc_typehints'
-  - 'sphinxcontrib.autoyaml'
-  - 'sphinx.ext.napoleon'       # Formats google and numpy docstring styles
-  - 'sphinxcontrib.mermaid'
-  config:
-    html_theme: sphinx_book_theme
-    templates_path:
-    - '_templates'
-    language: 'python'
-    autoyaml_level: 3
-    autosummary_generate: true
-
-    # Autodoc config reference
-    # https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#configuration
-    autodoc_default_options:
-      members: true
-      member-order: bysource
-      undoc-members: true
-      private-members: true
-      # special-members: true
-      # inherited-members
-      # show-inheritance
-      # ignore-module-all
-      # imported-members: true
-      # exclude-members
-      # class-doc-from
-      # no-value
-    autodoc_typehints: both

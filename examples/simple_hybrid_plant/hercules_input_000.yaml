@@ -1,0 +1,71 @@
+# Input YAML for emy_python
+
+# Name
+name: example_000
+
+###
+# Describe this emulator setup
+description: Hybrid wind, solar, and battery plant
+
+dt: 0.5
+
+hercules_comms:
+
+  amr_wind:
+
+    wind_farm_0:
+      type: amr_wind_local #options are amr_wind or amr_wind_local
+      amr_wind_input_file: amr_input.inp
+
+  helics:
+
+    config:
+        name: hercules # What is the purpose of this name
+        use_dash_frontend: False
+        KAFKA: False
+        KAFKA_topics: EMUV1py
+        helics: 
+            # deltat: 1 # This will be assigned in software
+            subscription_topics: [status]
+            publication_topics: [control]
+            endpoints: []
+            helicsport : 32000
+        publication_interval: 1
+        endpoint_interval: 1
+        starttime: 0
+        stoptime: 100
+        Agent: ControlCenter
+
+py_sims:
+
+  solar_farm_0: # The name of py_sim object 1
+
+    py_sim_type: SolarPySAM
+    weather_file_name: NonAnnualSimulation-sample_data-interpolated-daytime.csv
+    system_info_file_name: 100MW_1axis_pvsamv1.json
+    lat: 39.7442
+    lon: -105.1778
+    elev: 1829
+
+    # capacity: 100 # MW
+
+    initial_conditions:
+
+      power: 25 # MW
+      dni: 1000
+
+  battery_0: # The name of py_sim object 1
+
+    py_sim_type: LIB
+    size: 10  # MW size of the battery 
+    energy_capacity: 40 # total capacity of the battery in MWh (4-hour 20 MW battery)
+    charge_rate: 20 # charge rate of the battery in MW
+    discharge_rate: 20 # discharge rate of the battery in MW
+    max_SOC: 0.9 # upper boundary on battery SOC
+    min_SOC: 0.1 # lower boundary on battery SOC
+
+    initial_conditions:
+      SOC: 0.5   # initial state of charge of the battery as fraction of total size
+    
+controller:
+  num_turbines: 2
