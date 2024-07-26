@@ -48,3 +48,11 @@ Integral action, as well as gain scheduling based on turbine saturation, has bee
 simple proportional control appears sufficient currently. However, these may be enabled at a 
 later date if needed. The `proportional_gain` for the controller may be provided on instantiation,
 and defaults to `proportional_gain = 1`.
+
+### HybridSupervisoryControllerBaseline
+
+Simple closed-loop supervisory controller for a hybrid wind/solar/battery plant.
+Reads in current power production from wind, solar, and battery, as well as a plant power reference. Contains logic to determine technology set points for wind, solar and battery technologies to follow the plant power reference. The control is based on a proportional gain based on the error between the wind and solar production and the plant power reference. The controller increases the power references sent to wind, solar, and battery if the power reference is not met. If there is a power surplus from wind and solar, the controller adjusts the power reference values to charge the battery up to the battery capacity.
+
+The power reference values for wind, solar and battery technologies are then handled by the operational controllers for wind, solar, and battery, which are assigned to the `HybridSupervisoryControllerBaseline` on instantiation to distribute the bulk references to each asset amongst the individual generators. Currently, only wind actually distributes the power.
+Intended as a baseline for comparison to more advanced supervisory controllers.
