@@ -1,5 +1,5 @@
 import sys
-import yaml
+# import yaml
 import os
 import numpy as np
 from itertools import product
@@ -9,7 +9,7 @@ from hercules.emulator import Emulator
 from hercules.py_sims import PySims
 from hercules.utilities import load_yaml
 
-import whoc
+# import whoc
 from whoc.interfaces.hercules_actuator_disk_interface import HerculesADInterface
 from whoc.controllers.greedy_wake_steering_controller import GreedyController
 from whoc.wind_field.generate_freestream_wind import generate_freestream_wind
@@ -20,15 +20,14 @@ regenerate_wind_field = False
 input_dict = load_yaml(sys.argv[1])
 case_idx = int(sys.argv[2])
 
-# TODO ensure that time.stop_time in amr_input matches stop_time in hercules input
-# input_dict["controller"]["floris_input_file"] = "/home/ahenry/toolboxes/whoc_env/wind-hybrid-open-controller/examples/mpc_wake_steering_florisstandin/floris_gch_25.yaml"
-# input_dict["controller"]["num_turbines"] = 25
-input_dict["controller"]["floris_input_file"] = "/home/ahenry/toolboxes/whoc_env/wind-hybrid-open-controller/examples/mpc_wake_steering_florisstandin/floris_gch_1.yaml"
-input_dict["controller"]["num_turbines"] = 1
+input_dict["hercules_comms"]["amr_wind"]["wind_farm_0"]["amr_wind_input_file"] \
+    = f"/projects/ssc/ahenry/whoc/amr_controlled/greedy/wf_{case_idx}/amr_precursor_{case_idx}.inp"
 
-print(os.path.join(os.path.dirname(whoc.__file__), "wind_field", "wind_field_config.yaml"))
-with open(os.path.join(os.path.dirname(whoc.__file__), "wind_field", "wind_field_config.yaml"), "r") as fp:
-    wind_field_config = yaml.safe_load(fp)
+# TODO ensure that time.stop_time in amr_input matches stop_time in hercules inputxi
+
+# print(os.path.join(os.path.dirname(whoc.__file__), "wind_field", "wind_field_config.yaml"))
+# with open(os.path.join(os.path.dirname(whoc.__file__), "wind_field", "wind_field_config.yaml"), "r") as fp:
+#     wind_field_config = yaml.safe_load(fp)
 
 amr_standin_data = generate_freestream_wind(".", n_seeds, regenerate_wind_field)[case_idx]
 amr_standin_data["time"] += input_dict["hercules_comms"]["helics"]["config"]["starttime"]
@@ -59,14 +58,9 @@ else:
     wind_dir_ts = amr_standin_data["amr_wind_direction"]
 
 controller = GreedyController(interface, input_dict, 
-                wind_mag_ts=wind_mag_ts, wind_dir_ts=wind_dir_ts, 
-                 lut_path=os.path.join(os.path.dirname(whoc.__file__), f"../examples/mpc_wake_steering_florisstandin/lut_{25}.csv"), 
-                 generate_lut=False, 
-                 seed=seed,
-                 wind_field_config=wind_field_config)
+                wind_mag_ts=wind_mag_ts, wind_dir_ts=wind_dir_ts)
 
 py_sims = PySims(input_dict)
-
 
 emulator = Emulator(controller, py_sims, input_dict)
 emulator.run_helics_setup()

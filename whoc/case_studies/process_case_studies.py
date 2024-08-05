@@ -9,7 +9,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
 import os
-from collections import defaultdict
 from itertools import cycle
 import yaml
 import seaborn as sns
@@ -25,13 +24,22 @@ from scipy.interpolate import interp1d
 
 from whoc import __file__ as whoc_file
 
+factor = 1.5
+plt.rc('font', size=12*factor)          # controls default text sizes
+plt.rc('axes', titlesize=20*factor)     # fontsize of the axes title
+plt.rc('axes', labelsize=15*factor)     # fontsize of the x and y labels
+plt.rc('xtick', labelsize=12*factor)    # fontsize of the xtick labels
+plt.rc('ytick', labelsize=12*factor)    # fontsize of the ytick labels
+plt.rc('legend', fontsize=12*factor)    # legend fontsize
+plt.rc('legend', title_fontsize=14*factor)  # legend title fontsize
+
 def plot_wind_farm(floris_input_files, lut_paths, save_dir):
 
     # fig, axarr = plt.subplots(int(len(floris_input_files)**0.5), int(len(floris_input_files)**0.5), figsize=(16, 10))
     # axarr = axarr.flatten()
 
     for floris_input_file, lut_path in zip(floris_input_files, lut_paths):
-        fig, ax = plt.subplots(1, 1, figsize=(16, 10))
+        fig, ax = plt.subplots(1, 1)
 
         df_lut = pd.read_csv(lut_path, index_col=0)
         df_lut["yaw_angles_opt"] = df_lut["yaw_angles_opt"].apply(lambda s: np.array(re.findall(r"-*\d+\.\d*", s), dtype=float))
@@ -65,21 +73,25 @@ def plot_wind_farm(floris_input_files, lut_paths, save_dir):
         
         # if a == 0 or a == 2:
         ax.set(ylabel="$y$ [m]")
-    
+        figManager = plt.get_current_fig_manager()
+        figManager.full_screen_toggle()
+        plt.show()
         fig.savefig(os.path.join(save_dir, f"wind_farm_plot_{fmodel.n_turbines}.png"))
+        # plt.close(fig)
 
 def read_time_series_data(results_path):
     # from whoc.wind_field.WindField import first_ord_filter
     # for results_dir in results_dirs:
-    # case_family = os.path.split(os.path.dirname(results_path))[-1]
+    case_family = os.path.split(os.path.dirname(results_path))[-1]
     # for f, fn in enumerate([fn for fn in os.listdir(results_dir) if ".csv" in fn]):
     # fn = os.path.basename(results_path)
     # seed = int(re.findall(r"(?<=seed\_)(\d*)", fn)[0])
     # case_name = re.findall(r"(?<=case_)(.*)(?=_seed)", fn)[0]
 
     df = pd.read_csv(results_path, index_col=0)
-    # df["CaseFamily"] = case_family 
-    # df.to_csv(results_path)
+    if "CaseFamily" not in df:
+        df["CaseFamily"] = case_family 
+        df.to_csv(results_path)
     # results_df.append(df)
         
         # df["FilteredFreestreamWindDir"] = first_ord_filter(df["FreestreamWindDir"])
@@ -147,18 +159,28 @@ def generate_outputs(agg_results_df, save_dir):
         f"&                                          Serial Refine                          & ${get_result('solver_type', 'Sequential Refine', 'RelativeFarmPowerMean') / 1e6:.3f}$                  & ${get_result('solver_type', 'Sequential Refine', 'RelativeYawAngleChangeAbsMean'):.3f}$                  & ${get_result('solver_type', 'Sequential Refine', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                     & ${int(get_result('solver_type', 'Sequential Refine', 'OptimizationConvergenceTimeMean')):d}$  \\\\ \\hline \n"
         f"\\multirow{{3}}{{*}}{{\\textbf{{Wind Preview Model}}}} & Perfect                   & ${get_result('wind_preview_type', 'Perfect', 'RelativeFarmPowerMean') / 1e6:.3f}$                      & ${get_result('wind_preview_type', 'Perfect', 'RelativeYawAngleChangeAbsMean'):.3f}$                      & ${get_result('wind_preview_type', 'Perfect', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                         & ${int(get_result('wind_preview_type', 'Perfect', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
         f"&                                                      Persistent                 & ${get_result('wind_preview_type', 'Persistent', 'RelativeFarmPowerMean') / 1e6:.3f}$                   & ${get_result('wind_preview_type', 'Persistent', 'RelativeYawAngleChangeAbsMean'):.3f}$                   & ${get_result('wind_preview_type', 'Persistent', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                      & ${int(get_result('wind_preview_type', 'Persistent', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-        f"&                                                      \\textbf{{Stochastic Interval}}     & ${get_result('wind_preview_type', 'StochasticInterval', 'RelativeFarmPowerMean') / 1e6:.3f}$                   & ${get_result('wind_preview_type', 'StochasticInterval', 'RelativeYawAngleChangeAbsMean'):.3f}$                   & ${get_result('wind_preview_type', 'StochasticInterval', 'RelativeTotalRunningOptimizationCostMean'):.3f}$ & ${int(get_result('wind_preview_type', 'StochasticInterval', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-        f"&                                                      Stochastic Sample     & ${get_result('wind_preview_type', 'StochasticSample', 'RelativeFarmPowerMean') / 1e6:.3f}$                   & ${get_result('wind_preview_type', 'StochasticSample', 'RelativeYawAngleChangeAbsMean'):.3f}$                   & ${get_result('wind_preview_type', 'StochasticSample', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                      & ${int(get_result('wind_preview_type', 'StochasticSample', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \\hline \n"
+        f"&                                                      Stochastic $3$-Interval     & ${get_result('wind_preview_type', 'Stochastic Interval 3', 'RelativeFarmPowerMean') / 1e6:.3f}$                   & ${get_result('wind_preview_type', 'Stochastic Interval 3', 'RelativeYawAngleChangeAbsMean'):.3f}$                   & ${get_result('wind_preview_type', 'Stochastic Interval 3', 'RelativeTotalRunningOptimizationCostMean'):.3f}$ & ${int(get_result('wind_preview_type', 'Stochastic Interval 3', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+        f"&                                                      \\textbf{{Stochastic}} $\\bm{{5}}$\\textbf{{-Interval}}     & ${get_result('wind_preview_type', 'Stochastic Interval 5', 'RelativeFarmPowerMean') / 1e6:.3f}$                   & ${get_result('wind_preview_type', 'Stochastic Interval 5', 'RelativeYawAngleChangeAbsMean'):.3f}$                   & ${get_result('wind_preview_type', 'Stochastic Interval 5', 'RelativeTotalRunningOptimizationCostMean'):.3f}$ & ${int(get_result('wind_preview_type', 'Stochastic Interval 5', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+        f"&                                                      Stochastic $7$-Interval     & ${get_result('wind_preview_type', 'Stochastic Interval 7', 'RelativeFarmPowerMean') / 1e6:.3f}$                   & ${get_result('wind_preview_type', 'Stochastic Interval 7', 'RelativeYawAngleChangeAbsMean'):.3f}$                   & ${get_result('wind_preview_type', 'Stochastic Interval 7', 'RelativeTotalRunningOptimizationCostMean'):.3f}$ & ${int(get_result('wind_preview_type', 'Stochastic Interval 7', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+        f"&                                                      Stochastic $25$-Sample     & ${get_result('wind_preview_type', 'Stochastic Sample 25', 'RelativeFarmPowerMean') / 1e6:.3f}$                   & ${get_result('wind_preview_type', 'Stochastic Sample 25', 'RelativeYawAngleChangeAbsMean'):.3f}$                   & ${get_result('wind_preview_type', 'Stochastic Sample 25', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                      & ${int(get_result('wind_preview_type', 'Stochastic Sample 25', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+        f"&                                                      Stochastic $50$-Sample     & ${get_result('wind_preview_type', 'Stochastic Sample 50', 'RelativeFarmPowerMean') / 1e6:.3f}$                   & ${get_result('wind_preview_type', 'Stochastic Sample 50', 'RelativeYawAngleChangeAbsMean'):.3f}$                   & ${get_result('wind_preview_type', 'Stochastic Sample 50', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                      & ${int(get_result('wind_preview_type', 'Stochastic Sample 50', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+        f"&                                                      Stochastic $100$-Sample     & ${get_result('wind_preview_type', 'Stochastic Sample 100', 'RelativeFarmPowerMean') / 1e6:.3f}$                   & ${get_result('wind_preview_type', 'Stochastic Sample 100', 'RelativeYawAngleChangeAbsMean'):.3f}$                   & ${get_result('wind_preview_type', 'Stochastic Sample 100', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                      & ${int(get_result('wind_preview_type', 'Stochastic Sample 100', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \\hline \n"
         f"\\multirow{{3}}{{*}}{{\\textbf{{Warm-Starting Method}}}} & Greedy                  & ${get_result('warm_start', 'Greedy', 'RelativeFarmPowerMean') / 1e6:.3f}$                              & ${get_result('warm_start', 'Greedy', 'RelativeYawAngleChangeAbsMean'):.3f}$                              & ${get_result('warm_start', 'Greedy', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                                 & ${int(get_result('warm_start', 'Greedy', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
         f"&                                                       \\textbf{{LUT}}                      & ${get_result('warm_start', 'LUT', 'RelativeFarmPowerMean') / 1e6:.3f}$                                 & ${get_result('warm_start', 'LUT', 'RelativeYawAngleChangeAbsMean'):.3f}$                                 & ${get_result('warm_start', 'LUT', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                                    & ${int(get_result('warm_start', 'LUT', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
         f"&                                                        Previous Solution        & ${get_result('warm_start', 'Previous', 'RelativeFarmPowerMean') / 1e6:.3f}$                            & ${get_result('warm_start', 'Previous', 'RelativeYawAngleChangeAbsMean'):.3f}$                            & ${get_result('warm_start', 'Previous', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                               & ${int(get_result('warm_start', 'Previous', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \\hline \n"
-        f"\\multirow{{4}}{{*}}{{\\textbf{{Wind Farm Size}}}}       & $3 \\times 1$           & ${get_result('scalability', '3 Turbines', 'RelativeFarmPowerMean') / 1e6:.3f}$                         & ${get_result('scalability', '3 Turbines', 'RelativeYawAngleChangeAbsMean'):.3f}$                         & ${get_result('scalability', '3 Turbines', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                            & ${int(get_result('scalability', '3 Turbines', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-        f"&                                                        $\\bm{{3 \\times 3}}$    & ${get_result('scalability', '9 Turbines', 'RelativeFarmPowerMean') / 1e6:.3f}$                         & ${get_result('scalability', '9 Turbines', 'RelativeYawAngleChangeAbsMean'):.3f}$                         & ${get_result('scalability', '9 Turbines', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                            & ${int(get_result('scalability', '9 Turbines', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-        f"&                                                        $5 \\times 5$            & ${get_result('scalability', '25 Turbines', 'RelativeFarmPowerMean') / 1e6:.3f}$                        & ${get_result('scalability', '25 Turbines', 'RelativeYawAngleChangeAbsMean'):.3f}$                        & ${get_result('scalability', '25 Turbines', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                           & ${int(get_result('scalability', '25 Turbines', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \\hline \n"
+        f"\\multirow{{4}}{{*}}{{\\textbf{{Wind Farm Size}}}}       & Greedy $3 \\times 1$           & ${get_result('scalability', 'controller_class_GreedyController_num_turbines_3', 'RelativeFarmPowerMean') / 1e6:.3f}$                         & ${get_result('scalability', 'controller_class_GreedyController_num_turbines_3', 'RelativeYawAngleChangeAbsMean'):.3f}$                         & ${get_result('scalability', 'controller_class_GreedyController_num_turbines_3', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                            & ${int(get_result('scalability', 'controller_class_GreedyController_num_turbines_3', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+        f"&                                                        Greedy $\\bm{{3 \\times 3}}$    & ${get_result('scalability', 'controller_class_GreedyController_num_turbines_9', 'RelativeFarmPowerMean') / 1e6:.3f}$                         & ${get_result('scalability', 'controller_class_GreedyController_num_turbines_9', 'RelativeYawAngleChangeAbsMean'):.3f}$                         & ${get_result('scalability', 'controller_class_GreedyController_num_turbines_9', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                            & ${int(get_result('scalability', 'controller_class_GreedyController_num_turbines_9', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+        f"&                                                        Greedy $5 \\times 5$            & ${get_result('scalability', 'controller_class_GreedyController_num_turbines_25', 'RelativeFarmPowerMean') / 1e6:.3f}$                        & ${get_result('scalability', 'controller_class_GreedyController_num_turbines_25', 'RelativeYawAngleChangeAbsMean'):.3f}$                        & ${get_result('scalability', 'controller_class_GreedyController_num_turbines_25', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                           & ${int(get_result('scalability', 'controller_class_GreedyController_num_turbines_25', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+        f"\\multirow{{4}}{{*}}{{\\textbf{{Wind Farm Size}}}}       & LUT $3 \\times 1$           & ${get_result('scalability', 'controller_class_LookupBasedWakeSteeringController_num_turbines_3', 'RelativeFarmPowerMean') / 1e6:.3f}$                         & ${get_result('scalability', 'controller_class_LookupBasedWakeSteeringController_num_turbines_3', 'RelativeYawAngleChangeAbsMean'):.3f}$                         & ${get_result('scalability', 'controller_class_LookupBasedWakeSteeringController_num_turbines_3', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                            & ${int(get_result('scalability', 'controller_class_LookupBasedWakeSteeringController_num_turbines_3', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+        f"&                                                        LUT $\\bm{{3 \\times 3}}$    & ${get_result('scalability', 'controller_class_LookupBasedWakeSteeringController_num_turbines_9', 'RelativeFarmPowerMean') / 1e6:.3f}$                         & ${get_result('scalability', 'controller_class_LookupBasedWakeSteeringController_num_turbines_9', 'RelativeYawAngleChangeAbsMean'):.3f}$                         & ${get_result('scalability', 'controller_class_LookupBasedWakeSteeringController_num_turbines_9', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                            & ${int(get_result('scalability', 'controller_class_LookupBasedWakeSteeringController_num_turbines_9', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+        f"&                                                        LUT $5 \\times 5$            & ${get_result('scalability', 'controller_class_LookupBasedWakeSteeringController_num_turbines_25', 'RelativeFarmPowerMean') / 1e6:.3f}$                        & ${get_result('scalability', 'controller_class_LookupBasedWakeSteeringController_num_turbines_25', 'RelativeYawAngleChangeAbsMean'):.3f}$                        & ${get_result('scalability', 'controller_class_LookupBasedWakeSteeringController_num_turbines_25', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                           & ${int(get_result('scalability', 'controller_class_LookupBasedWakeSteeringController_num_turbines_25', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+        f"\\multirow{{4}}{{*}}{{\\textbf{{Wind Farm Size}}}}       & MPC $3 \\times 1$           & ${get_result('scalability', 'controller_class_MPC_num_turbines_3', 'RelativeFarmPowerMean') / 1e6:.3f}$                         & ${get_result('scalability', 'controller_class_MPC_num_turbines_3', 'RelativeYawAngleChangeAbsMean'):.3f}$                         & ${get_result('scalability', 'controller_class_MPC_num_turbines_3', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                            & ${int(get_result('scalability', 'controller_class_MPC_num_turbines_3', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+        f"&                                                        MPC $\\bm{{3 \\times 3}}$    & ${get_result('scalability', 'controller_class_MPC_num_turbines_9', 'RelativeFarmPowerMean') / 1e6:.3f}$                         & ${get_result('scalability', 'controller_class_MPC_num_turbines_9', 'RelativeYawAngleChangeAbsMean'):.3f}$                         & ${get_result('scalability', 'controller_class_MPC_num_turbines_9', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                            & ${int(get_result('scalability', 'controller_class_MPC_num_turbines_9', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+        f"&                                                        MPC $5 \\times 5$            & ${get_result('scalability', 'controller_class_MPC_num_turbines_25', 'RelativeFarmPowerMean') / 1e6:.3f}$                        & ${get_result('scalability', 'controller_class_MPC_num_turbines_25', 'RelativeYawAngleChangeAbsMean'):.3f}$                        & ${get_result('scalability', 'controller_class_MPC_num_turbines_25', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                           & ${int(get_result('scalability', 'controller_class_MPC_num_turbines_25', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \\hline \n"
         f"\\multirow{{5}}{{*}}{{\\textbf{{Horizon Length}}}}       & $6$                     & ${get_result('horizon_length_N', 'N_p = 6', 'RelativeFarmPowerMean') / 1e6:.3f}$                       & ${get_result('horizon_length_N', 'N_p = 6', 'RelativeYawAngleChangeAbsMean'):.3f}$                       & ${get_result('horizon_length_N', 'N_p = 6', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                          & ${int(get_result('horizon_length_N', 'N_p = 6', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
         f"&                                                        $8$                      & ${get_result('horizon_length_N', 'N_p = 8', 'RelativeFarmPowerMean') / 1e6:.3f}$                       & ${get_result('horizon_length_N', 'N_p = 8', 'RelativeYawAngleChangeAbsMean'):.3f}$                       & ${get_result('horizon_length_N', 'N_p = 8', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                          & ${int(get_result('horizon_length_N', 'N_p = 8', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-        f"&                                                        $10$             & ${get_result('horizon_length_N', 'N_p = 10', 'RelativeFarmPowerMean') / 1e6:.3f}$                             & ${get_result('horizon_length_N', 'N_p = 10', 'RelativeYawAngleChangeAbsMean'):.3f}$                      & ${get_result('horizon_length_N', 'N_p = 10', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                         & ${int(get_result('horizon_length_N', 'N_p = 10', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
-        f"&                                                        $\\bm{{12}}$                     & ${get_result('horizon_length_N', 'N_p = 12', 'RelativeFarmPowerMean') / 1e6:.3f}$              & ${get_result('horizon_length_N', 'N_p = 12', 'RelativeYawAngleChangeAbsMean'):.3f}$                      & ${get_result('horizon_length_N', 'N_p = 12', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                         & ${int(get_result('horizon_length_N', 'N_p = 12', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+        f"&                                                        $10$                     & ${get_result('horizon_length_N', 'N_p = 10', 'RelativeFarmPowerMean') / 1e6:.3f}$                             & ${get_result('horizon_length_N', 'N_p = 10', 'RelativeYawAngleChangeAbsMean'):.3f}$                      & ${get_result('horizon_length_N', 'N_p = 10', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                         & ${int(get_result('horizon_length_N', 'N_p = 10', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
+        f"&                                                        $\\bm{{12}}$             & ${get_result('horizon_length_N', 'N_p = 12', 'RelativeFarmPowerMean') / 1e6:.3f}$              & ${get_result('horizon_length_N', 'N_p = 12', 'RelativeYawAngleChangeAbsMean'):.3f}$                      & ${get_result('horizon_length_N', 'N_p = 12', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                         & ${int(get_result('horizon_length_N', 'N_p = 12', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
         f"&                                                        $14$                     & ${get_result('horizon_length_N', 'N_p = 14', 'RelativeFarmPowerMean') / 1e6:.3f}$                      & ${get_result('horizon_length_N', 'N_p = 14', 'RelativeYawAngleChangeAbsMean'):.3f}$                      & ${get_result('horizon_length_N', 'N_p = 14', 'RelativeTotalRunningOptimizationCostMean'):.3f}$                         & ${int(get_result('horizon_length_N', 'N_p = 14', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \\hline \n"
         # f"\multirow{{5}}{{*}}{{\\textbf{{Probability of Turbine Failure}}}} & $\\bm{{0\%}}$ & ${get_result('breakdown_robustness', '00.0% Chance of Breakdown', 'RelativeFarmPowerMean') / 1e6:.3f}$ & ${get_result('breakdown_robustness', '00.0% Chance of Breakdown', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${get_result('breakdown_robustness', '00.0% Chance of Breakdown', 'RelativeTotalRunningOptimizationCostMean'):.3f}$    & ${int(get_result('breakdown_robustness', '00.0% Chance of Breakdown', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
         # f"&                                                                  $1\%$          & ${get_result('breakdown_robustness', '02.5% Chance of Breakdown', 'RelativeFarmPowerMean') / 1e6:.3f}$ & ${get_result('breakdown_robustness', '02.5% Chance of Breakdown', 'RelativeYawAngleChangeAbsMean'):.3f}$ & ${get_result('breakdown_robustness', '02.5% Chance of Breakdown', 'RelativeTotalRunningOptimizationCostMean'):.3f}$    & ${int(get_result('breakdown_robustness', '02.5% Chance of Breakdown', 'OptimizationConvergenceTimeMean')):d}$ \\\\ \n"
@@ -298,16 +320,16 @@ def read_amr_outputs(results_paths, hercules_dict):
     cols += ["Time", "ControllerClass", "WindSeed"] + [col for col in df.columns if "YawAngleChange" in col]
     new_cols += ["Time", "ControllerClass", "WindSeed"] + [col for col in df.columns if "YawAngleChange" in col]
     df = df[cols]
-    df.rename(columns={col: new_col for col, new_col in zip(cols, new_cols)}, inplace=True)
+    df = df.rename(columns={col: new_col for col, new_col in zip(cols, new_cols)})
 
     # remove rows corresponding to all zero turbine powers
     df = df.loc[~(df[[col for col in df.columns if f"turbine_powers" in col]] == 0).all(axis="columns"), :]
-    df.rename(columns={col: f"TurbinePower_{col.split('_')[-1]}" for col in df.columns if "turbine_powers" in col}, inplace=True)
-    df.rename(columns={col: f"TurbineYawAngle_{col.split('_')[-1]}" for col in df.columns if "turbine_yaw_angles" in col}, inplace=True)
+    df = df.rename(columns={col: f"TurbinePower_{col.split('_')[-1]}" for col in df.columns if "turbine_powers" in col})
+    df = df.rename(columns={col: f"TurbineYawAngle_{col.split('_')[-1]}" for col in df.columns if "turbine_yaw_angles" in col})
     df.loc[:, "Time"] = df["Time"] - df.iloc[0]["Time"]
 
     df["ControllerClass"] = pd.Categorical(df["ControllerClass"], ["Greedy", "LUT", "MPC"])
-    df.sort_values(by=["ControllerClass", "Time"], inplace=True)
+    df = df.sort_values(by=["ControllerClass", "Time"])
 
     df["FarmAbsoluteYawAngleChange"] = df[[col for col in df.columns if "TurbineYawAngleChange_" in col]].abs().sum(axis=1)
     df["FarmPower"] = df[[col for col in df.columns if "TurbinePower_" in col]].sum(axis=1)
@@ -432,7 +454,7 @@ def aggregate_time_series_data(case_df, save_dir):
     # case_family = df_name.replace(f"_{results_df['CaseName'].iloc[0]}", "")
     case_name = case_df['CaseName'].iloc[0]
     input_fn = f"input_config_case_{case_name}.yaml"
-    
+    print(f"Aggregating data for {case_family}={case_name}")
     with open(os.path.join(save_dir, case_family, input_fn), 'r') as fp:
         input_config = yaml.safe_load(fp)
 
@@ -458,6 +480,7 @@ def aggregate_time_series_data(case_df, save_dir):
                                (seed_df["RunningOptimizationCostTerm_0"] / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean(),
                                (seed_df["RunningOptimizationCostTerm_1"] / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean(),
                                seed_df["OptimizationConvergenceTime"].mean()))
+    print(f"Aggregated data for {case_family}={case_name}")
     return pd.DataFrame(result_summary, columns=["CaseFamily", "CaseName", "WindSeed",
                                               "YawAngleChangeAbsMean", "RelativeYawAngleChangeAbsMean",
                                               "FarmPowerMean", "RelativeFarmPowerMean", 
@@ -466,7 +489,7 @@ def aggregate_time_series_data(case_df, save_dir):
                                               "OptimizationConvergenceTime"])
 
 def plot_wind_field_ts(data_df, save_path, filter_func=None):
-    fig_wind, ax_wind = plt.subplots(2, 1, sharex=True, figsize=(15.12, 7.98))
+    fig_wind, ax_wind = plt.subplots(2, 1, sharex=True)
     # fig_wind.set_size_inches(10, 5)
 
     for seed in sorted(pd.unique(data_df["WindSeed"])):
@@ -486,10 +509,10 @@ def plot_wind_field_ts(data_df, save_path, filter_func=None):
 
 def plot_opt_var_ts(data_df, yaw_offset_bounds, save_path):
     colors = sns.color_palette(palette='Paired')
-    yaw_angle_cols = sorted([col for col in data_df.columns if "TurbineYawAngle_" in col])
+    yaw_angle_cols = sorted([col for col in data_df.columns if "TurbineYawAngle_" == col[:len("TurbineYawAngle_") and not pd.isna(data_df[col]).any()]])
     yaw_angle_change_cols = sorted([col for col in data_df.columns if "TurbineYawAngleChange_" in col])
 
-    fig_opt_vars, ax_opt_vars = plt.subplots(2, 1, sharex=True, figsize=(15.12, 7.98))
+    fig_opt_vars, ax_opt_vars = plt.subplots(2, 1, sharex=True)
     # fig_opt_vars.set_size_inches(10, 5)
     plot_seed = 0
     time_frac = 1;
@@ -513,7 +536,7 @@ def plot_opt_var_ts(data_df, yaw_offset_bounds, save_path):
     return fig_opt_vars, ax_opt_vars
 
 def plot_opt_cost_ts(data_df, save_path):
-    fig_opt_cost, ax_opt_cost = plt.subplots(2, 1, sharex=True, figsize=(15.12, 7.98))
+    fig_opt_cost, ax_opt_cost = plt.subplots(2, 1, sharex=True)
     # fig_opt_cost.set_size_inches(10, 5)
     time_frac = 1;
     plot_seed = 0
@@ -543,7 +566,7 @@ def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, 
     """
     colors = sns.color_palette("Paired")
 
-    fig = plt.figure(figsize=(15.12, 7.98))
+    fig = plt.figure()
     ax = []
     
     if include_yaw:
@@ -557,7 +580,7 @@ def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, 
             for case_name, case_label, color in zip(case_names, case_labels, cycle(colors)):
                 case_df = data_dfs.loc[(data_dfs["CaseFamily"] == "yaw_offset_study") & (data_dfs["CaseName"] == case_name), :]
                 # turbine_wind_direction_cols = sorted([col for col in case_df.columns if "TurbineWindDir_" in col])
-                yaw_angle_cols = sorted([col for col in case_df.columns if "TurbineYawAngle_" in col])
+                yaw_angle_cols = sorted([col for col in case_df.columns if "TurbineYawAngle_" == col[:len("TurbineYawAngle_") and not pd.isna(case_df[col]).any()]])
 
                 # turbine_wind_dirs = case_df[turbine_wind_direction_cols[turbine_idx]].sort_values(by="Time")
                 freestream_wind_dirs = case_df["FreestreamWindDir"]
@@ -662,43 +685,46 @@ def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, 
                     ax[subplot_idx].legend([], [], frameon=False) 
 
         ax[-len(plot_turbine_ids)].set(ylabel="Turbine Power [MW]")
-                
 
     results_dir = os.path.dirname(save_path)
+    figManager = plt.get_current_fig_manager()
+    figManager.full_screen_toggle()
     fig.suptitle("_".join([os.path.basename(results_dir), "yawoffset_winddir_ts"]))
     fig.savefig(save_path)
+    plt.close(fig)
     # fig.show()
     return fig, ax
 
 def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, controller_dt=None):
+    #TODO only plot some turbines, not ones with overlapping yaw offsets, eg single column on farm
     colors = sns.color_palette(palette='Paired')
 
-    fig, ax = plt.subplots(int(include_yaw + include_power), 1, sharex=True, figsize=(15.12, 7.98))
+    fig, ax = plt.subplots(int(include_yaw + include_power), 1, sharex=True)
     ax = np.atleast_1d(ax)
     # fig.set_size_inches(10, 5)
     
-    turbine_wind_direction_cols = sorted([col for col in data_df.columns if "TurbineWindDir_" in col])
-    turbine_power_cols = sorted([col for col in data_df.columns if "TurbinePower_" in col])
-    yaw_angle_cols = sorted([col for col in data_df.columns if "TurbineYawAngle_" in col])
+    turbine_wind_direction_cols = sorted([col for col in data_df.columns if "TurbineWindDir_" in col and not pd.isna(data_df[col]).any()])
+    turbine_power_cols = sorted([col for col in data_df.columns if "TurbinePower_" in col and not pd.isna(data_df[col]).any()])
+    yaw_angle_cols = sorted([col for col in data_df.columns if "TurbineYawAngle_" == col[:len("TurbineYawAngle_")] and not pd.isna(data_df[col]).any()])
 
     plot_seed = 0
     # plot_turbine = 4
     for seed in sorted(pd.unique(data_df["WindSeed"])):
         if seed != plot_seed:
             continue
-        seed_df = data_df.loc[data_df["WindSeed"] == seed].sort_values(by="Time")
+        seed_df = data_df.loc[data_df["WindSeed"] == seed, :].sort_values(by="Time")
         
         if include_yaw:
             ax_idx = 0
-            ax[ax_idx].plot(seed_df["Time"], seed_df["FreestreamWindDir"], label="Freestream wind dir.", color="black")
-            ax[ax_idx].plot(seed_df["Time"], seed_df["FilteredFreestreamWindDir"], label="Filtered freestream wind dir.", color="black", linestyle="--")
+            sns.lineplot(data=seed_df, x="Time", y="FreestreamWindDir", label="Freestream wind dir.", color="black", ax=ax[ax_idx])
+            sns.lineplot(data=seed_df, x="Time", y="FilteredFreestreamWindDir", label="Filtered freestream wind dir.", color="black", linestyle="--", ax=ax[ax_idx])
             
         # Direction
         for t, (wind_dir_col, power_col, yaw_col, color) in enumerate(zip(turbine_wind_direction_cols, turbine_power_cols, yaw_angle_cols, cycle(colors))):
             
             if include_yaw:
                 ax_idx = 0
-                ax[ax_idx].plot(seed_df["Time"], seed_df[yaw_col], color=color, label="T{0:01d} yaw setpoint".format(t), linestyle=":")
+                sns.lineplot(data=seed_df, x="Time", y=yaw_col, color=color, label="T{0:01d} yaw setpoint".format(t), linestyle=":", ax=ax[ax_idx])
                 
                 if controller_dt is not None:
                     [ax[ax_idx].axvline(x=_x, linestyle=(0, (1, 10)), linewidth=0.5) for _x in np.arange(0, seed_df["Time"].iloc[-1], controller_dt)]
@@ -714,12 +740,14 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
         
         if include_power:
             next_ax_idx = (1 if include_yaw else 0)
-            ax[next_ax_idx].plot(seed_df["Time"], seed_df[turbine_power_cols].sum(axis=1) / 1e3, color="black", label="Farm power")
+            seed_df["FarmPower"] = seed_df[turbine_power_cols].sum(axis=1) / 1e3
+            sns.lineplot(data=seed_df, x="Time", y="FarmPower", color="black", label="Farm power", ax=ax[ax_idx])
     
     if include_yaw:
         ax_idx = 0
-        ax[ax_idx].set(title="Wind Direction / Yaw Angle [$^\\circ$]", xlim=(0, int((seed_df["Time"].max() + seed_df["Time"].diff().iloc[1]) // 1)), ylim=(240, 300))
+        ax[ax_idx].set(title="Wind Direction / Yaw Angle [$^\\circ$]", xlim=(0, int((seed_df["Time"].max() + seed_df["Time"].diff().iloc[1]) // 1)), ylim=(220, 320))
         ax[ax_idx].legend(ncols=2, loc="lower right")
+        ax[ax_idx].legend([], [], frameon=False)
         if not include_power:
             ax[ax_idx].set(xlabel="Time [s]", title="Turbine Powers [MW]")
     
@@ -727,11 +755,15 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
         next_ax_idx = (1 if include_yaw else 0)
         ax[next_ax_idx].set(xlabel="Time [s]", title="Turbine Powers [MW]")
         ax[next_ax_idx].legend(ncols=2, loc="lower right")
+        ax[next_ax_idx].legend([], [], frameon=False)
 
     results_dir = os.path.dirname(save_path)
+    # figManager = plt.get_current_fig_manager()
+    # figManager.full_screen_toggle()
     fig.suptitle("_".join([os.path.basename(results_dir), data_df["CaseName"].iloc[0].replace('/', '_'), "yaw_power_ts"]))
     fig.savefig(save_path)
-    # fig.show()
+    # plt.close(fig)
+    fig.show()
     return fig, ax
 
 def barplot_opt_cost(data_summary_df, save_dir, relative=False):
@@ -786,14 +818,14 @@ def plot_cost_function_pareto_curve(data_summary_df, save_dir):
     """
     
 
-    fig, ax = plt.subplots(1, figsize=(10.29,  5.5))
-    baseline_df = data_summary_df.loc[data_summary_df.index.get_level_values("CaseFamily") == "baseline_controllers", :].copy().reset_index(level="CaseName", inplace=False)
+    fig, ax = plt.subplots(1)
+    baseline_df = data_summary_df.loc[data_summary_df.index.get_level_values("CaseFamily") == "baseline_controllers", :].copy().reset_index(level="CaseName")
     baseline_df[("FarmPowerMean", "mean")] = baseline_df[("FarmPowerMean", "mean")] / 1e6
     # baseline_df[("FarmPowerMean", "min")] = baseline_df[("FarmPowerMean", "min")] / 1e6
     # baseline_df[("FarmPowerMean", "max")] = baseline_df[("FarmPowerMean", "max")] / 1e6
 
     sub_df = data_summary_df.loc[data_summary_df.index.get_level_values("CaseFamily") == "cost_func_tuning", :].copy()
-    sub_df.reset_index(level="CaseName", inplace=True)
+    sub_df = sub_df.reset_index(level="CaseName")
     sub_df.loc[:, "CaseName"] = [float(x[-1]) for x in sub_df["CaseName"].str.split("_")]
     sub_df[("FarmPowerMean", "mean")] = sub_df[("FarmPowerMean", "mean")] / 1e6
     # sub_df[("FarmPowerMean", "min")] = sub_df[("FarmPowerMean", "min")] / 1e6
@@ -812,9 +844,12 @@ def plot_cost_function_pareto_curve(data_summary_df, save_dir):
                    y=[row[("FarmPowerMean", "mean")]], 
                    label=row["CaseName"].iloc[0], s=np.max(ax.collections[0].get_sizes()), marker=m)
     h, l = ax.get_legend_handles_labels()
-    ax.legend(h[-2:], l[-2:]) 
-        
+    ax.legend(h[-2:], l[-2:])
+    ax.set(xlim=(0, ax.get_xlim()[-1]))
+    figManager = plt.get_current_fig_manager()
+    figManager.full_screen_toggle()   
     fig.savefig(os.path.join(save_dir, "cost_function_pareto_curve.png"))
+    plt.close(fig)
 
 def plot_breakdown_robustness(data_summary_df, save_dir):
     # TODO could also make countplot and plot all time-step data points for different values of probability
@@ -834,27 +869,27 @@ def plot_breakdown_robustness(data_summary_df, save_dir):
                                        (data_summary_df.index.get_level_values("CaseName").str.contains("LookupBasedWakeSteeringController")), :].copy()
     # baseline_df.reset_index(level="CaseName", inplace=True)
     greedy_df[("RelativeFarmPowerMean", "mean")] = greedy_df[("RelativeFarmPowerMean", "mean")] / 1e6
-    greedy_df[("RelativeFarmPowerMean", "min")] = greedy_df[("RelativeFarmPowerMean", "min")] / 1e6
-    greedy_df[("RelativeFarmPowerMean", "max")] = greedy_df[("RelativeFarmPowerMean", "max")] / 1e6
+    # greedy_df[("RelativeFarmPowerMean", "min")] = greedy_df[("RelativeFarmPowerMean", "min")] / 1e6
+    # greedy_df[("RelativeFarmPowerMean", "max")] = greedy_df[("RelativeFarmPowerMean", "max")] / 1e6
     lut_df[("RelativeFarmPowerMean", "mean")] = lut_df[("RelativeFarmPowerMean", "mean")] / 1e6
-    lut_df[("RelativeFarmPowerMean", "min")] = lut_df[("RelativeFarmPowerMean", "min")] / 1e6
-    lut_df[("RelativeFarmPowerMean", "max")] = lut_df[("RelativeFarmPowerMean", "max")] / 1e6
+    # lut_df[("RelativeFarmPowerMean", "min")] = lut_df[("RelativeFarmPowerMean", "min")] / 1e6
+    # lut_df[("RelativeFarmPowerMean", "max")] = lut_df[("RelativeFarmPowerMean", "max")] / 1e6
 
-    greedy_df.sort_values(by="CaseName", inplace=True)
-    lut_df.sort_values(by="CaseName", inplace=True)
+    greedy_df = greedy_df.sort_values(by="CaseName")
+    lut_df = lut_df.sort_values(by="CaseName")
 
     sub_df = data_summary_df.loc[(data_summary_df.index.get_level_values("CaseFamily") == "breakdown_robustness") & 
                                  (data_summary_df.index.get_level_values("CaseName").str.contains("MPC")), :].copy()
-    sub_df.reset_index(level="CaseName", inplace=True)
+    sub_df = sub_df.reset_index(level="CaseName")
     sub_df.loc[:, "CaseName"] = [float(x[-1]) for x in sub_df["CaseName"].str.split("_")]
     sub_df[("RelativeFarmPowerMean", "mean")] = sub_df[("RelativeFarmPowerMean", "mean")] / 1e6
-    sub_df[("RelativeFarmPowerMean", "min")] = sub_df[("RelativeFarmPowerMean", "min")] / 1e6
-    sub_df[("RelativeFarmPowerMean", "max")] = sub_df[("RelativeFarmPowerMean", "max")] / 1e6
-    sub_df.sort_values(by="CaseName", inplace=True)
+    # sub_df[("RelativeFarmPowerMean", "min")] = sub_df[("RelativeFarmPowerMean", "min")] / 1e6
+    # sub_df[("RelativeFarmPowerMean", "max")] = sub_df[("RelativeFarmPowerMean", "max")] / 1e6
+    sub_df = sub_df.sort_values(by="CaseName")
     # sub_df["CaseName"] = [case_studies["breakdown_robustness"]["case_names"]["vals"][int(solver_type.split("_")[-1])] for solver_type in sub_df["SolverType"]]
 
     # Plot "RelativeFarmPowerMean" vs. "RelativeYawAngleChangeAbsMean" for all "SolverType" == "cost_func_tuning"
-    fig, ax = plt.subplots(1, figsize=(10.29,  5.5))
+    fig, ax = plt.subplots(1)
     sns.scatterplot(data=sub_df, x=("RelativeYawAngleChangeAbsMean", "mean"), y=("RelativeFarmPowerMean", "mean"), size="CaseName", ax=ax)
                     # size_order=reversed(sub_df["CaseName"]), ax=ax)
     
@@ -881,5 +916,7 @@ def plot_breakdown_robustness(data_summary_df, save_dir):
     # ax.legend_.texts[2].set_text("5%")
     # ax.legend_.texts[3].set_text("2.5%")
     # ax.legend_.texts[4].set_text("0%")
-
+    figManager = plt.get_current_fig_manager()
+    figManager.full_screen_toggle()
     fig.savefig(os.path.join(save_dir, "breakdown_robustness.png"))
+    plt.close(fig)

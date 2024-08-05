@@ -79,6 +79,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 
 		# For startup
 		self.previous_target_yaw_setpoints = self.controls_dict["yaw_angles"]
+		self.yaw_norm_const = 360.0
 	
 	def _first_ord_filter(self, x, alpha):
 		
@@ -235,9 +236,11 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			# 	print(f"Note: no yaw angle setpoints surpass the deadband threshold at time {self.current_time}")
 
 			constrained_yaw_setpoints = np.rint(constrained_yaw_setpoints / self.yaw_increment) * self.yaw_increment
-
+			self.init_sol = {"states": list(constrained_yaw_setpoints / self.yaw_norm_const)}
+			self.init_sol["control_inputs"] = (constrained_yaw_setpoints - self.controls_dict["yaw_angles"]) * (self.yaw_norm_const / (self.yaw_rate * self.dt))
+			
 			self.controls_dict = {"yaw_angles": list(constrained_yaw_setpoints)}
-		
+			
 		return None
 
 def get_yaw_angles_interpolant(df_opt, ramp_up_ws=[4, 5], ramp_down_ws=[10, 12], minimum_yaw_angle=None, maximum_yaw_angle=None):

@@ -50,7 +50,12 @@ case_studies = {
                                 "dt": {"group": 1, "vals": [5, 5]},
                                 "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
                                 "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
-                                  "use_filtered_wind_dir": {"group": 1, "vals": [True, True]},
+                                "use_filtered_wind_dir": {"group": 1, "vals": [True, True]},
+                                "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_{3}.yaml")]},
+                                "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv")]},
+                          
                           },
      "baseline_plus_controllers": {"seed": {"group": 0, "vals": [0]},
                                 "dt": {"group": 1, "vals": [5, 5, 60.0, 60.0, 60.0, 60.0]},
@@ -78,11 +83,22 @@ case_studies = {
                           },
     "slsqp_solver_sweep_small": {"seed": {"group": 0, "vals": [0]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
-                             "wind_preview_type": {"group": 1, "vals": ["stochastic_interval"] * 3 + ["stochastic_sample"] * 3},
-                             "n_wind_preview_samples": {"group": 1, "vals": [3, 5, 7, 25, 50, 100]},
-                             "nu": {"group": 2, "vals": [10**x for x in range(-3, 0, 1)]},
-                             "alpha": {"group": 3, "vals": list(np.linspace(0.005, 0.995, 3))},
-                           "solver": {"group": 0, "vals": ["slsqp"]}
+                             "n_wind_preview_samples": {"group": 0, "vals": [1]},
+                             "wind_preview_type": {"group": 0, "vals": ["perfect"]},
+                            #  "diff_type": {"group": 1, "vals": ["central_diff", "custom"]},
+                            "use_norm_power": {"group": 1, "vals": ["True", "False"]},
+                             "nu": {"group": 3, "vals": [0.001, 0.01, 0.1]},
+                             "decay_type": {"group": 2, "vals": ["cosine", "linear", "exp"]},
+                            #  "decay_const": {"group": 0, "vals": [1e-4]},
+                             "warm_start": {"group": 4, "vals": ["greedy", "lut"]},
+                            # "n_wind_preview_samples": {"group": 1, "vals": [1, 1, 9, 500]},
+                            # "wind_preview_type": {"group": 1, "vals": ["perfect", "perfect", "stochastic_interval", "stochastic_sample"]},
+                             "alpha": {"group": 0, "vals": [1.0]},
+                             "solver": {"group": 0, "vals": ["slsqp"]},
+                             "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_{3}.yaml")]},
+                             "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv")]},
                           },
     "sequential_slsqp_solver": {"seed": {"group": 0, "vals": [0]},
                           "controller_class": {"group": 0, "vals": ["MPC"]},
@@ -124,11 +140,11 @@ case_studies = {
     },
     "stochastic_preview_type_small": {"seed": {"group": 0, "vals": [0]},
                           "controller_class": {"group": 0, "vals": ["MPC"]},
-                          "case_names": {"group": 1, "vals": [f"StochasticSample_{d}" for d in [100]] + [f"StochasticInterval_{d}" for d in [3]]},
-                          "wind_preview_type": {"group": 1, "vals": ["stochastic_sample"] * 1 + ["stochastic_interval"] * 1},
-                           "n_wind_preview_samples": {"group": 1, "vals": [500] + [3]},
+                          "case_names": {"group": 1, "vals": [f"StochasticSample_{d}" for d in [100, 250, 500, 1000]] + [f"StochasticInterval_{d}" for d in [3, 5, 9, 15]]},
+                          "wind_preview_type": {"group": 1, "vals": ["stochastic_sample"] * 4 + ["stochastic_interval"] * 4},
+                           "n_wind_preview_samples": {"group": 1, "vals": [100, 250, 500, 1000] + [3, 5, 9, 15]},
                            "nu": {"group": 0, "vals": [0.01]},
-                           "alpha": {"group": 0, "vals": [0.9]},
+                           "alpha": {"group": 0, "vals": [1.0]},
                            "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_{3}.yaml")]},
                             "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -410,7 +426,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                 else:
                     input_dicts[start_case_idx + c]["controller"][property_name] = property_value
                     
-            fn = f'input_config_case_{"_".join([f"{key}_{val if (type(val) is str or type(val) is np.str_) else np.round(val, 5)}" for key, val in case.items() if key not in ["wind_case_idx", "seed", "use_filtered_wind_dir", "floris_input_file", "dt", "lut_path"]]) if "case_names" not in case else case["case_names"]}.yaml'.replace("/", "_")
+            fn = f'input_config_case_{"_".join([f"{key}_{val if (type(val) is str or type(val) is np.str_ or type(val) is bool) else np.round(val, 6)}" for key, val in case.items() if key not in ["wind_case_idx", "seed", "use_filtered_wind_dir", "floris_input_file", "dt", "lut_path"]]) if "case_names" not in case else case["case_names"]}.yaml'.replace("/", "_")
             
             with io.open(os.path.join(results_dir, fn), 'w', encoding='utf8') as fp:
                 yaml.dump(input_dicts[start_case_idx + c], fp, default_flow_style=False, allow_unicode=True)
