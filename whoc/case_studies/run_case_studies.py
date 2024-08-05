@@ -64,13 +64,13 @@ if __name__ == "__main__":
             with executor as run_simulations_exec:
                 if args.multiprocessor == "mpi":
                     run_simulations_exec.max_workers = comm_size
-                    
+                #TODO check that case_family is being fetched properly    
                 print(f"run_simulations line 64 with {run_simulations_exec._max_workers} workers")
                 # for MPIPool executor, (waiting as if shutdown() were called with wait set to True)
                 futures = [run_simulations_exec.submit(simulate_controller, 
                                                 controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
                                                 wind_case_idx=case_lists[c]["wind_case_idx"], wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
-                                                case_name="_".join([f"{key}_{val if (type(val) is str or type(val) is np.str_) else np.round(val, 5)}" for key, val in case_lists[c].items() if key not in ["wind_case_idx", "seed", "lut_path", "floris_input_file", "use_filtered_wind_dir", "dt"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
+                                                case_name="_".join([f"{key}_{val if (type(val) is str or type(val) is np.str_ or type(val) is bool) else np.round(val, 6)}" for key, val in case_lists[c].items() if key not in ["wind_case_idx", "seed", "lut_path", "floris_input_file", "use_filtered_wind_dir", "dt"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
                                                 case_family="_".join(case_name_lists[c].split("_")[:-1]), seed=case_lists[c]["seed"], wind_field_config=wind_field_config, verbose=False, save_dir=args.save_dir, rerun_simulations=args.rerun_simulations)
                         for c, d in enumerate(input_dicts)]
                 
@@ -80,7 +80,7 @@ if __name__ == "__main__":
             for c, d in enumerate(input_dicts):
                 simulate_controller(controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
                                                 wind_case_idx=case_lists[c]["wind_case_idx"], wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
-                                                case_name="_".join([f"{key}_{val if (type(val) is str or type(val) is np.str_) else np.round(val, 5)}" for key, val in case_lists[c].items() if key not in ["wind_case_idx", "seed", "lut_path", "floris_input_file", "use_filtered_wind_dir", "dt"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
+                                                case_name="_".join([f"{key}_{val if (type(val) is str or type(val) is np.str_ or type(val) is bool) else np.round(val, 6)}" for key, val in case_lists[c].items() if key not in ["wind_case_idx", "seed", "lut_path", "floris_input_file", "use_filtered_wind_dir", "dt"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
                                                 case_family="_".join(case_name_lists[c].split("_")[:-1]), seed=case_lists[c]["seed"],
                                                 wind_field_config=wind_field_config, verbose=False, save_dir=args.save_dir, rerun_simulations=args.rerun_simulations)
     
@@ -139,10 +139,10 @@ if __name__ == "__main__":
 
             if RUN_ONCE:
                 
-                time_series_df.reset_index(inplace=True, drop=True) 
+                time_series_df = time_series_df.reset_index(drop=True) 
                 time_series_df.to_csv(os.path.join(args.save_dir, f"time_series_results.csv"))
                 
-                agg_dfs.reset_index(inplace=True, drop=True)
+                agg_dfs = agg_dfs.reset_index(drop=True)
                 agg_dfs = agg_dfs.groupby(by=["CaseFamily", "CaseName"])[[col for col in agg_dfs.columns if col not in ["CaseFamily", "CaseName", "WindSeed"]]].agg(["min", "max", "mean"])
                 agg_dfs.to_csv(os.path.join(args.save_dir, f"agg_results.csv"))
 
@@ -152,14 +152,25 @@ if __name__ == "__main__":
                 agg_dfs = pd.read_csv(os.path.join(args.save_dir, f"agg_results.csv"), header=[0,1], index_col=[0, 1], skipinitialspace=True)
 
         if RUN_ONCE:
+            if (case_families.index("baseline_controllers") in args.case_ids) and (case_families.index("cost_func_tuning") in args.case_ids):
+                
+                mpc_alpha_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily") == "cost_func_tuning"]
+                lut_df = agg_dfs.iloc[(agg_dfs.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_dfs.index.get_level_values("CaseName") == "LUT")] 
+                greedy_df = agg_dfs.iloc[(agg_dfs.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_dfs.index.get_level_values("CaseName") == "Greedy")]
+                better_than_lut_df = mpc_alpha_df.loc[(mpc_alpha_df[("FarmPowerMean", "mean")] > lut_df[("FarmPowerMean", "mean")].iloc[0]) & (mpc_alpha_df[("YawAngleChangeAbsMean", "mean")] < lut_df[("YawAngleChangeAbsMean", "mean")].iloc[0]), [("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True).reset_index(level="CaseFamily", drop=True)
+                better_than_greedy_df = mpc_alpha_df.loc[(mpc_alpha_df[("FarmPowerMean", "mean")] > greedy_df[("FarmPowerMean", "mean")].iloc[0]), [("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True).reset_index(level="CaseFamily", drop=True)
+
+                plot_simulations(time_series_df, [("cost_func_tuning", "alpha_0.001"),
+                                                  ("cost_func_tuning", "alpha_0.999")], args.save_dir)
+                
+                agg_dfs.loc[agg_dfs.index.get_level_values("CaseFamily") == "cost_func_tuning", [('YawAngleChangeAbsMean', 'mean'), ('FarmPowerMean', 'mean')]].sort_values(by=('FarmPowerMean', 'mean'), ascending=False)
+                plot_cost_function_pareto_curve(agg_dfs, args.save_dir)
+
             if (case_families.index("baseline_controllers") in args.case_ids) and (case_families.index("scalability") in args.case_ids):
                 floris_input_files = case_studies["scalability"]["floris_input_file"]["vals"]
                 lut_paths = case_studies["scalability"]["lut_path"]["vals"]
                 plot_wind_farm(floris_input_files, lut_paths, args.save_dir)
             
-            if (case_families.index("baseline_controllers") in args.case_ids) and (case_families.index("cost_func_tuning") in args.case_ids):
-                plot_cost_function_pareto_curve(agg_dfs, args.save_dir)
-
             if case_families.index("breakdown_robustness") in args.case_ids:
                 plot_breakdown_robustness(agg_dfs, args.save_dir)
 
@@ -171,20 +182,33 @@ if __name__ == "__main__":
                                             os.path.join(os.path.dirname(whoc.__file__), f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv"), 
                                             os.path.join(args.save_dir, "yaw_offset_study", f"yawoffset_winddir_ts.png"), plot_turbine_ids=[0, 1, 2], include_yaw=True, include_power=True)
             
-            if (case_families.index("baseline_controllers") in args.case_ids) and (case_families.index("slsqp_solver_sweep") in args.case_ids):
-                mpc_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily") == "slsqp_solver_sweep"]  
+            if (case_families.index("baseline_controllers") in args.case_ids) and ((case_families.index("slsqp_solver_sweep") in args.case_ids) or (case_families.index("slsqp_solver_sweep_small") in args.case_ids)):
+                
+                mpc_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "slsqp_solver_sweep_small", :] # TODO 
                 lut_df = agg_dfs.iloc[(agg_dfs.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_dfs.index.get_level_values("CaseName") == "LUT")] 
                 greedy_df = agg_dfs.iloc[(agg_dfs.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_dfs.index.get_level_values("CaseName") == "Greedy")]
                 # get mpc configurations for which the generated farm power is greater than lut, and the resulting yaw actuation lesser than lut
-                better_than_lut_df = mpc_df.loc[(mpc_df[("FarmPowerMean", "mean")] > lut_df[("FarmPowerMean", "mean")].iloc[0]) & (mpc_df[("YawAngleChangeAbsMean", "mean")] < lut_df[("YawAngleChangeAbsMean", "mean")].iloc[0]), [("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True).reset_index(level="CaseFamily", drop=True)
+                # better_than_lut_df = mpc_df.loc[(mpc_df[("FarmPowerMean", "mean")] > lut_df[("FarmPowerMean", "mean")].iloc[0]) & (mpc_df[("YawAngleChangeAbsMean", "mean")] < lut_df[("YawAngleChangeAbsMean", "mean")].iloc[0]), [("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True).reset_index(level="CaseFamily", drop=True)
+                better_than_lut_df = mpc_df.loc[(mpc_df[("FarmPowerMean", "mean")] > lut_df[("FarmPowerMean", "mean")].iloc[0]), [("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True).reset_index(level="CaseFamily", drop=True)
+                better_than_lut_df = mpc_df.loc[(mpc_df[("YawAngleChangeAbsMean", "mean")] < lut_df[("YawAngleChangeAbsMean", "mean")].iloc[0]), [("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True).reset_index(level="CaseFamily", drop=True)
                 # print(mpc_df.loc[(mpc_df[("FarmPowerMean", "mean")] > greedy_df[("FarmPowerMean", "mean")].iloc[0]) & (mpc_df[("YawAngleChangeAbsMean", "mean")] < greedy_df[("YawAngleChangeAbsMean", "mean")].iloc[0]), ("RelativeTotalRunningOptimizationCostMean", "mean")].sort_values(ascending=True))
                 # get mpc configurations for which the generated farm power is greater than greedy
                 better_than_greedy_df = mpc_df.loc[(mpc_df[("FarmPowerMean", "mean")] > greedy_df[("FarmPowerMean", "mean")].iloc[0]), [("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True).reset_index(level="CaseFamily", drop=True)
-                better_than_greedy_df = better_than_greedy_df.loc[better_than_greedy_df.index.isin(better_than_lut_df.index)]
-                
+                # better_than_greedy_df = better_than_greedy_df.loc[better_than_greedy_df.index.isin(better_than_lut_df.index)]
+                better_than_lut_df.loc[better_than_lut_df.index.isin(better_than_greedy_df.index)]
+                # greedy warm start better,
+                time_series_df.loc[(time_series_df["CaseFamily"] == "slsqp_solver_sweep_small") & (time_series_df["CaseName"] == "PerfectCDNormCost") & (time_series_df["WindSeed"] == 0) & (time_series_df["Time"] >= 180.0), [f"TurbineYawAngle_{i}" for i in range(3)]].min(axis=0)
+                time_series_df.loc[(time_series_df["CaseFamily"] == "slsqp_solver_sweep_small") & (time_series_df["CaseName"] == "PerfectCDNormCost") & (time_series_df["WindSeed"] == 0) & (time_series_df["Time"] >= 180.0), [f"TurbineYawAngle_{i}" for i in range(3)]].max(axis=0)
+                lut_df[[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].iloc[0]
+                mpc_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False)[[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]]
+                mpc_df.sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True)[[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].iloc[0]
                 print(better_than_lut_df.iloc[0]._name)
 
-                plot_simulations(time_series_df, [("slsqp_solver_sweep", better_than_lut_df.iloc[0]._name),
+                plot_simulations(time_series_df, [
+                    # ("slsqp_solver_sweep_small", "PerfectCDSimpleCost"),
+
+                                                #   ("slsqp_solver_sweep_small", "PerfectCDNormCost"),
+                    ("slsqp_solver_sweep_small", better_than_lut_df.sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=False).iloc[0]._name),
                                                   ("baseline_controllers", "LUT"),
                                                   ("baseline_controllers", "Greedy")], args.save_dir)
 

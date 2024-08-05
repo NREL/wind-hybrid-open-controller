@@ -65,12 +65,12 @@ class ControlledFlorisModel(InterfaceBase):
     
     def get_measurements(self, hercules_dict=None):
         """ abstract method from Interface class """
-        time_step = int((self.time // self.dt) % self.env.core.flow_field.n_findex)
+        time_step = np.array((self.time // self.dt) % self.env.core.flow_field.n_findex, dtype=int)
         # mags = np.sqrt(self.env.core.flow_field.u**2 + self.env.core.flow_field.v**2 + self.env.core.flow_field.w**2)
         mag = np.sqrt(self.env.core.flow_field.u[time_step, :, :, :]**2)
         mag = np.mean(mag.reshape(*mag.shape[:1], -1), axis=1)
         direction = np.tile(self.env.core.flow_field.wind_directions[time_step], (self.n_turbines,))
-        offline_mask = np.isclose(self.env.core.farm.power_setpoints[time_step], 0, atol=1e-3)
+        offline_mask = np.isclose(self.env.core.farm.power_setpoints[time_step, :], 0, atol=1e-3)
         
         measurements = {
             "time": self.time,

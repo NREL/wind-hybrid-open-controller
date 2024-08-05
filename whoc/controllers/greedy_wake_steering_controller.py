@@ -37,6 +37,8 @@ class GreedyController(ControllerBase):
 
 		self._last_measured_time = None
 
+		self.yaw_norm_const = 360.0
+
 		# Set initial conditions
 		self.yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
 		if hasattr(self.yaw_IC, "__len__"):
@@ -143,6 +145,9 @@ class GreedyController(ControllerBase):
 			constrained_yaw_setpoints = np.clip(new_yaw_setpoints, current_yaw_setpoints - self.simulation_dt * self.yaw_rate, current_yaw_setpoints + self.simulation_dt * self.yaw_rate)
 			constrained_yaw_setpoints = np.rint(constrained_yaw_setpoints / self.yaw_increment) * self.yaw_increment
 			
+			self.init_sol = {"states": list(constrained_yaw_setpoints / self.yaw_norm_const)}
+			self.init_sol["control_inputs"] = (constrained_yaw_setpoints - self.controls_dict["yaw_angles"]) * (self.yaw_norm_const / (self.yaw_rate * self.dt))
+
 			self.controls_dict = {"yaw_angles": list(constrained_yaw_setpoints)}
 
 		return None

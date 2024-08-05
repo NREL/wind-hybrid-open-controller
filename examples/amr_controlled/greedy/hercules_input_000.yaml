@@ -5,7 +5,7 @@ name: example_000
 
 ###
 # Describe this emulator setup
-description: Just a solar plant
+description: AMR Wind Only
 
 dt: 0.5
 
@@ -14,9 +14,8 @@ hercules_comms:
   amr_wind:
 
     wind_farm_0:
-      type: amr_wind_local #options are amr_wind or amr_wind_local
-      amr_wind_input_file: amr_input.inp
-      yaw_simulator_name: yaw_system_0 # can also use "none" (without quotes)
+      type: amr_wind #options are amr_wind or amr_wind_local
+      amr_wind_input_file: /projects/ssc/ahenry/whoc/amr_controlled/greedy/wf_0/amr_precursor_0.inp
 
   helics:
 
@@ -30,29 +29,16 @@ hercules_comms:
             subscription_topics: [status]
             publication_topics: [control]
             endpoints: []
-            helicsport : 23405
+            helicsport: 23405
         publication_interval: 1
         endpoint_interval: 1
-        starttime: 0
-        stoptime: 3600
-        
+        starttime: 7200
+        stoptime: 10800
         Agent: ControlCenter
 
 py_sims:
 
-  solar_farm_0: # The name of py_sim object 1
-
-    py_sim_type: SimpleSolar
-    capacity: 50 # MW
-    efficiency: 0.5 #Fraction
-
-    initial_conditions:
-
-      power: 25 # MW
-      irradiance: 1000
-
 controller:
-
   controller_type: SimpleYawController # This may not be needed
   num_turbines: 9 # Should match AMR-Wind! Ideally, would come from AMR-wind
   initial_conditions:
@@ -72,21 +58,22 @@ controller:
   n_wind_preview_samples: 5
   warm_start: lut # may equal 'previous' to warm-start with time-shifted previous solution,  "lut" to warm-start with lookup table solution, or "random" #TODO
   use_lut_filtered_wind_dir: True
-  lut_path: "../../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_9.csv"
+  lut_path: "/home/ahenry/toolboxes/whoc/wind-hybrid-open-controller/examples/mpc_wake_steering_florisstandin/lookup_tables/lut_9.csv"
   generate_lut: False
   nu: 0.001 # step size to add/subtract from yaw angles for stochastic gradient estimate
   use_filtered_wind_dir: False
-  floris_input_file: ../../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml
+  floris_input_file: /home/ahenry/toolboxes/whoc/wind-hybrid-open-controller/examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml
   solver: slsqp # may equal serial_refine, slsqp, sequential_slsqp, or zsgd
   basin_hop: False
   offline_probability: 0.0
   state_con_type: extreme # extreme or check_all_samples
   beta: 0.9
-  max_iter: 100
+  max_iter: 30
   acc: 0.000001
   use_state_cons: True
   use_dyn_state_cons: True
-  diff_type: custom
-  use_norm_power: True
-  decay_const: 0.01
-  decay_type: cosine
+
+
+
+
+

@@ -40,6 +40,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
     ctrl = controller_class(fi, input_dict=input_dict, **kwargs)
     
     yaw_angles_ts = []
+    init_yaw_angles_ts = []
     yaw_angles_change_ts = []
     turbine_powers_ts = []
     turbine_wind_mag_ts = []
@@ -101,6 +102,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
             
             # Note these are results from previous time step
             yaw_angles_ts += [ctrl.measurements_dict["yaw_angles"]]
+            init_yaw_angles_ts += [[ctrl.init_sol["states"][i] * ctrl.yaw_norm_const for i in range(ctrl.n_turbines)]]
             turbine_powers_ts += [ctrl.measurements_dict["turbine_powers"]]
             turbine_wind_mag_ts += [ctrl.measurements_dict["wind_speeds"]]
             turbine_wind_dir_ts += [ctrl.measurements_dict["wind_directions"]]
@@ -127,9 +129,8 @@ def simulate_controller(controller_class, input_dict, **kwargs):
             init_ctrl_inputs = ctrl.init_sol["control_inputs"]
         else:
             init_states = [np.nan] * ctrl.n_turbines
-
             init_ctrl_inputs = [np.nan] * ctrl.n_turbines
-
+        
         # assert np.all(ctrl.controls_dict['yaw_angles'] == ctrl.measurements_dict["wind_directions"] - fi.env.floris.farm.yaw_angles)
         # add freestream wind mags/dirs provided to controller, yaw angles computed at this time-step, resulting turbine powers, wind mags, wind dirs
 
@@ -163,6 +164,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
             
             # Note these are results from previous time step
             yaw_angles_ts += [last_measurements["yaw_angles"]]
+            init_yaw_angles_ts += [[ctrl.init_sol["states"][i] * ctrl.yaw_norm_const for i in range(ctrl.n_turbines)]]
             turbine_powers_ts += [last_measurements["turbine_powers"]]
             turbine_wind_mag_ts += [last_measurements["wind_speeds"]]
             turbine_wind_dir_ts += [last_measurements["wind_directions"]]
@@ -173,9 +175,12 @@ def simulate_controller(controller_class, input_dict, **kwargs):
         turbine_offline_status_ts = np.vstack(turbine_offline_status_ts)[:-(n_future_steps + 1), :]
 
         yaw_angles_ts = np.vstack(yaw_angles_ts)
+        init_yaw_angles_ts = np.vstack(init_yaw_angles_ts)
         yaw_angles_change_ts = np.diff(yaw_angles_ts, axis=0)
+
         yaw_angles_change_ts = yaw_angles_change_ts[:(-n_future_steps) or None, :]
         yaw_angles_ts = yaw_angles_ts[:-(n_future_steps + 1), :]
+        init_yaw_angles_ts = init_yaw_angles_ts[:-(n_future_steps + 1), :]
         turbine_powers_ts = np.vstack(turbine_powers_ts)[:-(n_future_steps + 1), :]
 
     # greedy_turbine_powers_ts = np.vstack(greedy_turbine_powers_ts)
@@ -203,6 +208,9 @@ def simulate_controller(controller_class, input_dict, **kwargs):
         "FreestreamWindDir": kwargs["wind_dir_ts"][:yaw_angles_ts.shape[0]],
         "FilteredFreestreamWindDir": first_ord_filter(kwargs["wind_dir_ts"][:yaw_angles_ts.shape[0]], 
                                                       alpha=np.exp(-(1 / input_dict["controller"]["lpf_time_const"]) * input_dict["dt"])),
+        **{
+            f"InitTurbineYawAngle_{i}": init_yaw_angles_ts[:, i] for i in range(ctrl.n_turbines)
+        }, 
         **{
             f"TurbineYawAngle_{i}": yaw_angles_ts[:, i] for i in range(ctrl.n_turbines)
         }, 

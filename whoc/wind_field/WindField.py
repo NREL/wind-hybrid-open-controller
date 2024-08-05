@@ -419,7 +419,7 @@ class WindField:
 def plot_ts(df, fig_dir):
     # Plot vs. time
     fig_ts, ax_ts = plt.subplots(2, 2, sharex=True)  # len(case_list), 5)
-    fig_ts.set_size_inches(12, 6)
+    # fig_ts.set_size_inches(12, 6)
     if hasattr(ax_ts, '__len__'):
         ax_ts = ax_ts.flatten()
     else:
