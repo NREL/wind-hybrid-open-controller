@@ -16,7 +16,7 @@ from mpi4py.futures import MPICommExecutor
 from concurrent.futures import ProcessPoolExecutor
 
 import argparse
-np.seterr("raise")
+# np.seterr("raise")
 
 if __name__ == "__main__":
 
