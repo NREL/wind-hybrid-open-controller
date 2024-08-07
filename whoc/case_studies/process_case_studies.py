@@ -192,7 +192,7 @@ def generate_outputs(agg_results_df, save_dir):
     with open(os.path.join(save_dir, "comparison_time_series_results_table.tex"), "w") as fp:
             fp.write(compare_results_latex)
 
-def plot_simulations(time_series_df, plotting_cases, save_dir):
+def plot_simulations(time_series_df, plotting_cases, save_dir, include_power=True):
     # TODO delete all extra files in directories before rerunning simulations
     
     for case_family in pd.unique(time_series_df["CaseFamily"]):
@@ -244,7 +244,7 @@ def plot_simulations(time_series_df, plotting_cases, save_dir):
             # fig, _ = plot_opt_cost_ts(df, os.path.join(results_dir, f"opt_costs_ts_{input_config['controller']['case_names'].replace('/', '_')}.png"))
             # fig.suptitle("_".join([os.path.basename(results_dir), input_config['controller']['case_names'].replace('/', '_'), "opt_costs_ts"]))
         
-            fig, _ = plot_yaw_power_ts(case_name_df, os.path.join(save_dir, case_family, f"yaw_power_ts_{case_name}.png"), include_power=True, controller_dt=input_config["controller"]["dt"])
+            fig, _ = plot_yaw_power_ts(case_name_df, os.path.join(save_dir, case_family, f"yaw_power_ts_{case_name}.png"), include_power=include_power, controller_dt=input_config["controller"]["dt"])
     
     
     # lut_df = results_dfs[f"{'baseline_controllers'}_{'LUT'}"]
