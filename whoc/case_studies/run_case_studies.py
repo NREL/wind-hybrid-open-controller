@@ -185,7 +185,7 @@ if __name__ == "__main__":
             
             if (case_families.index("baseline_controllers") in args.case_ids) and ((case_families.index("slsqp_solver_sweep") in args.case_ids) or (case_families.index("slsqp_solver_sweep_small") in args.case_ids)):
                 
-                mpc_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "slsqp_solver_sweep_small", :] # TODO 
+                mpc_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "slsqp_solver_sweep", :]
                 lut_df = agg_dfs.iloc[(agg_dfs.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_dfs.index.get_level_values("CaseName") == "LUT")] 
                 greedy_df = agg_dfs.iloc[(agg_dfs.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_dfs.index.get_level_values("CaseName") == "Greedy")]
                 # get mpc configurations for which the generated farm power is greater than lut, and the resulting yaw actuation lesser than lut
@@ -198,8 +198,8 @@ if __name__ == "__main__":
                 # better_than_greedy_df = better_than_greedy_df.loc[better_than_greedy_df.index.isin(better_than_lut_df.index)]
                 better_than_lut_df.loc[better_than_lut_df.index.isin(better_than_greedy_df.index)]
                 # greedy warm start better,
-                time_series_df.loc[(time_series_df["CaseFamily"] == "slsqp_solver_sweep_small") & (time_series_df["CaseName"] == "PerfectCDNormCost") & (time_series_df["WindSeed"] == 0) & (time_series_df["Time"] >= 180.0), [f"TurbineYawAngle_{i}" for i in range(3)]].min(axis=0)
-                time_series_df.loc[(time_series_df["CaseFamily"] == "slsqp_solver_sweep_small") & (time_series_df["CaseName"] == "PerfectCDNormCost") & (time_series_df["WindSeed"] == 0) & (time_series_df["Time"] >= 180.0), [f"TurbineYawAngle_{i}" for i in range(3)]].max(axis=0)
+                time_series_df.loc[(time_series_df["CaseFamily"] == "slsqp_solver_sweep") & (time_series_df["CaseName"] == "PerfectCDNormCost") & (time_series_df["WindSeed"] == 0) & (time_series_df["Time"] >= 180.0), [f"TurbineYawAngle_{i}" for i in range(3)]].min(axis=0)
+                time_series_df.loc[(time_series_df["CaseFamily"] == "slsqp_solver_sweep") & (time_series_df["CaseName"] == "PerfectCDNormCost") & (time_series_df["WindSeed"] == 0) & (time_series_df["Time"] >= 180.0), [f"TurbineYawAngle_{i}" for i in range(3)]].max(axis=0)
                 lut_df[[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].iloc[0]
                 mpc_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False)[[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]]
                 mpc_df.sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True)[[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].iloc[0]
