@@ -201,18 +201,18 @@ if __name__ == "__main__":
                 time_series_df.loc[(time_series_df["CaseFamily"] == "slsqp_solver_sweep") & (time_series_df["CaseName"] == "PerfectCDNormCost") & (time_series_df["WindSeed"] == 0) & (time_series_df["Time"] >= 180.0), [f"TurbineYawAngle_{i}" for i in range(3)]].min(axis=0)
                 time_series_df.loc[(time_series_df["CaseFamily"] == "slsqp_solver_sweep") & (time_series_df["CaseName"] == "PerfectCDNormCost") & (time_series_df["WindSeed"] == 0) & (time_series_df["Time"] >= 180.0), [f"TurbineYawAngle_{i}" for i in range(3)]].max(axis=0)
                 lut_df[[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].iloc[0]
-                mpc_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False)[[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]]
-                mpc_df.sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True)[[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].iloc[0]
+                mpc_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False)[[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean"), ("OptimizationConvergenceTime", "mean")]]
+                mpc_df.sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True)[[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean"), ("OptimizationConvergenceTime", "mean")]].iloc[0]
                 print(better_than_lut_df.iloc[0]._name)
 
                 plot_simulations(time_series_df, [
                     # ("slsqp_solver_sweep_small", "PerfectCDSimpleCost"),
 
                                                 #   ("slsqp_solver_sweep_small", "PerfectCDNormCost"),
-                    ("slsqp_solver_sweep_small", better_than_lut_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False).iloc[0]._name),
+                    ("slsqp_solver_sweep", mpc_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False).iloc[0]._name[1]),
                     # ("slsqp_solver_sweep_small", "alpha_1.0_controller_class_MPC_decay_type_linear_n_wind_preview_samples_1_nu_0.01_solver_slsqp_warm_start_lut_wind_preview_type_perfect"),
                                                   ("baseline_controllers", "LUT"),
-                                                  ("baseline_controllers", "Greedy")], args.save_dir)
+                                                  ("baseline_controllers", "Greedy")], args.save_dir, include_power=False)
 
             if all(case_families.index(cf) in args.case_ids for cf in ["baseline_controllers", "solver_type",
              "wind_preview_type", "warm_start", 

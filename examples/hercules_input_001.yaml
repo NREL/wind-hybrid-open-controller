@@ -63,7 +63,7 @@ controller:
   lpf_start_time: 180.0 # seconds
   lpf_time_const: 35 # sec
   deadband_thr: 8 # degrees
-  dt: 60 # sec
+  dt: 20 # sec
   n_horizon: 12
   alpha: 0.8 # WARNING: if you choose this to be small and set the initial values of the control inputs to 0, solver may get stuck at initial solution
   control_input_domain: continuous
