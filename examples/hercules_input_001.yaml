@@ -74,7 +74,7 @@ controller:
   use_lut_filtered_wind_dir: True
   lut_path: "../../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_9.csv"
   generate_lut: False
-  nu: 0.001 # step size to add/subtract from yaw angles for stochastic gradient estimate
+  nu: 0.01 # step size to add/subtract from yaw angles for stochastic gradient estimate
   use_filtered_wind_dir: False
   floris_input_file: ../../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml
   solver: slsqp # may equal serial_refine, slsqp, sequential_slsqp, or zsgd
@@ -86,7 +86,9 @@ controller:
   acc: 0.000001
   use_state_cons: True
   use_dyn_state_cons: True
-  diff_type: custom
+  diff_type: custom_cd
   use_norm_power: True
-  decay_const: 0.01
-  decay_type: cosine
+  decay_const: 60 # yaw offset at which decay should ~ zero, must be greater than yaw_limits given above and up to 90deg
+  decay_type: exp
+  decay_all: False
+  clip_value: 30 # up to 44
