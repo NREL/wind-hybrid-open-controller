@@ -508,6 +508,7 @@ class MPC(ControllerBase):
 			raise TypeError("solver must be have value of 'slsqp', 'sequential_slsqp', 'serial_refine', or 'zsgd")
 		
 		self.use_filt = input_dict["controller"]["use_filtered_wind_dir"]
+		
 		self.lpf_time_const = input_dict["controller"]["lpf_time_const"]
 		self.lpf_start_time = input_dict["controller"]["lpf_start_time"]
 		self.lpf_alpha = np.exp(-(1 / input_dict["controller"]["lpf_time_const"]) * input_dict["dt"])
@@ -1656,17 +1657,20 @@ class MPC(ControllerBase):
 					all_yaw_offsets = np.tile(current_yaw_offsets, (self.n_turbines + 1, 1)) + mask * self.nu * self.yaw_norm_const
 
 			self.fi.env.set_operation(
-				yaw_angles=np.clip(all_yaw_offsets, -self.clip_value, self.clip_value), # must provide cushion because added_yaw brings in gauss.py it over 90.0
+				yaw_angles=np.clip(all_yaw_offsets, -self.clip_value, self.clip_value, dtype="float16"), # must provide cushion because added_yaw brings in gauss.py it over 90.0
 				disable_turbines=self.offline_status,
 			)
+			# try:
 			self.fi.env.run()
+			# except Exception as e:
+			# 	print(e)
 			all_yawed_turbine_powers = self.fi.env.get_turbine_powers()[:, influenced_turbine_ids]
 
 			# normalize power by no yaw output
 			# yawed_turbine_powers = all_yawed_turbine_powers[:current_yaw_offsets.shape[0], :]
 
 			if self.decay_type != "none":
-				# TODO only generate neg_idx for cd diff type
+				
 				# if effective yaw is greater than90, set negative powers, sim to interior point method, gradual penalty above 30deg offsets TEST
 				# all_yaw_offsets[n_wind_samples:, :].shape[0]
 				perturbed_mask = np.zeros((all_yaw_offsets.shape[0],1), dtype=bool)
