@@ -432,7 +432,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                 else:
                     input_dicts[start_case_idx + c]["controller"][property_name] = property_value
                     
-            fn = f'input_config_case_{"_".join([f"{key}_{val if (type(val) is str or type(val) is np.str_ or type(val) is bool) else np.round(val, 6)}" for key, val in case.items() if key not in ["wind_case_idx", "seed", "use_filtered_wind_dir", "floris_input_file", "dt", "lut_path"]]) if "case_names" not in case else case["case_names"]}.yaml'.replace("/", "_")
+            fn = f'input_config_case_{"_".join([f"{key}_{val if (type(val) is str or type(val) is np.str_ or type(val) is bool) else np.round(val, 6)}" for key, val in case.items() if key not in ["wind_case_idx", "seed", "floris_input_file", "lut_path"]]) if "case_names" not in case else case["case_names"]}.yaml'.replace("/", "_")
             
             with io.open(os.path.join(results_dir, fn), 'w', encoding='utf8') as fp:
                 yaml.dump(input_dicts[start_case_idx + c], fp, default_flow_style=False, allow_unicode=True)
