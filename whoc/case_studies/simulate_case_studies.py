@@ -24,11 +24,11 @@ def simulate_controller(controller_class, input_dict, **kwargs):
     
     print(f"Running instance of {controller_class.__name__} - {kwargs['case_name']} with wind seed {kwargs['wind_case_idx']}")
     # Load a FLORIS object for AEP calculations
-    greedy_fi = ControlledFlorisModel(yaw_limits=input_dict["controller"]["yaw_limits"],
-                                          offline_probability=input_dict["controller"]["offline_probability"],
-                                        dt=input_dict["dt"],
-                                        yaw_rate=input_dict["controller"]["yaw_rate"],
-                                        config_path=input_dict["controller"]["floris_input_file"])
+    # greedy_fi = ControlledFlorisModel(yaw_limits=input_dict["controller"]["yaw_limits"],
+    #                                       offline_probability=input_dict["controller"]["offline_probability"],
+    #                                     dt=input_dict["dt"],
+    #                                     yaw_rate=input_dict["controller"]["yaw_rate"],
+    #                                     config_path=input_dict["controller"]["floris_input_file"])
     fi = ControlledFlorisModel(yaw_limits=input_dict["controller"]["yaw_limits"],
                                         offline_probability=input_dict["controller"]["offline_probability"],
                                         dt=input_dict["dt"],
@@ -36,7 +36,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
                                         config_path=input_dict["controller"]["floris_input_file"])
     
     kwargs["wind_field_config"]["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
-    
+    kwargs["wind_field_config"]["time_series_dt"] = int(input_dict["controller"]["dt"] // input_dict["dt"]) 
     ctrl = controller_class(fi, input_dict=input_dict, **kwargs)
     
     yaw_angles_ts = []
@@ -56,12 +56,12 @@ def simulate_controller(controller_class, input_dict, **kwargs):
     opt_cost_terms_ts = []
 
     n_time_steps = int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] / input_dict["dt"])
-    greedy_fi.env.set(wind_speeds=kwargs["wind_mag_ts"][:n_time_steps], 
-                    wind_directions=kwargs["wind_dir_ts"][:n_time_steps],
-                    turbulence_intensities=[greedy_fi.env.core.flow_field.turbulence_intensities[0]] * n_time_steps,
-                    yaw_angles=np.zeros((1, ctrl.n_turbines)))
-    greedy_fi.env.run()
-    greedy_turbine_powers_ts = np.max(greedy_fi.env.get_turbine_powers(), axis=1)
+    # greedy_fi.env.set(wind_speeds=kwargs["wind_mag_ts"][:n_time_steps], 
+    #                 wind_directions=kwargs["wind_dir_ts"][:n_time_steps],
+    #                 turbulence_intensities=[greedy_fi.env.core.flow_field.turbulence_intensities[0]] * n_time_steps,
+    #                 yaw_angles=np.zeros((1, ctrl.n_turbines)))
+    # greedy_fi.env.run()
+    # greedy_turbine_powers_ts = np.max(greedy_fi.env.get_turbine_powers(), axis=1)
 
     n_future_steps = int(ctrl.dt // input_dict["dt"]) - 1
     
@@ -191,9 +191,10 @@ def simulate_controller(controller_class, input_dict, **kwargs):
     Q = input_dict["controller"]["alpha"]
     R = (1 - input_dict["controller"]["alpha"])
 
-    norm_turbine_powers = np.divide(turbine_powers_ts, greedy_turbine_powers_ts[:, np.newaxis],
-                                    where=greedy_turbine_powers_ts[:, np.newaxis]!=0,
-                                    out=np.zeros_like(turbine_powers_ts))
+    # norm_turbine_powers = np.divide(turbine_powers_ts, greedy_turbine_powers_ts[:, np.newaxis],
+    #                                 where=greedy_turbine_powers_ts[:, np.newaxis]!=0,
+    #                                 out=np.zeros_like(turbine_powers_ts))
+    norm_turbine_powers = turbine_powers_ts / ctrl.rated_turbine_power
     norm_yaw_angle_changes = yaw_angles_change_ts / (ctrl.dt * ctrl.yaw_rate)
     
     running_opt_cost_terms_ts[:, 0] = np.sum(np.stack([-0.5 * (norm_turbine_powers[:, i])**2 * Q for i in range(ctrl.n_turbines)], axis=1), axis=1)
