@@ -673,7 +673,7 @@ class MPC(ControllerBase):
 								return_params=False, include_uv=False)
 					wind_preview_probs = None
 
-					if False:
+				if False:
 						import matplotlib.pyplot as plt
 						import pandas as pd
 						import seaborn as sns
@@ -805,7 +805,8 @@ class MPC(ControllerBase):
 
 		self.fi = ControlledFlorisModel(yaw_limits=self.yaw_limits, dt=self.dt, yaw_rate=self.yaw_rate, 
 								  config_path=input_dict["controller"]["floris_input_file"])
-		self.rated_turbine_power = list(self.fi.env.core.farm.turbine_power_thrust_tables.values())[0]["power"].max() * 1e3
+		self.rated_turbine_power = input_dict["controller"]["rated_turbine_power"]
+		# list(self.fi.env.core.farm.turbine_power_thrust_tables.values())[0]["power"].max() * 1e3, 
 		# self.floris_proc = Process(target=run_floris_proc, args=(self.fi.env,))
 		
 		if self.solver == "serial_refine":
@@ -1727,6 +1728,7 @@ class MPC(ControllerBase):
 			# except Exception as e:
 			# 	print(e)
 			all_yawed_turbine_powers = self.fi.env.get_turbine_powers()[:, influenced_turbine_ids]
+			all_yaw_offsets = all_yaw_offsets[:, influenced_turbine_ids]
 
 			# normalize power by no yaw output
 			# yawed_turbine_powers = all_yawed_turbine_powers[:current_yaw_offsets.shape[0], :]
@@ -1742,7 +1744,7 @@ class MPC(ControllerBase):
 				pos_idx[multi_clip_row_idx, :] = False
 				pos_idx[multi_clip_row_idx, np.argmax(all_yaw_offsets[multi_clip_row_idx, :], axis=1)] = True
 				pos_decay_idx = np.broadcast_to(pos_idx.any(1)[:, np.newaxis], pos_idx.shape) if self.decay_all else pos_idx#& decay_mask
-
+				# TODO [:, influenced_turbine_ids] for pos_idx, neg_idx
 				if self.decay_type == "cosine":
 					pos_decay = np.cos(self.decay_factor * (all_yaw_offsets[pos_idx] - self.yaw_limits[1]))
 				elif self.decay_type == "exp":
@@ -1759,7 +1761,7 @@ class MPC(ControllerBase):
 					all_yawed_turbine_powers[pos_idx.any(1), :] = all_yawed_turbine_powers[pos_idx.any(1), :] * pos_decay[:, np.newaxis]
 				else:
 					all_yawed_turbine_powers[pos_decay_idx] = all_yawed_turbine_powers[pos_decay_idx] * pos_decay
-
+					
 				if self.diff_type == "custom_cd":
 					neg_idx = (all_yaw_offsets < self.yaw_limits[0]) & perturbed_mask
 					multi_clip_row_idx = neg_idx.sum(axis=1) > 1

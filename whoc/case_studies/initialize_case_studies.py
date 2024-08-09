@@ -324,15 +324,25 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         os.makedirs(wind_field_dir)
 
     input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = stoptime
-    # TODO use default input_dict["controller"]["dt"] if dt is not in case_studies["slsqp_solver_sweep"]
+     
+    if "slsqp_solver_sweep" not in case_studies or "dt" not in case_studies["slsqp_solver_sweep"]:
+        max_controller_dt = input_dict["controller"]["dt"]
+    else:
+        max_controller_dt = max(case_studies["slsqp_solver_sweep"]["dt"]["vals"])
+    
+    if "horizon_length" not in case_studies or "n_horizon" not in case_studies["horizon_length"]:
+        max_n_horizon = input_dict["controller"]["n_horizon"]
+    else:
+        max_n_horizon = max(case_studies["horizon_length"]["n_horizon"]["vals"])
+
     # wind_field_config["simulation_max_time"] = input_dict["hercules_comms"]["helics"]["config"]["stoptime"]
     wind_field_config["num_turbines"] = input_dict["controller"]["num_turbines"]
-    wind_field_config["preview_dt"] = int(max(case_studies["slsqp_solver_sweep"]["dt"]["vals"]) / input_dict["dt"])
+    wind_field_config["preview_dt"] = int(max_controller_dt / input_dict["dt"])
     wind_field_config["simulation_sampling_time"] = input_dict["dt"]
     
     # wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
     wind_field_config["n_preview_steps"] = int(wind_field_config["simulation_max_time"] / input_dict["dt"]) \
-        + max(case_studies["horizon_length"]["n_horizon"]["vals"]) * int(max(case_studies["slsqp_solver_sweep"]["dt"]["vals"])/ input_dict["dt"])
+        + max_n_horizon * int(max_controller_dt/ input_dict["dt"])
     wind_field_config["n_samples_per_init_seed"] = 1
     wind_field_config["regenerate_distribution_params"] = False
     wind_field_config["distribution_params_path"] = os.path.join(save_dir, "wind_field_data", "wind_preview_distribution_params.pkl")  
