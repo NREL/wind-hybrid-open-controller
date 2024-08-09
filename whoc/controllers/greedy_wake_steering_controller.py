@@ -30,6 +30,8 @@ class GreedyController(ControllerBase):
 		self.deadband_thr = input_dict["controller"]["deadband_thr"]
 		self.use_filt = input_dict["controller"]["use_filtered_wind_dir"]
 
+		self.rated_turbine_power = input_dict["controller"]["rated_turbine_power"]
+
 		self.wind_mag_ts = kwargs["wind_mag_ts"]
 		self.wind_dir_ts = kwargs["wind_dir_ts"]
 

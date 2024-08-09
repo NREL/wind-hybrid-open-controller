@@ -50,6 +50,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 		self.yaw_rate = input_dict["controller"]["yaw_rate"]
 		self.yaw_increment = input_dict["controller"]["yaw_increment"]
 		self.max_workers = kwargs["max_workers"] if "max_workers" in kwargs else 16
+		self.rated_turbine_power = input_dict["controller"]["rated_turbine_power"]
 
 		self.wind_dir_ts = kwargs["wind_dir_ts"]
 		self.wind_mag_ts = kwargs["wind_mag_ts"]
