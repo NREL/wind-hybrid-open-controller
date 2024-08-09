@@ -610,22 +610,62 @@ class MPC(ControllerBase):
 
 					if False:
 						import matplotlib.pyplot as plt
-						fig, ax = plt.subplots(1, 2)
-						for i in range(self.n_horizon):
-							# ax[0, 0].scatter(std_divisions, u_vals[:, i])
-							# ax[0, 1].scatter(std_divisions, v_vals[:, i])
-							# ax[1, 0].scatter(std_divisions, mag_vals[:, i])
-							# ax[1, 1].scatter(std_divisions, dir_vals[:, i])
-							ax[0].scatter(uv_combs[:, i, 0], uv_combs[:, i, 1])
-							ax[1].scatter(dir_vals[:, i], mag_vals[:, i])
+						import seaborn as sns
+						import pandas as pd
+						
+						df = pd.DataFrame({
+							"Horizontal": uv_combs[:, :, 0].flatten(), 
+							"Vertical": uv_combs[:, :, 1].flatten(), 
+							"Direction": dir_vals.flatten(), 
+							"Magnitude": mag_vals.flatten(), 
+						 	"Time-Step": np.tile(np.arange(self.n_horizon), (uv_combs.shape[0], )) + 1,
+							#  "Std. Dev": np.tile(list(product(std_divisions, std_divisions)), (uv_combs.shape[0], )), 
+							 "Sample": np.repeat(np.arange(uv_combs.shape[0]), (self.n_horizon, )) 
+						})
 
-						ax[0].set(title="v_vals vs. u_vals")
-						ax[1].set(title="mag_vals vs. dir_vals")
+						fig, ax = plt.subplots(1, 2)
+						sns.scatterplot(ax=ax[0], data=df, x="Horizontal", y="Vertical", hue="Time-Step")
+						sns.scatterplot(ax=ax[1], data=df, x="Direction", y="Magnitude", hue="Time-Step")
+						ax[0].legend([], [], frameon=False)
+						ax[0].set(ylabel="Vertical Wind Speed [m/s]", xlabel="Horizontal Wind Speed [m/s]")
+						ax[1].set(ylabel="Wind Magnitude [m/s]", xlabel="Wind Direction [$^\\circ$]")
+						plt.tight_layout(pad=2.0)
+						fig.show()
+						fig.savefig("/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/stochastic_interval_scatter.png")
+
+						df = pd.DataFrame({
+							"Horizontal": u_vals.flatten(), 
+							"Vertical": v_vals.flatten(), 
+							# "Direction": dir_vals.flatten(), 
+							# "Magnitude": mag_vals.flatten(), 
+						 	"Time-Step": np.tile(np.arange(self.n_horizon), (dev_u.shape[0], )) + 1,
+							"# Standard Deviations": np.repeat(std_divisions, (self.n_horizon, )), 
+							#  "Sample": np.repeat(np.arange(dev_u.shape[0]), (self.n_horizon, )) 
+						})
+						fig, ax = plt.subplots(1, 2)
+						sns.scatterplot(ax=ax[0], data=df, x="# Standard Deviations", y="Horizontal", hue="Time-Step")
+						sns.scatterplot(ax=ax[1], data=df, x="# Standard Deviations", y="Vertical", hue="Time-Step")
+						ax[0].legend([], [], frameon=False)
+						ax[0].set(ylabel="Horizontal Wind Speed [m/s]")
+						ax[1].set(ylabel="Vertical Wind Speed [m/s]")
+						plt.tight_layout(pad=2.0)
+						fig.savefig("/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/stochastic_interval_intervals.png")
+
+						# for i in range(self.n_horizon):
+						# ax[0, 0].scatter(std_divisions, u_vals[:, i])
+						# ax[0, 1].scatter(std_divisions, v_vals[:, i])
+						# ax[1, 0].scatter(std_divisions, mag_vals[:, i])
+						# ax[1, 1].scatter(std_divisions, dir_vals[:, i])
+						# sns.scatter(ax[0], uv_combs[:, i, 0], uv_combs[:, i, 1])
+						# sns.scatter(ax[1], dir_vals[:, i], mag_vals[:, i])
+
+						# ax[0].set(title="v_vals vs. u_vals")
+						# ax[1].set(title="mag_vals vs. dir_vals")
 						# ax[0, 0].set(title="std_divisions vs. u_vals")
 						# ax[0, 1].set(title="std_divisions vs. v_vals")
 						# ax[1, 0].set(title="std_divisions vs. mag_vals")
 						# ax[1, 1].set(title="std_divisions vs. dir_vals")
-						fig.show()
+						
 
 				else:
 					wind_preview_data = generate_wind_preview(wf, current_freestream_measurements, time_step,
@@ -635,22 +675,44 @@ class MPC(ControllerBase):
 
 					if False:
 						import matplotlib.pyplot as plt
-						fig, ax = plt.subplots(3, 4, sharex=True, sharey=True)
+						import pandas as pd
+						import seaborn as sns
 						
-						ax = ax.flatten()
-						for i in range(self.n_horizon):
-							# ax[i].scatter(wind_preview_data["FreestreamWindMag"][:, i], wind_preview_data["FreestreamWindDir"][:, i])
-							# ax[i].set(xlim=(np.sqrt(6**2 + 0**2), np.sqrt(8**2 + 4**2)), 
-							# ylim=((270.0 - (np.arctan2(4, 6) * (180 / np.pi))) % 360.0, (270.0 - (np.arctan2(-4, 6) * (180 / np.pi))) % 360.0))
-							ax[i].scatter(wind_preview_data["FreestreamWindSpeedU"][:, i], wind_preview_data["FreestreamWindSpeedV"][:, i])
-							ax[i].set(xlim=(6, 8), 
-							ylim=(-4, 4))
-						ax[0].set(title="mag_vals vs. dir_vals")
+
+						df = pd.DataFrame({
+							"Horizontal": wind_preview_data["FreestreamWindSpeedU"].flatten(), 
+							"Vertical": wind_preview_data["FreestreamWindSpeedV"].flatten(), 
+							"Direction": wind_preview_data["FreestreamWindDir"].flatten(), 
+							"Magnitude": wind_preview_data["FreestreamWindMag"].flatten(), 
+						 	"Time-Step": np.tile(np.arange(self.n_horizon + 1), (wind_preview_data["FreestreamWindSpeedU"].shape[0], )),
+							 "Sample": np.repeat(np.arange(wind_preview_data["FreestreamWindSpeedU"].shape[0]), (self.n_horizon + 1, )) 
+						})
+						fig, ax = plt.subplots(1, 2)
+						sns.scatterplot(ax=ax[0], data=df, x="Horizontal", y="Vertical", hue="Time-Step")
+						sns.scatterplot(ax=ax[1], data=df, x="Direction", y="Magnitude", hue="Time-Step")
+						ax[0].legend([], [], frameon=False)
+						ax[0].set(ylabel="Vertical Wind Speed [m/s]", xlabel="Horizontal Wind Speed [m/s]")
+						ax[1].set(ylabel="Wind Magnitude [m/s]", xlabel="Wind Direction [$^\\circ$]")
+						# ax[0].autoscale(tight=True)
+						# ax[1].autoscale(tight=True)
+						plt.tight_layout(pad=2.0)
+						fig.show()
+						fig.savefig("/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/stochastic_sample_scatter.png")
+						
+						# ax = ax.flatten()
+						# for i in range(self.n_horizon):
+						# 	# ax[i].scatter(wind_preview_data["FreestreamWindMag"][:, i], wind_preview_data["FreestreamWindDir"][:, i])
+						# 	# ax[i].set(xlim=(np.sqrt(6**2 + 0**2), np.sqrt(8**2 + 4**2)), 
+						# 	# ylim=((270.0 - (np.arctan2(4, 6) * (180 / np.pi))) % 360.0, (270.0 - (np.arctan2(-4, 6) * (180 / np.pi))) % 360.0))
+						# 	ax[i].scatter(wind_preview_data["FreestreamWindSpeedU"][:, i], wind_preview_data["FreestreamWindSpeedV"][:, i])
+						# 	ax[i].set(xlim=(6, 8), 
+						# 	ylim=(-4, 4))
+						# ax[0].set(title="mag_vals vs. dir_vals")
 						# ax[0, 0].set(title="std_divisions vs. u_vals")
 						# ax[0, 1].set(title="std_divisions vs. v_vals")
 						# ax[1, 0].set(title="std_divisions vs. mag_vals")
 						# ax[1, 1].set(title="std_divisions vs. dir_vals")
-						fig.show()
+						# fig.show()
 				
 				
 

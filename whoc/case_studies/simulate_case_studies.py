@@ -55,7 +55,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
     opt_cost_ts = []
     opt_cost_terms_ts = []
 
-    n_time_steps = int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] / input_dict["dt"])
+    # n_time_steps = int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] / input_dict["dt"])
     # greedy_fi.env.set(wind_speeds=kwargs["wind_mag_ts"][:n_time_steps], 
     #                 wind_directions=kwargs["wind_dir_ts"][:n_time_steps],
     #                 turbulence_intensities=[greedy_fi.env.core.flow_field.turbulence_intensities[0]] * n_time_steps,
