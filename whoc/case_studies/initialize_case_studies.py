@@ -1,15 +1,4 @@
-# TODO HIGH 1) Profile stochastic_interval, stochastic_sample and check gradients X
-# TODO HIGH 2) Check debug version of all case studies on local machine
-# TODO HIGH 3) Run full version of all case studies on Kestrel
-# TODO HIGH 4) Generate figures and table for FLORIS results
-
-# TODO MEDIUM 1) Generate 6 x AMR precursors, download outputs, and fit to Gaussian curve
-# TODO MEDIUM 2) Run AMR + Greedy, LUT controllers
-# TODO MEDIUM 3) Generate AMR + Greedy, LUT controller results
-# TODO MEDIUM 4) Run AMR + MPC controller and generate results
-
 import os
-# from mpi4py import MPI
 import pickle
 import pandas as pd
 import numpy as np
@@ -80,7 +69,7 @@ case_studies = {
                             "nu": {"group": 2, "vals": [10**x for x in range(-3, -1, 1)]},
                             "diff_type": {"group": 3, "vals": ["custom_cd", "custom_fd"]},
                             "use_filtered_wind_dir": {"group": 4, "vals": [True, False]},
-                             "dt": {"group": 5, "vals": [5, 15, 30, 60]},
+                             "dt": {"group": 5, "vals": [5, 15, 30, 60]}, 
                              "alpha": {"group": 0, "vals": [1.0]},
                             "solver": {"group": 0, "vals": ["slsqp"]},
                             "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -91,10 +80,12 @@ case_studies = {
                           },
     "slsqp_solver_sweep_small": {"seed": {"group": 0, "vals": [0]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
-                             "wind_preview_type": {"group": 1, "vals": ["perfect", "persistent", "stochastic_interval", "stochastic_interval", "stochastic_sample"]},
-                             "n_wind_preview_samples": {"group": 1, "vals": [1, 1, 1, 9, 500]},
-                             "nu": {"group": 2, "vals": [0.001, 0.01]},
-                            "diff_type": {"group": 3, "vals": ["custom_cd", "custom_fd"]},
+                             "wind_preview_type": {"group": 1, "vals": ["stochastic_interval", "stochastic_sample"]},
+                             "n_wind_preview_samples": {"group": 1, "vals": [5, 500]},
+                            #  "wind_preview_type": {"group": 1, "vals": ["perfect", "persistent", "stochastic_interval", "stochastic_interval", "stochastic_sample"]},
+                            #  "n_wind_preview_samples": {"group": 1, "vals": [1, 1, 1, 9, 500]},
+                            #  "nu": {"group": 2, "vals": [0.001, 0.01]},
+                            # "diff_type": {"group": 3, "vals": ["custom_cd", "custom_fd"]},
                              "alpha": {"group": 0, "vals": [0.5]},
                              "solver": {"group": 0, "vals": ["slsqp"]},
                              "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -439,7 +430,6 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
 
     # instantiate controller and run_simulations simulation
     wind_field_config["regenerate_distribution_params"] = False
-    wind_field_config["time_series_dt"] = int(input_dict["controller"]["dt"] // input_dict["dt"])
 
     with open(os.path.join(save_dir, "init_simulations.pkl"), "wb") as fp:
         pickle.dump({"case_lists": case_lists, "case_name_lists": case_name_lists, "input_dicts": input_dicts, "wind_field_config": wind_field_config,
