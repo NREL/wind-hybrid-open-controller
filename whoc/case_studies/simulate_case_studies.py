@@ -35,6 +35,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
                                         yaw_rate=input_dict["controller"]["yaw_rate"],
                                         config_path=input_dict["controller"]["floris_input_file"])
     
+    kwargs["wind_field_config"]["preview_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"]) 
     kwargs["wind_field_config"]["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
     kwargs["wind_field_config"]["time_series_dt"] = int(input_dict["controller"]["dt"] // input_dict["dt"]) 
     ctrl = controller_class(fi, input_dict=input_dict, **kwargs)
