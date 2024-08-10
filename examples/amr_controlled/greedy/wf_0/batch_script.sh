@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=greedy_wake_steering_amr_only
+#SBATCH --job-name=greedy_wake_steering_amr_only_0
 #SBATCH --time=01:00:00
 #SBATCH --partition=debug
 #SBATCH --nodes=1
@@ -21,7 +21,8 @@ export WIND_CASE_IDX=0
 PATH=$PATH:/home/ahenry/toolboxes/whoc_env/amr-wind/build
 PATH=$PATH:/home/ahenry/toolboxes/whoc_env/helics/build/bin
 # PATH=$PATH:/projects/ssc/ahenry/whoc/amr_controlled/greedy/wf_$WIND_CASE_IDX
-input_file=amr_input_$NUM_TURBINES_$WIND_CASE_IDX.inp
+input_file="amr_input_${NUM_TURBINES}_${WIND_CASE_IDX}.inp"
+echo $input_file
 
 cp /projects/ssc/ahenry/whoc/amr_controlled/greedy/hercules_input_000.yaml ./
 cp /projects/ssc/ahenry/whoc/amr_controlled/greedy/hercules_runscript.py ./

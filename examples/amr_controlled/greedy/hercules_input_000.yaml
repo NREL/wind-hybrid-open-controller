@@ -45,6 +45,7 @@ controller:
       yaw: 270.0 # degrees (same for all turbines) (will this work?)
   yaw_limits: [-30, 30] # degrees
   yaw_rate: 0.3 # degrees/sec
+  rated_turbine_power: 5000.0 # kW TODO get from floris input file
   yaw_increment: 0.05 # degrees
   lpf_start_time: 180.0 # seconds
   lpf_time_const: 35 # sec
@@ -58,22 +59,23 @@ controller:
   n_wind_preview_samples: 5
   warm_start: lut # may equal 'previous' to warm-start with time-shifted previous solution,  "lut" to warm-start with lookup table solution, or "random" #TODO
   use_lut_filtered_wind_dir: True
-  lut_path: "/home/ahenry/toolboxes/whoc/wind-hybrid-open-controller/examples/mpc_wake_steering_florisstandin/lookup_tables/lut_9.csv"
+  lut_path: "../../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_9.csv"
   generate_lut: False
-  nu: 0.001 # step size to add/subtract from yaw angles for stochastic gradient estimate
+  nu: 0.01 # step size to add/subtract from yaw angles for stochastic gradient estimate
   use_filtered_wind_dir: False
-  floris_input_file: /home/ahenry/toolboxes/whoc/wind-hybrid-open-controller/examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml
+  floris_input_file: ../../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml
   solver: slsqp # may equal serial_refine, slsqp, sequential_slsqp, or zsgd
   basin_hop: False
   offline_probability: 0.0
   state_con_type: extreme # extreme or check_all_samples
   beta: 0.9
-  max_iter: 30
+  max_iter: 100
   acc: 0.000001
   use_state_cons: True
   use_dyn_state_cons: True
-
-
-
-
-
+  diff_type: custom_cd
+  use_norm_power: True
+  decay_const: 60 # yaw offset at which decay should ~ zero, must be greater than yaw_limits given above and up to 90deg
+  decay_type: exp
+  decay_all: False
+  clip_value: 30 # up to 44

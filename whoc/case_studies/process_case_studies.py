@@ -741,13 +741,13 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
         if include_power:
             next_ax_idx = (1 if include_yaw else 0)
             seed_df["FarmPower"] = seed_df[turbine_power_cols].sum(axis=1) / 1e3
-            sns.lineplot(data=seed_df, x="Time", y="FarmPower", color="black", label="Farm power", ax=ax[ax_idx])
+            sns.lineplot(data=seed_df, x="Time", y="FarmPower", color="black", label="Farm power", ax=ax[next_ax_idx])
     
     if include_yaw:
         ax_idx = 0
         ax[ax_idx].set(title="Wind Direction / Yaw Angle [$^\\circ$]", xlim=(0, int((seed_df["Time"].max() + seed_df["Time"].diff().iloc[1]) // 1)), ylim=(220, 320))
         ax[ax_idx].legend(ncols=2, loc="lower right")
-        ax[ax_idx].legend([], [], frameon=False)
+        # ax[ax_idx].legend([], [], frameon=False)
         if not include_power:
             ax[ax_idx].set(xlabel="Time [s]", title="Turbine Powers [MW]")
     
@@ -755,7 +755,7 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
         next_ax_idx = (1 if include_yaw else 0)
         ax[next_ax_idx].set(xlabel="Time [s]", title="Turbine Powers [MW]")
         ax[next_ax_idx].legend(ncols=2, loc="lower right")
-        ax[next_ax_idx].legend([], [], frameon=False)
+        # ax[next_ax_idx].legend([], [], frameon=False)
 
     results_dir = os.path.dirname(save_path)
     # figManager = plt.get_current_fig_manager()

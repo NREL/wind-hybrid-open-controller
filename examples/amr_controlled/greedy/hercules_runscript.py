@@ -21,7 +21,7 @@ input_dict = load_yaml(sys.argv[1])
 case_idx = int(sys.argv[2])
 
 input_dict["hercules_comms"]["amr_wind"]["wind_farm_0"]["amr_wind_input_file"] \
-    = f"/projects/ssc/ahenry/whoc/amr_controlled/greedy/wf_{case_idx}/amr_precursor_{case_idx}.inp"
+    = f"/projects/ssc/ahenry/whoc/amr_controlled/greedy/wf_{case_idx}/amr_input_9_{case_idx}.inp"
 
 # TODO ensure that time.stop_time in amr_input matches stop_time in hercules inputxi
 
