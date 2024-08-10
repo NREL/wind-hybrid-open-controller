@@ -32,6 +32,7 @@ def generate_freestream_wind(save_path, n_seeds, regenerate_wind_field=False):
     wind_field_config["simulation_sampling_time"] = input_dict["dt"]
     wind_field_config["distribution_params_path"] = os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "wind_field_data", "wind_preview_distribution_params.pkl")  
     wind_field_config["time_series_dt"] = input_dict["dt"]
+    wind_field_config["n_samples_per_init_seed"] = 1
     
     # if not os.path.exists(distribution_params_path):
     #     wind_preview_distribution_params = wf._generate_wind_preview_distribution_params(int(wind_field_config["simulation_max_time"] // wind_field_config["simulation_sampling_time"]) + wind_field_config["n_preview_steps"], wind_field_config["preview_dt"], regenerate_params=False)
