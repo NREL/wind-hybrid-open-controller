@@ -1,5 +1,5 @@
 import sys
-# import yaml
+import yaml
 import os
 import numpy as np
 from itertools import product
@@ -10,6 +10,7 @@ from hercules.py_sims import PySims
 from hercules.utilities import load_yaml
 
 # import whoc
+import whoc
 from whoc.interfaces.hercules_actuator_disk_interface import HerculesADInterface
 from whoc.controllers.greedy_wake_steering_controller import GreedyController
 from whoc.wind_field.generate_freestream_wind import generate_freestream_wind
@@ -30,7 +31,10 @@ input_dict["hercules_comms"]["amr_wind"]["wind_farm_0"]["amr_wind_input_file"] \
 #     wind_field_config = yaml.safe_load(fp)
 
 wind_field_dir = "/projects/ssc/ahenry/whoc/floris_case_studies/wind_field_data/raw_data"
-amr_standin_data = generate_freestream_wind(input_dict, wind_field_dir, ".", n_seeds, regenerate_wind_field)[case_idx]
+with open(os.path.join(os.path.dirname(whoc.__file__), "wind_field", "wind_field_config.yaml"), "r") as fp:
+    wind_field_config = yaml.safe_load(fp)
+
+amr_standin_data = generate_freestream_wind(input_dict, wind_field_config, wind_field_dir, ".", n_seeds, regenerate_wind_field)[case_idx]
 amr_standin_data["time"] += input_dict["hercules_comms"]["helics"]["config"]["starttime"]
 print(amr_standin_data["amr_wind_speed"])
 print(amr_standin_data["amr_wind_direction"])
@@ -57,6 +61,10 @@ if False:
 else:
     wind_mag_ts = amr_standin_data["amr_wind_speed"]
     wind_dir_ts = amr_standin_data["amr_wind_direction"]
+
+# wind_field_config["preview_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"]) 
+# wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
+# wind_field_config["time_series_dt"] = int(input_dict["controller"]["dt"] // input_dict["dt"])
 
 controller = GreedyController(interface, input_dict, 
                 wind_mag_ts=wind_mag_ts, wind_dir_ts=wind_dir_ts)

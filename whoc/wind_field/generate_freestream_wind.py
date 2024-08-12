@@ -10,11 +10,7 @@ import whoc
 from whoc.wind_field.WindField import generate_multi_wind_ts, WindField
 
 
-def generate_freestream_wind(hercules_input_dict, wind_field_dir, save_path, n_seeds, regenerate_wind_field=False):
-
-    with open(os.path.join(os.path.dirname(whoc.__file__), "wind_field", "wind_field_config.yaml"), "r") as fp:
-        wind_field_config = yaml.safe_load(fp)
-
+def generate_freestream_wind(hercules_input_dict, wind_field_config, wind_field_dir, save_path, n_seeds, regenerate_wind_field=False):
     # instantiate wind field if files don't already exist
     wind_field_filenames = glob(os.path.join(f"{wind_field_dir}", "case_*.csv"))
     # distribution_params_path = os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "wind_field_data", "wind_preview_distribution_params.pkl")    
@@ -24,8 +20,11 @@ def generate_freestream_wind(hercules_input_dict, wind_field_dir, save_path, n_s
 
     seed = 0
     wind_field_config["num_turbines"] = hercules_input_dict["controller"]["num_turbines"]
-    wind_field_config["n_preview_steps"] = int(hercules_input_dict["hercules_comms"]["helics"]["config"]["stoptime"] / hercules_input_dict["dt"]) + hercules_input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
     wind_field_config["preview_dt"] = int(hercules_input_dict["controller"]["dt"] / hercules_input_dict["dt"])
+    wind_field_config["simulation_sampling_time"] = hercules_input_dict["dt"]
+
+    wind_field_config["n_preview_steps"] = int(hercules_input_dict["hercules_comms"]["helics"]["config"]["stoptime"] / hercules_input_dict["dt"]) + hercules_input_dict["controller"]["n_horizon"] * int(hercules_input_dict["controller"]["dt"] / hercules_input_dict["dt"])
+    
     wind_field_config["simulation_sampling_time"] = hercules_input_dict["dt"]
     wind_field_config["distribution_params_path"] = os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "wind_field_data", "wind_preview_distribution_params.pkl")  
     wind_field_config["time_series_dt"] = hercules_input_dict["dt"]

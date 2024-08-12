@@ -15,7 +15,7 @@ hercules_comms:
 
     wind_farm_0:
       type: amr_wind #options are amr_wind or amr_wind_local
-      amr_wind_input_file: /projects/ssc/ahenry/whoc/amr_controlled/greedy/wf_0/amr_precursor_0.inp
+      amr_wind_input_file: /projects/ssc/ahenry/whoc/amr_controlled/amr_input_9_0.inp
 
   helics:
 
