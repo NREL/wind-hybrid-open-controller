@@ -21,7 +21,7 @@ input_dict = load_yaml(sys.argv[1])
 case_idx = int(sys.argv[2])
 
 input_dict["hercules_comms"]["amr_wind"]["wind_farm_0"]["amr_wind_input_file"] \
-    = f"/projects/ssc/ahenry/whoc/amr_controlled/greedy/wf_{case_idx}/amr_input_9_{case_idx}.inp"
+    = f"/projects/ssc/ahenry/whoc/amr_controlled/amr_input_9_{case_idx}.inp"
 
 # TODO ensure that time.stop_time in amr_input matches stop_time in hercules inputxi
 
@@ -29,7 +29,8 @@ input_dict["hercules_comms"]["amr_wind"]["wind_farm_0"]["amr_wind_input_file"] \
 # with open(os.path.join(os.path.dirname(whoc.__file__), "wind_field", "wind_field_config.yaml"), "r") as fp:
 #     wind_field_config = yaml.safe_load(fp)
 
-amr_standin_data = generate_freestream_wind(".", n_seeds, regenerate_wind_field)[case_idx]
+wind_field_dir = "/projects/ssc/ahenry/whoc/floris_case_studies/wind_field_data/raw_data"
+amr_standin_data = generate_freestream_wind(input_dict, wind_field_dir, ".", n_seeds, regenerate_wind_field)[case_idx]
 amr_standin_data["time"] += input_dict["hercules_comms"]["helics"]["config"]["starttime"]
 print(amr_standin_data["amr_wind_speed"])
 print(amr_standin_data["amr_wind_direction"])

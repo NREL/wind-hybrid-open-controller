@@ -30,6 +30,7 @@ cp /projects/ssc/ahenry/whoc/amr_controlled/$input_file ./
 
 echo "Starting AMR-Wind job at: " $(date)
 
+rm -rf post_processing/ outputs/
 rm logamr loghercules
 rm -rf chk* plt* *.out *.csv
 

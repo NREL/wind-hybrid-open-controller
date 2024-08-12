@@ -10,28 +10,25 @@ import whoc
 from whoc.wind_field.WindField import generate_multi_wind_ts, WindField
 
 
-def generate_freestream_wind(save_path, n_seeds, regenerate_wind_field=False):
-
-    input_dict = load_yaml(sys.argv[1])
+def generate_freestream_wind(hercules_input_dict, wind_field_dir, save_path, n_seeds, regenerate_wind_field=False):
 
     with open(os.path.join(os.path.dirname(whoc.__file__), "wind_field", "wind_field_config.yaml"), "r") as fp:
         wind_field_config = yaml.safe_load(fp)
 
     # instantiate wind field if files don't already exist
-    wind_field_dir = os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "wind_field_data", "raw_data")
     wind_field_filenames = glob(os.path.join(f"{wind_field_dir}", "case_*.csv"))
-    distribution_params_path = os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "wind_field_data", "wind_preview_distribution_params.pkl")    
+    # distribution_params_path = os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "wind_field_data", "wind_preview_distribution_params.pkl")    
     
     if not os.path.exists(wind_field_dir):
         os.makedirs(wind_field_dir)
 
     seed = 0
-    wind_field_config["num_turbines"] = input_dict["controller"]["num_turbines"]
-    wind_field_config["n_preview_steps"] = int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] / input_dict["dt"]) + input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
-    wind_field_config["preview_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"])
-    wind_field_config["simulation_sampling_time"] = input_dict["dt"]
+    wind_field_config["num_turbines"] = hercules_input_dict["controller"]["num_turbines"]
+    wind_field_config["n_preview_steps"] = int(hercules_input_dict["hercules_comms"]["helics"]["config"]["stoptime"] / hercules_input_dict["dt"]) + hercules_input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
+    wind_field_config["preview_dt"] = int(hercules_input_dict["controller"]["dt"] / hercules_input_dict["dt"])
+    wind_field_config["simulation_sampling_time"] = hercules_input_dict["dt"]
     wind_field_config["distribution_params_path"] = os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "wind_field_data", "wind_preview_distribution_params.pkl")  
-    wind_field_config["time_series_dt"] = input_dict["dt"]
+    wind_field_config["time_series_dt"] = hercules_input_dict["dt"]
     wind_field_config["n_samples_per_init_seed"] = 1
     
     # if not os.path.exists(distribution_params_path):

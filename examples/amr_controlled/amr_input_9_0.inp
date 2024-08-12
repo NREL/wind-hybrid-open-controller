@@ -1,7 +1,7 @@
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
 #            SIMULATION STOP            #
 #.......................................#
-time.stop_time               =   3600.0     # Max (simulated) time to evolve QUESTION should this be 10800
+time.stop_time               =   10800.0     # Max (simulated) time to evolve QUESTION should this be 10800
 Time.max_step                =   -1          # Max number of time steps
 
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
@@ -13,10 +13,12 @@ time.cfl              =   0.95               # CFL factor
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
 #            INPUT AND OUTPUT           #
 #.......................................#
-time.plot_interval            =  3600        # Steps between plot files
-time.checkpoint_interval      =  3600        # Steps between checkpoint files
-io.check_file                            = "/projects/ssc/ahenry/whoc/amr_controlled/chk_0_"
-io.plot_file                             = "/projects/ssc/ahenry/whoc/amr_controlled/plt_0_"
+
+io.restart_file = "/projects/ssc/ahenry/whoc/amr_precursors/chk_0_14400"
+time.plot_interval            =  10        # Steps between plot files
+time.checkpoint_interval      =  5        # Steps between checkpoint files
+#io.check_file                            = "/projects/ssc/ahenry/whoc/amr_controlled/chk_0_"
+#io.plot_file                             = "/projects/ssc/ahenry/whoc/amr_controlled/plt_0_"
 
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
 #               PHYSICS                 #
@@ -33,17 +35,19 @@ turbulence.model = Smagorinsky
 Smagorinsky_coeffs.Cs = 0.135
 
 incflo.physics = ABL Actuator
-ICNS.source_terms = BoussinesqBuoyancy CoriolisForcing ABLForcing ActuatorForcing
+ICNS.source_terms = BoussinesqBuoyancy CoriolisForcing ActuatorForcing BodyForce
 BoussinesqBuoyancy.reference_temperature = 300.0
 ABL.reference_temperature = 300.0
 CoriolisForcing.latitude = 41.3
-ABLForcing.abl_forcing_height = 90
 
+ABLForcing.abl_forcing_height = 90
+# QUESTION do we need velocity timetable for controlled simulation??
 ABLForcing.velocity_timetable = "/projects/ssc/ahenry/whoc/floris_case_studies/wind_field_data/raw_data/abl_velocity_timetable_0.txt"
 # Note: the use of forcing timetable does not depend on velocity timetable;
 # however, if a precursor uses velocity timetable, force timetable is
 # recommended for subsequent simulations
-ABLForcing.forcing_timetable_output_file = "/projects/ssc/ahenry/whoc/floris_case_studies/wind_field_data/raw_data/abl_forces_0.txt"
+BodyForce.type = uniform_timetable
+BodyForce.uniform_timetable_file = "/projects/ssc/ahenry/whoc/floris_case_studies/wind_field_data/raw_data/abl_forces_0.txt"
 
 # Atmospheric boundary layer
 ABL.temperature_heights = 650.0 750.0 1000.0
@@ -54,8 +58,8 @@ ABL.surface_roughness_z0 = 0.15
 
 ABL.bndry_file = "/projects/ssc/ahenry/whoc/amr_precursors/bndry_files_0_"
 ABL.bndry_io_mode = 1
-ABL.bndry_planes = ylo xlo
-ABL.bndry_output_start_time = 7200.0 # NEW 2.0
+# ABL.bndry_planes = ylo xlo
+# ABL.bndry_output_start_time = 7200.0
 ABL.bndry_var_names = velocity temperature
 ABL.bndry_output_format = native
 
@@ -74,9 +78,17 @@ amr.max_level           = 0           # Max AMR level in hierarchy
 #.......................................#
 geometry.prob_lo        =   0.       0.     0.  # Lo corner coordinates
 geometry.prob_hi        =   5120.  5120.  1280.  # Hi corner coordinates
-geometry.is_periodic  =   1 1 0
+geometry.is_periodic    =   0   0   0   # Periodicity x y z (0/1)
 
 # Boundary conditions
+xlo.type = "mass_inflow"
+xlo.density = 1.0
+xlo.temperature = 0.0
+xhi.type = "pressure_outflow"
+ylo.type = "mass_inflow"
+ylo.density = 1.0
+ylo.temperature = 0.0
+yhi.type = "pressure_outflow"
 zlo.type =   "wall_model"
 zhi.type =   "slip_wall"
 zhi.temperature_type = "fixed_gradient"
@@ -87,39 +99,37 @@ zhi.temperature = 0.003 # tracer is used to specify potential temperature gradie
 #.......................................#
 incflo.verbose          =   0          # incflo_level
 
-
-
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
 #              SAMPLING                 #
 #.......................................#
-incflo.post_processing = samplingPlane samplingLine
+#incflo.post_processing = samplingPlane samplingLine
 
-samplingPlane.output_frequency = 600
-samplingPlane.labels = z_plane
-samplingPlane.fields = velocity temperature
-samplingPlane.z_plane.type = PlaneSampler
-samplingPlane.z_plane.axis1 = 5110 0.0 0.0
-samplingPlane.z_plane.axis2 = 0.0 5110 0.0
-samplingPlane.z_plane.origin = 5.0 5.0 0.0
-samplingPlane.z_plane.num_points = 512 512
-samplingPlane.z_plane.normal = 0.0 0.0 1.0
-samplingPlane.z_plane.offsets = 5.0 85.0 155.0 255.0
+#samplingPlane.output_frequency = 600
+#samplingPlane.labels = z_plane
+#samplingPlane.fields = velocity temperature
+#samplingPlane.z_plane.type = PlaneSampler
+#samplingPlane.z_plane.axis1 = 5110 0.0 0.0
+#samplingPlane.z_plane.axis2 = 0.0 5110 0.0
+#samplingPlane.z_plane.origin = 5.0 5.0 0.0
+#samplingPlane.z_plane.num_points = 512 512
+#samplingPlane.z_plane.normal = 0.0 0.0 1.0
+#samplingPlane.z_plane.offsets = 5.0 85.0 155.0 255.0
 
 
-samplingLine.output_frequency = 1
-samplingLine.labels = z_line
-samplingLine.fields = velocity temperature
-samplingLine.z_line.type = LineSampler
-samplingLine.z_line.num_points = 128
-samplingLine.z_line.start = 5.0 5.0 5.0
-samplingLine.z_line.end = 5.0 5.0 1275.0
+#samplingLine.output_frequency = 1
+#samplingLine.labels = z_line
+#samplingLine.fields = velocity temperature
+#samplingLine.z_line.type = LineSampler
+#samplingLine.z_line.num_points = 128
+#samplingLine.z_line.start = 5.0 5.0 5.0
+#samplingLine.z_line.end = 5.0 5.0 1275.0
 
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
 #              TURBINES                 #
 #.......................................#
 
 Actuator.type = UniformCtDisk
-Actuator.UniformCtDisk.rotor_diameter = 126.0
+Actuator.UniformCtDisk.rotor_diameter = 125.88
 Actuator.UniformCtDisk.hub_height = 90.0
 Actuator.UniformCtDisk.thrust_coeff =  0.0 0.0 1.132034888 0.999470963 0.917697381 0.860849503 0.815371198 0.811614904 0.807939328 0.80443352 0.800993851 0.79768116 0.794529244 0.791495834 0.788560434 0.787217182 0.787127977 0.785839257 0.783812219 0.783568108 0.783328285 0.781194418 0.777292539 0.773464375 0.769690236 0.766001924 0.762348072 0.758760824 0.755242872 0.751792927 0.748434131 0.745113997 0.717806682 0.672204789 0.63831272 0.610176496 0.585456847 0.563222111 0.542912273 0.399312061 0.310517829 0.248633226 0.203543725 0.169616419 0.143478955 0.122938861 0.106515296 0.093026095 0.081648606 0.072197368 0.064388275 0.057782745 0.0 0.0
 Actuator.UniformCtDisk.wind_speed = 0.0 2.9 3.0 4.0 5.0 6.0 7.0 7.1 7.2 7.3 7.4 7.5 7.6 7.7 7.8 7.9 8.0 9.0 10.0 10.1 10.2 10.3 10.4 10.5 10.6 10.7 10.8 10.9 11.0 11.1 11.2 11.3 11.4 11.5 11.6 11.7 11.8 11.9 12.0 13.0 14.0 15.0 16.0 17.0 18.0 19.0 20.0 21.0 22.0 23.0 24.0 25.0 25.1 50.0
@@ -128,7 +138,6 @@ Actuator.UniformCtDisk.density = 1.225
 Actuator.UniformCtDisk.diameters_to_sample = 1.0
 Actuator.UniformCtDisk.num_points_r = 20
 Actuator.UniformCtDisk.num_points_t = 5
-
 
 Actuator.labels                            = T00 T01 T02 T03 T04 T05 T06 T07 T08
 # Actuator.JoukowskyDisk.thrust_coeff        = 8.1672e-01 7.9044e-01 7.8393e-01 7.8624e-01 7.8824e-01 7.8942e-01 7.8902e-01 7.8740e-01 7.8503e-01 7.8237e-01 7.7955e-01 7.7583e-01 7.7583e-01 7.7583e-01 7.7583e-01 7.7583e-01 7.7583e-01 7.7583e-01 7.7583e-01 7.7583e-01 7.7583e-01 7.7583e-01 7.7583e-01 7.7583e-01 7.7583e-01 7.7583e-01 7.7583e-01 7.7583e-01 7.6922e-01 7.4270e-01 5.5949e-01 4.6163e-01 3.8786e-01 3.2901e-01 2.8093e-01 2.4114e-01 2.0795e-01 1.8010e-01 1.5663e-01 1.3679e-01 1.1995e-01 1.0562e-01 9.3384e-02 8.2908e-02 7.3910e-02 6.6159e-02 5.9463e-02 5.3662e-02 4.8622e-02 4.4230e-02
@@ -151,9 +160,9 @@ Actuator.UniformCtDisk.yaw = 720.0
 Actuator.T00.base_position = 0.0 0.0 0.0
 Actuator.T01.base_position = 0.0 756.0 0.0
 Actuator.T02.base_position = 0.0 1512.0 0.0
-Actuator.T03.base_position = 882.0 0.0 0.0
-Actuator.T04.base_position = 882.0 756.0 0.0
-Actuator.T05.base_position = 882.0 1512.0 0.0
-Actuator.T06.base_position = 1764.0 0.0 0.0
-Actuator.T07.base_position = 1764.0 756.0 0.0
-Actuator.T08.base_position = 1764.0 1512.0 0.0
+Actuator.T03.base_position = 630.0 0.0 0.0
+Actuator.T04.base_position = 630.0 756.0 0.0
+Actuator.T05.base_position = 630.0 1512.0 0.0
+Actuator.T06.base_position = 1260.0 0.0 0.0
+Actuator.T07.base_position = 1260.0 756.0 0.0
+Actuator.T08.base_position = 1260.0 1512.0 0.0
