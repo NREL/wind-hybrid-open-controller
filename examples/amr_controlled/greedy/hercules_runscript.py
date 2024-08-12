@@ -18,8 +18,8 @@ from whoc.wind_field.WindField import fit_amr_distribution, get_amr_timeseries
 
 n_seeds = 6
 regenerate_wind_field = False
-input_dict = load_yaml(sys.argv[1])
-case_idx = int(sys.argv[2])
+input_dict = load_yaml(sys.argv[1]) #"hercules_input_000.yaml"
+case_idx = int(sys.argv[2]) #0
 
 input_dict["hercules_comms"]["amr_wind"]["wind_farm_0"]["amr_wind_input_file"] \
     = f"/projects/ssc/ahenry/whoc/amr_controlled/amr_input_9_{case_idx}.inp"

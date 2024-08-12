@@ -50,7 +50,7 @@ def generate_freestream_wind(hercules_input_dict, wind_field_config, wind_field_
     amr_standin_data = []
     for case_idx in range(len(wind_field_data)):
         amr_standin_data.append({
-                                    "time": wind_field_data[case_idx]["Time"],
+                                    "time": wind_field_data[case_idx]["Time"].to_numpy(),
                                     "amr_wind_speed": wind_field_data[case_idx]["FreestreamWindMag"].to_numpy(),
                                     "amr_wind_direction": wind_field_data[case_idx]["FreestreamWindDir"].to_numpy()
                                 })
