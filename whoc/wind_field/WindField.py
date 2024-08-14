@@ -435,10 +435,10 @@ def plot_ts(df, fig_dir):
     ax_ts[2].set(title='Freestream Wind Magnitude [m/s]', ylabel="")
     ax_ts[3].set(title='Freestream Wind Direction [$^\\circ$]', ylabel="")
 
-    handles, labels, kwargs = mlegend._parse_legend_args([ax_ts[0]], ncol=2, title="Wind Seed")
-    ax_ts[0].legend_ = mlegend.Legend(ax_ts[0], handles, labels, **kwargs)
+    # handles, labels, kwargs = mlegend._parse_legend_args([ax_ts[0]], ncol=2, title="Wind Seed")
+    # ax_ts[0].legend_ = mlegend.Legend(ax_ts[0], handles, labels, **kwargs)
     # ax_ts[0].legend_.set_ncols(2)
-    for i in range(1, 4):
+    for i in range(0, 4):
         ax_ts[i].legend([], [], frameon=False)
     
     time = df.loc[df["WindSeed"] == 0, "Time"]
