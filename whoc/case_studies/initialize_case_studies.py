@@ -69,8 +69,8 @@ case_studies = {
                             "nu": {"group": 2, "vals": [10**x for x in range(-3, -1, 1)]},
                             "diff_type": {"group": 3, "vals": ["custom_cd", "custom_fd"]},
                             "use_filtered_wind_dir": {"group": 4, "vals": [True, False]},
-                             "dt": {"group": 5, "vals": [5, 15, 30, 60]},
-                             "n_horizon": {"group": 5, "vals": [int(12 * 60 // 5), int(12 * 60 // 15), int(12 * 60 // 30), int(12 * 60 // 60)]},  
+                             "dt": {"group": 5, "vals": [15, 30, 60]},
+                             "n_horizon": {"group": 5, "vals": [int(12 * 60 // 15), int(12 * 60 // 30), int(12 * 60 // 60)]},  
                              "alpha": {"group": 0, "vals": [1.0]},
                             "solver": {"group": 0, "vals": ["slsqp"]},
                             "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -79,7 +79,7 @@ case_studies = {
                                                                         f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{9}.csv")]},
                             # "alpha": {"group": 3, "vals": list(np.linspace(0.005, 0.995, 12))}
                           },
-    "slsqp_solver_sweep_small": {"seed": {"group": 0, "vals": [0]},
+    "generate_sample_figures": {"seed": {"group": 0, "vals": [0]},
                              "controller_class": {"group": 0, "vals": ["MPC"]},
                              "wind_preview_type": {"group": 1, "vals": ["stochastic_interval", "stochastic_sample"]},
                              "n_wind_preview_samples": {"group": 1, "vals": [5, 500]},
@@ -324,7 +324,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         os.makedirs(wind_field_dir)
 
     input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = stoptime
-     
+
     if "slsqp_solver_sweep" not in case_studies or "dt" not in case_studies["slsqp_solver_sweep"]:
         max_controller_dt = input_dict["controller"]["dt"]
     else:
@@ -455,7 +455,7 @@ case_families = ["baseline_controllers", "solver_type",
                     "scalability", "cost_func_tuning", 
                     "yaw_offset_study", "slsqp_solver_sweep",
                     "stochastic_preview_type", "stochastic_preview_type_small",
-                    "perfect_preview_type", "slsqp_solver_sweep_small",
+                    "perfect_preview_type", "generate_sample_figures",
                     "test_nu_preview", "serial_refine_solver", 
                     "sequential_slsqp_solver", "lut",
                     "solver_type_test"]

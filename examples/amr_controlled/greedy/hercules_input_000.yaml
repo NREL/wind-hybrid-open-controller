@@ -29,11 +29,11 @@ hercules_comms:
             subscription_topics: [status]
             publication_topics: [control]
             endpoints: []
-            helicsport: 23405
+            helicsport: 32001
         publication_interval: 1
         endpoint_interval: 1
-        starttime: 7200
-        stoptime: 10800
+        starttime: 0 # should this be 7200 and 10800 below??
+        stoptime: 3600
         Agent: ControlCenter
 
 py_sims:

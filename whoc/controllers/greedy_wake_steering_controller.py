@@ -14,6 +14,7 @@ from whoc.controllers.controller_base import ControllerBase
 
 class GreedyController(ControllerBase):
 	def __init__(self, interface, input_dict, verbose=False, **kwargs):
+		print("in GreedyController.__init__")
 		super().__init__(interface, verbose=verbose)
 		self.n_turbines = interface.n_turbines #input_dict["controller"]["num_turbines"]
 		self.yaw_limits = input_dict["controller"]["yaw_limits"]
@@ -68,7 +69,7 @@ class GreedyController(ControllerBase):
 		return np.array([[[wind_directions[i, j] for t in range(self.n_turbines)] for j in range(wind_directions.shape[1])] for i in range(wind_directions.shape[0])])
 	
 	def compute_controls(self):
-
+		print("in GreedyController.compute_controls")
 		if (self._last_measured_time is not None) and self._last_measured_time == self.measurements_dict["time"]:
 			return
 
