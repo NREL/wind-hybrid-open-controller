@@ -213,7 +213,7 @@ if __name__ == "__main__":
                     ("slsqp_solver_sweep", better_than_lut_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False).iloc[0]._name),
                     # ("slsqp_solver_sweep_small", "alpha_1.0_controller_class_MPC_decay_type_linear_n_wind_preview_samples_1_nu_0.01_solver_slsqp_warm_start_lut_wind_preview_type_perfect"),
                                                   ("baseline_controllers", "LUT"),
-                                                  ("baseline_controllers", "Greedy")], args.save_dir, include_power=True)
+                                                  ("baseline_controllers", "Greedy")], args.save_dir, include_power=True, legend_loc="outer")
 
             if all(case_families.index(cf) in args.case_ids for cf in ["baseline_controllers", "solver_type",
              "wind_preview_type", "warm_start", 

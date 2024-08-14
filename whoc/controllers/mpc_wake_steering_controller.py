@@ -608,7 +608,7 @@ class MPC(ControllerBase):
 					# wind_preview_probs = np.array(wind_preview_probs).T
 					wind_preview_probs = np.divide(wind_preview_probs, np.sum(wind_preview_probs, axis=0))
 
-					if False:
+					if False and dev_u.shape[0] == 5:
 						import matplotlib.pyplot as plt
 						import seaborn as sns
 						import pandas as pd
@@ -618,7 +618,7 @@ class MPC(ControllerBase):
 							"Vertical": uv_combs[:, :, 1].flatten(), 
 							"Direction": dir_vals.flatten(), 
 							"Magnitude": mag_vals.flatten(), 
-						 	"Time-Step": np.tile(np.arange(self.n_horizon), (uv_combs.shape[0], )) + 1,
+						 	"Time-Step": np.tile(np.arange(self.n_horizon) + 1, (uv_combs.shape[0], )),
 							#  "Std. Dev": np.tile(list(product(std_divisions, std_divisions)), (uv_combs.shape[0], )), 
 							 "Sample": np.repeat(np.arange(uv_combs.shape[0]), (self.n_horizon, )) 
 						})
@@ -629,6 +629,7 @@ class MPC(ControllerBase):
 						ax[0].legend([], [], frameon=False)
 						ax[0].set(ylabel="Vertical Wind Speed [m/s]", xlabel="Horizontal Wind Speed [m/s]")
 						ax[1].set(ylabel="Wind Magnitude [m/s]", xlabel="Wind Direction [$^\\circ$]")
+						sns.move_legend(ax[1], "upper left", bbox_to_anchor=(1, 1))
 						plt.tight_layout(pad=2.0)
 						fig.show()
 						fig.savefig("/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/stochastic_interval_scatter.png")
@@ -638,7 +639,7 @@ class MPC(ControllerBase):
 							"Vertical": v_vals.flatten(), 
 							# "Direction": dir_vals.flatten(), 
 							# "Magnitude": mag_vals.flatten(), 
-						 	"Time-Step": np.tile(np.arange(self.n_horizon), (dev_u.shape[0], )) + 1,
+						 	"Time-Step": np.tile(np.arange(self.n_horizon) + 1, (dev_u.shape[0], )),
 							"# Standard Deviations": np.repeat(std_divisions, (self.n_horizon, )), 
 							#  "Sample": np.repeat(np.arange(dev_u.shape[0]), (self.n_horizon, )) 
 						})
@@ -648,6 +649,7 @@ class MPC(ControllerBase):
 						ax[0].legend([], [], frameon=False)
 						ax[0].set(ylabel="Horizontal Wind Speed [m/s]")
 						ax[1].set(ylabel="Vertical Wind Speed [m/s]")
+						sns.move_legend(ax[1], "upper left", bbox_to_anchor=(1, 1))
 						plt.tight_layout(pad=2.0)
 						fig.savefig("/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/stochastic_interval_intervals.png")
 
@@ -673,19 +675,22 @@ class MPC(ControllerBase):
 								return_params=False, include_uv=False)
 					wind_preview_probs = None
 
-				if False:
+				if False and wind_preview_data["FreestreamWindMag"].shape[0] == 500:
 						import matplotlib.pyplot as plt
 						import pandas as pd
 						import seaborn as sns
-						
 
+						wind_preview_data = generate_wind_preview(wf, current_freestream_measurements, time_step,
+ 								wind_preview_generator=wf._sample_wind_preview, 
+								return_params=False, include_uv=True)
+						
 						df = pd.DataFrame({
-							"Horizontal": wind_preview_data["FreestreamWindSpeedU"].flatten(), 
-							"Vertical": wind_preview_data["FreestreamWindSpeedV"].flatten(), 
-							"Direction": wind_preview_data["FreestreamWindDir"].flatten(), 
-							"Magnitude": wind_preview_data["FreestreamWindMag"].flatten(), 
-						 	"Time-Step": np.tile(np.arange(self.n_horizon + 1), (wind_preview_data["FreestreamWindSpeedU"].shape[0], )),
-							 "Sample": np.repeat(np.arange(wind_preview_data["FreestreamWindSpeedU"].shape[0]), (self.n_horizon + 1, )) 
+							"Horizontal": wind_preview_data["FreestreamWindSpeedU"][:, 1:].flatten(), 
+							"Vertical": wind_preview_data["FreestreamWindSpeedV"][:, 1:].flatten(), 
+							"Direction": wind_preview_data["FreestreamWindDir"][:, 1:].flatten(), 
+							"Magnitude": wind_preview_data["FreestreamWindMag"][:, 1:].flatten(), 
+						 	"Time-Step": np.tile(np.arange(self.n_horizon) + 1, (wind_preview_data["FreestreamWindSpeedU"].shape[0], )),
+							 "Sample": np.repeat(np.arange(wind_preview_data["FreestreamWindSpeedU"].shape[0]), (self.n_horizon, )) 
 						})
 						fig, ax = plt.subplots(1, 2)
 						sns.scatterplot(ax=ax[0], data=df, x="Horizontal", y="Vertical", hue="Time-Step")
@@ -693,8 +698,7 @@ class MPC(ControllerBase):
 						ax[0].legend([], [], frameon=False)
 						ax[0].set(ylabel="Vertical Wind Speed [m/s]", xlabel="Horizontal Wind Speed [m/s]")
 						ax[1].set(ylabel="Wind Magnitude [m/s]", xlabel="Wind Direction [$^\\circ$]")
-						# ax[0].autoscale(tight=True)
-						# ax[1].autoscale(tight=True)
+						sns.move_legend(ax[1], "upper left", bbox_to_anchor=(1, 1))
 						plt.tight_layout(pad=2.0)
 						fig.show()
 						fig.savefig("/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/stochastic_sample_scatter.png")

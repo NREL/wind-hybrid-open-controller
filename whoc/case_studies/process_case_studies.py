@@ -192,7 +192,7 @@ def generate_outputs(agg_results_df, save_dir):
     with open(os.path.join(save_dir, "comparison_time_series_results_table.tex"), "w") as fp:
             fp.write(compare_results_latex)
 
-def plot_simulations(time_series_df, plotting_cases, save_dir, include_power=True):
+def plot_simulations(time_series_df, plotting_cases, save_dir, include_power=True, legend_loc="best"):
     # TODO delete all extra files in directories before rerunning simulations
     
     for case_family in pd.unique(time_series_df["CaseFamily"]):
@@ -244,7 +244,7 @@ def plot_simulations(time_series_df, plotting_cases, save_dir, include_power=Tru
             # fig, _ = plot_opt_cost_ts(df, os.path.join(results_dir, f"opt_costs_ts_{input_config['controller']['case_names'].replace('/', '_')}.png"))
             # fig.suptitle("_".join([os.path.basename(results_dir), input_config['controller']['case_names'].replace('/', '_'), "opt_costs_ts"]))
         
-            fig, _ = plot_yaw_power_ts(case_name_df, os.path.join(save_dir, case_family, f"yaw_power_ts_{case_name}.png"), include_power=include_power, controller_dt=input_config["controller"]["dt"])
+            fig, _ = plot_yaw_power_ts(case_name_df, os.path.join(save_dir, case_family, f"yaw_power_ts_{case_name}.png"), include_power=include_power, controller_dt=input_config["controller"]["dt"], legend_loc=legend_loc)
     
     
     # lut_df = results_dfs[f"{'baseline_controllers'}_{'LUT'}"]
@@ -695,7 +695,7 @@ def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, 
     # fig.show()
     return fig, ax
 
-def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, controller_dt=None):
+def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, controller_dt=None, legend_loc="best"):
     #TODO only plot some turbines, not ones with overlapping yaw offsets, eg single column on farm
     colors = sns.color_palette(palette='Paired')
 
@@ -746,7 +746,10 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
     if include_yaw:
         ax_idx = 0
         ax[ax_idx].set(title="Wind Direction / Yaw Angle [$^\\circ$]", xlim=(0, int((seed_df["Time"].max() + seed_df["Time"].diff().iloc[1]) // 1)), ylim=(220, 320))
-        ax[ax_idx].legend(ncols=2, loc="lower right")
+        if legend_loc != "outer":
+            ax[ax_idx].legend(ncols=2, loc=legend_loc)
+        else:
+            sns.move_legend(ax[ax_idx], "upper left", bbox_to_anchor=(1, 1))
         # ax[ax_idx].legend([], [], frameon=False)
         if not include_power:
             ax[ax_idx].set(xlabel="Time [s]", title="Turbine Powers [MW]")
@@ -754,7 +757,10 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
     if include_power:
         next_ax_idx = (1 if include_yaw else 0)
         ax[next_ax_idx].set(xlabel="Time [s]", title="Turbine Powers [MW]")
-        ax[next_ax_idx].legend(ncols=2, loc="lower right")
+        if legend_loc != "outer":
+            ax[next_ax_idx].legend(ncols=2, loc=legend_loc)
+        else:
+            sns.move_legend(ax[next_ax_idx], "upper left", bbox_to_anchor=(1, 1))
         # ax[next_ax_idx].legend([], [], frameon=False)
 
     results_dir = os.path.dirname(save_path)

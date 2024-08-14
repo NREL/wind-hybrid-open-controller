@@ -16,6 +16,7 @@ from whoc.controllers.greedy_wake_steering_controller import GreedyController
 from whoc.wind_field.generate_freestream_wind import generate_freestream_wind
 from whoc.wind_field.WindField import fit_amr_distribution, get_amr_timeseries
 
+print(sys.argv)
 n_seeds = 6
 regenerate_wind_field = False
 input_dict = load_yaml(sys.argv[1]) #"hercules_input_000.yaml"
@@ -67,7 +68,7 @@ else:
 # wind_field_config["time_series_dt"] = int(input_dict["controller"]["dt"] // input_dict["dt"])
 
 controller = GreedyController(interface, input_dict, 
-                wind_mag_ts=wind_mag_ts, wind_dir_ts=wind_dir_ts)
+                wind_mag_ts=wind_mag_ts, wind_dir_ts=wind_dir_ts, verbose=True)
 
 py_sims = PySims(input_dict)
 
