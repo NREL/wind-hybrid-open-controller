@@ -21,6 +21,13 @@ chk*
 plt*
 *.out
 *.dat 
+*.prof
+*.txt
+*.hst
+*.nc
+*.out
+*.npy
+*.pkl
 
 examples/*/logstandin*
 examples/*/loghercules*
