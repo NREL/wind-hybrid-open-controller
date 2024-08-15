@@ -20,7 +20,14 @@ slices
 chk*
 plt*
 *.out
-*.dat 
+*.dat
+*.prof
+*.txt
+*.hst
+*.nc
+*.out
+*.npy
+*.pkl
 
 examples/*/logstandin*
 examples/*/loghercules*
