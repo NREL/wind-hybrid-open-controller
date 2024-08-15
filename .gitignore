@@ -75,4 +75,3 @@ examples/*/*/*.npy
 examples/floris_case_studies/*/*.csv
 examples/floris_case_studies/*/*.yaml
 examples/floris_case_studies/*.out
-examples/floris_case_studies/optimizer_histories/*.hst
