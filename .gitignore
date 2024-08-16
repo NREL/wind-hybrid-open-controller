@@ -75,11 +75,3 @@ examples/*/*/*.npy
 examples/floris_case_studies/*/*.csv
 examples/floris_case_studies/*/*.yaml
 examples/floris_case_studies/*.out
-<<<<<<< HEAD
-<<<<<<< HEAD
-examples/floris_case_studies/optimizer_histories/*.hst
-=======
-examples/floris_case_studies/optimizer_histories/*.hst
->>>>>>> 2592ee412f9c11062b9e215a79de769b3b5a48d9
-=======
->>>>>>> c4d86dee24758740897dc6b6c1d801577ef9b313
