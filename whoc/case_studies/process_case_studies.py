@@ -450,14 +450,14 @@ def aggregate_time_series_data(case_df, save_dir, n_seeds):
     Process csv data (all wind seeds) for single case name and single case family, from single diretory in floris_case_studies
     """
     case_seeds = pd.unique(case_df["WindSeed"])
+    case_family = case_df["CaseFamily"].iloc[0]
+    # case_family = df_name.replace(f"_{results_df['CaseName'].iloc[0]}", "")
+    case_name = case_df['CaseName'].iloc[0]
     if len(case_seeds) < n_seeds:
        print(f"NOT aggregating data for {case_family}={case_name} due to insufficient seed simulations.")
        return None
 
     result_summary = []
-    case_family = case_df["CaseFamily"].iloc[0]
-    # case_family = df_name.replace(f"_{results_df['CaseName'].iloc[0]}", "")
-    case_name = case_df['CaseName'].iloc[0]
     input_fn = f"input_config_case_{case_name}.yaml"
     print(f"Aggregating data for {case_family}={case_name}")
     with open(os.path.join(save_dir, case_family, input_fn), 'r') as fp:
