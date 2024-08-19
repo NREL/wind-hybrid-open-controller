@@ -56,6 +56,7 @@ examples/*/time.dat
 examples/post_processing/abl_statistics00000.nc
 examples/*.out
 examples/*/*/*.npy
+examples/floris_case_studies/wind_field_data/raw_data/*
 
 # Exceptions
 !examples/lookup-based_wake_steering_florisstandin/amr_standin_data.csv
