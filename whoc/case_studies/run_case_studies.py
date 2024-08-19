@@ -67,7 +67,7 @@ if __name__ == "__main__":
             with executor as run_simulations_exec:
                 if args.multiprocessor == "mpi":
                     run_simulations_exec.max_workers = comm_size
-                #TODO check that case_family is being fetched properly    
+                  
                 print(f"run_simulations line 64 with {run_simulations_exec._max_workers} workers")
                 # for MPIPool executor, (waiting as if shutdown() were called with wait set to True)
                 futures = [run_simulations_exec.submit(simulate_controller, 
@@ -89,72 +89,72 @@ if __name__ == "__main__":
     
     if args.postprocess_simulations:
 
-        if args.reprocess_simulations or (not os.path.exists(os.path.join(args.save_dir, f"time_series_results.csv"))) or (not os.path.exists(os.path.join(args.save_dir, f"agg_results.csv"))):
-            if RUN_ONCE:
-                case_family_case_names = {}
-                for i in args.case_ids:
-                    case_family_case_names[case_families[i]] = [fn for fn in os.listdir(os.path.join(args.save_dir, case_families[i])) if ".csv" in fn]
+        # if args.reprocess_simulations or (not os.path.exists(os.path.join(args.save_dir, f"time_series_results.csv"))) or (not os.path.exists(os.path.join(args.save_dir, f"agg_results.csv"))):
+        if RUN_ONCE:
+            case_family_case_names = {}
+            for i in args.case_ids:
+                case_family_case_names[case_families[i]] = [fn for fn in os.listdir(os.path.join(args.save_dir, case_families[i])) if ".csv" in fn]
 
-            if args.multiprocessor is not None:
+        if args.multiprocessor is not None:
+            if args.multiprocessor == "mpi":
+                comm_size = MPI.COMM_WORLD.Get_size()
+                executor = MPICommExecutor(MPI.COMM_WORLD, root=0)
+            elif args.multiprocessor == "cf":
+                executor = ProcessPoolExecutor()
+            with executor as run_simulations_exec:
                 if args.multiprocessor == "mpi":
-                    comm_size = MPI.COMM_WORLD.Get_size()
-                    executor = MPICommExecutor(MPI.COMM_WORLD, root=0)
-                elif args.multiprocessor == "cf":
-                    executor = ProcessPoolExecutor()
-                with executor as run_simulations_exec:
-                    if args.multiprocessor == "mpi":
-                        run_simulations_exec.max_workers = comm_size
-                    
-                    print(f"run_simulations line 107 with {run_simulations_exec._max_workers} workers")
-                    # for MPIPool executor, (waiting as if shutdown() were called with wait set to True)
-
-                    read_futures = [run_simulations_exec.submit(
-                                                    read_time_series_data, 
-                                                    results_path=os.path.join(args.save_dir, case_families[i], fn))
-                        for i in args.case_ids 
-                        for fn in case_family_case_names[case_families[i]]
-                    ]
-                    
-                    time_series_df = pd.concat([fut.result() for fut in read_futures])
-                    
-                    agg_futures = [run_simulations_exec.submit(aggregate_time_series_data,
-                                                            case_df=time_series_df.loc[(time_series_df["CaseFamily"] == case_families[i]) & (time_series_df["CaseName"] == case_name), :],
-                                                                save_dir=args.save_dir, n_seeds=args.n_seeds)
-                        for i in args.case_ids  
-                        for case_name in [re.findall(r"(?<=case_)(.*)(?=_seed)", fn)[0] for fn in case_family_case_names[case_families[i]]]
-                    ]
-                    
-                    agg_dfs = pd.concat([fut.result() for fut in agg_futures if fut is not None])
-
-            else:
-                time_series_df = []
-                for i in args.case_ids:
-                    for fn in case_family_case_names[case_families[i]]:
-                        time_series_df.append(read_time_series_data(results_path=os.path.join(args.save_dir, case_families[i], fn)))
-                time_series_df = pd.concat(time_series_df)
-
-                agg_dfs = []
-                for i in args.case_ids:
-                    for case_name in [re.findall(r"(?<=case_)(.*)(?=_seed)", fn)[0] for fn in case_family_case_names[case_families[i]]]:
-                        res = aggregate_time_series_data(case_df=time_series_df.loc[(time_series_df["CaseFamily"] == case_families[i]) & (time_series_df["CaseName"] == case_name), :],
-                                                            save_dir=args.save_dir, n_seeds=args.n_seeds)
-                        if res is not None:
-                            agg_dfs.append(res)
-                agg_dfs = pd.concat(agg_dfs)
-
-            if RUN_ONCE:
+                    run_simulations_exec.max_workers = comm_size
                 
-                time_series_df = time_series_df.reset_index(drop=True) 
-                time_series_df.to_csv(os.path.join(args.save_dir, f"time_series_results.csv"))
+                print(f"run_simulations line 107 with {run_simulations_exec._max_workers} workers")
+                # for MPIPool executor, (waiting as if shutdown() were called with wait set to True)
+
+                read_futures = [run_simulations_exec.submit(
+                                                read_time_series_data, 
+                                                results_path=os.path.join(args.save_dir, case_families[i], fn))
+                    for i in args.case_ids 
+                    for fn in case_family_case_names[case_families[i]]
+                ]
                 
-                agg_dfs = agg_dfs.reset_index(drop=True)
-                agg_dfs = agg_dfs.groupby(by=["CaseFamily", "CaseName"])[[col for col in agg_dfs.columns if col not in ["CaseFamily", "CaseName", "WindSeed"]]].agg(["min", "max", "mean"])
-                agg_dfs.to_csv(os.path.join(args.save_dir, f"agg_results.csv"))
+                time_series_df = pd.concat([fut.result() for fut in read_futures])
+                    
+                agg_futures = [run_simulations_exec.submit(aggregate_time_series_data,
+                                                        case_df=time_series_df.loc[(time_series_df["CaseFamily"] == case_families[i]) & (time_series_df["CaseName"] == case_name), :],
+                                                            save_dir=args.save_dir, n_seeds=args.n_seeds, reprocess_simulations=args.reprocess_simulations)
+                    for i in args.case_ids  
+                    for case_name in [re.findall(r"(?<=case_)(.*)(?=_seed)", fn)[0] for fn in case_family_case_names[case_families[i]]]
+                ]
+                
+                agg_dfs = pd.concat([fut.result() for fut in agg_futures if fut is not None])
 
         else:
-            if RUN_ONCE:
-                time_series_df = pd.read_csv(os.path.join(args.save_dir, f"time_series_results.csv"), index_col=0)
-                agg_dfs = pd.read_csv(os.path.join(args.save_dir, f"agg_results.csv"), header=[0,1], index_col=[0, 1], skipinitialspace=True)
+            time_series_df = []
+            for i in args.case_ids:
+                for fn in case_family_case_names[case_families[i]]:
+                    time_series_df.append(read_time_series_data(results_path=os.path.join(args.save_dir, case_families[i], fn)))
+            time_series_df = pd.concat(time_series_df)
+
+            agg_dfs = []
+            for i in args.case_ids:
+                for case_name in [re.findall(r"(?<=case_)(.*)(?=_seed)", fn)[0] for fn in case_family_case_names[case_families[i]]]:
+                    res = aggregate_time_series_data(case_df=time_series_df.loc[(time_series_df["CaseFamily"] == case_families[i]) & (time_series_df["CaseName"] == case_name), :],
+                                                        save_dir=args.save_dir, n_seeds=args.n_seeds, reprocess_simulations=args.reprocess_simulations)
+                    if res is not None:
+                        agg_dfs.append(res)
+            agg_dfs = pd.concat(agg_dfs)
+
+        if RUN_ONCE:
+            
+            time_series_df = time_series_df.reset_index(drop=True) 
+            time_series_df.to_csv(os.path.join(args.save_dir, f"time_series_results.csv"))
+            
+            agg_dfs = agg_dfs.reset_index(drop=True)
+            agg_dfs = agg_dfs.groupby(by=["CaseFamily", "CaseName"])[[col for col in agg_dfs.columns if col not in ["CaseFamily", "CaseName", "WindSeed"]]].agg(["min", "max", "mean"])
+            agg_dfs.to_csv(os.path.join(args.save_dir, f"agg_results.csv"))
+
+        # else:
+        #     if RUN_ONCE:
+        #         time_series_df = pd.read_csv(os.path.join(args.save_dir, f"time_series_results.csv"), index_col=0)
+        #         agg_dfs = pd.read_csv(os.path.join(args.save_dir, f"agg_results.csv"), header=[0,1], index_col=[0, 1], skipinitialspace=True)
 
         if RUN_ONCE and PLOT:
             if (case_families.index("baseline_controllers") in args.case_ids) and (case_families.index("cost_func_tuning") in args.case_ids):

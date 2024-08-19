@@ -445,7 +445,7 @@ def plot_yaw_power_distribution(data_df, save_path):
 
 #     return result_summary_df
 
-def aggregate_time_series_data(case_df, save_dir, n_seeds):
+def aggregate_time_series_data(case_df, save_dir, n_seeds, reprocess_simulations):
     """
     Process csv data (all wind seeds) for single case name and single case family, from single diretory in floris_case_studies
     """
@@ -456,6 +456,12 @@ def aggregate_time_series_data(case_df, save_dir, n_seeds):
     if len(case_seeds) < n_seeds:
        print(f"NOT aggregating data for {case_family}={case_name} due to insufficient seed simulations.")
        return None
+
+    fn = f"{case_family}_{case_name}_agg_results.csv"
+    if not reprocess_simulations and os.path.exists(os.path.join(save_dir, fn)):
+        results_df = pd.read_csv(os.path.join(save_dir, ))
+        print(f"Loaded existing {fn} since rerun_postprocessing argument is false")
+        return results_df
 
     result_summary = []
     input_fn = f"input_config_case_{case_name}.yaml"
@@ -488,12 +494,14 @@ def aggregate_time_series_data(case_df, save_dir, n_seeds):
                                (seed_df["RunningOptimizationCostTerm_1"] / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean(),
                                seed_df["OptimizationConvergenceTime"].mean()))
     # print(f"Aggregated data for {case_family}={case_name}")
-    return pd.DataFrame(result_summary, columns=["CaseFamily", "CaseName", "WindSeed",
+    agg_df = pd.DataFrame(result_summary, columns=["CaseFamily", "CaseName", "WindSeed",
                                               "YawAngleChangeAbsMean", "RelativeYawAngleChangeAbsMean",
                                               "FarmPowerMean", "RelativeFarmPowerMean", 
                                               "TotalRunningOptimizationCostMean", "RelativeTotalRunningOptimizationCostMean",
                                               "RelativeRunningOptimizationCostTerm_0", "RelativeRunningOptimizationCostTerm_1",
                                               "OptimizationConvergenceTime"])
+    agg_df.to_csv(fn)
+    return agg_df
 
 def plot_wind_field_ts(data_df, save_path, filter_func=None):
     fig_wind, ax_wind = plt.subplots(2, 1, sharex=True)
