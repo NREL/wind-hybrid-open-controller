@@ -445,7 +445,7 @@ def plot_yaw_power_distribution(data_df, save_path):
 
 #     return result_summary_df
 
-def aggregate_time_series_data(case_df, save_dir, n_seeds, reprocess_simulations):
+def aggregate_time_series_data(case_df, results_dir, n_seeds, reprocess_simulations):
     """
     Process csv data (all wind seeds) for single case name and single case family, from single diretory in floris_case_studies
     """
@@ -457,16 +457,16 @@ def aggregate_time_series_data(case_df, save_dir, n_seeds, reprocess_simulations
        print(f"NOT aggregating data for {case_family}={case_name} due to insufficient seed simulations.")
        return None
 
-    fn = f"{case_family}_{case_name}_agg_results.csv"
-    if not reprocess_simulations and os.path.exists(os.path.join(save_dir, fn)):
-        results_df = pd.read_csv(os.path.join(save_dir, ))
+    fn = f"{case_name}_agg_results.csv"
+    if not reprocess_simulations and os.path.exists(os.path.join(results_dir, case_family, fn)):
+        results_df = pd.read_csv(os.path.join(results_dir, case_family, fn))
         print(f"Loaded existing {fn} since rerun_postprocessing argument is false")
         return results_df
 
     result_summary = []
     input_fn = f"input_config_case_{case_name}.yaml"
     print(f"Aggregating data for {case_family}={case_name}")
-    with open(os.path.join(save_dir, case_family, input_fn), 'r') as fp:
+    with open(os.path.join(results_dir, case_family, input_fn), 'r') as fp:
         input_config = yaml.safe_load(fp)
 
     if "lpf_start_time" in input_config["controller"]:
@@ -500,7 +500,7 @@ def aggregate_time_series_data(case_df, save_dir, n_seeds, reprocess_simulations
                                               "TotalRunningOptimizationCostMean", "RelativeTotalRunningOptimizationCostMean",
                                               "RelativeRunningOptimizationCostTerm_0", "RelativeRunningOptimizationCostTerm_1",
                                               "OptimizationConvergenceTime"])
-    agg_df.to_csv(fn)
+    agg_df.to_csv(os.path.join(results_dir, case_family, fn))
     return agg_df
 
 def plot_wind_field_ts(data_df, save_path, filter_func=None):

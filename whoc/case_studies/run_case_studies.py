@@ -213,9 +213,9 @@ if __name__ == "__main__":
                 plot_simulations(time_series_df, [
                     # ("slsqp_solver_sweep_small", "PerfectCDSimpleCost"),
 
-                                                #   ("slsqp_solver_sweep_small", "PerfectCDNormCost"),
-                    ("slsqp_solver_sweep", better_than_lut_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False).iloc[1]._name),
-                    # ("slsqp_solver_sweep_small", "alpha_1.0_controller_class_MPC_decay_type_linear_n_wind_preview_samples_1_nu_0.01_solver_slsqp_warm_start_lut_wind_preview_type_perfect"),
+                                                #  ("slsqp_solver_sweep_small", "PerfectCDNormCost"),
+                    #("slsqp_solver_sweep", better_than_lut_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False).iloc[1]._name),
+                    ("slsqp_solver_sweep", "alpha_1.0_controller_class_MPC_diff_type_custom_cd_dt_30_n_horizon_24_n_wind_preview_samples_5_nu_0.01_solver_slsqp_use_filtered_wind_dir_False_wind_preview_type_stochastic_interval"),
                                                   ("baseline_controllers", "LUT"),
                                                   ("baseline_controllers", "Greedy")], args.save_dir, include_power=True, legend_loc="outer")
 
