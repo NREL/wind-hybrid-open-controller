@@ -69,7 +69,7 @@ class GreedyController(ControllerBase):
 		return np.array([[[wind_directions[i, j] for t in range(self.n_turbines)] for j in range(wind_directions.shape[1])] for i in range(wind_directions.shape[0])])
 	
 	def compute_controls(self):
-		print("in GreedyController.compute_controls")
+		# print("in GreedyController.compute_controls")
 		if (self._last_measured_time is not None) and self._last_measured_time == self.measurements_dict["time"]:
 			return
 
