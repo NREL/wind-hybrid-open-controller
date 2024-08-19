@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import re
+import sys
 
 import whoc
 from whoc.controllers.mpc_wake_steering_controller import MPC
@@ -45,7 +46,7 @@ if __name__ == "__main__":
 
     # os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "false"
     RUN_ONCE = (args.multiprocessor == "mpi" and (comm_rank := MPI.COMM_WORLD.Get_rank()) == 0) or (args.multiprocessor != "mpi") or (args.multiprocessor is None)
-    PLOT = 
+    PLOT = sys.platform != "linux"
     if args.run_simulations:
         # run simulations
         
