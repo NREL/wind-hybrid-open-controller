@@ -445,10 +445,15 @@ def plot_yaw_power_distribution(data_df, save_path):
 
 #     return result_summary_df
 
-def aggregate_time_series_data(case_df, save_dir):
+def aggregate_time_series_data(case_df, save_dir, n_seeds):
     """
     Process csv data (all wind seeds) for single case name and single case family, from single diretory in floris_case_studies
     """
+    case_seeds = pd.unique(case_df["WindSeed"])
+    if len(case_seeds) < n_seeds:
+       print(f"NOT aggregating data for {case_family}={case_name} due to insufficient seed simulations.")
+       return None
+
     result_summary = []
     case_family = case_df["CaseFamily"].iloc[0]
     # case_family = df_name.replace(f"_{results_df['CaseName'].iloc[0]}", "")
@@ -462,7 +467,9 @@ def aggregate_time_series_data(case_df, save_dir):
         lpf_start_time = input_config["controller"]["lpf_start_time"]
     else:
         lpf_start_time = 180.0
-    for seed in pd.unique(case_df["WindSeed"]):
+
+    
+    for seed in case_seeds:
 
         seed_df = case_df.loc[(case_df["WindSeed"] == seed) & (case_df.Time >= lpf_start_time), :]
         
@@ -480,7 +487,7 @@ def aggregate_time_series_data(case_df, save_dir):
                                (seed_df["RunningOptimizationCostTerm_0"] / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean(),
                                (seed_df["RunningOptimizationCostTerm_1"] / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean(),
                                seed_df["OptimizationConvergenceTime"].mean()))
-    print(f"Aggregated data for {case_family}={case_name}")
+    # print(f"Aggregated data for {case_family}={case_name}")
     return pd.DataFrame(result_summary, columns=["CaseFamily", "CaseName", "WindSeed",
                                               "YawAngleChangeAbsMean", "RelativeYawAngleChangeAbsMean",
                                               "FarmPowerMean", "RelativeFarmPowerMean", 
@@ -745,7 +752,8 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
     
     if include_yaw:
         ax_idx = 0
-        ax[ax_idx].set(title="Wind Direction / Yaw Angle [$^\\circ$]", xlim=(0, int((seed_df["Time"].max() + seed_df["Time"].diff().iloc[1]) // 1)), ylim=(220, 320))
+        ax[ax_idx].set(title="Wind Direction / Yaw Angle [$^\\circ$]", xlim=(0, int((data_df["Time"].max() + data_df["Time"].diff().iloc[1]) // 1)), ylim=(220, 320))
+        ax[ax_idx].legend() 
         if legend_loc != "outer":
             ax[ax_idx].legend(ncols=2, loc=legend_loc)
         else:
@@ -757,6 +765,7 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
     if include_power:
         next_ax_idx = (1 if include_yaw else 0)
         ax[next_ax_idx].set(xlabel="Time [s]", title="Turbine Powers [MW]")
+        ax[next_ax_idx].legend() 
         if legend_loc != "outer":
             ax[next_ax_idx].legend(ncols=2, loc=legend_loc)
         else:
