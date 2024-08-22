@@ -88,73 +88,77 @@ if __name__ == "__main__":
                                                 wind_field_config=wind_field_config, verbose=False, save_dir=args.save_dir, rerun_simulations=args.rerun_simulations)
     
     if args.postprocess_simulations:
+        # TODO allow using agg_results.csv if exists
+        if args.reprocess_simulations or (not os.path.exists(os.path.join(args.save_dir, f"time_series_results.csv"))) or (not os.path.exists(os.path.join(args.save_dir, f"agg_results.csv"))):
+            if RUN_ONCE:
+                case_family_case_names = {}
+                for i in args.case_ids:
+                    case_family_case_names[case_families[i]] = [fn for fn in os.listdir(os.path.join(args.save_dir, case_families[i])) if ".csv" in fn and "time_series_results" in fn]
 
-        # if args.reprocess_simulations or (not os.path.exists(os.path.join(args.save_dir, f"time_series_results.csv"))) or (not os.path.exists(os.path.join(args.save_dir, f"agg_results.csv"))):
-        if RUN_ONCE:
-            case_family_case_names = {}
-            for i in args.case_ids:
-                case_family_case_names[case_families[i]] = [fn for fn in os.listdir(os.path.join(args.save_dir, case_families[i])) if ".csv" in fn]
+                case_family_case_names["slsqp_solver_sweep"] = [f"time_series_results_case_alpha_1.0_controller_class_MPC_diff_type_custom_cd_dt_30_n_horizon_24_n_wind_preview_samples_5_nu_0.01_solver_slsqp_use_filtered_wind_dir_False_wind_preview_type_stochastic_interval_seed_{s}" for s in range(6)]
 
-        if args.multiprocessor is not None:
-            if args.multiprocessor == "mpi":
-                comm_size = MPI.COMM_WORLD.Get_size()
-                executor = MPICommExecutor(MPI.COMM_WORLD, root=0)
-            elif args.multiprocessor == "cf":
-                executor = ProcessPoolExecutor()
-            with executor as run_simulations_exec:
+            if args.multiprocessor is not None:
                 if args.multiprocessor == "mpi":
-                    run_simulations_exec.max_workers = comm_size
-                
-                print(f"run_simulations line 107 with {run_simulations_exec._max_workers} workers")
-                # for MPIPool executor, (waiting as if shutdown() were called with wait set to True)
-
-                read_futures = [run_simulations_exec.submit(
-                                                read_time_series_data, 
-                                                results_path=os.path.join(args.save_dir, case_families[i], fn))
-                    for i in args.case_ids 
-                    for fn in case_family_case_names[case_families[i]]
-                ]
-                
-                time_series_df = pd.concat([fut.result() for fut in read_futures])
+                    comm_size = MPI.COMM_WORLD.Get_size()
+                    executor = MPICommExecutor(MPI.COMM_WORLD, root=0)
+                elif args.multiprocessor == "cf":
+                    executor = ProcessPoolExecutor()
+                with executor as run_simulations_exec:
+                    if args.multiprocessor == "mpi":
+                        run_simulations_exec.max_workers = comm_size
                     
-                agg_futures = [run_simulations_exec.submit(aggregate_time_series_data,
-                                                        case_df=time_series_df.loc[(time_series_df["CaseFamily"] == case_families[i]) & (time_series_df["CaseName"] == case_name), :],
-                                                            save_dir=args.save_dir, n_seeds=args.n_seeds, reprocess_simulations=args.reprocess_simulations)
-                    for i in args.case_ids  
-                    for case_name in [re.findall(r"(?<=case_)(.*)(?=_seed)", fn)[0] for fn in case_family_case_names[case_families[i]]]
-                ]
+                    print(f"run_simulations line 107 with {run_simulations_exec._max_workers} workers")
+                    # for MPIPool executor, (waiting as if shutdown() were called with wait set to True)
+
+                    read_futures = [run_simulations_exec.submit(
+                                                    read_time_series_data, 
+                                                    results_path=os.path.join(args.save_dir, case_families[i], fn))
+                        for i in args.case_ids 
+                        for fn in case_family_case_names[case_families[i]]
+                    ]
+                    
+                    time_series_df = pd.concat([fut.result() for fut in read_futures])
+                        
+                    agg_futures = [run_simulations_exec.submit(aggregate_time_series_data,
+                                                            case_df=time_series_df.loc[(time_series_df["CaseFamily"] == case_families[i]) & (time_series_df["CaseName"] == case_name), :],
+                                                                results_path=os.path.join(args.save_dir, case_families[i], f"agg_results_{case_name}.csv"), 
+                                                                n_seeds=args.n_seeds, reprocess_simulations=args.reprocess_simulations)
+                        for i in args.case_ids  
+                        for case_name in [re.findall(r"(?<=case_)(.*)(?=_seed)", fn)[0] for fn in case_family_case_names[case_families[i]]]
+                    ]
+                    
+                    agg_dfs = pd.concat([fut.result() for fut in agg_futures if fut is not None])
+
+            else:
+                time_series_df = []
+                for i in args.case_ids:
+                    for fn in case_family_case_names[case_families[i]]:
+                        time_series_df.append(read_time_series_data(results_path=os.path.join(args.save_dir, case_families[i], fn)))
+                time_series_df = pd.concat(time_series_df)
+
+                agg_dfs = []
+                for i in args.case_ids:
+                    for case_name in [re.findall(r"(?<=case_)(.*)(?=_seed)", fn)[0] for fn in case_family_case_names[case_families[i]]]:
+                        res = aggregate_time_series_data(case_df=time_series_df.loc[(time_series_df["CaseFamily"] == case_families[i]) & (time_series_df["CaseName"] == case_name), :],
+                                                            results_path=os.path.join(args.save_dir, case_families[i], f"agg_results_{case_name}.csv"),
+                                                            n_seeds=args.n_seeds, reprocess_simulations=args.reprocess_simulations)
+                        if res is not None:
+                            agg_dfs.append(res)
+                agg_dfs = pd.concat(agg_dfs)
+
+            if RUN_ONCE:
                 
-                agg_dfs = pd.concat([fut.result() for fut in agg_futures if fut is not None])
+                time_series_df = time_series_df.reset_index(drop=True) 
+                time_series_df.to_csv(os.path.join(args.save_dir, f"time_series_results.csv"))
+                
+                agg_dfs = agg_dfs.reset_index(drop=True)
+                agg_dfs = agg_dfs.groupby(by=["CaseFamily", "CaseName"])[[col for col in agg_dfs.columns if col not in ["CaseFamily", "CaseName", "WindSeed"]]].agg(["min", "max", "mean"])
+                agg_dfs.to_csv(os.path.join(args.save_dir, f"agg_results.csv"))
 
         else:
-            time_series_df = []
-            for i in args.case_ids:
-                for fn in case_family_case_names[case_families[i]]:
-                    time_series_df.append(read_time_series_data(results_path=os.path.join(args.save_dir, case_families[i], fn)))
-            time_series_df = pd.concat(time_series_df)
-
-            agg_dfs = []
-            for i in args.case_ids:
-                for case_name in [re.findall(r"(?<=case_)(.*)(?=_seed)", fn)[0] for fn in case_family_case_names[case_families[i]]]:
-                    res = aggregate_time_series_data(case_df=time_series_df.loc[(time_series_df["CaseFamily"] == case_families[i]) & (time_series_df["CaseName"] == case_name), :],
-                                                        save_dir=args.save_dir, n_seeds=args.n_seeds, reprocess_simulations=args.reprocess_simulations)
-                    if res is not None:
-                        agg_dfs.append(res)
-            agg_dfs = pd.concat(agg_dfs)
-
-        if RUN_ONCE:
-            
-            time_series_df = time_series_df.reset_index(drop=True) 
-            time_series_df.to_csv(os.path.join(args.save_dir, f"time_series_results.csv"))
-            
-            agg_dfs = agg_dfs.reset_index(drop=True)
-            agg_dfs = agg_dfs.groupby(by=["CaseFamily", "CaseName"])[[col for col in agg_dfs.columns if col not in ["CaseFamily", "CaseName", "WindSeed"]]].agg(["min", "max", "mean"])
-            agg_dfs.to_csv(os.path.join(args.save_dir, f"agg_results.csv"))
-
-        # else:
-        #     if RUN_ONCE:
-        #         time_series_df = pd.read_csv(os.path.join(args.save_dir, f"time_series_results.csv"), index_col=0)
-        #         agg_dfs = pd.read_csv(os.path.join(args.save_dir, f"agg_results.csv"), header=[0,1], index_col=[0, 1], skipinitialspace=True)
+            if RUN_ONCE:
+                time_series_df = pd.read_csv(os.path.join(args.save_dir, f"time_series_results.csv"), index_col=0)
+                agg_dfs = pd.read_csv(os.path.join(args.save_dir, f"agg_results.csv"), header=[0,1], index_col=[0, 1], skipinitialspace=True)
 
         if RUN_ONCE and PLOT:
             if (case_families.index("baseline_controllers") in args.case_ids) and (case_families.index("cost_func_tuning") in args.case_ids):
@@ -195,6 +199,8 @@ if __name__ == "__main__":
                 # get mpc configurations for which the generated farm power is greater than lut, and the resulting yaw actuation lesser than lut
                 # better_than_lut_df = mpc_df.loc[(mpc_df[("FarmPowerMean", "mean")] > lut_df[("FarmPowerMean", "mean")].iloc[0]) & (mpc_df[("YawAngleChangeAbsMean", "mean")] < lut_df[("YawAngleChangeAbsMean", "mean")].iloc[0]), [("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True).reset_index(level="CaseFamily", drop=True)
                 better_than_lut_df = mpc_df.loc[(mpc_df[("FarmPowerMean", "mean")] > lut_df[("FarmPowerMean", "mean")].iloc[0]), [("YawAngleChangeAbsMean", "mean"), ("OptimizationConvergenceTime", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False).reset_index(level="CaseFamily", drop=True)
+                # better_than_lut = pd.read_csv(os.path.join(args.save_dir, "better_than_lut.csv"), header=[0,1], index_col=[0], skipinitialspace=True)
+                # better_than_lut_df.to_csv(os.path.join(args.save_dir, "better_than_lut.csv"))
                 # better_than_lut_df = mpc_df.loc[(mpc_df[("YawAngleChangeAbsMean", "mean")] < lut_df[("YawAngleChangeAbsMean", "mean")].iloc[0]), [("YawAngleChangeAbsMean", "mean"), ("RelativeTotalRunningOptimizationCostMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True).reset_index(level="CaseFamily", drop=True)
                 # print(mpc_df.loc[(mpc_df[("FarmPowerMean", "mean")] > greedy_df[("FarmPowerMean", "mean")].iloc[0]) & (mpc_df[("YawAngleChangeAbsMean", "mean")] < greedy_df[("YawAngleChangeAbsMean", "mean")].iloc[0]), ("RelativeTotalRunningOptimizationCostMean", "mean")].sort_values(ascending=True))
                 # get mpc configurations for which the generated farm power is greater than greedy
@@ -209,12 +215,18 @@ if __name__ == "__main__":
                 mpc_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False)[[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean"), ("OptimizationConvergenceTime", "mean")]].reset_index(level="CaseFamily", drop=True)
                 mpc_df.sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True)[[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean"), ("OptimizationConvergenceTime", "mean")]].iloc[0]
                 print(better_than_lut_df.iloc[0]._name)
-
+                100 * (better_than_lut_df.loc[better_than_lut_df.index == "alpha_1.0_controller_class_MPC_diff_type_custom_cd_dt_30_n_horizon_24_n_wind_preview_samples_5_nu_0.01_solver_slsqp_use_filtered_wind_dir_False_wind_preview_type_stochastic_interval", ("FarmPowerMean", "mean")] - lut_df.iloc[0][("FarmPowerMean", "mean")]) / lut_df.iloc[0][("FarmPowerMean", "mean")]
+                100 * (better_than_lut_df.loc[better_than_lut_df.index == "alpha_1.0_controller_class_MPC_diff_type_custom_cd_dt_30_n_horizon_24_n_wind_preview_samples_5_nu_0.01_solver_slsqp_use_filtered_wind_dir_False_wind_preview_type_stochastic_interval", ("FarmPowerMean", "mean")] - greedy_df.iloc[0][("FarmPowerMean", "mean")]) / greedy_df.iloc[0][("FarmPowerMean", "mean")]
+                
+                100 * (better_than_lut_df.iloc[0][("FarmPowerMean", "mean")] - lut_df.iloc[0][("FarmPowerMean", "mean")]) / lut_df.iloc[0][("FarmPowerMean", "mean")]
+                100 * (better_than_lut_df.iloc[0][("FarmPowerMean", "mean")] - greedy_df.iloc[0][("FarmPowerMean", "mean")]) / greedy_df.iloc[0][("FarmPowerMean", "mean")]
+                
+                
                 plot_simulations(time_series_df, [
                     # ("slsqp_solver_sweep_small", "PerfectCDSimpleCost"),
 
                                                 #  ("slsqp_solver_sweep_small", "PerfectCDNormCost"),
-                    #("slsqp_solver_sweep", better_than_lut_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False).iloc[1]._name),
+                    # ("slsqp_solver_sweep", better_than_lut_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False).iloc[0]._name),
                     ("slsqp_solver_sweep", "alpha_1.0_controller_class_MPC_diff_type_custom_cd_dt_30_n_horizon_24_n_wind_preview_samples_5_nu_0.01_solver_slsqp_use_filtered_wind_dir_False_wind_preview_type_stochastic_interval"),
                                                   ("baseline_controllers", "LUT"),
                                                   ("baseline_controllers", "Greedy")], args.save_dir, include_power=True, legend_loc="outer")

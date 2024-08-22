@@ -243,8 +243,10 @@ def plot_simulations(time_series_df, plotting_cases, save_dir, include_power=Tru
             
             # fig, _ = plot_opt_cost_ts(df, os.path.join(results_dir, f"opt_costs_ts_{input_config['controller']['case_names'].replace('/', '_')}.png"))
             # fig.suptitle("_".join([os.path.basename(results_dir), input_config['controller']['case_names'].replace('/', '_'), "opt_costs_ts"]))
-        
-            fig, _ = plot_yaw_power_ts(case_name_df, os.path.join(save_dir, case_family, f"yaw_power_ts_{case_name}.png"), include_power=include_power, controller_dt=input_config["controller"]["dt"], legend_loc=legend_loc)
+
+            fig, _ = plot_yaw_power_ts(case_name_df, os.path.join(save_dir, case_family, f"yaw_power_ts_{case_name}.png"), include_power=include_power, legend_loc=legend_loc,
+                                       controller_dt=None, include_filtered_wind_dir=(case_family=="baseline_controllers"))
+                                    #    controller_dt=input_config["controller"]["dt"])
     
     
     # lut_df = results_dfs[f"{'baseline_controllers'}_{'LUT'}"]
@@ -445,7 +447,7 @@ def plot_yaw_power_distribution(data_df, save_path):
 
 #     return result_summary_df
 
-def aggregate_time_series_data(case_df, results_dir, n_seeds, reprocess_simulations):
+def aggregate_time_series_data(case_df, results_path, n_seeds, reprocess_simulations):
     """
     Process csv data (all wind seeds) for single case name and single case family, from single diretory in floris_case_studies
     """
@@ -457,16 +459,15 @@ def aggregate_time_series_data(case_df, results_dir, n_seeds, reprocess_simulati
        print(f"NOT aggregating data for {case_family}={case_name} due to insufficient seed simulations.")
        return None
 
-    fn = f"{case_name}_agg_results.csv"
-    if not reprocess_simulations and os.path.exists(os.path.join(results_dir, case_family, fn)):
-        results_df = pd.read_csv(os.path.join(results_dir, case_family, fn))
-        print(f"Loaded existing {fn} since rerun_postprocessing argument is false")
+    if not reprocess_simulations and os.path.exists(results_path):
+        results_df = pd.read_csv(results_path)
+        print(f"Loaded existing {results_path} since rerun_postprocessing argument is false")
         return results_df
 
     result_summary = []
     input_fn = f"input_config_case_{case_name}.yaml"
     print(f"Aggregating data for {case_family}={case_name}")
-    with open(os.path.join(results_dir, case_family, input_fn), 'r') as fp:
+    with open(os.path.join(os.path.dirname(results_path), input_fn), 'r') as fp:
         input_config = yaml.safe_load(fp)
 
     if "lpf_start_time" in input_config["controller"]:
@@ -474,7 +475,6 @@ def aggregate_time_series_data(case_df, results_dir, n_seeds, reprocess_simulati
     else:
         lpf_start_time = 180.0
 
-    
     for seed in case_seeds:
 
         seed_df = case_df.loc[(case_df["WindSeed"] == seed) & (case_df.Time >= lpf_start_time), :]
@@ -500,7 +500,7 @@ def aggregate_time_series_data(case_df, results_dir, n_seeds, reprocess_simulati
                                               "TotalRunningOptimizationCostMean", "RelativeTotalRunningOptimizationCostMean",
                                               "RelativeRunningOptimizationCostTerm_0", "RelativeRunningOptimizationCostTerm_1",
                                               "OptimizationConvergenceTime"])
-    agg_df.to_csv(os.path.join(results_dir, case_family, fn))
+    agg_df.to_csv(results_path)
     return agg_df
 
 def plot_wind_field_ts(data_df, save_path, filter_func=None):
@@ -710,7 +710,7 @@ def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, 
     # fig.show()
     return fig, ax
 
-def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, controller_dt=None, legend_loc="best"):
+def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, include_filtered_wind_dir=True, controller_dt=None, legend_loc="best"):
     #TODO only plot some turbines, not ones with overlapping yaw offsets, eg single column on farm
     colors = sns.color_palette(palette='Paired')
 
@@ -731,8 +731,9 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
         
         if include_yaw:
             ax_idx = 0
-            sns.lineplot(data=seed_df, x="Time", y="FreestreamWindDir", label="Freestream wind dir.", color="black", ax=ax[ax_idx])
-            sns.lineplot(data=seed_df, x="Time", y="FilteredFreestreamWindDir", label="Filtered freestream wind dir.", color="black", linestyle="--", ax=ax[ax_idx])
+            sns.lineplot(data=seed_df, x="Time", y="FreestreamWindDir", label="Wind dir.", color="black", ax=ax[ax_idx])
+            if include_filtered_wind_dir:
+                sns.lineplot(data=seed_df, x="Time", y="FilteredFreestreamWindDir", label="Filtered wind dir.", color="black", linestyle="--", ax=ax[ax_idx])
             
         # Direction
         for t, (wind_dir_col, power_col, yaw_col, color) in enumerate(zip(turbine_wind_direction_cols, turbine_power_cols, yaw_angle_cols, cycle(colors))):
@@ -740,6 +741,7 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
             if include_yaw:
                 ax_idx = 0
                 sns.lineplot(data=seed_df, x="Time", y=yaw_col, color=color, label="T{0:01d} yaw setpoint".format(t), linestyle=":", ax=ax[ax_idx])
+                ax[ax_idx].set(ylabel="")
                 
                 if controller_dt is not None:
                     [ax[ax_idx].axvline(x=_x, linestyle=(0, (1, 10)), linewidth=0.5) for _x in np.arange(0, seed_df["Time"].iloc[-1], controller_dt)]
@@ -757,6 +759,7 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
             next_ax_idx = (1 if include_yaw else 0)
             seed_df["FarmPower"] = seed_df[turbine_power_cols].sum(axis=1) / 1e3
             sns.lineplot(data=seed_df, x="Time", y="FarmPower", color="black", label="Farm power", ax=ax[next_ax_idx])
+            ax[next_ax_idx].set(ylabel="")
     
     if include_yaw:
         ax_idx = 0
@@ -765,7 +768,7 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
         if legend_loc != "outer":
             ax[ax_idx].legend(ncols=2, loc=legend_loc)
         else:
-            sns.move_legend(ax[ax_idx], "upper left", bbox_to_anchor=(1, 1))
+            sns.move_legend(ax[ax_idx], "upper left", bbox_to_anchor=(1, 1), ncols=2)
         # ax[ax_idx].legend([], [], frameon=False)
         if not include_power:
             ax[ax_idx].set(xlabel="Time [s]", title="Turbine Powers [MW]")
@@ -773,20 +776,22 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
     if include_power:
         next_ax_idx = (1 if include_yaw else 0)
         ax[next_ax_idx].set(xlabel="Time [s]", title="Turbine Powers [MW]")
-        ax[next_ax_idx].legend() 
+        ax[next_ax_idx].legend(ncols=2) 
         if legend_loc != "outer":
             ax[next_ax_idx].legend(ncols=2, loc=legend_loc)
         else:
-            sns.move_legend(ax[next_ax_idx], "upper left", bbox_to_anchor=(1, 1))
+            sns.move_legend(ax[next_ax_idx], "upper left", bbox_to_anchor=(1, 1), ncols=2)
         # ax[next_ax_idx].legend([], [], frameon=False)
 
     results_dir = os.path.dirname(save_path)
     # figManager = plt.get_current_fig_manager()
     # figManager.full_screen_toggle()
     fig.suptitle("_".join([os.path.basename(results_dir), data_df["CaseName"].iloc[0].replace('/', '_'), "yaw_power_ts"]))
+    # plt.get_current_fig_manager().full_screen_toggle()
+    plt.tight_layout()
     fig.savefig(save_path)
-    # plt.close(fig)
-    fig.show()
+    # 
+    # fig.show()
     return fig, ax
 
 def barplot_opt_cost(data_summary_df, save_dir, relative=False):
