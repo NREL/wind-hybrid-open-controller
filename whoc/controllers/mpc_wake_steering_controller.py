@@ -488,7 +488,7 @@ class MPC(ControllerBase):
 		self._last_yaw_setpoints = None
 		self._last_measured_time = None
 		self.current_time = 0.0
-		self.run_custom_sens = "custom" in input_dict["controller"]["diff_type"]
+		self.run_custom_sens = "chain" in input_dict["controller"]["diff_type"] or "direct" in input_dict["controller"]["diff_type"]
 		self.run_cd_sens = input_dict["controller"]["diff_type"] == "central_diff"
 		# self.run_cd_sens = True
 		if not isinstance(input_dict["controller"]["clip_value"], (int, float)) or input_dict["controller"]["clip_value"] < np.max(np.abs(self.yaw_limits)):
@@ -496,10 +496,10 @@ class MPC(ControllerBase):
 
 		self.clip_value = input_dict["controller"]["clip_value"]
 
-		if input_dict["controller"]["diff_type"].lower() in ["central_diff", "custom_cd", "custom_fd"]:
+		if input_dict["controller"]["diff_type"].lower() in ["central_diff", "chain_cd", "chain_fd", "direct_cd", "direct_fd", "none"]:
 			self.diff_type = input_dict["controller"]["diff_type"].lower()
 		else:
-			raise TypeError("diff_type must be have value of 'central_diff', 'custom_cd', or 'custom_fd'")
+			raise TypeError("diff_type must be have value of 'central_diff', 'chain_cd', or 'chain_fd', 'direct_cd', 'direct_fd', 'none'")
 
 		if input_dict["controller"]["solver"].lower() in ['slsqp', 'sequential_slsqp', 'serial_refine', 'zsgd']:
 			self.solver = input_dict["controller"]["solver"].lower()
@@ -881,17 +881,17 @@ class MPC(ControllerBase):
 
 		# initialize optimization object
 		n_wind_samples = self.n_wind_preview_samples * self.n_horizon
-		# TODO necessary for factory central_diff?
-		if self.diff_type == "custom_cd":
+		
+		if self.diff_type == "chain_cd" or self.diff_type == "direct_cd":
 			self.plus_slices = [slice((2 * i + 1) * n_wind_samples, ((2 * i) + 2) * n_wind_samples) for i in solve_turbine_ids]
 			self.neg_slices = [slice((2 * i + 2) * n_wind_samples, ((2 * i) + 3) * n_wind_samples) for i in solve_turbine_ids]
-		elif self.diff_type == "custom_fd":
+		elif self.diff_type == "chain_fd" or self.diff_type == "direct_fd":
 			self.plus_slices = [slice((i + 1) * n_wind_samples, (i + 2) * n_wind_samples) for i in solve_turbine_ids]	
 		
-		if "custom" in self.diff_type:
+		if "chain" in self.diff_type or "direct" in self.diff_type:
 			self.plus_indices = np.concatenate([np.arange(s.start, s.stop, s.step) for s in self.plus_slices])
 		
-		if self.diff_type == "custom_cd":
+		if "cd" in self.diff_type:
 			self.neg_indices = np.concatenate([np.arange(s.start, s.stop, s.step) for s in self.neg_slices])
 		
 		
@@ -1043,9 +1043,9 @@ class MPC(ControllerBase):
 				
 			elif "slsqp" in self.solver: # and self.wind_preview_type in ["perfect", "persistent"]:
 				# tile 2 * self.n_solve_turbines: once for current_yaw_offsets, once for plus_yaw_offsets and once for neg_yaw_offsets for each turbine
-				if self.diff_type == "custom_cd":
+				if "cd" in self.diff_type:
 					n_wind_preview_repeats = 1 + 2 * self.n_turbines #self.n_solve_turbines
-				elif self.diff_type == "custom_fd":
+				elif "fd" in self.diff_type:
 					n_wind_preview_repeats = 1 + self.n_turbines
 				else:
 					n_wind_preview_repeats = 1
@@ -1097,7 +1097,7 @@ class MPC(ControllerBase):
 				if self.verbose:
 					print(f"nonzero init_dyn_state_cons = {init_dyn_state_cons}")
 				else:
-					print(f"Warning: nonzero init_dyn_state_cons") # TODO custom_cd or custom_fd, stochastic interval, n_wind_preview_samples>=1
+					print(f"Warning: nonzero init_dyn_state_cons") # TODO chain_cd or chain_fd, stochastic interval, n_wind_preview_samples>=1
 					self.pyopt_sol_obj.optInform	
 			# assert np.isclose(sum(self.opt_sol["states"][self.n_turbines:] - (self.opt_sol["states"][:-self.n_turbines] + self.opt_sol["control_inputs"][self.n_turbines:] * (self.yaw_rate / self.yaw_norm_const) * self.dt)), 0)
 			subsequent_dyn_state_cons = self.opt_sol["states"][self.n_turbines:] - (self.opt_sol["states"][:-self.n_turbines] + self.opt_sol["control_inputs"][self.n_turbines:] * (self.yaw_rate / self.yaw_norm_const) * self.dt)
@@ -1106,7 +1106,7 @@ class MPC(ControllerBase):
 				if self.verbose:
 					print(f"nonzero subsequent_dyn_state_cons = {subsequent_dyn_state_cons}") # self.pyopt_sol_obj
 				else:
-					print(f"Warning: nonzero subsequent_dyn_state_cons") # TODO custom_cd or custom_fd, stochastic interval, n_wind_preview_samples>=1
+					print(f"Warning: nonzero subsequent_dyn_state_cons") # TODO chain_cd or chain_fd, stochastic interval, n_wind_preview_samples>=1
 					self.pyopt_sol_obj.optInform	
 			# assert np.isclose(sum((np.mean(self.wind_preview_samples[f"FreestreamWindDir_{j}"]) / self.yaw_norm_const) - self.opt_sol["states"][(j * self.n_turbines) + i] for j in range(self.n_horizon) for i in range(self.n_turbines)), 0)
 			# x = [(self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][m] / self.yaw_norm_const) for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon) for i in range(self.n_solve_turbines)]
@@ -1121,7 +1121,7 @@ class MPC(ControllerBase):
 				if self.verbose:
 					print(f"nonzero state_con_bools = {state_con_bools}")
 				else:
-					print(f"Warning: nonzero state_con_bools") #TODO custom_fd or custom_cd, stochastic_interval, n_wind_preview_samples>=1
+					print(f"Warning: nonzero state_con_bools") #TODO chain_fd or chain_cd, stochastic_interval, n_wind_preview_samples>=1
 					self.pyopt_sol_obj.optInform	
 			self.target_controls_dict = {"yaw_angles": list(yaw_star)}
 			# self.current_time += self.dt
@@ -1723,12 +1723,12 @@ class MPC(ControllerBase):
 				# we subtract plus change since current_yaw_offsets = wind dir - yaw setpoints
 				# we add negative since current_yaw_offsets = wind dir - yaw setpoints
 				
-				if self.diff_type == "custom_cd":
+				if "cd" in self.diff_type:
 					change_mask = np.array([-1] * n_wind_samples + [1] * n_wind_samples)
 					no_change_mask = np.zeros((2 * n_wind_samples,))
 					mask = np.vstack([np.zeros((n_wind_samples, self.n_turbines))] + [np.vstack([change_mask if (i == ii and ii in solve_turbine_ids) else no_change_mask for ii in range(self.n_turbines)]).T for i in range(self.n_turbines)])
 					all_yaw_offsets = np.tile(current_yaw_offsets, ((2 * self.n_turbines) + 1, 1)) + mask * self.nu * self.yaw_norm_const
-				elif self.diff_type == "custom_fd": # fd
+				elif "fd" in self.diff_type:
 					change_mask = np.array([-1] * n_wind_samples)
 					no_change_mask = np.zeros((n_wind_samples,))
 					mask = np.vstack([np.zeros((n_wind_samples, self.n_turbines))] + [np.vstack([change_mask if (i == ii and ii in solve_turbine_ids) else no_change_mask for ii in range(self.n_turbines)]).T for i in range(self.n_turbines)])
@@ -1744,10 +1744,9 @@ class MPC(ControllerBase):
 			yaw_angles=np.clip(all_yaw_offsets, -self.clip_value, self.clip_value), #, dtype="float16"), # must provide cushion because added_yaw brings in gauss.py it over 90.0
 			disable_turbines=self.offline_status, # TODO this is only needed if comparing central diff to not
 		)
-		# try:
+		
 		self.fi.env.run()
-		# except Exception as e:
-		# 	print(e)
+		
 		all_yawed_turbine_powers = self.fi.env.get_turbine_powers()[:, influenced_turbine_ids]
 		all_yaw_offsets = all_yaw_offsets[:, influenced_turbine_ids]
 
@@ -1766,7 +1765,7 @@ class MPC(ControllerBase):
 			pos_idx[multi_clip_row_idx, :] = False
 			pos_idx[multi_clip_row_idx, np.argmax(all_yaw_offsets[multi_clip_row_idx, :], axis=1)] = True
 			pos_decay_idx = np.broadcast_to(pos_idx.any(1)[:, np.newaxis], pos_idx.shape) if self.decay_all else pos_idx#& decay_mask
-			# TODO [:, influenced_turbine_ids] for pos_idx, neg_idx
+			
 			if self.decay_type == "cosine":
 				pos_decay = np.cos(self.decay_factor * (all_yaw_offsets[pos_idx] - self.yaw_limits[1]))
 			elif self.decay_type == "exp":
@@ -1783,58 +1782,60 @@ class MPC(ControllerBase):
 				all_yawed_turbine_powers[pos_idx.any(1), :] = all_yawed_turbine_powers[pos_idx.any(1), :] * pos_decay[:, np.newaxis]
 			else:
 				all_yawed_turbine_powers[pos_decay_idx] = all_yawed_turbine_powers[pos_decay_idx] * pos_decay
-				
-			if self.diff_type == "custom_cd":
-				neg_idx = (all_yaw_offsets < self.yaw_limits[0]) & perturbed_mask
-				multi_clip_row_idx = neg_idx.sum(axis=1) > 1
-				neg_idx[multi_clip_row_idx, :] = False
-				neg_idx[multi_clip_row_idx, np.argmin(all_yaw_offsets[multi_clip_row_idx, :], axis=1)] = True
-				neg_decay_idx = np.broadcast_to(neg_idx.any(1)[:, np.newaxis], neg_idx.shape) if self.decay_all else neg_idx #& decay_mask
+			
+			neg_idx = (all_yaw_offsets < self.yaw_limits[0]) & perturbed_mask
+			multi_clip_row_idx = neg_idx.sum(axis=1) > 1
+			neg_idx[multi_clip_row_idx, :] = False
+			neg_idx[multi_clip_row_idx, np.argmin(all_yaw_offsets[multi_clip_row_idx, :], axis=1)] = True
+			neg_decay_idx = np.broadcast_to(neg_idx.any(1)[:, np.newaxis], neg_idx.shape) if self.decay_all else neg_idx #& decay_mask
 
-				if self.decay_type == "cosine":
-					neg_decay = np.cos(self.decay_factor * (self.yaw_limits[0] - all_yaw_offsets[neg_idx]))
-				elif self.decay_type == "exp":
-					try:
-						neg_decay = np.exp(-self.decay_factor * (self.yaw_limits[0] - all_yaw_offsets[neg_idx]))
-					except FloatingPointError:
-						neg_decay = np.array([0])
-				elif self.decay_type == "linear":
-					neg_decay = self.decay_factor * (self.yaw_limits[0] - all_yaw_offsets[neg_idx]) + 1.0
-				elif self.decay_type == "zero":
+			if self.decay_type == "cosine":
+				neg_decay = np.cos(self.decay_factor * (self.yaw_limits[0] - all_yaw_offsets[neg_idx]))
+			elif self.decay_type == "exp":
+				try:
+					neg_decay = np.exp(-self.decay_factor * (self.yaw_limits[0] - all_yaw_offsets[neg_idx]))
+				except FloatingPointError:
 					neg_decay = np.array([0])
+			elif self.decay_type == "linear":
+				neg_decay = self.decay_factor * (self.yaw_limits[0] - all_yaw_offsets[neg_idx]) + 1.0
+			elif self.decay_type == "zero":
+				neg_decay = np.array([0])
 
-				if self.decay_all:
-					all_yawed_turbine_powers[neg_idx.any(1), :] = all_yawed_turbine_powers[neg_idx.any(1), :] * neg_decay[:, np.newaxis]
-				else:
-					all_yawed_turbine_powers[neg_decay_idx] = all_yawed_turbine_powers[neg_decay_idx] * neg_decay
-
-			# clipped_yaw_offsets_idx = ((all_yaw_offsets[self.plus_indices, :] < self.yaw_limits[0]) & (all_yaw_offsets[self.neg_indices, :] > self.yaw_limits[1]))
-			# # zero_power_change_idx = (all_yawed_turbine_powers[self.plus_indices, :] == all_yawed_turbine_powers[self.neg_indices, :])
-			# decay_idx = clipped_yaw_offsets_idx # (zero_power_change_idx & clipped_yaw_offsets_idx) & ~(zero_power_change_idx & ~clipped_yaw_offsets_idx)
-			# decay_mask = np.zeros(all_yawed_turbine_powers.shape, dtype=bool)
-			# decay_mask[self.plus_indices[np.where(decay_idx)[0]], np.where(decay_idx)[1]] = True	
-			# decay_mask[self.neg_indices[np.where(decay_idx)[0]], np.where(decay_idx)[1]] = True
+			if self.decay_all:
+				all_yawed_turbine_powers[neg_idx.any(1), :] = all_yawed_turbine_powers[neg_idx.any(1), :] * neg_decay[:, np.newaxis]
+			else:
+				all_yawed_turbine_powers[neg_decay_idx] = all_yawed_turbine_powers[neg_decay_idx] * neg_decay
 
 		self.norm_turbine_powers = all_yawed_turbine_powers[:n_wind_samples, :].copy() / self.rated_turbine_power
 		self.norm_turbine_powers = np.reshape(self.norm_turbine_powers, (self.n_wind_preview_samples, self.n_horizon, n_influenced_turbines))
 
-		if compute_derivatives:# and not (self.diff_type == "central_diff"):
+		if compute_derivatives:
 			if self.wind_preview_type == "stochastic_sample":
 				# should compute derivative of each power of each turbine wrt state (yaw angle) of each turbine
 				norm_turbine_power_diff = (all_yawed_turbine_powers[n_wind_samples:, :] - all_yawed_turbine_powers[:n_wind_samples, :]) / self.rated_turbine_power	
 				self.norm_turbine_powers_states_drvt = np.einsum("ia, ib->iab", norm_turbine_power_diff / self.nu, u)
 			else:
-				if self.diff_type == "custom_cd":
-					self.norm_turbine_powers_states_drvt = (
-						np.dstack([all_yawed_turbine_powers[i, :] for i in self.plus_slices]) 
-							- np.dstack([all_yawed_turbine_powers[i, :] for i in self.neg_slices])) / (self.rated_turbine_power * 2 * self.nu)
-				elif self.diff_type == "custom_fd":
-					self.norm_turbine_powers_states_drvt = (
-						np.dstack([all_yawed_turbine_powers[i, :] for i in self.plus_slices]) 
-							- all_yawed_turbine_powers[:n_wind_samples, :, np.newaxis]) / (self.rated_turbine_power * self.nu)	
+				if "chain" in self.diff_type:
 
-			self.norm_turbine_powers_states_drvt = np.reshape(self.norm_turbine_powers_states_drvt, (self.n_wind_preview_samples, self.n_horizon, n_influenced_turbines, n_solve_turbines))
-				# NOTE for custom_cd diff_type, if positive yaw offsets and negative yaw offsets are out of range for a turbine and a given wind sample row, then both will be decayed, if both are decayed to zero, then the gradient will show that perturbing that turbine's yaw offset result in no power change for that turbine...
+					if self.diff_type == "chain_cd":
+						self.norm_turbine_powers_states_drvt = (
+							np.dstack([all_yawed_turbine_powers[i, :] for i in self.plus_slices]) 
+								- np.dstack([all_yawed_turbine_powers[i, :] for i in self.neg_slices])) / (self.rated_turbine_power * 2 * self.nu)
+					elif self.diff_type == "chain_fd":
+						self.norm_turbine_powers_states_drvt = (
+							np.dstack([all_yawed_turbine_powers[i, :] for i in self.plus_slices]) 
+								- all_yawed_turbine_powers[:n_wind_samples, :, np.newaxis]) / (self.rated_turbine_power * self.nu)
+					self.norm_turbine_powers_states_drvt = np.reshape(self.norm_turbine_powers_states_drvt, (self.n_wind_preview_samples, self.n_horizon, n_influenced_turbines, n_solve_turbines))
+
+				elif "direct" in self.diff_type:
+					if self.diff_type == "direct_cd":
+						self.plus_norm_turbine_powers = np.dstack([all_yawed_turbine_powers[i, :] for i in self.plus_slices])	
+						self.neg_norm_turbine_powers = np.dstack([all_yawed_turbine_powers[i, :] for i in self.neg_slices])	
+					
+					elif self.diff_type == "direct_fd":
+						self.plus_norm_turbine_powers = np.dstack([all_yawed_turbine_powers[i, :] for i in self.plus_slices])	
+
+				# NOTE for chain_cd diff_type, if positive yaw offsets and negative yaw offsets are out of range for a turbine and a given wind sample row, then both will be decayed, if both are decayed to zero, then the gradient will show that perturbing that turbine's yaw offset result in no power change for that turbine...
 
 		
 	def generate_sens_rules(self, solve_turbine_ids, downstream_turbine_ids, dyn_state_jac, state_jac):
@@ -1859,7 +1860,13 @@ class MPC(ControllerBase):
 			if self.wind_preview_type == "stochastic_sample": # np.mean(np.sum(-0.5*self.norm_turbine_powers**2 * self.Q, axis=(1, 2)))
 				sens["cost"]["states"] = np.einsum("sht,shti->hi", self.norm_turbine_powers, self.norm_turbine_powers_states_drvt).flatten() * (-self.Q / self.n_wind_preview_samples)
 			elif self.wind_preview_type == "stochastic_interval": # np.sum(self.norm_turbine_powers**2 * self.wind_preview_interval_probs[:, :, np.newaxis]) * (-0.5 * self.Q)
-				sens["cost"]["states"] = np.einsum("sht,shti,sh->hi", self.norm_turbine_powers, self.norm_turbine_powers_states_drvt, self.wind_preview_interval_probs).flatten() * (-self.Q)
+				if "chain" in self.diff_type:
+					sens["cost"]["states"] = np.einsum("sht,shti,sh->hi", self.norm_turbine_powers, self.norm_turbine_powers_states_drvt, self.wind_preview_interval_probs).flatten() * (-self.Q)
+				elif "direct" in self.diff_type:
+					if self.diff_type == "direct_cd":
+						sens["cost"]["states"] = np.sum((self.plus_norm_turbine_powers**2 - self.neg_norm_turbine_powers**2) * self.wind_preview_interval_probs[:, :, np.newaxis]) * (-0.5 * self.Q) / (2 * self.nu)
+					elif self.diff_type == "direct_fd":
+						sens["cost"]["states"] = np.sum((self.plus_norm_turbine_powers**2 - self.norm_turbine_powers**2) * self.wind_preview_interval_probs[:, :, np.newaxis]) * (-0.5 * self.Q) / (self.nu)
 			else:
 				sens["cost"]["states"] = np.einsum("sht,shti->hi", self.norm_turbine_powers, self.norm_turbine_powers_states_drvt).flatten() * (-self.Q)
 			sens["cost"]["control_inputs"] = opt_var_dict["control_inputs"] * self.R
