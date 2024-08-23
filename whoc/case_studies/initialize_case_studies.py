@@ -167,7 +167,7 @@ case_studies = {
                             #  "wind_preview_type": {"group": 1, "vals": ["perfect", "persistent", "stochastic_interval", "stochastic_interval", "stochastic_sample"]},
                             #  "n_wind_preview_samples": {"group": 1, "vals": [1, 1, 1, 9, 500]},
                             #  "nu": {"group": 2, "vals": [0.001, 0.01]},
-                              "diff_type": {"group": 2, "vals": ["custom_cd", "custom_fd"]},
+                              "diff_type": {"group": 2, "vals": ["chain_cd", "chain_fd", "direct_cd", "direct_fd"]},
                               "dt": {"group": 0, "vals": [30]},
                               "n_horizon": {"group": 0, "vals": [3]},  
                              "alpha": {"group": 0, "vals": [1]},
