@@ -1683,6 +1683,7 @@ class MPC(ControllerBase):
 	#@profile
 	def update_norm_turbine_powers(self, yaw_setpoints, solve_turbine_ids, downstream_turbine_ids, compute_derivatives=True):
 		# no need to update norm_turbine_powers if yaw_setpoints have not changed
+
 		if (self._last_yaw_setpoints is not None) and np.allclose(yaw_setpoints, self._last_yaw_setpoints) and np.all(solve_turbine_ids == self._last_solve_turbine_ids):
 			return None
 		
@@ -1843,13 +1844,13 @@ class MPC(ControllerBase):
 		
 	def generate_sens_rules(self, solve_turbine_ids, downstream_turbine_ids, dyn_state_jac, state_jac):
 		def sens_rules(opt_var_dict, obj_con_dict):
-			# TODO why use last_yaw_setpoints here??
+			# use last_yaw_setpoints here bc need all turbines even if only solving for subset, so can't pull from opt_var_dict
 			n_solve_turbines = len(solve_turbine_ids)
 			influenced_turbine_ids = solve_turbine_ids + downstream_turbine_ids
 			n_influenced_turbines = len(influenced_turbine_ids)
-			yaw_setpoints = opt_var_dict["states"].reshape((self.n_horizon, self.n_turbines)) * self.yaw_norm_const
-			# self.update_norm_turbine_powers(self._last_yaw_setpoints, solve_turbine_ids, downstream_turbine_ids, compute_derivatives=True)
-			self.update_norm_turbine_powers(yaw_setpoints, solve_turbine_ids, downstream_turbine_ids, compute_derivatives=True)
+			# yaw_setpoints = opt_var_dict["states"].reshape((self.n_horizon, )) * self.yaw_norm_const
+			self.update_norm_turbine_powers(self._last_yaw_setpoints, solve_turbine_ids, downstream_turbine_ids, compute_derivatives=True)
+			# self.update_norm_turbine_powers(yaw_setpoints, solve_turbine_ids, downstream_turbine_ids, compute_derivatives=True)
 
 			sens = {"cost": {"states": [], "control_inputs": []}}
 			

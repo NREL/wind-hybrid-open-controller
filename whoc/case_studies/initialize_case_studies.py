@@ -47,9 +47,8 @@ case_studies = {
                           },
     "solver_type": {"seed": {"group": 0, "vals": [0]},  # case_families[1]
                              "controller_class": {"group": 0, "vals": ["MPC"]},
-                             "wind_preview_type": {"group": 0, "vals": ["stochastic_interval"]}, 
-                         "case_names": {"group": 1, "vals": ["SLSQP", "Sequential SLSQP", "Sequential Refine"]},
-                              "solver": {"group": 1, "vals": ["slsqp", "sequential_slsqp", "serial_refine"]}
+                         "case_names": {"group": 1, "vals": ["Sequential SLSQP", "SLSQP", "Sequential Refine"]},
+                              "solver": {"group": 1, "vals": ["sequential_slsqp", "slsqp", "serial_refine"]}
     },
     "wind_preview_type": {"seed": {"group": 0, "vals": [0]}, # case_families[2]
                           "controller_class": {"group": 0, "vals": ["MPC"]},
