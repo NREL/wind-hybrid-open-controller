@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     # os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "false"
     RUN_ONCE = (args.multiprocessor == "mpi" and (comm_rank := MPI.COMM_WORLD.Get_rank()) == 0) or (args.multiprocessor != "mpi") or (args.multiprocessor is None)
-    PLOT = sys.platform != "linux"
+    PLOT = True #sys.platform != "linux"
     if args.run_simulations:
         # run simulations
         
