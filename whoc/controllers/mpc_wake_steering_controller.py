@@ -501,7 +501,7 @@ class MPC(ControllerBase):
 		if input_dict["controller"]["diff_type"].lower() in ["central_diff", "chain_cd", "chain_fd", "direct_cd", "direct_fd", "none"]:
 			self.diff_type = input_dict["controller"]["diff_type"].lower()
 		else:
-			raise TypeError("diff_type must be have value of 'central_diff', 'chain_cd', or 'chain_fd', 'direct_cd', 'direct_fd', 'none'")
+			raise TypeError("diff_type must be have value of 'central_diff', 'chain_cd', or 'chain_fd', 'direct_cd', 'direct_fd', 'none', instead it has value {input_dict['controller'']['diff_type'].lower()}")
 
 		if input_dict["controller"]["solver"].lower() in ['slsqp', 'sequential_slsqp', 'serial_refine', 'zsgd']:
 			self.solver = input_dict["controller"]["solver"].lower()
