@@ -71,7 +71,7 @@ case_studies = {
     "breakdown_robustness":  # case_families[5]
         {"seed": {"group": 0, "vals": [0]},
          "controller_class": {"group": 1, "vals": ["MPC", "LookupBasedWakeSteeringController", "GreedyController"]},
-         "dt": {"group": 1, "vals": [30, 5, 5]},
+         "dt": {"group": 1, "vals": [15, 5, 5]},
          "use_filtered_wind_dir": {"group": 1, "vals": [False, True, True]},
          "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{25}.csv")]},
@@ -82,7 +82,7 @@ case_studies = {
         },
     "scalability": {"seed": {"group": 0, "vals": [0]},  # case_families[6]
                     "controller_class": {"group": 1, "vals": ["MPC", "LookupBasedWakeSteeringController", "GreedyController"]},
-                    "dt": {"group": 1, "vals": [30, 5, 5]},
+                    "dt": {"group": 1, "vals": [15, 5, 5]},
                     "use_filtered_wind_dir": {"group": 1, "vals": [False, True, True]},
                     # "case_names": {"group": 2, "vals": ["3 Turbines", "9 Turbines", "25 Turbines"]},
                     "num_turbines": {"group": 2, "vals": [3, 9, 25]},
