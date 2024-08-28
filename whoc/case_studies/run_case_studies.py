@@ -10,7 +10,7 @@ from whoc.controllers.greedy_wake_steering_controller import GreedyController
 from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
 from whoc.case_studies.initialize_case_studies import initialize_simulations, case_families, case_studies
 from whoc.case_studies.simulate_case_studies import simulate_controller
-from whoc.case_studies.process_case_studies import read_time_series_data, aggregate_time_series_data, generate_outputs, plot_simulations, plot_wind_farm, plot_breakdown_robustness, plot_cost_function_pareto_curve, plot_yaw_offset_wind_direction
+from whoc.case_studies.process_case_studies import read_time_series_data, aggregate_time_series_data, generate_outputs, plot_simulations, plot_wind_farm, plot_breakdown_robustness, plot_cost_function_pareto_curve, plot_yaw_offset_wind_direction, plot_parameter_sweep
 
 from mpi4py import MPI
 from mpi4py.futures import MPICommExecutor
@@ -185,12 +185,20 @@ if __name__ == "__main__":
 
             if case_families.index("yaw_offset_study") in args.case_ids:
                 # plot yaw vs wind dir
-                case_names = ["LUT_3turb", "StochasticInterval_1_3turb", "StochasticInterval_5_3turb", "StochasticSample_25_3turb"]
-                case_labels = ["LUT", "MPC, mean wind preview", "Stochastic, 5 interval wind preview", "Stochastic, 25 sample wind preview"]
+                case_names = ["LUT_3turb", "StochasticInterval_1_3turb", "StochasticInterval_5_3turb", "StochasticSample_25_3turb", "StochasticSample_100_3turb"]
+                case_labels = ["LUT", "MPC\n1 * Interval Samples", "MPC\n1 * Interval Samples", "MPC\n25 * Stochastic Samples", "MPC\n100 * Stochastic Samples"]
                 plot_yaw_offset_wind_direction(time_series_df, case_names, case_labels,
                                             os.path.join(os.path.dirname(whoc.__file__), f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv"), 
                                             os.path.join(args.save_dir, "yaw_offset_study", f"yawoffset_winddir_ts.png"), plot_turbine_ids=[0, 1, 2], include_yaw=True, include_power=True)
-            
+                
+                for sub_case_names, sub_case_labels, filename in zip([["LUT_3turb"], ["StochasticInterval_1_3turb", "StochasticInterval_5_3turb"], ["StochasticSample_25_3turb", "StochasticSample_100_3turb"]], 
+                                                           [["LUT"], ["MPC\n1 * Interval Samples", "MPC\n1 * Interval Samples"], ["MPC\n25 * Stochastic Samples", "MPC\n100 * Stochastic Samples"]],
+                                                           ["lut", "stochastic_interval", "stochastic_sample"]):
+                    plot_yaw_offset_wind_direction(time_series_df, sub_case_names, sub_case_labels,
+                                                os.path.join(os.path.dirname(whoc.__file__), f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv"), 
+                                                os.path.join(args.save_dir, "yaw_offset_study", f"yawoffset_winddir_{filename}_ts.png"), plot_turbine_ids=[0, 1, 2], include_yaw=True, include_power=True)
+
+
             if (case_families.index("baseline_controllers") in args.case_ids) and ((case_families.index("slsqp_solver_sweep") in args.case_ids) or (case_families.index("slsqp_solver_sweep_small") in args.case_ids)):
                 
                 mpc_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "slsqp_solver_sweep", :]
@@ -222,6 +230,9 @@ if __name__ == "__main__":
                 100 * (better_than_lut_df.iloc[0][("FarmPowerMean", "mean")] - lut_df.iloc[0][("FarmPowerMean", "mean")]) / lut_df.iloc[0][("FarmPowerMean", "mean")]
                 100 * (better_than_lut_df.iloc[0][("FarmPowerMean", "mean")] - greedy_df.iloc[0][("FarmPowerMean", "mean")]) / greedy_df.iloc[0][("FarmPowerMean", "mean")]
                 
+                # plot multibar of farm power vs. stochastic interval n_wind_preview_samples, stochastic sample n_wind_preview_samples
+                plot_parameter_sweep(agg_dfs, args.save_dir)
+
                 # alpha_1.0_controller_class_MPC_diff_type_chain_cd_dt_15_n_horizon_24_n_wind_preview_samples_7_nu_0.001_
                 plot_simulations(time_series_df, [
                     # ("slsqp_solver_sweep_small", "PerfectCDSimpleCost"),

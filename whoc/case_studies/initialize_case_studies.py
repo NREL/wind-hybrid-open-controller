@@ -98,10 +98,10 @@ case_studies = {
                          "alpha": {"group": 1, "vals": list(np.logspace(0.001, 0.999, N_COST_FUNC_TUNINGS))}
                           },
     "yaw_offset_study": {"seed": {"group": 0, "vals": [0]},  # case_families[8]
-                          "controller_class": {"group": 1, "vals": ["MPC", "MPC", "LookupBasedWakeSteeringController", "MPC"]},
-                          "case_names": {"group": 1, "vals":[f"StochasticInterval_1_3turb", f"StochasticInterval_5_3turb", f"LUT_3turb", f"StochasticSample_25_3turb"]},
-                          "wind_preview_type": {"group": 1, "vals": ["stochastic_interval"] * 3 + ["stochastic_sample"]},
-                           "n_wind_preview_samples": {"group": 1, "vals": [1, 5, 1, 25]},
+                          "controller_class": {"group": 1, "vals": ["MPC", "MPC", "LookupBasedWakeSteeringController", "MPC", "MPC"]},
+                          "case_names": {"group": 1, "vals":[f"StochasticInterval_1_3turb", f"StochasticInterval_5_3turb", f"LUT_3turb", f"StochasticSample_25_3turb", f"StochasticSample_100_3turb"]},
+                          "wind_preview_type": {"group": 1, "vals": ["stochastic_interval"] * 3 + ["stochastic_sample"] * 2},
+                           "n_wind_preview_samples": {"group": 1, "vals": [1, 5, 1, 25, 100]},
                            "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_{3}.yaml")]},
                             "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 

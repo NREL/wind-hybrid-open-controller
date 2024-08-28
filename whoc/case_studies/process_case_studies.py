@@ -247,6 +247,7 @@ def plot_simulations(time_series_df, plotting_cases, save_dir, include_power=Tru
             fig, _ = plot_yaw_power_ts(case_name_df, os.path.join(save_dir, case_family, f"yaw_power_ts_{case_name}.png"), include_power=include_power, legend_loc=legend_loc,
                                        controller_dt=None, include_filtered_wind_dir=(case_family=="baseline_controllers"))
                                     #    controller_dt=input_config["controller"]["dt"])
+
     
     
     # lut_df = results_dfs[f"{'baseline_controllers'}_{'LUT'}"]
@@ -285,7 +286,7 @@ def plot_simulations(time_series_df, plotting_cases, save_dir, include_power=Tru
         (a == b).all()
 
     summary_df = pd.read_csv(os.path.join(save_dir, f"comparison_time_series_results.csv"), index_col=0)
-    barplot_opt_cost(summary_df, save_dir, relative=True)
+    # barplot_opt_cost(summary_df, save_dir, relative=True)
 
 # TODO this should be in another file
 def read_amr_outputs(results_paths, hercules_dict):
@@ -595,7 +596,7 @@ def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, 
             for case_name, case_label, color in zip(case_names, case_labels, cycle(colors)):
                 case_df = data_dfs.loc[(data_dfs["CaseFamily"] == "yaw_offset_study") & (data_dfs["CaseName"] == case_name), :]
                 # turbine_wind_direction_cols = sorted([col for col in case_df.columns if "TurbineWindDir_" in col])
-                yaw_angle_cols = sorted([col for col in case_df.columns if "TurbineYawAngle_" == col[:len("TurbineYawAngle_") and not pd.isna(case_df[col]).any()]])
+                yaw_angle_cols = sorted([col for col in case_df.columns if "TurbineYawAngle_" == col[:len("TurbineYawAngle_")] and not pd.isna(case_df[col]).any()]) 
 
                 # turbine_wind_dirs = case_df[turbine_wind_direction_cols[turbine_idx]].sort_values(by="Time")
                 freestream_wind_dirs = case_df["FreestreamWindDir"]
@@ -617,24 +618,26 @@ def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, 
 
                 if "LUT" in case_name:
                     # ax[subplot_idx].scatter(freestream_wind_dirs, yaw_offsets, label=f"{case_name} Simulation", color=colors[len(case_names)], marker=".")
-                    sns.scatterplot(data=df, ax=ax[subplot_idx], x="FreestreamWindDir", y="YawOffset", label=f"{case_label} Simulation", color=colors[len(case_names)], marker=".")
+                    sns.scatterplot(data=df, ax=ax[subplot_idx], x="FreestreamWindDir", y="YawOffset", label=f"Simulated {case_label}", color=colors[len(case_names)], marker=".")
                 else:
                     # ax[subplot_idx].scatter(freestream_wind_dirs, yaw_offsets, label=f"{case_name} Simulation", color=color, marker=".")
-                    sns.scatterplot(data=df, ax=ax[subplot_idx], x="FreestreamWindDir", y="YawOffset", label=f"{case_label} Simulation", color=color, marker=".")
+                    sns.scatterplot(data=df, ax=ax[subplot_idx], x="FreestreamWindDir", y="YawOffset", label=f"Simulated {case_label}", color=color, marker=".")
                 
                 # ax[subplot_idx].legend([], [], frameon=False)
-        
-        df_lut = pd.read_csv(lut_path, index_col=0)
-        df_lut["yaw_angles_opt"] = df_lut["yaw_angles_opt"].apply(lambda s: np.array(re.findall(r"-*\d+\.\d*", s), dtype=float))
-        lut_yawoffsets = np.vstack(df_lut["yaw_angles_opt"].values)
-        lut_winddirs = df_lut["wind_direction"].values
-        df = pd.DataFrame(data={"FreestreamWindDir": lut_winddirs, 
-                                **{f"YawOffset_{i}": lut_yawoffsets[:, i] for i in plot_turbine_ids}})
+
+        if "LUT" in case_labels: 
+            df_lut = pd.read_csv(lut_path, index_col=0)
+            df_lut["yaw_angles_opt"] = df_lut["yaw_angles_opt"].apply(lambda s: np.array(re.findall(r"-*\d+\.\d*", s), dtype=float))
+            lut_yawoffsets = np.vstack(df_lut["yaw_angles_opt"].values)
+            lut_winddirs = df_lut["wind_direction"].values
+            df = pd.DataFrame(data={"FreestreamWindDir": lut_winddirs, 
+                                    **{f"YawOffset_{i}": lut_yawoffsets[:, i] for i in plot_turbine_ids}})
 
         for col_idx, turbine_idx in enumerate(plot_turbine_ids):
             # ax[col_idx].scatter(lut_winddirs, lut_yawoffsets[:, turbine_idx], label="LUT", color=colors[len(case_names)], marker=">")
-            sns.scatterplot(data=df, ax=ax[col_idx], x="FreestreamWindDir", y=f"YawOffset_{turbine_idx}", label=f"LUT", color=colors[len(case_names)], marker="^")
-            ax[col_idx].set(xlim=(250., 290.))
+            if "LUT" in case_labels:
+                sns.scatterplot(data=df, ax=ax[col_idx], x="FreestreamWindDir", y=f"YawOffset_{turbine_idx}", label=f"LUT", color=colors[len(case_names)], marker="^")
+            ax[col_idx].set(xlim=(245., 295.))
             if not include_power:
                 ax[col_idx].set(xlabel="Freestream Wind Direction [$^\\circ$]")
             else:
@@ -642,6 +645,8 @@ def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, 
             
             if col_idx != len(plot_turbine_ids) - 1:
                 ax[col_idx].legend([], [], frameon=False)
+            else:
+                sns.move_legend(ax[col_idx], "upper left", bbox_to_anchor=(1, 1), ncols=1)
             
             if col_idx != 0:
                 ax[col_idx].set(ylabel="")
@@ -698,15 +703,21 @@ def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, 
                     ax[subplot_idx].legend([], [], frameon=False)
                 elif include_yaw:
                     ax[subplot_idx].legend([], [], frameon=False) 
-
+                else:
+                    sns.move_legend(ax[subplot_idx], "upper left", bbox_to_anchor=(1, 1), ncols=1)
+                
+                if subplot_idx != 0:
+                    ax[subplot_idx].set(ylabel="")
+        
         ax[-len(plot_turbine_ids)].set(ylabel="Turbine Power [MW]")
 
     results_dir = os.path.dirname(save_path)
-    figManager = plt.get_current_fig_manager()
-    figManager.full_screen_toggle()
+    # figManager = plt.get_current_fig_manager()
+    # figManager.full_screen_toggle()
     fig.suptitle("_".join([os.path.basename(results_dir), "yawoffset_winddir_ts"]))
+    plt.tight_layout()
     fig.savefig(save_path)
-    plt.close(fig)
+    # plt.close(fig)
     # fig.show()
     return fig, ax
 
@@ -749,15 +760,15 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
             if include_power:
                 next_ax_idx = (1 if include_yaw else 0)
                 if t == 0:
-                    ax[next_ax_idx].fill_between(seed_df["Time"], seed_df[power_col] / 1e3, color=color, label="T{0:01d} power".format(t))
+                    ax[next_ax_idx].fill_between(seed_df["Time"], seed_df[power_col] / 1e6, color=color, label="T{0:01d} power".format(t))
                 else:
-                    ax[next_ax_idx].fill_between(seed_df["Time"], seed_df[turbine_power_cols[:t+1]].sum(axis=1) / 1e3, 
-                                    seed_df[turbine_power_cols[:t]].sum(axis=1)  / 1e3,
+                    ax[next_ax_idx].fill_between(seed_df["Time"], seed_df[turbine_power_cols[:t+1]].sum(axis=1) / 1e6, 
+                                    seed_df[turbine_power_cols[:t]].sum(axis=1)  / 1e6,
                         color=color, label="T{0:01d} power".format(t))
         
         if include_power:
             next_ax_idx = (1 if include_yaw else 0)
-            seed_df["FarmPower"] = seed_df[turbine_power_cols].sum(axis=1) / 1e3
+            seed_df["FarmPower"] = seed_df[turbine_power_cols].sum(axis=1) / 1e6
             sns.lineplot(data=seed_df, x="Time", y="FarmPower", color="black", label="Farm power", ax=ax[next_ax_idx])
             ax[next_ax_idx].set(ylabel="")
     
@@ -793,6 +804,54 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
     # 
     # fig.show()
     return fig, ax
+
+def plot_parameter_sweep(agg_dfs, save_dir):
+    mpc_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "slsqp_solver_sweep", :]
+    lut_df = agg_dfs.iloc[(agg_dfs.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_dfs.index.get_level_values("CaseName") == "LUT")] 
+    greedy_df = agg_dfs.iloc[(agg_dfs.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_dfs.index.get_level_values("CaseName") == "Greedy")]
+                
+    param_df = mpc_df[[("YawAngleChangeAbsMean", "mean"), ("OptimizationConvergenceTime", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False).reset_index(level="CaseFamily", drop=True).reset_index(level="CaseName", drop=False)
+    param_df["nu"] = param_df["CaseName"].apply(lambda s: re.findall(r"(?<=nu_)(.*?)(?=_solver)", s)[0]).astype("float")
+    param_df["n_wind_preview_samples"] = param_df["CaseName"].apply(lambda s: re.findall(r"(?<=n_wind_preview_samples_)(.*?)(?=_nu)", s)[0]).astype("int")
+    param_df["preview_type"] = param_df["CaseName"].apply(lambda s: re.findall(r"(?<=wind_preview_type_)(.*?)(?=$)", s)[0])
+    param_df["diff_type"] = param_df["CaseName"].apply(lambda s: re.findall(r"(?<=diff_type_)(.*?)(?=_dt)", s)[0])
+    param_df["diff_direction"] = param_df["diff_type"].apply(lambda s: s[-2:] if s != "none" else None)
+    #("fd" if param_df["diff_type"].str.contains("fd") else "cd") if ~param_df["diff_type"].str.contains("none") else None
+    param_df["diff_steps"] = param_df["diff_type"].apply(lambda s: s[:-3] if s != "none" else None)
+    # param_df = param_df.drop(columns="diff_type")
+    param_df.columns = param_df.columns.droplevel(1)
+    param_df["n_wind_preview_samples_index"] = None
+    param_df["FarmPowerMean"] = param_df["FarmPowerMean"] / 1e6
+    unique_si_vals = np.sort(pd.unique(param_df.loc[param_df["preview_type"] == "stochastic_interval", "n_wind_preview_samples"]))
+    unique_ss_vals = np.sort(pd.unique(param_df.loc[param_df["preview_type"] == "stochastic_sample", "n_wind_preview_samples"]))
+    param_df.loc[param_df["preview_type"] == "stochastic_interval", "n_wind_preview_samples_index"] = param_df.loc[param_df["preview_type"] == "stochastic_interval", "n_wind_preview_samples"].apply(lambda n: np.where(unique_si_vals == n)[0][0]).astype("int")
+    param_df.loc[param_df["preview_type"] == "stochastic_sample", "n_wind_preview_samples_index"] = param_df.loc[param_df["preview_type"] == "stochastic_sample", "n_wind_preview_samples"].apply(lambda n: np.where(unique_ss_vals == n)[0][0]).astype("int")
+
+    ax = sns.catplot(data=param_df, kind="bar", x="n_wind_preview_samples_index", y="FarmPowerMean", estimator="max", hue="preview_type", errorbar=None, legend_out=False)
+    ax.ax.set(ylabel="", xlabel="# Wind Preview Samples", title="Farm Power [MW]")
+    ax.ax.set_ylim((8., 9.1))
+    ax.ax.set_xticklabels([f"{si_val}    {ss_val}" for si_val, ss_val in zip(unique_si_vals, unique_ss_vals)]) 
+    ax.ax.scatter(x=np.arange(5), y=[(greedy_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]]*5, marker="^", s=250, color="green", label="Greedy")
+    ax.ax.scatter(x=np.arange(5), y=[(lut_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * 5, marker="s", s=250, color="red", label="LUT")
+    plt.legend(loc="lower right")
+    ax.ax.get_legend().get_texts()[0].set_text("Stochastic Interval")
+    ax.ax.get_legend().get_texts()[1].set_text("Stochastic Sample") 
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, "slsqp_solver_sweep", "sampling_fig.png"))
+    # plot of direct vs. chain fd/cd, with size of scatter = farm power, hue = nu
+    ax = sns.catplot(data=param_df.loc[param_df["preview_type"] != "stochastic_sample"].sort_values(by=["diff_steps", "diff_direction"]), 
+                     kind="bar", x="diff_type", y="FarmPowerMean", hue="nu", estimator="max", legend_out=False, errorbar=None)
+    ax.ax.set(ylabel="", xlabel="Derivative Type", title="Farm Power [MW]")
+    ax.ax.set_ylim((8., 9.1))
+    ax.ax.set_xticklabels(["Chain \nCentral Diff.", "Chain \nForward Diff.", "Direct \nCentral Diff.", "Direct \nForward Diff."])
+    ax.ax.scatter(x=np.arange(4), y=[(greedy_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * 4, marker="^", s=250, color="green", label="Greedy")
+    ax.ax.scatter(x=np.arange(4), y=[(lut_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * 4, marker="s", s=250, color="red", label="LUT")
+    plt.legend(loc="lower right")
+    ax.ax.get_legend().get_texts()[0].set_text("0.001 step size")
+    ax.ax.get_legend().get_texts()[1].set_text("0.01 step size") 
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, "slsqp_solver_sweep", "drvt_fig.png"))
+
 
 def barplot_opt_cost(data_summary_df, save_dir, relative=False):
     width = 0.25
