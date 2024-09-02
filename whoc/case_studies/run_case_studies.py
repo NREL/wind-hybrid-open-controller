@@ -186,22 +186,25 @@ if __name__ == "__main__":
             if case_families.index("yaw_offset_study") in args.case_ids:
                 # plot yaw vs wind dir
                 case_names = ["LUT_3turb", "StochasticInterval_1_3turb", "StochasticInterval_5_3turb", "StochasticSample_25_3turb", "StochasticSample_100_3turb"]
-                case_labels = ["LUT", "MPC\n1 * Interval Samples", "MPC\n1 * Interval Samples", "MPC\n25 * Stochastic Samples", "MPC\n100 * Stochastic Samples"]
+                case_labels = ["LUT", "MPC\n1 * Interval Samples", "MPC\n5 * Interval Samples", "MPC\n25 * Stochastic Samples", "MPC\n100 * Stochastic Samples"]
                 plot_yaw_offset_wind_direction(time_series_df, case_names, case_labels,
                                             os.path.join(os.path.dirname(whoc.__file__), f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv"), 
                                             os.path.join(args.save_dir, "yaw_offset_study", f"yawoffset_winddir_ts.png"), plot_turbine_ids=[0, 1, 2], include_yaw=True, include_power=True)
                 
                 for sub_case_names, sub_case_labels, filename in zip([["LUT_3turb"], ["StochasticInterval_1_3turb", "StochasticInterval_5_3turb"], ["StochasticSample_25_3turb", "StochasticSample_100_3turb"]], 
-                                                           [["LUT"], ["MPC\n1 * Interval Samples", "MPC\n1 * Interval Samples"], ["MPC\n25 * Stochastic Samples", "MPC\n100 * Stochastic Samples"]],
+                                                           [["LUT"], ["MPC\n1 * Interval Samples", "MPC\n5 * Interval Samples"], ["MPC\n25 * Stochastic Samples", "MPC\n100 * Stochastic Samples"]],
                                                            ["lut", "stochastic_interval", "stochastic_sample"]):
                     plot_yaw_offset_wind_direction(time_series_df, sub_case_names, sub_case_labels,
                                                 os.path.join(os.path.dirname(whoc.__file__), f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv"), 
                                                 os.path.join(args.save_dir, "yaw_offset_study", f"yawoffset_winddir_{filename}_ts.png"), plot_turbine_ids=[0, 1, 2], include_yaw=True, include_power=True)
 
 
-            if (case_families.index("baseline_controllers") in args.case_ids) and ((case_families.index("slsqp_solver_sweep") in args.case_ids) or (case_families.index("slsqp_solver_sweep_small") in args.case_ids)):
+            if (case_families.index("baseline_controllers") in args.case_ids) and ((case_families.index("slsqp_solver_sweep") in args.case_ids) or (case_families.index("stochastic_sample_sweep") in args.case_ids)):
+               
+                mpc_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "test_gradient", :]
+                # mpc_df = mpc_df[[("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False).reset_index(level="CaseFamily", drop=True) 
                 
-                mpc_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "slsqp_solver_sweep", :]
+                # mpc_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "slsqp_solver_sweep", :]
                 lut_df = agg_dfs.iloc[(agg_dfs.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_dfs.index.get_level_values("CaseName") == "LUT")] 
                 greedy_df = agg_dfs.iloc[(agg_dfs.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_dfs.index.get_level_values("CaseName") == "Greedy")]
                 # get mpc configurations for which the generated farm power is greater than lut, and the resulting yaw actuation lesser than lut
@@ -231,17 +234,18 @@ if __name__ == "__main__":
                 100 * (better_than_lut_df.iloc[0][("FarmPowerMean", "mean")] - greedy_df.iloc[0][("FarmPowerMean", "mean")]) / greedy_df.iloc[0][("FarmPowerMean", "mean")]
                 
                 # plot multibar of farm power vs. stochastic interval n_wind_preview_samples, stochastic sample n_wind_preview_samples
-                plot_parameter_sweep(agg_dfs, args.save_dir)
+                # plot_parameter_sweep(agg_dfs, args.save_dir)
 
                 # alpha_1.0_controller_class_MPC_diff_type_chain_cd_dt_15_n_horizon_24_n_wind_preview_samples_7_nu_0.001_
                 plot_simulations(time_series_df, [
                     # ("slsqp_solver_sweep_small", "PerfectCDSimpleCost"),
 
                                                 #  ("slsqp_solver_sweep_small", "PerfectCDNormCost"),
-                    ("slsqp_solver_sweep", better_than_lut_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False).iloc[0]._name),
-                    # ("slsqp_solver_sweep", "alpha_1.0_controller_class_MPC_diff_type_custom_cd_dt_30_n_horizon_24_n_wind_preview_samples_5_nu_0.01_solver_slsqp_use_filtered_wind_dir_False_wind_preview_type_stochastic_interval"),
-                                                  ("baseline_controllers", "LUT"),
-                                                  ("baseline_controllers", "Greedy")], args.save_dir, include_power=True, legend_loc="outer")
+                    # ("slsqp_solver_sweep", better_than_lut_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False).iloc[0]._name),
+                    ("test_gradient", better_than_lut_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False).iloc[0]._name),   
+                                                # ("baseline_controllers", "LUT"),
+                                                #   ("baseline_controllers", "Greedy")
+                                                  ], args.save_dir, include_power=False, legend_loc="outer", single_plot=False) 
 
             if all(case_families.index(cf) in args.case_ids for cf in ["baseline_controllers", "solver_type",
              "wind_preview_type", "warm_start", 
