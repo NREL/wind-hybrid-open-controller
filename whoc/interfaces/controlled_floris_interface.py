@@ -82,12 +82,11 @@ class ControlledFlorisModel(InterfaceBase):
             "yaw_angles": self.current_yaw_setpoints[-1, :]
         }
         
-        
         return measurements
     
     def check_controls(self, ctrl_dict):
         """ abstract method from Interface class """
-        ctrl_dict["yaw_angles"] = np.float64(ctrl_dict["yaw_angles"])
+        ctrl_dict["yaw_angles"] = np.array(ctrl_dict["yaw_angles"], dtype="float64")
         return ctrl_dict
     
     def step(self, disturbances, ctrl_dict=None, seed=None):

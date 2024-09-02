@@ -513,17 +513,17 @@ def generate_wind_ts(wf, from_gaussian, case_idx, save_dir, save_name="", init_s
     wf.df = wind_field_df
     return wf
 
-def generate_wind_preview(wf, current_freestream_measurements, simulation_time_step, *, wind_preview_generator, return_params=False, include_uv=False):
+def generate_wind_preview(wf, current_freestream_measurements, simulation_time_step, *, wind_preview_generator, return_params=False, include_uv=False, seed=0):
     
     # define noise preview
     # noise_func = wf._sample_wind_preview(noise_func=np.random.multivariate_normal, noise_args=None)
 
     # wind_preview_data = defaultdict(list)
-
+    np.random.seed(seed)
     if return_params:
             cond_mean_u, cond_mean_v, cond_cov_u, cond_cov_v = wind_preview_generator(current_measurements=current_freestream_measurements, return_params=return_params)
             return (cond_mean_u, 
-                       cond_mean_v,
+                    cond_mean_v,
                     cond_cov_u, 
                     cond_cov_v)
             # return cond_mean_u, cond_mean_v, cond_cov_u, cond_cov_v
