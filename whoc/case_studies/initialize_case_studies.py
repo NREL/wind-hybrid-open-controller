@@ -98,7 +98,7 @@ case_studies = {
     #                         "decay_type": {"group": 1, "vals": ["none", "exp", "cosine", "linear", "zero"]},
     #                         "case_names": {"group": 1, "vals": ["No Decay", "Exponential Decay", "Cosine Decay", "Linear Decay", "Zero Decay"]}
     # },
-    "derivative_type": {"controller_class": {"group": 0, "vals": ["MPC"]},
+    "gradient_type": {"controller_class": {"group": 0, "vals": ["MPC"]},
                     "alpha": {"group": 0, "vals": [1.0]},
                     "solver": {"group": 0, "vals": ["slsqp"]},
                      "warm_start": {"group": 0, "vals": ["lut"]},
@@ -569,7 +569,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
 
 # 0, 1, 2, 3, 6
 case_families = ["baseline_controllers", "solver_type", # 0, 1
-                    "wind_preview_type", "derivative_type", # 2, 3
+                    "wind_preview_type", "gradient_type", # 2, 3
                     "warm_start", "horizon_length", # 4, 5
                     "breakdown_robustness", # 6
                     "scalability", "cost_func_tuning", # 7, 8
