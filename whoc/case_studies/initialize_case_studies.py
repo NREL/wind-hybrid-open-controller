@@ -109,7 +109,7 @@ case_studies = {
                     "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                 f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv")]},
                     "wind_preview_type": {"group": 1, "vals": ["stochastic_interval_rectangular"] * 4 + ["stochastic_interval_elliptical"] * 4 + ["stochastic_sample"] * 6},
-                    "n_wind_preview_samples": {"group": 1, "vals": [9] * 4 + [9] * 4 + [300] * 6},
+                    "n_wind_preview_samples": {"group": 1, "vals": [9] * 4 + [9] * 4 + [500] * 6},
                     "diff_type": {"group": 1, "vals": ["direct_cd", "direct_fd", "chain_cd", "chain_fd"] * 2 + ["direct_cd", "direct_fd", "direct_zscg", "chain_cd", "chain_fd", "chain_zscg"]},
                     "nu": {"group": 2, "vals": [0.0001, 0.001, 0.01]},
                     "decay_type": {"group": 3, "vals": ["none", "exp", "cosine", "linear", "zero"]},
