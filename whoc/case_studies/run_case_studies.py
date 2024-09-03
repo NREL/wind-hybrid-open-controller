@@ -198,6 +198,18 @@ if __name__ == "__main__":
                                                 os.path.join(os.path.dirname(whoc.__file__), f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv"), 
                                                 os.path.join(args.save_dir, "yaw_offset_study", f"yawoffset_winddir_{filename}_ts.png"), plot_turbine_ids=[0, 1, 2], include_yaw=True, include_power=True)
 
+            if case_families.index("wind_preview_type") in args.case_ids and case_families.index("derivative_type") in args.case_ids:
+                # TODO get best parameters from each sweep and add to other sweeps, then rerun to compare with LUT
+                # find best wind_preview_type and number of samples, if best is on the upper end, increase n_wind_preview_samples in wind_preview_type sweep
+                wind_preview_type_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "wind_preview_type"][[("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False).reset_index(level="CaseFamily", drop=True)
+
+                # find best diff_type, nu, and decay for each sampling type
+                derivative_type_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "derivative_type"][[("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False).reset_index(level="CaseFamily", drop=True)
+                derivative_type_df["WindPreviewType"] = [re.findall(r"(?<=wind_preview_type_)(.*?)(?=$), s")[0] for s in derivative_type_df.index]
+                derivative_type_df.groupby("WindPreviewType").head(10)
+
+                # find best power decay type
+                # power_decay_type_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "power_decay_type"][[("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False).reset_index(level="CaseFamily", drop=True)
 
             if (case_families.index("baseline_controllers") in args.case_ids) and ((case_families.index("slsqp_solver_sweep") in args.case_ids) or (case_families.index("stochastic_sample_sweep") in args.case_ids)):
                

@@ -829,7 +829,7 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
     # 
     # fig.show()
     return fig, ax
-
+    
 def plot_parameter_sweep(agg_dfs, save_dir):
     mpc_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "slsqp_solver_sweep", :]
     lut_df = agg_dfs.iloc[(agg_dfs.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_dfs.index.get_level_values("CaseName") == "LUT")] 
