@@ -220,7 +220,7 @@ class WindField:
 
         return short_wind_preview_distribution_params
     
-    def _sample_wind_preview(self, current_measurements, noise_func=np.random.multivariate_normal, noise_args=None, return_params=True):
+    def _sample_wind_preview(self, current_measurements, noise_func=np.random.multivariate_normal, noise_args=None, return_params=True, seed=None):
         """
         corr(X) = (diag(Kxx))^(-0.5)Kxx(diag(Kxx))^(-0.5)
         low variance and high covariance => high correlation
@@ -250,6 +250,7 @@ class WindField:
         noise_args["cov"] = scipy.linalg.block_diag(cond_cov_u, cond_cov_v)
         noise_args["size"] = self.n_samples_per_init_seed
         
+        np.random.seed(seed)
         preview = noise_func(**noise_args)
         
         preview = np.hstack([np.broadcast_to(current_measurements[0], (self.n_samples_per_init_seed, 1)), preview[:, :cond_mean_u.shape[0]], 
@@ -513,15 +514,15 @@ def generate_wind_ts(wf, from_gaussian, case_idx, save_dir, save_name="", init_s
     wf.df = wind_field_df
     return wf
 
-def generate_wind_preview(wf, current_freestream_measurements, simulation_time_step, *, wind_preview_generator, return_params=False, include_uv=False, seed=0):
+def generate_wind_preview(wf, current_freestream_measurements, simulation_time_step, *, wind_preview_generator, return_params=False, include_uv=False, seed=None):
     
     # define noise preview
     # noise_func = wf._sample_wind_preview(noise_func=np.random.multivariate_normal, noise_args=None)
 
     # wind_preview_data = defaultdict(list)
-    np.random.seed(seed)
+    
     if return_params:
-            cond_mean_u, cond_mean_v, cond_cov_u, cond_cov_v = wind_preview_generator(current_measurements=current_freestream_measurements, return_params=return_params)
+            cond_mean_u, cond_mean_v, cond_cov_u, cond_cov_v = wind_preview_generator(current_measurements=current_freestream_measurements, return_params=return_params, seed=seed)
             return (cond_mean_u, 
                     cond_mean_v,
                     cond_cov_u, 
@@ -529,7 +530,7 @@ def generate_wind_preview(wf, current_freestream_measurements, simulation_time_s
             # return cond_mean_u, cond_mean_v, cond_cov_u, cond_cov_v
     else:
         
-        noise_preview = wind_preview_generator(current_measurements=current_freestream_measurements, return_params=return_params)
+        noise_preview = wind_preview_generator(current_measurements=current_freestream_measurements, return_params=return_params, seed=seed)
         
         u_preview = noise_preview[:, :(wf.n_preview_steps + wf.preview_dt) // wf.time_series_dt]
         v_preview = noise_preview[:, (wf.n_preview_steps + wf.preview_dt) // wf.time_series_dt:]

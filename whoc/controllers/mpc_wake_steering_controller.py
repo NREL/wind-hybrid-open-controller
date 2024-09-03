@@ -311,7 +311,7 @@ class YawOptimizationSRRHC(YawOptimizationSR):
 				if self.wind_preview_type == "stochastic_sample":
 					# cost_states = np.mean(np.sum(norm_turbine_powers**2, axis=(2, 3)), axis=1)[:, np.newaxis] * (-0.5) * self.Q 
 					cost_states = np.sum(norm_turbine_powers**2, axis=(1, 2, 3))[:, np.newaxis] * (-0.5) * self.Q * (1 / self.n_wind_preview_samples)
-				elif self.wind_preview_type == "stochastic_interval":
+				elif "stochastic_interval" in self.wind_preview_type:
 					# cost_states = np.sum(np.sum(norm_turbine_powers**2, axis=3) * wind_preview_interval_probs, axis=(1, 2))[:, np.newaxis] * (-0.5) * self.Q
 					# cost_states = np.sum(norm_turbine_powers**2 * wind_preview_interval_probs[np.newaxis, :, :, np.newaxis], axis=(1,2,3))[:, np.newaxis]  * (-0.5) * self.Q  
 					cost_states = np.einsum("xsht, sh -> x", norm_turbine_powers**2, wind_preview_interval_probs)[:, np.newaxis]  * (-0.5) * self.Q 
@@ -522,25 +522,24 @@ class MPC(ControllerBase):
 		else:
 			raise TypeError("state_con_type must be have value of 'extreme'")
 
-		self.seed = kwargs["seed"] if "seed" in kwargs else None
-		np.random.seed(seed=self.seed)
+		# self.seed = kwargs["seed"] if "seed" in kwargs else None
 
-		if input_dict["controller"]["wind_preview_type"].lower() in ['stochastic_sample', 'stochastic_interval', 'persistent', 'perfect']:
+		if input_dict["controller"]["wind_preview_type"].lower() in ['stochastic_sample', 'stochastic_interval_rectangular', 'stochastic_interval_elliptical', 'persistent', 'perfect']:
 			self.wind_preview_type = input_dict["controller"]["wind_preview_type"].lower()
 		else:
-			raise TypeError("wind_preview_type must be have value of 'stochastic_sample', 'stochastic_interval', 'persistent', or 'perfect")
+			raise TypeError("wind_preview_type must be have value of 'stochastic_sample', 'stochastic_interval_rectangular', 'stochastic_interval_elliptical', 'persistent', or 'perfect")
 		
-		if (self.wind_preview_type == "stochastic_interval" and input_dict["controller"]["diff_type"].lower() in ["chain_cd", "chain_fd", "direct_cd", "direct_fd"]) \
+		if ("stochastic_interval" in self.wind_preview_type and input_dict["controller"]["diff_type"].lower() in ["chain_cd", "chain_fd", "direct_cd", "direct_fd"]) \
 			or (self.wind_preview_type == "stochastic_sample" and input_dict["controller"]["diff_type"].lower() in ["chain_cd", "chain_fd", "direct_cd", "direct_fd", "chain_zscg", "direct_zscg"]) \
 				or (self.wind_preview_type in ["persistent", "perfect"] and input_dict["controller"]["diff_type"].lower() in ["none", "central_diff"]):
 			self.diff_type = input_dict["controller"]["diff_type"].lower()
 		else:
-			raise TypeError(f"diff_type must be have value of 'central_diff', 'chain_cd', or 'chain_fd', 'direct_cd', 'direct_fd', 'none', instead it has value {input_dict['controller']['diff_type'].lower()}. Only 'chain_fd', or 'direct_fd' are permitted for wind_preview_type == stochastic_sample")
+			raise TypeError(f"diff_type must be have value of 'central_diff', 'chain_cd', or 'chain_fd', 'direct_cd', 'direct_fd', 'chain_zscg', or 'direct_zscg', instead it has value {input_dict['controller']['diff_type'].lower()}. Only 'chain_fd', or 'direct_fd' are permitted for wind_preview_type == stochastic_sample")
 
 		if self.wind_preview_type == "stochastic_sample":
 			self.stochastic_sample_u_scale = input_dict["controller"]["stochastic_sample_u_scale"]
 
-		if self.wind_preview_type == "stochastic_interval":
+		if "stochastic_interval" in self.wind_preview_type:
 			# if self.state_con_type == "check_all_samples":
 			# 	print("state_con_type can't equal 'check_all_samples' for wind_preview_type = stochastic_interval, changing to 'extreme'")
 			# 	self.state_con_type = "extreme"
@@ -560,14 +559,14 @@ class MPC(ControllerBase):
 		# wind_preview_generator = wf._sample_wind_preview(noise_func=np.random.multivariate_normal, noise_args=None)
 		if self.wind_preview_type == "stochastic_sample":
 			self.n_wind_preview_samples = input_dict["controller"]["n_wind_preview_samples"]
-		elif self.wind_preview_type == "stochastic_interval":
+		elif "stochastic_interval" in self.wind_preview_type:
 			self.n_wind_preview_samples = input_dict["controller"]["n_wind_preview_samples"]**2 # cross-product of u an v values
 		else:
 			self.n_wind_preview_samples = 1
 			input_dict["controller"]["n_wind_preview_samples"] = 1
 		
 		if "stochastic" in input_dict["controller"]["wind_preview_type"]:
-			def wind_preview_func(current_freestream_measurements, time_step, seed=0, return_interval_values=False, n_intervals=input_dict["controller"]["n_wind_preview_samples"], max_std_dev=2): 
+			def wind_preview_func(current_freestream_measurements, time_step, seed=None, return_interval_values=False, n_intervals=input_dict["controller"]["n_wind_preview_samples"], max_std_dev=2): 
 				# returns cond_mean_u, cond_mean_v, cond_cov_u, cond_cov_v
 				if return_interval_values:
 					distribution_params = generate_wind_preview( 
@@ -576,11 +575,6 @@ class MPC(ControllerBase):
 									return_params=True)
 					wind_preview_data = {"FreestreamWindMag": np.zeros((n_intervals**2, self.n_horizon + 1)), 
 						  "FreestreamWindDir": np.zeros((n_intervals**2, self.n_horizon + 1))}
-
-					if n_intervals > 1:
-						std_divisions = np.linspace(-max_std_dev, max_std_dev, n_intervals)
-					else:
-						std_divisions = np.array([0])
 					
 					mag = np.linalg.norm([current_freestream_measurements[0], current_freestream_measurements[1]])
 					wind_preview_data[f"FreestreamWindMag"][:, 0] = [mag] * n_intervals**2
@@ -591,15 +585,31 @@ class MPC(ControllerBase):
 
 					wind_preview_data[f"FreestreamWindDir"][:, 0] = [direction] * n_intervals**2
 					
-					std_u = np.sqrt(np.diag(distribution_params[2]))
-					std_v = np.sqrt(np.diag(distribution_params[3]))
+					std_u = np.sqrt(np.diag(distribution_params[2]))[np.newaxis, :]
+					std_v = np.sqrt(np.diag(distribution_params[3]))[np.newaxis, :]
 
-					dev_u = np.matmul(std_divisions[np.newaxis, :].T, std_u[np.newaxis, :])
-					dev_v = np.matmul(std_divisions[np.newaxis, :].T, std_v[np.newaxis, :])
-					u_vals = distribution_params[0] + dev_u
-					v_vals = distribution_params[1] + dev_v
-					uv_combs = np.swapaxes(list(product(u_vals, v_vals)), 1, 2)
-
+					if self.wind_preview_type == "stochastic_interval_rectangular":
+						if n_intervals > 1:
+							std_divisions = np.linspace(-max_std_dev, max_std_dev, n_intervals)[:, np.newaxis]
+						else:
+							std_divisions = np.array([0])[:, np.newaxis]
+						dev_u = np.matmul(std_divisions, std_u)
+						dev_v = np.matmul(std_divisions, std_v)
+						u_vals = distribution_params[0] + dev_u
+						v_vals = distribution_params[1] + dev_v
+						uv_combs = np.swapaxes(list(product(u_vals, v_vals)), 1, 2)
+					elif self.wind_preview_type == "stochastic_interval_elliptical" or self.wind_preview_type == "stochastic_sample":
+						if n_intervals > 1:
+							std_divisions = np.linspace(0, max_std_dev, (n_intervals // 2) + 1)[:, np.newaxis]
+						else:
+							std_divisions = np.array([0])[:, np.newaxis]
+						dev_u = np.matmul(std_divisions, std_u)
+						dev_v = np.matmul(std_divisions, std_v)
+						theta = np.linspace(0, 2 * np.pi, 9)[:-1, np.newaxis]
+						u_vals = np.vstack([distribution_params[0] + dev_u[dev_u == 0], distribution_params[0] + dev_u[dev_u > 0] * np.cos(theta)])
+						v_vals = np.vstack([distribution_params[1] + dev_v[dev_v == 0], distribution_params[1] + dev_v[dev_u > 0] * np.sin(theta)])
+						uv_combs = np.dstack([u_vals, v_vals])
+					
 					mag_vals = np.linalg.norm(uv_combs, axis=2)
 					# compute directions
 					dir_vals = np.arctan2(uv_combs[:, :, 1], uv_combs[:, :, 0])
@@ -639,26 +649,27 @@ class MPC(ControllerBase):
 						sns.move_legend(ax[1], "upper left", bbox_to_anchor=(1, 1))
 						plt.tight_layout(pad=2.0)
 						fig.show()
-						fig.savefig("/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/stochastic_interval_scatter.png")
+						fig.savefig("/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/stochastic_elliptical_interval_scatter.png")
 
-						df = pd.DataFrame({
-							"Horizontal": u_vals.flatten(), 
-							"Vertical": v_vals.flatten(), 
-							# "Direction": dir_vals.flatten(), 
-							# "Magnitude": mag_vals.flatten(), 
-						 	"Time-Step": np.tile(np.arange(self.n_horizon) + 1, (dev_u.shape[0], )),
-							"# Standard Deviations": np.repeat(std_divisions, (self.n_horizon, )), 
-							#  "Sample": np.repeat(np.arange(dev_u.shape[0]), (self.n_horizon, )) 
-						})
-						fig, ax = plt.subplots(1, 2)
-						sns.scatterplot(ax=ax[0], data=df, x="# Standard Deviations", y="Horizontal", hue="Time-Step")
-						sns.scatterplot(ax=ax[1], data=df, x="# Standard Deviations", y="Vertical", hue="Time-Step")
-						ax[0].legend([], [], frameon=False)
-						ax[0].set(ylabel="Horizontal Wind Speed [m/s]")
-						ax[1].set(ylabel="Vertical Wind Speed [m/s]")
-						sns.move_legend(ax[1], "upper left", bbox_to_anchor=(1, 1))
-						plt.tight_layout(pad=2.0)
-						fig.savefig("/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/stochastic_interval_intervals.png")
+						if combination_type == "rectangular":
+							df = pd.DataFrame({
+								"Horizontal": u_vals.flatten(), 
+								"Vertical": v_vals.flatten(), 
+								# "Direction": dir_vals.flatten(), 
+								# "Magnitude": mag_vals.flatten(), 
+								"Time-Step": np.tile(np.arange(self.n_horizon) + 1, (u_vals.shape[0],)),
+								"# Standard Deviations": np.repeat(std_divisions, (self.n_horizon,)), 
+								#  "Sample": np.repeat(np.arange(dev_u.shape[0]), (self.n_horizon, )) 
+							})
+							fig, ax = plt.subplots(1, 2)
+							sns.scatterplot(ax=ax[0], data=df, x="# Standard Deviations", y="Horizontal", hue="Time-Step")
+							sns.scatterplot(ax=ax[1], data=df, x="# Standard Deviations", y="Vertical", hue="Time-Step")
+							ax[0].legend([], [], frameon=False)
+							ax[0].set(ylabel="Horizontal Wind Speed [m/s]")
+							ax[1].set(ylabel="Vertical Wind Speed [m/s]")
+							sns.move_legend(ax[1], "upper left", bbox_to_anchor=(1, 1))
+							plt.tight_layout(pad=2.0)
+							fig.savefig("/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/stochastic_interval_intervals.png")
 
 						# for i in range(self.n_horizon):
 						# ax[0, 0].scatter(std_divisions, u_vals[:, i])
@@ -1010,20 +1021,20 @@ class MPC(ControllerBase):
 			# else just returns single values for persistent or perfect preview type
 			# 
 			# returns dictionary of mean, min, max value expected from distribution, in the cahse of stochastic preview type
-			if self.wind_preview_type == "stochastic_interval":
+			if "stochastic_interval" in self.wind_preview_type:
 				self.wind_preview_intervals, self.wind_preview_interval_probs = self.wind_preview_func(self.current_freestream_measurements, 
-																	int(self.current_time // self.simulation_dt),
+																	seed=self.seed,
 																	return_interval_values=True, n_intervals=int(np.sqrt(self.n_wind_preview_samples)),
 																	max_std_dev=self.max_std_dev)
 				self.wind_preview_samples = self.wind_preview_intervals
 			else: # use for extreme constraints, lut warm up
 				self.wind_preview_intervals, self.wind_preview_interval_probs = self.wind_preview_func(self.current_freestream_measurements, 
-																	int(self.current_time // self.simulation_dt),
+																	seed=self.seed,
 																	return_interval_values=True, n_intervals=3, 
 																	max_std_dev=self.max_std_dev)
 
 				self.wind_preview_samples, _ = self.wind_preview_func(self.current_freestream_measurements, 
-															   int(self.current_time // self.simulation_dt),
+															   seed=self.seed,
 															   return_interval_values=False, seed=int(self.current_time // self.simulation_dt))
 			
 			if False:
@@ -1081,15 +1092,8 @@ class MPC(ControllerBase):
 				turbulence_intensities=np.tile(ti_arr, (n_wind_preview_repeats,))
 			)
 			self.offline_status = np.broadcast_to(self.offline_status, (self.fi.env.core.flow_field.n_findex, self.n_turbines))
-			# compute greedy turbine powers with zero offset
-			# self.fi.env.set_operation(
-			# 	# yaw_angles=np.zeros((self.n_wind_preview_samples * self.n_horizon, self.n_turbines)),
-			# 	yaw_angles=np.zeros((self.fi.env.core.flow_field.n_findex, self.n_turbines)),
-			# 	disable_turbines=self.offline_status,
-			# )
-			# self.fi.env.run()
-			# self.greedy_yaw_turbine_powers = np.max(self.fi.env.get_turbine_powers(), axis=1)[:, np.newaxis]
-
+			
+			self.seed = int(self.current_time // self.simulation_dt)
 			if self.solver == "slsqp":
 				yaw_star = self.slsqp_solve()
 			elif self.solver == "sequential_slsqp":
@@ -1713,6 +1717,7 @@ class MPC(ControllerBase):
 		if compute_derivatives:
 			if self.wind_preview_type == "stochastic_sample":
 				if "zscg" in self.diff_type:
+					np.random.seed(self.seed)
 					self.stochastic_sample_u = np.random.normal(loc=0.0, scale=self.stochastic_sample_u_scale, size=(n_wind_samples, n_solve_turbines))
 					# u = np.random.choice([-1, 1], size=(n_wind_samples, n_solve_turbines))
 					

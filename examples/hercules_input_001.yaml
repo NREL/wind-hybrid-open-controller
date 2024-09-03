@@ -68,7 +68,7 @@ controller:
   n_horizon: 24
   alpha: 1.0 # WARNING: if you choose this to be small and set the initial values of the control inputs to 0, solver may get stuck at initial solution
   control_input_domain: continuous
-  wind_preview_type: stochastic_interval # wind preview type assumed in MPC: persistent (assumes that current freestream measurements will stay constant over horizon), stochastic_interval, stochastic_sample (sample from Gaussian model of preview), perfect (preview known)
+  wind_preview_type: stochastic_interval_elliptical # wind preview type assumed in MPC: persistent (assumes that current freestream measurements will stay constant over horizon), stochastic_interval, stochastic_sample (sample from Gaussian model of preview), perfect (preview known)
   stochastic_sample_u_scale: 1.0
   max_std_dev: 2 # for wind_preview_intervals, +/- number of standard deviations from mean to select sample intervals from
   n_wind_preview_samples: 7
