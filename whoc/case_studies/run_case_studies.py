@@ -201,7 +201,7 @@ if __name__ == "__main__":
 
             if (case_families.index("baseline_controllers") in args.case_ids) and ((case_families.index("slsqp_solver_sweep") in args.case_ids) or (case_families.index("stochastic_sample_sweep") in args.case_ids)):
                
-                mpc_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "test_gradient", :]
+                mpc_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "stochastic_sample_sweep", :]
                 # mpc_df = mpc_df[[("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False).reset_index(level="CaseFamily", drop=True) 
                 
                 # mpc_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "slsqp_solver_sweep", :]
@@ -242,7 +242,7 @@ if __name__ == "__main__":
 
                                                 #  ("slsqp_solver_sweep_small", "PerfectCDNormCost"),
                     # ("slsqp_solver_sweep", better_than_lut_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False).iloc[0]._name),
-                    ("test_gradient", better_than_lut_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False).iloc[0]._name),   
+                    ("stochastic_sample_sweep", better_than_lut_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False).iloc[0]._name),   
                                                 # ("baseline_controllers", "LUT"),
                                                 #   ("baseline_controllers", "Greedy")
                                                   ], args.save_dir, include_power=False, legend_loc="outer", single_plot=False) 
