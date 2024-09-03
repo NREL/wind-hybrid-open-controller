@@ -531,7 +531,7 @@ class MPC(ControllerBase):
 		
 		if ("stochastic_interval" in self.wind_preview_type and input_dict["controller"]["diff_type"].lower() in ["chain_cd", "chain_fd", "direct_cd", "direct_fd"]) \
 			or (self.wind_preview_type == "stochastic_sample" and input_dict["controller"]["diff_type"].lower() in ["chain_cd", "chain_fd", "direct_cd", "direct_fd", "chain_zscg", "direct_zscg"]) \
-				or (self.wind_preview_type in ["persistent", "perfect"] and input_dict["controller"]["diff_type"].lower() in ["none", "central_diff"]):
+				or (self.wind_preview_type in ["persistent", "perfect"] and input_dict["controller"]["diff_type"].lower() in ["chain_cd", "chain_fd", "direct_cd", "direct_fd"]):
 			self.diff_type = input_dict["controller"]["diff_type"].lower()
 		else:
 			raise TypeError(f"diff_type must be have value of 'central_diff', 'chain_cd', or 'chain_fd', 'direct_cd', 'direct_fd', 'chain_zscg', or 'direct_zscg', instead it has value {input_dict['controller']['diff_type'].lower()}. Only 'chain_fd', or 'direct_fd' are permitted for wind_preview_type == stochastic_sample")
@@ -559,8 +559,12 @@ class MPC(ControllerBase):
 		# wind_preview_generator = wf._sample_wind_preview(noise_func=np.random.multivariate_normal, noise_args=None)
 		if self.wind_preview_type == "stochastic_sample":
 			self.n_wind_preview_samples = input_dict["controller"]["n_wind_preview_samples"]
-		elif "stochastic_interval" in self.wind_preview_type:
+		elif self.wind_preview_type == "stochastic_interval_rectangular":
 			self.n_wind_preview_samples = input_dict["controller"]["n_wind_preview_samples"]**2 # cross-product of u an v values
+			self.n_wind_preview_intervals = input_dict["controller"]["n_wind_preview_samples"]
+		elif self.wind_preview_type == "stochastic_interval_elliptical": # ((n_intervals**2 - 1) * (int(n_intervals // 2))) + 1
+			self.n_wind_preview_samples = (input_dict["controller"]["n_wind_preview_samples"]**2 - 1) * (int(input_dict["controller"]["n_wind_preview_samples"] // 2)) + 1 #
+			self.n_wind_preview_intervals = input_dict["controller"]["n_wind_preview_samples"]
 		else:
 			self.n_wind_preview_samples = 1
 			input_dict["controller"]["n_wind_preview_samples"] = 1
@@ -573,17 +577,23 @@ class MPC(ControllerBase):
 									wf, current_freestream_measurements, time_step,
 									wind_preview_generator=wf._sample_wind_preview, 
 									return_params=True)
-					wind_preview_data = {"FreestreamWindMag": np.zeros((n_intervals**2, self.n_horizon + 1)), 
-						  "FreestreamWindDir": np.zeros((n_intervals**2, self.n_horizon + 1))}
+					
+					if self.wind_preview_type == "stochastic_interval_rectangular":
+						n_samples = n_intervals**2
+					elif self.wind_preview_type == "stochastic_interval_elliptical" or self.wind_preview_type == "stochastic_sample":
+						n_samples = ((n_intervals**2 - 1) * (int(n_intervals // 2))) + 1
+					
+					wind_preview_data = {"FreestreamWindMag": np.zeros((n_samples, self.n_horizon + 1)), 
+							"FreestreamWindDir": np.zeros((n_samples, self.n_horizon + 1))}
 					
 					mag = np.linalg.norm([current_freestream_measurements[0], current_freestream_measurements[1]])
-					wind_preview_data[f"FreestreamWindMag"][:, 0] = [mag] * n_intervals**2
+					wind_preview_data[f"FreestreamWindMag"][:, 0] = [mag] * n_samples
 					
 					# compute freestream wind direction angle from above, clockwise from north
 					direction = np.arctan2(current_freestream_measurements[1], current_freestream_measurements[0])
 					direction = (270.0 - (direction * (180 / np.pi))) % 360.0
 
-					wind_preview_data[f"FreestreamWindDir"][:, 0] = [direction] * n_intervals**2
+					wind_preview_data[f"FreestreamWindDir"][:, 0] = [direction] * n_samples
 					
 					std_u = np.sqrt(np.diag(distribution_params[2]))[np.newaxis, :]
 					std_v = np.sqrt(np.diag(distribution_params[3]))[np.newaxis, :]
@@ -605,9 +615,9 @@ class MPC(ControllerBase):
 							std_divisions = np.array([0])[:, np.newaxis]
 						dev_u = np.matmul(std_divisions, std_u)
 						dev_v = np.matmul(std_divisions, std_v)
-						theta = np.linspace(0, 2 * np.pi, 9)[:-1, np.newaxis]
-						u_vals = np.vstack([distribution_params[0] + dev_u[dev_u == 0], distribution_params[0] + dev_u[dev_u > 0] * np.cos(theta)])
-						v_vals = np.vstack([distribution_params[1] + dev_v[dev_v == 0], distribution_params[1] + dev_v[dev_u > 0] * np.sin(theta)])
+						theta = np.linspace(0, 2 * np.pi, n_intervals**2)[:-1, np.newaxis]
+						u_vals = np.vstack([distribution_params[0] + dev_u[0, :], distribution_params[0] + (dev_u[1:, :] * np.cos(theta)[:, np.newaxis]).reshape(-1, self.n_horizon)])
+						v_vals = np.vstack([distribution_params[1] + dev_v[0, :], distribution_params[1] + (dev_v[1:, :] * np.sin(theta)[:, np.newaxis]).reshape(-1, self.n_horizon)])
 						uv_combs = np.dstack([u_vals, v_vals])
 					
 					mag_vals = np.linalg.norm(uv_combs, axis=2)
@@ -739,7 +749,7 @@ class MPC(ControllerBase):
 				return wind_preview_data, wind_preview_probs
 		
 		elif input_dict["controller"]["wind_preview_type"] == "persistent":
-			def wind_preview_func(current_freestream_measurements, time_step, return_interval_values=False, n_intervals=None, max_std_dev=None):
+			def wind_preview_func(current_freestream_measurements, time_step, seed=None, return_interval_values=False, n_intervals=None, max_std_dev=None):
 				wind_preview_data = {"FreestreamWindMag": np.zeros((self.n_wind_preview_samples, self.n_horizon + 1)),
 						 "FreestreamWindDir": np.zeros((self.n_wind_preview_samples, self.n_horizon + 1))}
 				# for j in range(input_dict["controller"]["n_horizon"] + 1):
@@ -752,7 +762,7 @@ class MPC(ControllerBase):
 					return wind_preview_data, None
 		
 		elif input_dict["controller"]["wind_preview_type"] == "perfect":
-			def wind_preview_func(current_freestream_measurements, time_step, return_interval_values=False, n_intervals=None, max_std_dev=None):
+			def wind_preview_func(current_freestream_measurements, time_step, seed=None, return_interval_values=False, n_intervals=None, max_std_dev=None):
 				wind_preview_data = {"FreestreamWindMag": np.zeros((self.n_wind_preview_samples, self.n_horizon + 1)), 
 						 "FreestreamWindDir": np.zeros((self.n_wind_preview_samples, self.n_horizon + 1))}
 				delta_k = slice(0, (input_dict["controller"]["n_horizon"] + 1) * int(input_dict["controller"]["dt"] // input_dict["dt"]), int(input_dict["controller"]["dt"] // input_dict["dt"]))
@@ -1021,24 +1031,27 @@ class MPC(ControllerBase):
 			# else just returns single values for persistent or perfect preview type
 			# 
 			# returns dictionary of mean, min, max value expected from distribution, in the cahse of stochastic preview type
+			self.seed = int(self.current_time // self.simulation_dt)
 			if "stochastic_interval" in self.wind_preview_type:
 				self.wind_preview_intervals, self.wind_preview_interval_probs = self.wind_preview_func(self.current_freestream_measurements, 
+																	int(self.current_time // self.simulation_dt),
 																	seed=self.seed,
-																	return_interval_values=True, n_intervals=int(np.sqrt(self.n_wind_preview_samples)),
+																	return_interval_values=True, n_intervals=self.n_wind_preview_intervals,
 																	max_std_dev=self.max_std_dev)
 				self.wind_preview_samples = self.wind_preview_intervals
 			else: # use for extreme constraints, lut warm up
 				self.wind_preview_intervals, self.wind_preview_interval_probs = self.wind_preview_func(self.current_freestream_measurements, 
+																	int(self.current_time // self.simulation_dt),
 																	seed=self.seed,
 																	return_interval_values=True, n_intervals=3, 
 																	max_std_dev=self.max_std_dev)
 
 				self.wind_preview_samples, _ = self.wind_preview_func(self.current_freestream_measurements, 
+															   int(self.current_time // self.simulation_dt),
 															   seed=self.seed,
-															   return_interval_values=False, seed=int(self.current_time // self.simulation_dt))
+															   return_interval_values=False)
 			
 			if False:
-				
 				import matplotlib.pyplot as plt
 				fig, ax = plt.subplots(2, 1, sharex=True)
 				for j in range(self.n_horizon + 1):
@@ -1081,8 +1094,8 @@ class MPC(ControllerBase):
 
 			self.fi._load_floris()
 			# TODO update floris_model, warm start LUT for turbine breakdown
-			# if any(self.offline_status):
-			# 	print("hi")
+			
+			
 			wd_arr = self.wind_preview_samples[f"FreestreamWindDir"][:, 1:].flatten()
 			ws_arr = self.wind_preview_samples[f"FreestreamWindMag"][:, 1:].flatten()
 			ti_arr = [self.fi.env.core.flow_field.turbulence_intensities[0]] * self.n_wind_preview_samples * self.n_horizon
@@ -1093,7 +1106,7 @@ class MPC(ControllerBase):
 			)
 			self.offline_status = np.broadcast_to(self.offline_status, (self.fi.env.core.flow_field.n_findex, self.n_turbines))
 			
-			self.seed = int(self.current_time // self.simulation_dt)
+			
 			if self.solver == "slsqp":
 				yaw_star = self.slsqp_solve()
 			elif self.solver == "sequential_slsqp":
@@ -1660,13 +1673,13 @@ class MPC(ControllerBase):
 			# send yaw angles 
 
 			# compute power based on sampling from wind preview
-			self.update_norm_turbine_powers(yaw_setpoints, solve_turbine_ids, downstream_turbine_ids, compute_derivatives) # TODO, compute_derivatives=(self.run_custom_sens and compute_derivatives))
+			self.update_norm_turbine_powers(yaw_setpoints, solve_turbine_ids, downstream_turbine_ids, compute_derivatives) 
 			
 			# weighted mean based on probabilities of samples used
 			# outer sum over all samples and horizons, inner sum over all turbines
 			if self.wind_preview_type == "stochastic_sample":
 				funcs["cost_states"] = np.sum(self.norm_turbine_powers**2) * (-0.5 * self.Q / self.n_wind_preview_samples)
-			elif self.wind_preview_type == "stochastic_interval":
+			elif "stochastic_interval" in self.wind_preview_type:
 				funcs["cost_states"] = np.sum(self.norm_turbine_powers**2 * self.wind_preview_interval_probs[:, :, np.newaxis]) * (-0.5 * self.Q)
 			else:
 				funcs["cost_states"] = np.sum(self.norm_turbine_powers**2) * (-0.5 * self.Q)
@@ -1715,53 +1728,41 @@ class MPC(ControllerBase):
 		
 		
 		if compute_derivatives:
-			if self.wind_preview_type == "stochastic_sample":
-				if "zscg" in self.diff_type:
-					np.random.seed(self.seed)
-					self.stochastic_sample_u = np.random.normal(loc=0.0, scale=self.stochastic_sample_u_scale, size=(n_wind_samples, n_solve_turbines))
-					# u = np.random.choice([-1, 1], size=(n_wind_samples, n_solve_turbines))
-					
-					# we subtract plus change since current_yaw_offsets = wind dir - yaw setpoints
-					
-					if self.solver == "sequential_slsqp":
-						masked_u = np.zeros((n_wind_samples, self.n_turbines))
-						masked_u[:, solve_turbine_ids] = self.stochastic_sample_u
-						plus_yaw_offsets = current_yaw_offsets - self.nu * self.yaw_norm_const * masked_u
-					else:
-						plus_yaw_offsets = current_yaw_offsets - self.nu * self.yaw_norm_const * self.stochastic_sample_u
-
-					plus_yaw_offsets = plus_yaw_offsets % 360.0
-					plus_yaw_offsets[plus_yaw_offsets > 180.0] = -(360.0 - plus_yaw_offsets[plus_yaw_offsets > 180.0])
-					plus_yaw_offsets[plus_yaw_offsets < -180.0] = (360.0 + plus_yaw_offsets[plus_yaw_offsets < -180.0])
-					
-					all_yaw_offsets = np.vstack([current_yaw_offsets, plus_yaw_offsets])
-					
-				elif "cd" in self.diff_type:
-					change_mask = np.array([-1] * n_wind_samples + [1] * n_wind_samples)
-					no_change_mask = np.zeros((2 * n_wind_samples,))
-					mask = np.vstack([np.zeros((n_wind_samples, self.n_turbines))] + [np.vstack([change_mask if (i == ii and ii in solve_turbine_ids) else no_change_mask for ii in range(self.n_turbines)]).T for i in range(self.n_turbines)])
-					all_yaw_offsets = np.tile(current_yaw_offsets, ((2 * self.n_turbines) + 1, 1)) + mask * self.nu * self.yaw_norm_const
-				elif "fd" in self.diff_type:
-					change_mask = np.array([-1] * n_wind_samples)
-					no_change_mask = np.zeros((n_wind_samples,))
-					mask = np.vstack([np.zeros((n_wind_samples, self.n_turbines))] + [np.vstack([change_mask if (i == ii and ii in solve_turbine_ids) else no_change_mask for ii in range(self.n_turbines)]).T for i in range(self.n_turbines)])
-					all_yaw_offsets = np.tile(current_yaw_offsets, (self.n_turbines + 1, 1)) + mask * self.nu * self.yaw_norm_const
-			else:
-				# perturb each state (each yaw angle) by +/= nu to estimate derivative of all turbines power output for a variation in each turbines yaw offset
-				# if any yaw offset are out of the [-90, 90] range, then the power output of all turbines will be nan. clip to av
-				# we subtract plus change since current_yaw_offsets = wind dir - yaw setpoints
-				# we add negative since current_yaw_offsets = wind dir - yaw setpoints
+			if self.wind_preview_type == "stochastic_sample" and "zscg" in self.diff_type:
+				np.random.seed(self.seed)
+				self.stochastic_sample_u = np.random.normal(loc=0.0, scale=self.stochastic_sample_u_scale, size=(n_wind_samples, n_solve_turbines))
+				# u = np.random.choice([-1, 1], size=(n_wind_samples, n_solve_turbines))
 				
-				if "cd" in self.diff_type:
-					change_mask = np.array([-1] * n_wind_samples + [1] * n_wind_samples)
-					no_change_mask = np.zeros((2 * n_wind_samples,))
-					mask = np.vstack([np.zeros((n_wind_samples, self.n_turbines))] + [np.vstack([change_mask if (i == ii and ii in solve_turbine_ids) else no_change_mask for ii in range(self.n_turbines)]).T for i in range(self.n_turbines)])
-					all_yaw_offsets = np.tile(current_yaw_offsets, ((2 * self.n_turbines) + 1, 1)) + mask * self.nu * self.yaw_norm_const
-				elif "fd" in self.diff_type:
-					change_mask = np.array([-1] * n_wind_samples)
-					no_change_mask = np.zeros((n_wind_samples,))
-					mask = np.vstack([np.zeros((n_wind_samples, self.n_turbines))] + [np.vstack([change_mask if (i == ii and ii in solve_turbine_ids) else no_change_mask for ii in range(self.n_turbines)]).T for i in range(self.n_turbines)])
-					all_yaw_offsets = np.tile(current_yaw_offsets, (self.n_turbines + 1, 1)) + mask * self.nu * self.yaw_norm_const
+				# we subtract plus change since current_yaw_offsets = wind dir - yaw setpoints
+				
+				if self.solver == "sequential_slsqp":
+					masked_u = np.zeros((n_wind_samples, self.n_turbines))
+					masked_u[:, solve_turbine_ids] = self.stochastic_sample_u
+					plus_yaw_offsets = current_yaw_offsets - self.nu * self.yaw_norm_const * masked_u
+				else:
+					plus_yaw_offsets = current_yaw_offsets - self.nu * self.yaw_norm_const * self.stochastic_sample_u
+
+				plus_yaw_offsets = plus_yaw_offsets % 360.0
+				plus_yaw_offsets[plus_yaw_offsets > 180.0] = -(360.0 - plus_yaw_offsets[plus_yaw_offsets > 180.0])
+				plus_yaw_offsets[plus_yaw_offsets < -180.0] = (360.0 + plus_yaw_offsets[plus_yaw_offsets < -180.0])
+				
+				all_yaw_offsets = np.vstack([current_yaw_offsets, plus_yaw_offsets])
+			
+			# perturb each state (each yaw angle) by +/= nu to estimate derivative of all turbines power output for a variation in each turbines yaw offset
+			# if any yaw offset are out of the [-90, 90] range, then the power output of all turbines will be nan. clip to av
+			# we subtract plus change since current_yaw_offsets = wind dir - yaw setpoints
+			# we add negative since current_yaw_offsets = wind dir - yaw setpoints
+			
+			elif "cd" in self.diff_type:
+				change_mask = np.array([-1] * n_wind_samples + [1] * n_wind_samples)
+				no_change_mask = np.zeros((2 * n_wind_samples,))
+				mask = np.vstack([np.zeros((n_wind_samples, self.n_turbines))] + [np.vstack([change_mask if (i == ii and ii in solve_turbine_ids) else no_change_mask for ii in range(self.n_turbines)]).T for i in range(self.n_turbines)])
+				all_yaw_offsets = np.tile(current_yaw_offsets, ((2 * self.n_turbines) + 1, 1)) + mask * self.nu * self.yaw_norm_const
+			elif "fd" in self.diff_type:
+				change_mask = np.array([-1] * n_wind_samples)
+				no_change_mask = np.zeros((n_wind_samples,))
+				mask = np.vstack([np.zeros((n_wind_samples, self.n_turbines))] + [np.vstack([change_mask if (i == ii and ii in solve_turbine_ids) else no_change_mask for ii in range(self.n_turbines)]).T for i in range(self.n_turbines)])
+				all_yaw_offsets = np.tile(current_yaw_offsets, (self.n_turbines + 1, 1)) + mask * self.nu * self.yaw_norm_const
 		else:
 		# if (not compute_derivatives) or (self.diff_type == "central_diff"): 
 			if self.run_cd_sens:
@@ -1934,7 +1935,7 @@ class MPC(ControllerBase):
 						sens["cost"]["states"] = np.einsum("shti->hi", np.reshape(self.plus_norm_turbine_powers**2 - 
 																   np.reshape(self.norm_turbine_powers, (self.n_wind_preview_samples * self.n_horizon, n_influenced_turbines))[:, :, np.newaxis]**2, 
 																   (self.n_wind_preview_samples, self.n_horizon, n_influenced_turbines, n_solve_turbines))).flatten() * (-0.5 * self.Q) / (self.nu * self.n_wind_preview_samples)
-			elif self.wind_preview_type == "stochastic_interval": # np.sum(self.norm_turbine_powers**2 * self.wind_preview_interval_probs[:, :, np.newaxis]) * (-0.5 * self.Q)
+			elif "stochastic_interval" in self.wind_preview_type: # np.sum(self.norm_turbine_powers**2 * self.wind_preview_interval_probs[:, :, np.newaxis]) * (-0.5 * self.Q)
 				if "chain" in self.diff_type:
 					sens["cost"]["states"] = np.einsum("sht,shti,sh->hi", self.norm_turbine_powers, self.norm_turbine_powers_states_drvt, self.wind_preview_interval_probs).flatten() * (-self.Q)
 				elif "direct" in self.diff_type:
@@ -1947,7 +1948,13 @@ class MPC(ControllerBase):
 																   (self.n_wind_preview_samples, self.n_horizon, n_influenced_turbines, n_solve_turbines)), 
 																   self.wind_preview_interval_probs).flatten() * (-0.5 * self.Q) / (self.nu)
 			else:
-				sens["cost"]["states"] = np.einsum("sht,shti->hi", self.norm_turbine_powers, self.norm_turbine_powers_states_drvt).flatten() * (-self.Q)
+				if "chain" in self.diff_type:
+					sens["cost"]["states"] = np.einsum("sht,shti->hi", self.norm_turbine_powers, self.norm_turbine_powers_states_drvt).flatten() * (-self.Q)
+				elif "direct" in self.diff_type:
+					if self.diff_type == "direct_cd":
+						sens["cost"]["states"] = np.einsum("shti->hi", np.reshape(self.plus_norm_turbine_powers**2 - self.neg_norm_turbine_powers**2, (self.n_wind_preview_samples, self.n_horizon, n_influenced_turbines, n_solve_turbines))).flatten() * (-0.5 * self.Q) / (2 * self.nu)
+					elif self.diff_type == "direct_fd":
+						sens["cost"]["states"] = np.einsum("shti->hi", np.reshape(self.plus_norm_turbine_powers**2 - np.reshape(self.norm_turbine_powers, (self.n_wind_preview_samples * self.n_horizon, n_influenced_turbines))[:, :, np.newaxis]**2, (self.n_wind_preview_samples, self.n_horizon, n_influenced_turbines, n_solve_turbines))).flatten() * (-0.5 * self.Q) / (self.nu)
 
 			sens["cost"]["control_inputs"] = opt_var_dict["control_inputs"] * self.R
 

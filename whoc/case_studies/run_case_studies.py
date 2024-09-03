@@ -74,7 +74,7 @@ if __name__ == "__main__":
                                                 controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
                                                 wind_case_idx=case_lists[c]["wind_case_idx"], wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]],
                                                 case_name="_".join([f"{key}_{val if (type(val) is str or type(val) is np.str_ or type(val) is bool) else np.round(val, 6)}" for key, val in case_lists[c].items() if key not in ["wind_case_idx", "seed", "lut_path", "floris_input_file"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
-                                                case_family="_".join(case_name_lists[c].split("_")[:-1]), seed=case_lists[c]["seed"], wind_field_config=wind_field_config, verbose=False, save_dir=args.save_dir, rerun_simulations=args.rerun_simulations)
+                                                case_family="_".join(case_name_lists[c].split("_")[:-1]), wind_field_config=wind_field_config, verbose=False, save_dir=args.save_dir, rerun_simulations=args.rerun_simulations)
                         for c, d in enumerate(input_dicts)]
                 
                 _ = [fut.result() for fut in futures]
@@ -84,7 +84,7 @@ if __name__ == "__main__":
                 simulate_controller(controller_class=globals()[case_lists[c]["controller_class"]], input_dict=d, 
                                                 wind_case_idx=case_lists[c]["wind_case_idx"], wind_mag_ts=wind_mag_ts[case_lists[c]["wind_case_idx"]], wind_dir_ts=wind_dir_ts[case_lists[c]["wind_case_idx"]], 
                                                 case_name="_".join([f"{key}_{val if (type(val) is str or type(val) is np.str_ or type(val) is bool) else np.round(val, 6)}" for key, val in case_lists[c].items() if key not in ["wind_case_idx", "seed", "lut_path", "floris_input_file"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
-                                                case_family="_".join(case_name_lists[c].split("_")[:-1]), seed=case_lists[c]["seed"],
+                                                case_family="_".join(case_name_lists[c].split("_")[:-1]),
                                                 wind_field_config=wind_field_config, verbose=False, save_dir=args.save_dir, rerun_simulations=args.rerun_simulations)
     
     if args.postprocess_simulations:
