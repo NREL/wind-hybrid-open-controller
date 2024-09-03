@@ -175,7 +175,7 @@ case_studies = {
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_{3}.yaml")]},
                              "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                 f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv")]},
-                             "decay_type": {"group": 5, "vals": ["none", "exp", "cosine", "linear", "zero"]},# "exp"]},
+                             "decay_type": {"group": 7, "vals": ["none", "exp", "cosine", "linear", "zero"]},# "exp"]},
                             #  "case_names": {"group": 1, "vals": ["direct_cd", "direct_fd", "direct_zscg", "chain_cd", "chain_fd", "chain_zscg"]},
                             # "decay_const": {"group": 2, "vals": [31, 45, 60, 90] * 3 + [90, 90]},
                             # "decay_all": {"group": 3, "vals": ["True", "False"]},
