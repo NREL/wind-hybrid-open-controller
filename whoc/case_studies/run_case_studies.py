@@ -29,6 +29,7 @@ if __name__ == "__main__":
     parser.add_argument("-rrs", "--rerun_simulations", action="store_true")
     parser.add_argument("-ps", "--postprocess_simulations", action="store_true")
     parser.add_argument("-rps", "--reprocess_simulations", action="store_true")
+    parser.add_argument("-ras", "--reaggregate_simulations", action="store_true")
     parser.add_argument("-st", "--stoptime", type=float, default=3600)
     parser.add_argument("-ns", "--n_seeds", type=int, default=6)
     parser.add_argument("-m", "--multiprocessor", type=str, choices=["mpi", "cf"])
@@ -88,12 +89,12 @@ if __name__ == "__main__":
                                                 wind_field_config=wind_field_config, verbose=False, save_dir=args.save_dir, rerun_simulations=args.rerun_simulations)
     
     if args.postprocess_simulations:
-        # TODO allow using agg_results.csv if exists
-        if args.reprocess_simulations or (not os.path.exists(os.path.join(args.save_dir, f"time_series_results.csv"))) or (not os.path.exists(os.path.join(args.save_dir, f"agg_results.csv"))):
+        # if (not os.path.exists(os.path.join(args.save_dir, f"time_series_results.csv"))) or (not os.path.exists(os.path.join(args.save_dir, f"agg_results.csv"))):
+        if args.reprocess_simulations:
             if RUN_ONCE:
                 case_family_case_names = {}
                 for i in args.case_ids:
-                    case_family_case_names[case_families[i]] = [fn for fn in os.listdir(os.path.join(args.save_dir, case_families[i])) if ".csv" in fn and "time_series_results" in fn]
+                    case_family_case_names[case_families[i]] = [fn for fn in os.listdir(os.path.join(args.save_dir, case_families[i])) if ".csv" in fn and "time_series_results_case" in fn]
 
                 # case_family_case_names["slsqp_solver_sweep"] = [f"time_series_results_case_alpha_1.0_controller_class_MPC_diff_type_custom_cd_dt_30_n_horizon_24_n_wind_preview_samples_5_nu_0.01_solver_slsqp_use_filtered_wind_dir_False_wind_preview_type_stochastic_interval_seed_{s}" for s in range(6)]
 
@@ -118,11 +119,11 @@ if __name__ == "__main__":
                     ]
                     
                     time_series_df = pd.concat([fut.result() for fut in read_futures])
-                        
+
                     agg_futures = [run_simulations_exec.submit(aggregate_time_series_data,
                                                             case_df=time_series_df.loc[(time_series_df["CaseFamily"] == case_families[i]) & (time_series_df["CaseName"] == case_name), :],
                                                                 results_path=os.path.join(args.save_dir, case_families[i], f"agg_results_{case_name}.csv"), 
-                                                                n_seeds=args.n_seeds, reprocess_simulations=args.reprocess_simulations)
+                                                                n_seeds=args.n_seeds, reaggregate_simulations=args.reaggregate_simulations)
                         for i in args.case_ids  
                         for case_name in [re.findall(r"(?<=case_)(.*)(?=_seed)", fn)[0] for fn in case_family_case_names[case_families[i]]]
                     ]
@@ -141,24 +142,28 @@ if __name__ == "__main__":
                     for case_name in [re.findall(r"(?<=case_)(.*)(?=_seed)", fn)[0] for fn in case_family_case_names[case_families[i]]]:
                         res = aggregate_time_series_data(case_df=time_series_df.loc[(time_series_df["CaseFamily"] == case_families[i]) & (time_series_df["CaseName"] == case_name), :],
                                                             results_path=os.path.join(args.save_dir, case_families[i], f"agg_results_{case_name}.csv"),
-                                                            n_seeds=args.n_seeds, reprocess_simulations=args.reprocess_simulations)
+                                                            n_seeds=args.n_seeds, reaggregate_simulations=args.reaggregate_simulations)
                         if res is not None:
                             agg_dfs.append(res)
                 agg_dfs = pd.concat(agg_dfs)
 
             if RUN_ONCE:
-                
-                time_series_df = time_series_df.reset_index(drop=True) 
-                time_series_df.to_csv(os.path.join(args.save_dir, f"time_series_results.csv"))
-                
+                time_series_df = time_series_df.reset_index(drop=True)
                 agg_dfs = agg_dfs.reset_index(drop=True)
                 agg_dfs = agg_dfs.groupby(by=["CaseFamily", "CaseName"])[[col for col in agg_dfs.columns if col not in ["CaseFamily", "CaseName", "WindSeed"]]].agg(["min", "max", "mean"])
-                agg_dfs.to_csv(os.path.join(args.save_dir, f"agg_results.csv"))
+                
+                for i in args.case_ids:
+                    time_series_df.loc[time_series_df["CaseFamily"] == case_families[i], :].to_csv(os.path.join(args.save_dir, case_families[i], f"time_series_results_all.csv"))    
+                    agg_dfs.loc[agg_dfs.index.get_level_values("CaseFamily") == case_families[i], :].to_csv(os.path.join(args.save_dir, case_families[i], f"agg_results_all.csv"))
+
+                # time_series_df = time_series_df.reset_index(drop=True) 
+                # time_series_df.to_csv(os.path.join(args.save_dir, f"time_series_results.csv"))
+                # agg_dfs.to_csv(os.path.join(args.save_dir, f"agg_results.csv"))
 
         else:
             if RUN_ONCE:
-                time_series_df = pd.read_csv(os.path.join(args.save_dir, f"time_series_results.csv"), index_col=0)
-                agg_dfs = pd.read_csv(os.path.join(args.save_dir, f"agg_results.csv"), header=[0,1], index_col=[0, 1], skipinitialspace=True)
+                time_series_df = pd.concat([pd.read_csv(os.path.join(args.save_dir, case_families[i], f"time_series_results_all.csv"), index_col=0) for i in args.case_ids])
+                agg_dfs = pd.concat([pd.read_csv(os.path.join(args.save_dir, case_families[i], f"agg_results_all.csv"), header=[0,1], index_col=[0, 1], skipinitialspace=True) for i in args.case_ids])
 
         if RUN_ONCE and PLOT:
             if (case_families.index("baseline_controllers") in args.case_ids) and (case_families.index("cost_func_tuning") in args.case_ids):
@@ -198,18 +203,20 @@ if __name__ == "__main__":
                                                 os.path.join(os.path.dirname(whoc.__file__), f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv"), 
                                                 os.path.join(args.save_dir, "yaw_offset_study", f"yawoffset_winddir_{filename}_ts.png"), plot_turbine_ids=[0, 1, 2], include_yaw=True, include_power=True)
 
-            if case_families.index("wind_preview_type") in args.case_ids and case_families.index("derivative_type") in args.case_ids:
+            if case_families.index("gradient_type") in args.case_ids:
+                # find best diff_type, nu, and decay for each sampling type
+                gradient_type_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "gradient_type"][[("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False).reset_index(level="CaseFamily", drop=True)
+                gradient_type_df["WindPreviewType"] = [re.findall(r"(?<=wind_preview_type_)(.*?)(?=$), s")[0] for s in gradient_type_df.index]
+                gradient_type_df.groupby("WindPreviewType").head(10)
+
+                # find best power decay type
+                # power_decay_type_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "power_decay_type"][[("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False).reset_index(level="CaseFamily", drop=True)
+
+            if case_families.index("wind_preview_type") in args.case_ids:
                 # TODO get best parameters from each sweep and add to other sweeps, then rerun to compare with LUT
                 # find best wind_preview_type and number of samples, if best is on the upper end, increase n_wind_preview_samples in wind_preview_type sweep
                 wind_preview_type_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "wind_preview_type"][[("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False).reset_index(level="CaseFamily", drop=True)
 
-                # find best diff_type, nu, and decay for each sampling type
-                derivative_type_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "derivative_type"][[("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False).reset_index(level="CaseFamily", drop=True)
-                derivative_type_df["WindPreviewType"] = [re.findall(r"(?<=wind_preview_type_)(.*?)(?=$), s")[0] for s in derivative_type_df.index]
-                derivative_type_df.groupby("WindPreviewType").head(10)
-
-                # find best power decay type
-                # power_decay_type_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "power_decay_type"][[("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False).reset_index(level="CaseFamily", drop=True)
 
             if (case_families.index("baseline_controllers") in args.case_ids) and ((case_families.index("slsqp_solver_sweep") in args.case_ids) or (case_families.index("stochastic_sample_sweep") in args.case_ids)):
                

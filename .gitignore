@@ -28,6 +28,7 @@ plt*
 *.out
 *.npy
 *.pkl
+*.zip
 
 examples/*/logstandin*
 examples/*/loghercules*
@@ -76,3 +77,4 @@ examples/floris_case_studies/wind_field_data/raw_data/*
 examples/floris_case_studies/*/*.csv
 examples/floris_case_studies/*/*.yaml
 examples/floris_case_studies/*.out
+

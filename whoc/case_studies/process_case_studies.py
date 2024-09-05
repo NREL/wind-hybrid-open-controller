@@ -454,7 +454,7 @@ def plot_yaw_power_distribution(data_df, save_path):
 
 #     return result_summary_df
 
-def aggregate_time_series_data(case_df, results_path, n_seeds, reprocess_simulations):
+def aggregate_time_series_data(case_df, results_path, n_seeds, reaggregate_simulations):
     """
     Process csv data (all wind seeds) for single case name and single case family, from single diretory in floris_case_studies
     """
@@ -466,8 +466,8 @@ def aggregate_time_series_data(case_df, results_path, n_seeds, reprocess_simulat
        print(f"NOT aggregating data for {case_family}={case_name} due to insufficient seed simulations.")
        return None
 
-    if not reprocess_simulations and os.path.exists(results_path):
-        results_df = pd.read_csv(results_path)
+    if not reaggregate_simulations and os.path.exists(results_path):
+        results_df = pd.read_csv(results_path, index_col=0) #header=[0,1], index_col=[0, 1], skipinitialspace=True
         print(f"Loaded existing {results_path} since rerun_postprocessing argument is false")
         return results_df
 
