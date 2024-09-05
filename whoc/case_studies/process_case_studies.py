@@ -57,7 +57,7 @@ def plot_wind_farm(floris_input_files, lut_paths, save_dir):
         lut_angles = wake_steering_interpolant([270.0], [8.0])
         fmodel.set_operation(yaw_angles=lut_angles)
         # Plot 2: Show a particular flow case
-        turbine_names = [f"T{i}" for i in range(fmodel.n_turbines)]
+        # turbine_names = [f"T{i}" for i in range(fmodel.n_turbines)]
         # layoutviz.plot_turbine_points(fmodel, ax=ax)
         # layoutviz.plot_turbine_labels(
         #     fmodel, ax=ax, turbine_names=turbine_names, show_bbox=True, bbox_dict={"facecolor": "r"}
@@ -65,7 +65,7 @@ def plot_wind_farm(floris_input_files, lut_paths, save_dir):
 
         # Plot 2: Show turbine rotors on flow
         horizontal_plane = fmodel.calculate_horizontal_plane(height=90.0)
-        visualize_cut_plane(horizontal_plane, ax=ax, min_speed=MIN_WS, max_speed=MAX_WS)
+        visualize_cut_plane(horizontal_plane, ax=ax, min_speed=MIN_WS, max_speed=MAX_WS, color_bar=True)
         layoutviz.plot_turbine_rotors(fmodel, ax=ax, yaw_angles=lut_angles)
 
         # if a > 1:
@@ -73,36 +73,18 @@ def plot_wind_farm(floris_input_files, lut_paths, save_dir):
         
         # if a == 0 or a == 2:
         ax.set(ylabel="$y$ [m]")
-        figManager = plt.get_current_fig_manager()
-        figManager.full_screen_toggle()
-        plt.show()
+        # figManager = plt.get_current_fig_manager()
+        # figManager.full_screen_toggle()
+        plt.tight_layout()
+
         fig.savefig(os.path.join(save_dir, f"wind_farm_plot_{fmodel.n_turbines}.png"))
         # plt.close(fig)
 
 def read_time_series_data(results_path):
-    # from whoc.wind_field.WindField import first_ord_filter
-    # for results_dir in results_dirs:
-    case_family = os.path.split(os.path.dirname(results_path))[-1]
-    # for f, fn in enumerate([fn for fn in os.listdir(results_dir) if ".csv" in fn]):
-    # fn = os.path.basename(results_path)
-    # seed = int(re.findall(r"(?<=seed\_)(\d*)", fn)[0])
-    # case_name = re.findall(r"(?<=case_)(.*)(?=_seed)", fn)[0]
-
+    # case_family = os.path.split(os.path.dirname(results_path))[-1]
     df = pd.read_csv(results_path, index_col=0)
-    if "CaseFamily" not in df:
-        df["CaseFamily"] = case_family 
-        df.to_csv(results_path)
-    # results_df.append(df)
-        
-        # df["FilteredFreestreamWindDir"] = first_ord_filter(df["FreestreamWindDir"])
-        # df.to_csv(os.path.join(results_dir, f"time_series_results_case_{r}.csv"))
-        # case_tag = f"{case_family}_{case_name}"
-        # if case_tag not in results:
-        #     results[case_tag] = df
-        # else:
-        #     results[case_tag] = pd.concat([results[case_tag], df])
-
-        # results_dfs[case_tag].to_csv(os.path.join(results_dir, fn))
+    df = df.set_index(["CaseFamily", "CaseName"])
+    
     return df
 
 def generate_outputs(agg_results_df, save_dir):
@@ -197,12 +179,12 @@ def plot_simulations(time_series_df, plotting_cases, save_dir, include_power=Tru
     if single_plot:
         yaw_power_ts_fig, yaw_power_ts_ax = plt.subplots(int(1 + include_power), 1, sharex=True) # 1 subplot of yaw, another for power
     
-    for case_family in pd.unique(time_series_df["CaseFamily"]):
-        case_family_df = time_series_df.loc[(time_series_df["CaseFamily"] == case_family), :]
-        for case_name in pd.unique(case_family_df["CaseName"]):
+    for case_family in pd.unique(time_series_df.index.get_level_values("CaseFamily")):
+        case_family_df = time_series_df.loc[(time_series_df.index.get_level_values("CaseFamily") == case_family), :]
+        for case_name in pd.unique(case_family_df.index.get_level_values("CaseName")):
             if (case_family, case_name) not in plotting_cases:
                 continue
-            case_name_df = case_family_df.loc[case_family_df["CaseName"] == case_name, :]
+            case_name_df = case_family_df.loc[case_family_df.index.get_level_values("CaseName") == case_name, :]
             input_fn = [fn for fn in os.listdir(os.path.join(save_dir, case_family)) if "input_config" in fn and case_name in fn][0]
             # input_case_names = [re.findall(r"(?<=case_)(.*)(?=.yaml)", input_fn)[0] for input_fn in input_filenames]
             # data_filenames = sorted([fn for fn in os.listdir(results_dir) if ("time_series_results" in fn 
@@ -510,6 +492,8 @@ def aggregate_time_series_data(case_df, results_path, n_seeds, reaggregate_simul
                                               "TotalRunningOptimizationCostMean", "RelativeTotalRunningOptimizationCostMean",
                                               "RelativeRunningOptimizationCostTerm_0", "RelativeRunningOptimizationCostTerm_1",
                                               "OptimizationConvergenceTime"])
+    
+    agg_dfs = agg_dfs.groupby(by=["CaseFamily", "CaseName"])[[col for col in agg_dfs.columns if col not in ["CaseFamily", "CaseName", "WindSeed"]]].agg(["min", "max", "mean"])
     agg_df.to_csv(results_path)
     return agg_df
 
@@ -831,7 +815,7 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
     return fig, ax
     
 def plot_parameter_sweep(agg_dfs, save_dir):
-    mpc_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "slsqp_solver_sweep", :]
+    mpc_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "gradient_type", :]
     lut_df = agg_dfs.iloc[(agg_dfs.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_dfs.index.get_level_values("CaseName") == "LUT")] 
     greedy_df = agg_dfs.iloc[(agg_dfs.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_dfs.index.get_level_values("CaseName") == "Greedy")]
                 
@@ -839,43 +823,108 @@ def plot_parameter_sweep(agg_dfs, save_dir):
     param_df["nu"] = param_df["CaseName"].apply(lambda s: re.findall(r"(?<=nu_)(.*?)(?=_solver)", s)[0]).astype("float")
     param_df["n_wind_preview_samples"] = param_df["CaseName"].apply(lambda s: re.findall(r"(?<=n_wind_preview_samples_)(.*?)(?=_nu)", s)[0]).astype("int")
     param_df["preview_type"] = param_df["CaseName"].apply(lambda s: re.findall(r"(?<=wind_preview_type_)(.*?)(?=$)", s)[0])
+    param_df["decay_type"] = param_df["CaseName"].apply(lambda s: re.findall(r"(?<=decay_type_)(.*?)(?=_diff)", s)[0])
     param_df["diff_type"] = param_df["CaseName"].apply(lambda s: re.findall(r"(?<=diff_type_)(.*?)(?=_dt)", s)[0])
-    param_df["diff_direction"] = param_df["diff_type"].apply(lambda s: s[-2:] if s != "none" else None)
+    param_df["max_std_dev"] = param_df["CaseName"].apply(lambda s: re.findall(r"(?<=max_std_dev_)(.*?)(?=_n_horizon)", s)[0])
+
+    param_df["diff_direction"] = param_df["diff_type"].apply(lambda s: s.split("_")[1] if s != "none" else None)
     #("fd" if param_df["diff_type"].str.contains("fd") else "cd") if ~param_df["diff_type"].str.contains("none") else None
-    param_df["diff_steps"] = param_df["diff_type"].apply(lambda s: s[:-3] if s != "none" else None)
+    param_df["diff_steps"] = param_df["diff_type"].apply(lambda s: s.split("_")[0] if s != "none" else None)
     # param_df = param_df.drop(columns="diff_type")
     param_df.columns = param_df.columns.droplevel(1)
     param_df["n_wind_preview_samples_index"] = None
     param_df["FarmPowerMean"] = param_df["FarmPowerMean"] / 1e6
-    unique_si_vals = np.sort(pd.unique(param_df.loc[param_df["preview_type"] == "stochastic_interval", "n_wind_preview_samples"]))
+    unique_sir_vals = np.sort(pd.unique(param_df.loc[param_df["preview_type"] == "stochastic_interval_rectangular", "n_wind_preview_samples"]))
+    unique_sie_vals = np.sort(pd.unique(param_df.loc[param_df["preview_type"] == "stochastic_interval_elliptical", "n_wind_preview_samples"]))
     unique_ss_vals = np.sort(pd.unique(param_df.loc[param_df["preview_type"] == "stochastic_sample", "n_wind_preview_samples"]))
-    param_df.loc[param_df["preview_type"] == "stochastic_interval", "n_wind_preview_samples_index"] = param_df.loc[param_df["preview_type"] == "stochastic_interval", "n_wind_preview_samples"].apply(lambda n: np.where(unique_si_vals == n)[0][0]).astype("int")
+    param_df.loc[param_df["preview_type"] == "stochastic_interval_rectangular", "n_wind_preview_samples_index"] = param_df.loc[param_df["preview_type"] == "stochastic_interval_rectangular", "n_wind_preview_samples"].apply(lambda n: np.where(unique_sir_vals == n)[0][0]).astype("int")
+    param_df.loc[param_df["preview_type"] == "stochastic_interval_elliptical", "n_wind_preview_samples_index"] = param_df.loc[param_df["preview_type"] == "stochastic_interval_elliptical", "n_wind_preview_samples"].apply(lambda n: np.where(unique_sie_vals == n)[0][0]).astype("int")
     param_df.loc[param_df["preview_type"] == "stochastic_sample", "n_wind_preview_samples_index"] = param_df.loc[param_df["preview_type"] == "stochastic_sample", "n_wind_preview_samples"].apply(lambda n: np.where(unique_ss_vals == n)[0][0]).astype("int")
+    param_df.groupby("preview_type").head(3)[["FarmPowerMean", "YawAngleChangeAbsMean", "nu", "preview_type", "decay_type", "diff_type", "max_std_dev"]]
+    # plot of farm power vs n_wind_preview_samples, bar for each sampling type
+    # ax = sns.catplot(data=param_df, kind="bar", x="n_wind_preview_samples_index", y="FarmPowerMean", estimator="max", hue="preview_type", errorbar=None, legend_out=False)
+    # ax.ax.set(ylabel="", xlabel="# Wind Preview Samples", title="Farm Power [MW]")
+    # ax.ax.set_ylim((8., 9.1))
+    # ax.ax.set_xticklabels([f"{sir_val}  {sie_val}  {ss_val}" for sir_val, sie_val, ss_val in zip(unique_sir_vals, unique_sie_vals, unique_ss_vals)]) 
+    # ax.ax.scatter(x=np.arange(5), y=[(greedy_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]]*5, marker="^", s=250, color="green", label="Greedy")
+    # ax.ax.scatter(x=np.arange(5), y=[(lut_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * 5, marker="s", s=250, color="red", label="LUT")
+    # plt.legend(loc="lower right")
+    # ax.ax.get_legend().get_texts()[0].set_text("Stochastic Rectangular Interval")
+    # ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
+    # ax.ax.get_legend().get_texts()[2].set_text("Stochastic Sample")
+    # sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1) 
+    # plt.tight_layout()
+    # plt.savefig(os.path.join(save_dir, "gradient_type", "param_sweep_n_wind_preview_samples.png"))
 
-    ax = sns.catplot(data=param_df, kind="bar", x="n_wind_preview_samples_index", y="FarmPowerMean", estimator="max", hue="preview_type", errorbar=None, legend_out=False)
-    ax.ax.set(ylabel="", xlabel="# Wind Preview Samples", title="Farm Power [MW]")
-    ax.ax.set_ylim((8., 9.1))
-    ax.ax.set_xticklabels([f"{si_val}    {ss_val}" for si_val, ss_val in zip(unique_si_vals, unique_ss_vals)]) 
+    # unique_sir_vals = np.sort(pd.unique(param_df.loc[param_df["preview_type"] == "stochastic_interval_rectangular", "diff_type"]))
+    # unique_sie_vals = np.sort(pd.unique(param_df.loc[param_df["preview_type"] == "stochastic_interval_elliptical", "diff_type"]))
+    # unique_ss_vals = np.sort(pd.unique(param_df.loc[param_df["preview_type"] == "stochastic_sample", "diff_type"]))
+    ax = sns.catplot(data=param_df, kind="bar", x="diff_type", y="FarmPowerMean", estimator="max", hue="preview_type", errorbar=None, legend_out=False)
+    ax.ax.set(ylabel="", xlabel="Differentiation Method", title="Farm Power [MW]")
+    ax.ax.set_ylim((3.0, 3.015))
     ax.ax.scatter(x=np.arange(5), y=[(greedy_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]]*5, marker="^", s=250, color="green", label="Greedy")
     ax.ax.scatter(x=np.arange(5), y=[(lut_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * 5, marker="s", s=250, color="red", label="LUT")
     plt.legend(loc="lower right")
-    ax.ax.get_legend().get_texts()[0].set_text("Stochastic Interval")
-    ax.ax.get_legend().get_texts()[1].set_text("Stochastic Sample") 
+    ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
+    ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
+    ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
+    sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1) 
     plt.tight_layout()
-    plt.savefig(os.path.join(save_dir, "slsqp_solver_sweep", "sampling_fig.png"))
+    plt.savefig(os.path.join(save_dir, "gradient_type", "param_sweep_diff_type.png"))
+    
+    ax = sns.catplot(data=param_df, kind="bar", x="nu", y="FarmPowerMean", estimator="max", hue="preview_type", errorbar=None, legend_out=False)
+    ax.ax.set(ylabel="", xlabel="Step Size", title="Farm Power [MW]")
+    ax.ax.set_ylim((3.0, 3.015))
+    ax.ax.scatter(x=np.arange(5), y=[(greedy_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]]*5, marker="^", s=250, color="green", label="Greedy")
+    ax.ax.scatter(x=np.arange(5), y=[(lut_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * 5, marker="s", s=250, color="red", label="LUT")
+    plt.legend(loc="lower right")
+    ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
+    ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
+    ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
+    sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1) 
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, "gradient_type", "param_sweep_nu.png"))
+
+    ax = sns.catplot(data=param_df, kind="bar", x="decay_type", y="FarmPowerMean", estimator="max", hue="preview_type", errorbar=None, legend_out=False)
+    ax.ax.set(ylabel="", xlabel="Decay Type", title="Farm Power [MW]")
+    ax.ax.set_ylim((3.0, 3.015))
+    ax.ax.scatter(x=np.arange(5), y=[(greedy_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]]*5, marker="^", s=250, color="green", label="Greedy")
+    ax.ax.scatter(x=np.arange(5), y=[(lut_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * 5, marker="s", s=250, color="red", label="LUT")
+    plt.legend(loc="lower right")
+    ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
+    ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
+    ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
+    sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1) 
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, "gradient_type", "param_sweep_decay_type.png"))
+
+    ax = sns.catplot(data=param_df, kind="bar", x="max_std_dev", y="FarmPowerMean", estimator="max", hue="preview_type", errorbar=None, legend_out=False)
+    ax.ax.set(ylabel="", xlabel="Maximum Standard Deviation", title="Farm Power [MW]")
+    ax.ax.set_ylim((3.0, 3.015))
+    ax.ax.scatter(x=np.arange(5), y=[(greedy_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]]*5, marker="^", s=250, color="green", label="Greedy")
+    ax.ax.scatter(x=np.arange(5), y=[(lut_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * 5, marker="s", s=250, color="red", label="LUT")
+    plt.legend(loc="lower right")
+    ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
+    ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
+    ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
+    sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1) 
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, "gradient_type", "param_sweep_max_std_dev.png"))
+
     # plot of direct vs. chain fd/cd, with size of scatter = farm power, hue = nu
     ax = sns.catplot(data=param_df.loc[param_df["preview_type"] != "stochastic_sample"].sort_values(by=["diff_steps", "diff_direction"]), 
                      kind="bar", x="diff_type", y="FarmPowerMean", hue="nu", estimator="max", legend_out=False, errorbar=None)
     ax.ax.set(ylabel="", xlabel="Derivative Type", title="Farm Power [MW]")
-    ax.ax.set_ylim((8., 9.1))
+    ax.ax.set_ylim((3.0, 3.015))
     ax.ax.set_xticklabels(["Chain \nCentral Diff.", "Chain \nForward Diff.", "Direct \nCentral Diff.", "Direct \nForward Diff."])
     ax.ax.scatter(x=np.arange(4), y=[(greedy_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * 4, marker="^", s=250, color="green", label="Greedy")
     ax.ax.scatter(x=np.arange(4), y=[(lut_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * 4, marker="s", s=250, color="red", label="LUT")
     plt.legend(loc="lower right")
     ax.ax.get_legend().get_texts()[0].set_text("0.001 step size")
-    ax.ax.get_legend().get_texts()[1].set_text("0.01 step size") 
+    ax.ax.get_legend().get_texts()[1].set_text("0.01 step size")
+    sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1)  
     plt.tight_layout()
-    plt.savefig(os.path.join(save_dir, "slsqp_solver_sweep", "drvt_fig.png"))
+    plt.savefig(os.path.join(save_dir, "gradient_type", "drvt_fig.png"))
 
 
 def barplot_opt_cost(data_summary_df, save_dir, relative=False):

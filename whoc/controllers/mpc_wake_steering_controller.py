@@ -658,8 +658,8 @@ class MPC(ControllerBase):
 						ax[1].set(ylabel="Wind Magnitude [m/s]", xlabel="Wind Direction [$^\\circ$]")
 						sns.move_legend(ax[1], "upper left", bbox_to_anchor=(1, 1))
 						plt.tight_layout(pad=2.0)
-						fig.show()
-						fig.savefig("/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/stochastic_elliptical_interval_scatter.png")
+						# fig.show()
+						fig.savefig(f"/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/{self.wind_preview_type}_scatter.png")
 
 						if combination_type == "rectangular":
 							df = pd.DataFrame({
