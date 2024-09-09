@@ -69,9 +69,9 @@ case_studies = {
                           "n_horizon": {"group": 0, "vals": [12]},
                           "nu": {"group": 0, "vals": [0.0001]},
                           "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_{3}.yaml")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_{9}.yaml")]},
                           "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{9}.csv")]},
                           "case_names": {"group": 1, "vals": [
                                                             "Stochastic Interval Elliptical 3", "Stochastic Interval Elliptical 5", "Stochastic Interval Elliptical 7", "Stochastic Interval Elliptical 9", "Stochastic Interval Elliptical 15", 
                                                             "Stochastic Interval Rectangular 3", "Stochastic Interval Rectangular 5", "Stochastic Interval Rectangular 7", "Stochastic Interval Rectangular 9", "Stochastic Interval Rectangular 15",
