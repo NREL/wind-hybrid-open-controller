@@ -67,7 +67,7 @@ case_studies = {
                            "warm_start": {"group": 0, "vals": ["lut"]},
                           "dt": {"group": 0, "vals": [15]},
                           "n_horizon": {"group": 0, "vals": [12]},
-                          "nu": {"group": 0, "vals": [0.0001]},
+                          "nu": {"group": 0, "vals": [0.001]},
                           "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_{9}.yaml")]},
                           "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
