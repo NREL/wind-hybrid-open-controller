@@ -78,7 +78,7 @@ case_studies = {
                                                             "Stochastic Sample 25", "Stochastic Sample 50", "Stochastic Sample 100", "Stochastic Sample 250", "Stochastic Sample 500",
                                                             "Perfect", "Persistent"]},
                         "max_std_dev": {"group": 1, "vals": [1.5] * 2 * 5 + [1.5] * 5 + [2, 2]},
-                        "decay_type": {"group": 1, "vals": ["linear"] * 5 + ["linear"] * 5 + ["none"] * 5 + ["none", "none"]},
+                        "decay_type": {"group": 1, "vals": ["exp"] * 5 + ["exp"] * 5 + ["exp"] * 5 + ["none", "none"]},
                         "n_wind_preview_samples": {"group": 1, "vals": [3, 5, 7, 9, 15] * 2 + [25, 50, 100, 250, 500] + [1, 1]},
                         "diff_type": {"group": 1, "vals": ["chain_cd"] * 2 * 5 + ["chain_cd"] * 5 + ["chain_cd", "chain_cd"]},
                          "wind_preview_type": {"group": 1, "vals": ["stochastic_interval_elliptical"] * 5 + ["stochastic_interval_rectangular"] * 5 + ["stochastic_sample"] * 5 + ["perfect", "persistent"]}
