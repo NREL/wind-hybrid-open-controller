@@ -274,15 +274,20 @@ if __name__ == "__main__":
                                                 os.path.join(os.path.dirname(whoc.__file__), f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv"), 
                                                 os.path.join(args.save_dir, "yaw_offset_study", f"yawoffset_winddir_{filename}_ts.png"), plot_turbine_ids=[0, 1, 2], include_yaw=True, include_power=True)
 
-            if case_families.index("baseline_controllers") in args.case_ids and case_families.index("gradient_type") in args.case_ids:
+            if case_families.index("baseline_controllers") in args.case_ids and (case_families.index("gradient_type") in args.case_ids or case_families.index("n_wind_preview_samples") in args.case_ids):
                 # find best diff_type, nu, and decay for each sampling type
-                gradient_type_df = agg_df.iloc[agg_df.index.get_level_values("CaseFamily")  == "gradient_type"][[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean"), ("OptimizationConvergenceTime", "mean")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False) #.reset_index(level="CaseFamily", drop=True)
-                gradient_type_df["WindPreviewType"] = [re.findall(r"(?<=wind_preview_type_)(.*?)(?=$)", s)[0] for s in gradient_type_df.index.get_level_values("CaseName")]
+                 
+                if case_families.index("gradient_type") in args.case_ids:
+                    mpc_type = "gradient_type"
+                elif case_families.index("n_wind_preview_samples") in args.case_ids:
+                    mpc_type = "n_wind_preview_samples"
 
+                mpc_df = agg_df.iloc[agg_df.index.get_level_values("CaseFamily")  == "mpc_type"][[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean"), ("OptimizationConvergenceTime", "mean")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False) #.reset_index(level="CaseFamily", drop=True)
+                mpc_df["WindPreviewType"] = [re.findall(r"(?<=wind_preview_type_)(.*?)(?=$)", s)[0] for s in mpc_df.index.get_level_values("CaseName")]
                 lut_df = agg_df.iloc[(agg_df.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_df.index.get_level_values("CaseName") == "LUT")][[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean"), ("OptimizationConvergenceTime", "mean")]] 
                 greedy_df = agg_df.iloc[(agg_df.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_df.index.get_level_values("CaseName") == "Greedy")][[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean"), ("OptimizationConvergenceTime", "mean")]]
 
-                better_than_lut_df = gradient_type_df.loc[(gradient_type_df[("FarmPowerMean", "mean")] > lut_df[("FarmPowerMean", "mean")].iloc[0]), [("YawAngleChangeAbsMean", "mean"), ("OptimizationConvergenceTime", "mean"), ("FarmPowerMean", "mean"), ("WindPreviewType", "")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False).reset_index(level="CaseFamily", drop=True).groupby("WindPreviewType").head(3)
+                better_than_lut_df = mpc_df.loc[(mpc_df[("mpc_df", "mean")] > lut_df[("FarmPowerMean", "mean")].iloc[0]), [("YawAngleChangeAbsMean", "mean"), ("OptimizationConvergenceTime", "mean"), ("FarmPowerMean", "mean"), ("WindPreviewType", "")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False).reset_index(level="CaseFamily", drop=True).groupby("WindPreviewType").head(3)
                 better_than_lut_df = better_than_lut_df.reset_index(level="CaseName", drop=False)
                 better_than_lut_df["nu"] = better_than_lut_df["CaseName"].apply(lambda s: re.findall(r"(?<=nu_)(.*?)(?=_solver)", s)[0]).astype("float")
                 better_than_lut_df["n_wind_preview_samples"] = better_than_lut_df["CaseName"].apply(lambda s: re.findall(r"(?<=n_wind_preview_samples_)(.*?)(?=_nu)", s)[0]).astype("int")
@@ -294,7 +299,7 @@ if __name__ == "__main__":
                 if False:
                     plot_parameter_sweep(pd.concat([gradient_type_df, lut_df, greedy_df]), args.save_dir)
                 
-                plotting_cases = [("gradient_type", better_than_lut_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False).iloc[0]._name),   
+                plotting_cases = [(mpc_type, better_than_lut_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False).iloc[0]._name),   
                                                 ("baseline_controllers", "LUT"),
                                                 ("baseline_controllers", "Greedy")
                 ]

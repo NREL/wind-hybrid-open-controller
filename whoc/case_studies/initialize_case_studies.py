@@ -40,9 +40,9 @@ case_studies = {
                                 "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
                                 "use_filtered_wind_dir": {"group": 1, "vals": [True, True]},
                                 "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_{3}.yaml")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_{9}.yaml")]},
                                 "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{9}.csv")]},
                           },
     "solver_type": {"controller_class": {"group": 0, "vals": ["MPC"]},
                     "alpha": {"group": 0, "vals": [1.0]},
@@ -51,13 +51,13 @@ case_studies = {
                          "decay_type": {"group": 0, "vals": ["exp"]},
                         "wind_preview_type": {"group": 0, "vals": ["stochastic_interval_elliptical"]},
                         "n_wind_preview_samples": {"group": 0, "vals": [9]},
-                        "n_horizon": {"group": 0, "vals": [36]},
-                        "diff_type": {"group": 0, "vals": ["direct_cd"]},
+                        "n_horizon": {"group": 0, "vals": [12]},
+                        "diff_type": {"group": 0, "vals": ["chain_cd"]},
                         "nu": {"group": 0, "vals": [0.001]},
                           "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_{3}.yaml")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_{9}.yaml")]},
                           "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{9}.csv")]},
                          "case_names": {"group": 1, "vals": ["Sequential SLSQP", "SLSQP", "Sequential Refine"]},
                         "solver": {"group": 1, "vals": ["sequential_slsqp", "slsqp", "serial_refine"]}
     },
@@ -110,20 +110,42 @@ case_studies = {
                     "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                 f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv")]},
                     "wind_preview_type": {"group": 1, "vals": ["stochastic_interval_rectangular"] * 4 + ["stochastic_interval_elliptical"] * 4 + ["stochastic_sample"] * 6},
-                    "n_wind_preview_samples": {"group": 1, "vals": [9] * 4 + [9] * 4 + [500] * 6},
+                    "n_wind_preview_samples": {"group": 1, "vals": [18] * 4 + [9] * 4 + [321] * 6},
                     "diff_type": {"group": 1, "vals": ["direct_cd", "direct_fd", "chain_cd", "chain_fd"] * 2 + ["direct_cd", "direct_fd", "direct_zscg", "chain_cd", "chain_fd", "chain_zscg"]},
                     "nu": {"group": 2, "vals": [0.0001, 0.001, 0.01]},
                     "decay_type": {"group": 3, "vals": ["none", "exp", "cosine", "linear", "zero"]},
                     "max_std_dev": {"group": 4, "vals": [1, 1.5, 2]}
     },
+    "n_wind_preview_samples": {"controller_class": {"group": 0, "vals": ["MPC"]},
+                          "alpha": {"group": 0, "vals": [1.0]},
+                          "max_std_dev": {"group": 0, "vals": [2]},
+                           "warm_start": {"group": 0, "vals": ["lut"]},
+                          "dt": {"group": 0, "vals": [15]},
+                          "n_horizon": {"group": 0, "vals": [12]},
+                          "nu": {"group": 0, "vals": [0.001]},
+                          "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_{3}.yaml")]},
+                          "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv")]},
+                          "case_names": {"group": 1, "vals": [
+                                                            "Stochastic Interval Elliptical 3", "Stochastic Interval Elliptical 5", "Stochastic Interval Elliptical 7", "Stochastic Interval Elliptical 9", "Stochastic Interval Elliptical 15", 
+                                                            "Stochastic Interval Rectangular 3", "Stochastic Interval Rectangular 5", "Stochastic Interval Rectangular 7", "Stochastic Interval Rectangular 9", "Stochastic Interval Rectangular 15",
+                                                            "Stochastic Sample 25", "Stochastic Sample 50", "Stochastic Sample 100", "Stochastic Sample 250", "Stochastic Sample 500",
+                                                            "Perfect", "Persistent"]},
+                        "max_std_dev": {"group": 1, "vals": [1.5] * 2 * 5 + [1.5] * 5 + [2, 2]},
+                        "decay_type": {"group": 1, "vals": ["exp"] * 5 + ["exp"] * 5 + ["exp"] * 5 + ["none", "none"]},
+                        "n_wind_preview_samples": {"group": 1, "vals": [3, 5, 7, 9, 15] * 2 + [25, 50, 100, 250, 500] + [1, 1]},
+                        "diff_type": {"group": 1, "vals": ["chain_cd"] * 2 * 5 + ["chain_cd"] * 5 + ["chain_cd", "chain_cd"]},
+                         "wind_preview_type": {"group": 1, "vals": ["stochastic_interval_elliptical"] * 5 + ["stochastic_interval_rectangular"] * 5 + ["stochastic_sample"] * 5 + ["perfect", "persistent"]}
+                          },
     "warm_start": {"controller_class": {"group": 0, "vals": ["MPC"]},
                    "alpha": {"group": 0, "vals": [1.0]},
                     "dt": {"group": 0, "vals": [15]},
                     "decay_type": {"group": 0, "vals": ["exp"]},
                     "wind_preview_type": {"group": 0, "vals": ["stochastic_interval_elliptical"]},
                     "n_wind_preview_samples": {"group": 0, "vals": [9]},
-                    "n_horizon": {"group": 0, "vals": [36]},
-                    "diff_type": {"group": 0, "vals": ["direct_cd"]},
+                    "n_horizon": {"group": 0, "vals": [12]},
+                    "diff_type": {"group": 0, "vals": ["chain_cd"]},
                     "nu": {"group": 0, "vals": [0.001]},
                     "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                 f"../examples/mpc_wake_steering_florisstandin/floris_gch_{3}.yaml")]},
@@ -139,7 +161,7 @@ case_studies = {
                         "decay_type": {"group": 0, "vals": ["exp"]},
                         "wind_preview_type": {"group": 0, "vals": ["stochastic_interval_elliptical"]},
                         "n_wind_preview_samples": {"group": 0, "vals": [9]},
-                        "diff_type": {"group": 0, "vals": ["direct_cd"]},
+                        "diff_type": {"group": 0, "vals": ["chain_cd"]},
                         "nu": {"group": 0, "vals": [0.001]},
                         "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                     f"../examples/mpc_wake_steering_florisstandin/floris_gch_{3}.yaml")]},
@@ -569,10 +591,9 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
 
 # 0, 1, 2, 3, 6
 case_families = ["baseline_controllers", "solver_type", # 0, 1
-                    "wind_preview_type", "gradient_type", # 2, 3
-                    "warm_start", "horizon_length", # 4, 5
-                    "breakdown_robustness", # 6
-                    "scalability", "cost_func_tuning", # 7, 8
-                    "yaw_offset_study", # 9
-                    "stochastic_sample_sweep", "stochastic_interval_rectangular_sweep", # 10, 11
-                    "generate_sample_figures"] # 12
+                    "wind_preview_type", "warm_start", # 2, 3
+                    "gradient_type", "n_wind_preview_samples", # 4, 5
+                     "horizon_length", "breakdown_robustness", # 6, 7
+                    "scalability", "cost_func_tuning", # 8, 9
+                    "yaw_offset_study", # 10
+                    "generate_sample_figures"] # 11
