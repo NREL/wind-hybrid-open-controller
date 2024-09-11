@@ -76,7 +76,9 @@ case_studies = {
                            "warm_start": {"group": 0, "vals": ["lut"]},
                           "dt": {"group": 0, "vals": [15]},
                           "n_horizon": {"group": 0, "vals": [12]},
-                          "nu": {"group": 0, "vals": [0.001]},
+                           "diff_type": {"group": 0, "vals": ["chain_cd"]},
+                           "decay_type": {"group": 0, "vals": ["none"]},
+                          "nu": {"group": 0, "vals": [0.0001]},
                           "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_{9}.yaml")]},
                           "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -86,10 +88,8 @@ case_studies = {
                                                             "Stochastic Interval Rectangular 3", "Stochastic Interval Rectangular 5", "Stochastic Interval Rectangular 7", "Stochastic Interval Rectangular 9", "Stochastic Interval Rectangular 15",
                                                             "Stochastic Sample 25", "Stochastic Sample 50", "Stochastic Sample 100", "Stochastic Sample 250", "Stochastic Sample 500",
                                                             "Perfect", "Persistent"]},
-                        "max_std_dev": {"group": 1, "vals": [1.5] * 2 * 5 + [1.5] * 5 + [2, 2]},
-                        "decay_type": {"group": 1, "vals": ["exp"] * 5 + ["exp"] * 5 + ["exp"] * 5 + ["none", "none"]},
-                        "n_wind_preview_samples": {"group": 1, "vals": [3, 5, 7, 9, 15] * 2 + [25, 50, 100, 250, 500] + [1, 1]},
-                        "diff_type": {"group": 1, "vals": ["chain_cd"] * 2 * 5 + ["chain_cd"] * 5 + ["chain_cd", "chain_cd"]},
+                         "n_wind_preview_samples": {"group": 1, "vals": [3, 5, 7, 9, 15] * 2 + [25, 50, 100, 250, 500] + [1, 1]},
+                       
                          "wind_preview_type": {"group": 1, "vals": ["stochastic_interval_elliptical"] * 5 + ["stochastic_interval_rectangular"] * 5 + ["stochastic_sample"] * 5 + ["perfect", "persistent"]}
                           },
     # "power_decay_type": {"controller_class": {"group": 0, "vals": ["MPC"]},
