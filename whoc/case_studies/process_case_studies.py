@@ -816,33 +816,15 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
     # fig.show()
     return fig, ax
     
-def plot_parameter_sweep(agg_dfs, save_dir):
-    mpc_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == "gradient_type", :]
+def plot_parameter_sweep(agg_dfs, mpc_type, save_dir, plot_columns):
+    mpc_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == mpc_type, :]
     lut_df = agg_dfs.iloc[(agg_dfs.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_dfs.index.get_level_values("CaseName") == "LUT")] 
     greedy_df = agg_dfs.iloc[(agg_dfs.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_dfs.index.get_level_values("CaseName") == "Greedy")]
                 
     param_df = mpc_df[[("YawAngleChangeAbsMean", "mean"), ("OptimizationConvergenceTime", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False).reset_index(level="CaseFamily", drop=True).reset_index(level="CaseName", drop=False)
-    param_df["nu"] = param_df["CaseName"].apply(lambda s: re.findall(r"(?<=nu_)(.*?)(?=_solver)", s)[0]).astype("float")
-    param_df["n_wind_preview_samples"] = param_df["CaseName"].apply(lambda s: re.findall(r"(?<=n_wind_preview_samples_)(.*?)(?=_nu)", s)[0]).astype("int")
-    param_df["preview_type"] = param_df["CaseName"].apply(lambda s: re.findall(r"(?<=wind_preview_type_)(.*?)(?=$)", s)[0])
-    param_df["decay_type"] = param_df["CaseName"].apply(lambda s: re.findall(r"(?<=decay_type_)(.*?)(?=_diff)", s)[0])
-    param_df["diff_type"] = param_df["CaseName"].apply(lambda s: re.findall(r"(?<=diff_type_)(.*?)(?=_dt)", s)[0])
-    param_df["max_std_dev"] = param_df["CaseName"].apply(lambda s: re.findall(r"(?<=max_std_dev_)(.*?)(?=_n_horizon)", s)[0])
-
-    param_df["diff_direction"] = param_df["diff_type"].apply(lambda s: s.split("_")[1] if s != "none" else None)
-    #("fd" if param_df["diff_type"].str.contains("fd") else "cd") if ~param_df["diff_type"].str.contains("none") else None
-    param_df["diff_steps"] = param_df["diff_type"].apply(lambda s: s.split("_")[0] if s != "none" else None)
-    # param_df = param_df.drop(columns="diff_type")
     param_df.columns = param_df.columns.droplevel(1)
-    param_df["n_wind_preview_samples_index"] = None
     param_df["FarmPowerMean"] = param_df["FarmPowerMean"] / 1e6
-    unique_sir_vals = np.sort(pd.unique(param_df.loc[param_df["preview_type"] == "stochastic_interval_rectangular", "n_wind_preview_samples"]))
-    unique_sie_vals = np.sort(pd.unique(param_df.loc[param_df["preview_type"] == "stochastic_interval_elliptical", "n_wind_preview_samples"]))
-    unique_ss_vals = np.sort(pd.unique(param_df.loc[param_df["preview_type"] == "stochastic_sample", "n_wind_preview_samples"]))
-    param_df.loc[param_df["preview_type"] == "stochastic_interval_rectangular", "n_wind_preview_samples_index"] = param_df.loc[param_df["preview_type"] == "stochastic_interval_rectangular", "n_wind_preview_samples"].apply(lambda n: np.where(unique_sir_vals == n)[0][0]).astype("int")
-    param_df.loc[param_df["preview_type"] == "stochastic_interval_elliptical", "n_wind_preview_samples_index"] = param_df.loc[param_df["preview_type"] == "stochastic_interval_elliptical", "n_wind_preview_samples"].apply(lambda n: np.where(unique_sie_vals == n)[0][0]).astype("int")
-    param_df.loc[param_df["preview_type"] == "stochastic_sample", "n_wind_preview_samples_index"] = param_df.loc[param_df["preview_type"] == "stochastic_sample", "n_wind_preview_samples"].apply(lambda n: np.where(unique_ss_vals == n)[0][0]).astype("int")
-    param_df.groupby("preview_type").head(3)[["FarmPowerMean", "YawAngleChangeAbsMean", "nu", "preview_type", "decay_type", "diff_type", "max_std_dev"]]
+    
     # plot of farm power vs n_wind_preview_samples, bar for each sampling type
     # ax = sns.catplot(data=param_df, kind="bar", x="n_wind_preview_samples_index", y="FarmPowerMean", estimator="max", hue="preview_type", errorbar=None, legend_out=False)
     # ax.ax.set(ylabel="", xlabel="# Wind Preview Samples", title="Farm Power [MW]")
@@ -861,137 +843,150 @@ def plot_parameter_sweep(agg_dfs, save_dir):
     # unique_sir_vals = np.sort(pd.unique(param_df.loc[param_df["preview_type"] == "stochastic_interval_rectangular", "diff_type"]))
     # unique_sie_vals = np.sort(pd.unique(param_df.loc[param_df["preview_type"] == "stochastic_interval_elliptical", "diff_type"]))
     # unique_ss_vals = np.sort(pd.unique(param_df.loc[param_df["preview_type"] == "stochastic_sample", "diff_type"]))
-    ax = sns.catplot(data=param_df, kind="bar", x="diff_type", y="FarmPowerMean", estimator="max", hue="preview_type", errorbar=None, legend_out=False)
-    ax.ax.set(ylabel="", xlabel="Differentiation Method", title="Farm Power [MW]")
-    ax.ax.set_ylim((2.7, 3.015))
-    n_xticks = len(pd.unique(param_df["diff_type"]))
-    ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(greedy_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * n_xticks, marker="^", s=250, color="green", label="Greedy")
-    ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(lut_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * n_xticks, marker="s", s=250, color="red", label="LUT")
-    ax.ax.legend(loc="lower right")
-    ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
-    ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
-    ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
-    sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1) 
-    plt.tight_layout()
-    plt.savefig(os.path.join(save_dir, "gradient_type", "param_sweep_diff_type.png"))
-    
-    ax.ax.set_ylim((3.0, 3.015))
-    handles, labels = ax.ax.get_legend_handles_labels()
-    handles = [h for h, l in zip(handles, labels) if l not in ["Greedy", "LUT"]]
-    labels = [l for l in labels if l not in ["Greedy", "LUT"]]
-    ax.ax.legend(handles, labels)
-    ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
-    ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
-    ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
-    sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1)
-    plt.tight_layout() 
-    plt.savefig(os.path.join(save_dir, "gradient_type", "param_sweep_diff_type_zoom.png"))
-    
-    ax = sns.catplot(data=param_df, kind="bar", x="nu", y="FarmPowerMean", estimator="max", hue="preview_type", errorbar=None, legend_out=False)
-    ax.ax.set(ylabel="", xlabel="Step Size", title="Farm Power [MW]")
-    ax.ax.set_ylim((2.7, 3.015))
-    n_xticks = len(pd.unique(param_df["preview_type"]))
-    ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(greedy_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * n_xticks, marker="^", s=250, color="green", label="Greedy")
-    ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(lut_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * n_xticks, marker="s", s=250, color="red", label="LUT")
-    ax.ax.legend(loc="lower right")
-    ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
-    ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
-    ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
-    sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1) 
-    plt.tight_layout()
-    plt.savefig(os.path.join(save_dir, "gradient_type", "param_sweep_nu.png"))
+    # unique_sir_vals = np.sort(pd.unique(param_df.loc[param_df["preview_type"] == "stochastic_interval_rectangular", "n_wind_preview_samples"]))
+    # unique_sie_vals = np.sort(pd.unique(param_df.loc[param_df["preview_type"] == "stochastic_interval_elliptical", "n_wind_preview_samples"]))
+    # unique_ss_vals = np.sort(pd.unique(param_df.loc[param_df["preview_type"] == "stochastic_sample", "n_wind_preview_samples"]))
 
-    ax.ax.set_ylim((3.0, 3.015))
-    handles, labels = ax.ax.get_legend_handles_labels()
-    handles = [h for h, l in zip(handles, labels) if l not in ["Greedy", "LUT"]]
-    labels = [l for l in labels if l not in ["Greedy", "LUT"]]
-    ax.ax.legend(handles, labels)
-    ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
-    ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
-    ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
-    sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1)
-    plt.tight_layout() 
-    plt.savefig(os.path.join(save_dir, "gradient_type", "param_sweep_nu_zoom.png"))
-
-    ax = sns.catplot(data=param_df, kind="bar", x="decay_type", y="FarmPowerMean", estimator="max", hue="preview_type", errorbar=None, legend_out=False)
-    ax.ax.set(ylabel="", xlabel="Decay Type", title="Farm Power [MW]")
-    ax.ax.set_ylim((2.7, 3.015))
-    n_xticks = len(pd.unique(param_df["decay_type"]))
-    ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(greedy_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * n_xticks, marker="^", s=250, color="green", label="Greedy")
-    ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(lut_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * n_xticks, marker="s", s=250, color="red", label="LUT")
-    ax.ax.legend(loc="lower right")
-    ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
-    ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
-    ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
-    sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1) 
-    plt.tight_layout()
-    plt.savefig(os.path.join(save_dir, "gradient_type", "param_sweep_decay_type.png"))
-    
-    ax.ax.set_ylim((3.0, 3.015))
-    handles, labels = ax.ax.get_legend_handles_labels()
-    handles = [h for h, l in zip(handles, labels) if l not in ["Greedy", "LUT"]]
-    labels = [l for l in labels if l not in ["Greedy", "LUT"]]
-    ax.ax.legend(handles, labels)
-    ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
-    ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
-    ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
-    sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1)
-    plt.tight_layout()  
-    plt.savefig(os.path.join(save_dir, "gradient_type", "param_sweep_decay_type_zoom.png"))
-
-    ax = sns.catplot(data=param_df, kind="bar", x="max_std_dev", y="FarmPowerMean", estimator="max", hue="preview_type", errorbar=None, legend_out=False)
-    ax.ax.set(ylabel="", xlabel="Maximum Standard Deviation", title="Farm Power [MW]")
-    ax.ax.set_ylim((2.7, 3.015))
-    n_xticks = len(pd.unique(param_df["max_std_dev"]))
-    ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(greedy_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * n_xticks, marker="^", s=250, color="green", label="Greedy")
-    ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(lut_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * n_xticks, marker="s", s=250, color="red", label="LUT")
-    ax.ax.legend(loc="lower right")
-    ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
-    ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
-    ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
-    sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1) 
-    plt.tight_layout()
-    plt.savefig(os.path.join(save_dir, "gradient_type", "param_sweep_max_std_dev.png"))
+    if all(c in plot_columns for c in ["diff_type", "preview_type", "FarmPowerMean"]):
         
-    ax.ax.set_ylim((3.0, 3.015))
-    handles, labels = ax.ax.get_legend_handles_labels()
-    handles = [h for h, l in zip(handles, labels) if l not in ["Greedy", "LUT"]]
-    labels = [l for l in labels if l not in ["Greedy", "LUT"]]
-    ax.ax.legend(handles, labels)
-    ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
-    ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
-    ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
-    sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1)
-    plt.tight_layout() 
-    plt.savefig(os.path.join(save_dir, "gradient_type", "param_sweep_max_std_dev_zoom.png"))
-
-    # plot of direct vs. chain fd/cd, with size of scatter = farm power, hue = nu
-    ax = sns.catplot(data=param_df.loc[param_df["preview_type"] != "stochastic_sample"].sort_values(by=["diff_steps", "diff_direction"]), 
-                     kind="bar", x="diff_type", y="FarmPowerMean", hue="nu", estimator="max", legend_out=False, errorbar=None)
-    ax.ax.set(ylabel="", xlabel="Derivative Type", title="Farm Power [MW]")
-    ax.ax.set_ylim((2.7, 3.015))
-    ax.ax.set_xticklabels(["Chain \nCentral Diff.", "Chain \nForward Diff.", "Direct \nCentral Diff.", "Direct \nForward Diff."])
-    n_xticks = len(pd.unique(param_df.loc[param_df["preview_type"] != "stochastic_sample"]["diff_type"]))
-    ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(greedy_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * n_xticks, marker="^", s=250, color="green", label="Greedy")
-    ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(lut_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * n_xticks, marker="s", s=250, color="red", label="LUT")
-    ax.ax.legend(loc="lower right")
-    ax.ax.get_legend().get_texts()[0].set_text("0.001 step size")
-    ax.ax.get_legend().get_texts()[1].set_text("0.01 step size")
-    sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1)  
-    plt.tight_layout()
-    plt.savefig(os.path.join(save_dir, "gradient_type", "drvt_fig.png"))
+        ax = sns.catplot(data=param_df, kind="bar", x="diff_type", y="FarmPowerMean", estimator="max", hue="preview_type", errorbar=None, legend_out=False)
+        ax.ax.set(ylabel="", xlabel="Differentiation Method", title="Farm Power [MW]")
+        ax.ax.set_ylim((2.7, 3.015))
+        n_xticks = len(pd.unique(param_df["diff_type"]))
+        ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(greedy_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * n_xticks, marker="^", s=250, color="green", label="Greedy")
+        ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(lut_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * n_xticks, marker="s", s=250, color="red", label="LUT")
+        ax.ax.legend(loc="lower right")
+        ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
+        ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
+        ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
+        sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1) 
+        plt.tight_layout()
+        plt.savefig(os.path.join(save_dir, "gradient_type", "param_sweep_diff_type.png"))
         
-    ax.ax.set_ylim((3.0, 3.015))
-    handles, labels = ax.ax.get_legend_handles_labels()
-    handles = [h for h, l in zip(handles, labels) if l not in ["Greedy", "LUT"]]
-    labels = [l for l in labels if l not in ["Greedy", "LUT"]]
-    ax.ax.legend(handles, labels)
-    ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
-    ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
-    ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
-    sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1)
-    plt.tight_layout()  
-    plt.savefig(os.path.join(save_dir, "gradient_type", "drvt_fig_zoom.png"))
+        ax.ax.set_ylim((3.0, 3.015))
+        handles, labels = ax.ax.get_legend_handles_labels()
+        handles = [h for h, l in zip(handles, labels) if l not in ["Greedy", "LUT"]]
+        labels = [l for l in labels if l not in ["Greedy", "LUT"]]
+        ax.ax.legend(handles, labels)
+        ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
+        ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
+        ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
+        sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1)
+        plt.tight_layout() 
+        plt.savefig(os.path.join(save_dir, "gradient_type", "param_sweep_diff_type_zoom.png"))
+    
+    if all(c in plot_columns for c in ["nu", "preview_type", "FarmPowerMean"]):
+        
+        ax = sns.catplot(data=param_df, kind="bar", x="nu", y="FarmPowerMean", estimator="max", hue="preview_type", errorbar=None, legend_out=False)
+        ax.ax.set(ylabel="", xlabel="Step Size", title="Farm Power [MW]")
+        ax.ax.set_ylim((2.7, 3.015))
+        n_xticks = len(pd.unique(param_df["preview_type"]))
+        ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(greedy_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * n_xticks, marker="^", s=250, color="green", label="Greedy")
+        ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(lut_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * n_xticks, marker="s", s=250, color="red", label="LUT")
+        ax.ax.legend(loc="lower right")
+        ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
+        ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
+        ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
+        sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1) 
+        plt.tight_layout()
+        plt.savefig(os.path.join(save_dir, "gradient_type", f"param_sweep_{mpc_type}_nu.png"))
+
+        ax.ax.set_ylim((3.0, 3.015))
+        handles, labels = ax.ax.get_legend_handles_labels()
+        handles = [h for h, l in zip(handles, labels) if l not in ["Greedy", "LUT"]]
+        labels = [l for l in labels if l not in ["Greedy", "LUT"]]
+        ax.ax.legend(handles, labels)
+        ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
+        ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
+        ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
+        sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1)
+        plt.tight_layout() 
+        plt.savefig(os.path.join(save_dir, "gradient_type", f"param_sweep_{mpc_type}_nu_zoom.png"))
+
+    if all(c in plot_columns for c in ["decay_type", "preview_type", "FarmPowerMean"]):
+        
+        ax = sns.catplot(data=param_df, kind="bar", x="decay_type", y="FarmPowerMean", estimator="max", hue="preview_type", errorbar=None, legend_out=False)
+        ax.ax.set(ylabel="", xlabel="Decay Type", title="Farm Power [MW]")
+        ax.ax.set_ylim((2.7, 3.015))
+        n_xticks = len(pd.unique(param_df["decay_type"]))
+        ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(greedy_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * n_xticks, marker="^", s=250, color="green", label="Greedy")
+        ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(lut_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * n_xticks, marker="s", s=250, color="red", label="LUT")
+        ax.ax.legend(loc="lower right")
+        ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
+        ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
+        ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
+        sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1) 
+        plt.tight_layout()
+        plt.savefig(os.path.join(save_dir, "gradient_type", f"param_sweep_{mpc_type}_decay_type.png"))
+        
+        ax.ax.set_ylim((3.0, 3.015))
+        handles, labels = ax.ax.get_legend_handles_labels()
+        handles = [h for h, l in zip(handles, labels) if l not in ["Greedy", "LUT"]]
+        labels = [l for l in labels if l not in ["Greedy", "LUT"]]
+        ax.ax.legend(handles, labels)
+        ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
+        ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
+        ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
+        sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1)
+        plt.tight_layout()  
+        plt.savefig(os.path.join(save_dir, "gradient_type", f"param_sweep_{mpc_type}_decay_type_zoom.png"))
+
+    # if "max_std_dev" in plot_columns:
+    if all(c in plot_columns for c in ["max_std_dev", "preview_type", "FarmPowerMean"]):
+        ax = sns.catplot(data=param_df, kind="bar", x="max_std_dev", y="FarmPowerMean", estimator="max", hue="preview_type", errorbar=None, legend_out=False)
+        ax.ax.set(ylabel="", xlabel="Maximum Standard Deviation", title="Farm Power [MW]")
+        ax.ax.set_ylim((2.7, 3.015))
+        n_xticks = len(pd.unique(param_df["max_std_dev"]))
+        ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(greedy_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * n_xticks, marker="^", s=250, color="green", label="Greedy")
+        ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(lut_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * n_xticks, marker="s", s=250, color="red", label="LUT")
+        ax.ax.legend(loc="lower right")
+        ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
+        ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
+        ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
+        sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1) 
+        plt.tight_layout()
+        plt.savefig(os.path.join(save_dir, "gradient_type", f"param_sweep_{mpc_type}_max_std_dev.png"))
+            
+        ax.ax.set_ylim((3.0, 3.015))
+        handles, labels = ax.ax.get_legend_handles_labels()
+        handles = [h for h, l in zip(handles, labels) if l not in ["Greedy", "LUT"]]
+        labels = [l for l in labels if l not in ["Greedy", "LUT"]]
+        ax.ax.legend(handles, labels)
+        ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
+        ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
+        ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
+        sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1)
+        plt.tight_layout() 
+        plt.savefig(os.path.join(save_dir, "gradient_type", f"param_sweep_{mpc_type}_max_std_dev_zoom.png"))
+
+    if all(c in plot_columns for c in ["diff_steps", "diff_direction", "preview_type", "FarmPowerMean", "diff_type", "nu"]):
+        # plot of direct vs. chain fd/cd, with size of scatter = farm power, hue = nu
+        ax = sns.catplot(data=param_df.loc[param_df["preview_type"] != "stochastic_sample"].sort_values(by=["diff_steps", "diff_direction"]), 
+                        kind="bar", x="diff_type", y="FarmPowerMean", hue="nu", estimator="max", legend_out=False, errorbar=None)
+        ax.ax.set(ylabel="", xlabel="Derivative Type", title="Farm Power [MW]")
+        ax.ax.set_ylim((2.7, 3.015))
+        ax.ax.set_xticklabels(["Chain \nCentral Diff.", "Chain \nForward Diff.", "Direct \nCentral Diff.", "Direct \nForward Diff."])
+        n_xticks = len(pd.unique(param_df.loc[param_df["preview_type"] != "stochastic_sample"]["diff_type"]))
+        ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(greedy_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * n_xticks, marker="^", s=250, color="green", label="Greedy")
+        ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(lut_df[("FarmPowerMean", "mean")] / 1e6).iloc[0]] * n_xticks, marker="s", s=250, color="red", label="LUT")
+        ax.ax.legend(loc="lower right")
+        ax.ax.get_legend().get_texts()[0].set_text("0.001 step size")
+        ax.ax.get_legend().get_texts()[1].set_text("0.01 step size")
+        sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1)  
+        plt.tight_layout()
+        plt.savefig(os.path.join(save_dir, "gradient_type", f"param_sweep_{mpc_type}_drvt.png"))
+            
+        ax.ax.set_ylim((3.0, 3.015))
+        handles, labels = ax.ax.get_legend_handles_labels()
+        handles = [h for h, l in zip(handles, labels) if l not in ["Greedy", "LUT"]]
+        labels = [l for l in labels if l not in ["Greedy", "LUT"]]
+        ax.ax.legend(handles, labels)
+        ax.ax.get_legend().get_texts()[2].set_text("Stochastic Rectangular Interval")
+        ax.ax.get_legend().get_texts()[1].set_text("Stochastic Elliptical Interval")
+        ax.ax.get_legend().get_texts()[0].set_text("Stochastic Sample")
+        sns.move_legend(ax.ax, "upper left", bbox_to_anchor=(1, 1), ncols=1)
+        plt.tight_layout()  
+        plt.savefig(os.path.join(save_dir, "gradient_type", f"param_sweep_{mpc_type}_drvt_zoom.png"))
 
 
 def barplot_opt_cost(data_summary_df, save_dir, relative=False):

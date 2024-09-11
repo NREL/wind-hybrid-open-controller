@@ -125,12 +125,18 @@ if __name__ == "__main__":
                     ]
                     
                     new_time_series_df = [fut.result() for fut in read_futures]
+                    # if there are new resulting dataframes, concatenate them from a list into a dataframe
+                    if len(new_time_series_df):
+                        new_time_series_df = [pd.concat(new_time_series_df)]
+                    
                     existing_time_series_df = []
                     for i in args.case_ids:
                         all_ts_df_path = os.path.join(args.save_dir, case_families[i], f"time_series_results_all.csv")                        # if reaggregate_simulations, or if the aggregated time series data doesn't exist for this case family, read the csv files for that case family
                         
                         if not args.reaggregate_simulations and os.path.exists(os.path.join(args.save_dir, case_families[i], f"time_series_results_all.csv")):
                             existing_time_series_df.append(pd.read_csv(all_ts_df_path, index_col=[0, 1]))
+                        elif len(new_time_series_df):
+                            new_time_series_df.iloc[new_time_series_df.index.get_level_values("CaseFamily") == case_families[i]].to_csv(all_ts_df_path)
                     
                     time_series_df = pd.concat(existing_time_series_df + new_time_series_df)
 
@@ -148,16 +154,10 @@ if __name__ == "__main__":
                     ]
 
                     new_agg_df = [fut.result() for fut in futures]
-                    # for i in args.case_ids:
-                    #     if len(new_agg_df) and not all([df is None for df in new_agg_df]):
-                    #         new_agg_df = pd.concat([df for df in new_agg_df if df is not None])
-                    #         all_agg_df_path = os.path.join(args.save_dir, case_families[i], f"agg_results_all.csv")
-                    #         new_agg_df.loc[new_agg_df.index.get_level_values("CaseFamily") == case_families[i], :].to_csv(all_agg_df_path)
-                    #     else:
-                    #         new_agg_df = pd.DataFrame()
                     
             # else, run sequentially
             else:
+                
                 new_time_series_df = []
                 existing_time_series_df = []
                 for i in args.case_ids:
@@ -172,7 +172,7 @@ if __name__ == "__main__":
                         existing_time_series_df.append(pd.read_csv(all_ts_df_path, index_col=[0, 1]))
                     
                     # if any new time series data has been read, add it to the new_time_series_df list and save the aggregated time-series data
-                    if len(new_time_series_df):
+                    if len(new_case_family_time_series_df):
                         new_time_series_df.append(pd.concat(new_case_family_time_series_df))
                         new_time_series_df[-1].to_csv(all_ts_df_path)   
                 
@@ -274,7 +274,7 @@ if __name__ == "__main__":
                                                 os.path.join(os.path.dirname(whoc.__file__), f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv"), 
                                                 os.path.join(args.save_dir, "yaw_offset_study", f"yawoffset_winddir_{filename}_ts.png"), plot_turbine_ids=[0, 1, 2], include_yaw=True, include_power=True)
 
-            if case_families.index("baseline_controllers") in args.case_ids and (case_families.index("gradient_type") in args.case_ids or case_families.index("n_wind_preview_samples") in args.case_ids):
+            if (case_families.index("baseline_controllers") in args.case_ids or case_families.index("baseline_controllers_3") in args.case_ids) and (case_families.index("gradient_type") in args.case_ids or case_families.index("n_wind_preview_samples") in args.case_ids):
                 # find best diff_type, nu, and decay for each sampling type
                  
                 if case_families.index("gradient_type") in args.case_ids:
@@ -282,22 +282,33 @@ if __name__ == "__main__":
                 elif case_families.index("n_wind_preview_samples") in args.case_ids:
                     mpc_type = "n_wind_preview_samples"
 
-                mpc_df = agg_df.iloc[agg_df.index.get_level_values("CaseFamily")  == "mpc_type"][[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean"), ("OptimizationConvergenceTime", "mean")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False) #.reset_index(level="CaseFamily", drop=True)
-                mpc_df["WindPreviewType"] = [re.findall(r"(?<=wind_preview_type_)(.*?)(?=$)", s)[0] for s in mpc_df.index.get_level_values("CaseName")]
+                mpc_df = agg_df.iloc[agg_df.index.get_level_values("CaseFamily")  == mpc_type][[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean"), ("OptimizationConvergenceTime", "mean")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False) #.reset_index(level="CaseFamily", drop=True)
+                
                 lut_df = agg_df.iloc[(agg_df.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_df.index.get_level_values("CaseName") == "LUT")][[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean"), ("OptimizationConvergenceTime", "mean")]] 
                 greedy_df = agg_df.iloc[(agg_df.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_df.index.get_level_values("CaseName") == "Greedy")][[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean"), ("OptimizationConvergenceTime", "mean")]]
 
-                better_than_lut_df = mpc_df.loc[(mpc_df[("mpc_df", "mean")] > lut_df[("FarmPowerMean", "mean")].iloc[0]), [("YawAngleChangeAbsMean", "mean"), ("OptimizationConvergenceTime", "mean"), ("FarmPowerMean", "mean"), ("WindPreviewType", "")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False).reset_index(level="CaseFamily", drop=True).groupby("WindPreviewType").head(3)
-                better_than_lut_df = better_than_lut_df.reset_index(level="CaseName", drop=False)
-                better_than_lut_df["nu"] = better_than_lut_df["CaseName"].apply(lambda s: re.findall(r"(?<=nu_)(.*?)(?=_solver)", s)[0]).astype("float")
-                better_than_lut_df["n_wind_preview_samples"] = better_than_lut_df["CaseName"].apply(lambda s: re.findall(r"(?<=n_wind_preview_samples_)(.*?)(?=_nu)", s)[0]).astype("int")
-                better_than_lut_df["preview_type"] = better_than_lut_df["CaseName"].apply(lambda s: re.findall(r"(?<=wind_preview_type_)(.*?)(?=$)", s)[0])
-                better_than_lut_df["decay_type"] = better_than_lut_df["CaseName"].apply(lambda s: re.findall(r"(?<=decay_type_)(.*?)(?=_diff)", s)[0])
-                better_than_lut_df["diff_type"] = better_than_lut_df["CaseName"].apply(lambda s: re.findall(r"(?<=diff_type_)(.*?)(?=_dt)", s)[0])
-                better_than_lut_df["max_std_dev"] = better_than_lut_df["CaseName"].apply(lambda s: re.findall(r"(?<=max_std_dev_)(.*?)(?=_n_horizon)", s)[0])
+                if case_families.index("gradient_type") in args.case_ids:
+                    mpc_df["WindPreviewType"] = [re.findall(r"(?<=wind_preview_type_)(.*?)(?=$)", s)[0] for s in mpc_df.index.get_level_values("CaseName")]
+                    mpc_df["n_wind_preview_samples"] = mpc_df["CaseName"].apply(lambda s: re.findall(r"(?<=n_wind_preview_samples_)(.*?)(?=_nu)", s)[0]).astype("int")
+                    mpc_df["n_wind_preview_samples_index"] = None
+                    mpc_df["preview_type"] = mpc_df["CaseName"].apply(lambda s: re.findall(r"(?<=wind_preview_type_)(.*?)(?=$)", s)[0])
+                    mpc_df.loc[mpc_df["preview_type"] == "stochastic_interval_rectangular", "n_wind_preview_samples_index"] = mpc_df.loc[mpc_df["preview_type"] == "stochastic_interval_rectangular", "n_wind_preview_samples"].apply(lambda n: np.where(unique_sir_vals == n)[0][0]).astype("int")
+                    mpc_df.loc[mpc_df["preview_type"] == "stochastic_interval_elliptical", "n_wind_preview_samples_index"] = mpc_df.loc[mpc_df["preview_type"] == "stochastic_interval_elliptical", "n_wind_preview_samples"].apply(lambda n: np.where(unique_sie_vals == n)[0][0]).astype("int")
+                    mpc_df.loc[mpc_df["preview_type"] == "stochastic_sample", "n_wind_preview_samples_index"] = mpc_df.loc[mpc_df["preview_type"] == "stochastic_sample", "n_wind_preview_samples"].apply(lambda n: np.where(unique_ss_vals == n)[0][0]).astype("int")
+                    mpc_df["diff_type"] = mpc_df["CaseName"].apply(lambda s: re.findall(r"(?<=diff_type_)(.*?)(?=_dt)", s)[0])
+                    mpc_df["diff_direction"] = mpc_df["diff_type"].apply(lambda s: s.split("_")[1] if s != "none" else None)
+                    mpc_df["diff_steps"] = mpc_df["diff_type"].apply(lambda s: s.split("_")[0] if s != "none" else None)
+                    mpc_df["nu"] = mpc_df["CaseName"].apply(lambda s: re.findall(r"(?<=nu_)(.*?)(?=_solver)", s)[0]).astype("float")
+                    mpc_df["decay_type"] = mpc_df["CaseName"].apply(lambda s: re.findall(r"(?<=decay_type_)(.*?)(?=_diff)", s)[0])
+                    mpc_df["max_std_dev"] = mpc_df["CaseName"].apply(lambda s: re.findall(r"(?<=max_std_dev_)(.*?)(?=_n_horizon)", s)[0])
+                    mpc_df.groupby("preview_type").head(3)[["FarmPowerMean", "YawAngleChangeAbsMean", "nu", "preview_type", "decay_type", "diff_type", "max_std_dev"]]
+                    better_than_lut_df = mpc_df.loc[(mpc_df[("FarmPowerMean", "mean")] > lut_df[("FarmPowerMean", "mean")].iloc[0]), [("YawAngleChangeAbsMean", "mean"), ("OptimizationConvergenceTime", "mean"), ("FarmPowerMean", "mean"), ("WindPreviewType", "")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False).reset_index(level="CaseFamily", drop=True).groupby("WindPreviewType").head(3)
+                
+                better_than_lut_df = mpc_df.loc[(mpc_df[("FarmPowerMean", "mean")] > lut_df[("FarmPowerMean", "mean")].iloc[0]), [("YawAngleChangeAbsMean", "mean"), ("OptimizationConvergenceTime", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False).reset_index(level="CaseFamily", drop=True)
+                    # better_than_lut_df = better_than_lut_df.reset_index(level="CaseName", drop=True)
 
-                if False:
-                    plot_parameter_sweep(pd.concat([gradient_type_df, lut_df, greedy_df]), args.save_dir)
+                if True:
+                    plot_parameter_sweep(pd.concat([mpc_df, lut_df, greedy_df]), mpc_type, args.save_dir)
                 
                 plotting_cases = [(mpc_type, better_than_lut_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False).iloc[0]._name),   
                                                 ("baseline_controllers", "LUT"),

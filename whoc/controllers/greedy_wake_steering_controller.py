@@ -14,7 +14,7 @@ from whoc.controllers.controller_base import ControllerBase
 
 class GreedyController(ControllerBase):
 	def __init__(self, interface, input_dict, verbose=False, **kwargs):
-		print("in GreedyController.__init__")
+		# print("in GreedyController.__init__")
 		super().__init__(interface, verbose=verbose)
 		self.n_turbines = interface.n_turbines #input_dict["controller"]["num_turbines"]
 		self.yaw_limits = input_dict["controller"]["yaw_limits"]
