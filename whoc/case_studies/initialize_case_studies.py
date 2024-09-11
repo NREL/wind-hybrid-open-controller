@@ -133,9 +133,9 @@ case_studies = {
                           "n_horizon": {"group": 0, "vals": [12]},
                           "nu": {"group": 0, "vals": [0.0001]},
                           "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_{3}.yaml")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_{9}.yaml")]},
                           "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{9}.csv")]},
                           "case_names": {"group": 1, "vals": [
                                                             "Stochastic Interval Elliptical 3", "Stochastic Interval Elliptical 5", "Stochastic Interval Elliptical 7", "Stochastic Interval Elliptical 9", "Stochastic Interval Elliptical 15", 
                                                             "Stochastic Interval Rectangular 3", "Stochastic Interval Rectangular 5", "Stochastic Interval Rectangular 7", "Stochastic Interval Rectangular 9", "Stochastic Interval Rectangular 15",
@@ -146,7 +146,7 @@ case_studies = {
                         "n_wind_preview_samples": {"group": 1, "vals": [3, 5, 7, 9, 15] * 2 + [25, 50, 100, 250, 500] + [1, 1]},
                         "diff_type": {"group": 1, "vals": ["chain_cd"] * 2 * 5 + ["chain_cd"] * 5 + ["chain_cd", "chain_cd"]},
                          "wind_preview_type": {"group": 1, "vals": ["stochastic_interval_elliptical"] * 5 + ["stochastic_interval_rectangular"] * 5 + ["stochastic_sample"] * 5 + ["perfect", "persistent"]}
-                          },
+     },
     "warm_start": {"controller_class": {"group": 0, "vals": ["MPC"]},
                    "alpha": {"group": 0, "vals": [1.0]},
                     "dt": {"group": 0, "vals": [15]},
