@@ -1127,7 +1127,7 @@ class MPC(ControllerBase):
 					print(f"nonzero init_dyn_state_cons = {init_dyn_state_cons}")
 				else:
 					print(f"Warning: nonzero init_dyn_state_cons")
-					self.pyopt_sol_obj.optInform	
+					# self.pyopt_sol_obj.optInform	
 			# assert np.isclose(sum(self.opt_sol["states"][self.n_turbines:] - (self.opt_sol["states"][:-self.n_turbines] + self.opt_sol["control_inputs"][self.n_turbines:] * (self.yaw_rate / self.yaw_norm_const) * self.dt)), 0)
 			subsequent_dyn_state_cons = self.opt_sol["states"][self.n_turbines:] - (self.opt_sol["states"][:-self.n_turbines] + self.opt_sol["control_inputs"][self.n_turbines:] * (self.yaw_rate / self.yaw_norm_const) * self.dt)
 
@@ -1136,7 +1136,7 @@ class MPC(ControllerBase):
 					print(f"nonzero subsequent_dyn_state_cons = {subsequent_dyn_state_cons}") # self.pyopt_sol_obj
 				else:
 					print(f"Warning: nonzero subsequent_dyn_state_cons") 
-					self.pyopt_sol_obj.optInform	
+					# self.pyopt_sol_obj.optInform	
 			# assert np.isclose(sum((np.mean(self.wind_preview_samples[f"FreestreamWindDir_{j}"]) / self.yaw_norm_const) - self.opt_sol["states"][(j * self.n_turbines) + i] for j in range(self.n_horizon) for i in range(self.n_turbines)), 0)
 			# x = [(self.wind_preview_samples[f"FreestreamWindDir_{j + 1}"][m] / self.yaw_norm_const) for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon) for i in range(self.n_solve_turbines)]
 			# x = [self.opt_sol["states"][(j * self.n_turbines) + i] for m in range(self.n_wind_preview_samples) for j in range(self.n_horizon) for i in range(self.n_turbines)]
@@ -1151,7 +1151,7 @@ class MPC(ControllerBase):
 					print(f"nonzero state_con_bools = {state_con_bools}")
 				else:
 					print(f"Warning: nonzero state_con_bools") 
-					self.pyopt_sol_obj.optInform	
+					# self.pyopt_sol_obj.optInform	
 			self.target_controls_dict = {"yaw_angles": list(yaw_star)}
 			# self.current_time += self.dt
 		

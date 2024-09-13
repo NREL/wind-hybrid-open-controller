@@ -31,8 +31,6 @@ elif sys.platform == "darwin":
     N_COST_FUNC_TUNINGS = 6
     # STORAGE_DIR = "/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/floris_case_studies"
 
-
-
 # sequential_pyopt is best solver, stochastic is best preview type
 case_studies = {
     "baseline_controllers": { "dt": {"group": 1, "vals": [5, 5]},
@@ -111,7 +109,6 @@ case_studies = {
     "breakdown_robustness":  # case_families[5]
         {"controller_class": {"group": 1, "vals": ["MPC", "LookupBasedWakeSteeringController", "GreedyController"]},
          "dt": {"group": 1, "vals": [15, 5, 5]},
-         "nu": {"group": 0, "vals": [0.0001]},
          "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_{25}.yaml")]},
          "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -147,7 +144,6 @@ case_studies = {
                                                                         f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv")]}
     },
     "baseline_plus_controllers": {"dt": {"group": 1, "vals": [5, 5, 60.0, 60.0, 60.0, 60.0]},
-                                   "alpha": {"group": 0, "vals": [1.0]},
                                 "case_names": {"group": 1, "vals": ["LUT", "Greedy", "MPC_with_Filter", "MPC_without_Filter", "MPC_without_state_cons", "MPC_without_dyn_state_cons"]},
                                 "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController", "MPC", "MPC", "MPC", "MPC"]},
                                 "use_filtered_wind_dir": {"group": 1, "vals": [True, True, True, False, False, False]},
@@ -271,8 +267,6 @@ case_studies = {
                           "case_names": {"group": 1, "vals": [f"StochasticSample_{d}" for d in [100, 250, 500, 1000]] + [f"StochasticInterval_{d}" for d in [3, 5, 9, 15]]},
                           "wind_preview_type": {"group": 1, "vals": ["stochastic_sample"] * 4 + ["stochastic_interval"] * 4},
                            "n_wind_preview_samples": {"group": 1, "vals": [100, 250, 500, 1000] + [3, 5, 9, 15]},
-                           "nu": {"group": 0, "vals": [0.01]},
-                           "alpha": {"group": 0, "vals": [1.0]},
                            "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_{3}.yaml")]},
                             "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -297,9 +291,6 @@ case_studies = {
     "test_nu_preview": { "controller_class": {"group": 0, "vals": ["MPC"]},
                          "case_names": {"group": 1, "vals": ["Perfect", "Stat-Based", "Sample-Based"]},
                          "wind_preview_type": {"group": 1, "vals": ["perfect", "stochastic", "stochastic"]},
-                         "alpha": {"group": 0, "vals": [1.0]},
-                         "nu": {"group": 0, "vals": [0.01]},
-                         "num_turbines": {"group": 0, "vals": [3]},
                          "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{nturb}.csv") for nturb in [3]]},
                          "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), "../examples/mpc_wake_steering_florisstandin", 
