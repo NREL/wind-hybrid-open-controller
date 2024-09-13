@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import re
 import sys
+import yaml
 
 import whoc
 from whoc.controllers.mpc_wake_steering_controller import MPC
@@ -123,7 +124,7 @@ if __name__ == "__main__":
                         for fn in case_family_case_names[case_families[i]]
                         if args.reaggregate_simulations or not os.path.exists(os.path.join(args.save_dir, case_families[i], f"time_series_results_all.csv"))
                     ]
-                    
+
                     new_time_series_df = [fut.result() for fut in read_futures]
                     # if there are new resulting dataframes, concatenate them from a list into a dataframe
                     if len(new_time_series_df):
@@ -136,7 +137,7 @@ if __name__ == "__main__":
                         if not args.reaggregate_simulations and os.path.exists(os.path.join(args.save_dir, case_families[i], f"time_series_results_all.csv")):
                             existing_time_series_df.append(pd.read_csv(all_ts_df_path, index_col=[0, 1]))
                         elif len(new_time_series_df):
-                            new_time_series_df.iloc[new_time_series_df.index.get_level_values("CaseFamily") == case_families[i]].to_csv(all_ts_df_path)
+                            new_time_series_df[0].iloc[new_time_series_df[0].index.get_level_values("CaseFamily") == case_families[i]].to_csv(all_ts_df_path)
                     
                     time_series_df = pd.concat(existing_time_series_df + new_time_series_df)
 
@@ -283,34 +284,52 @@ if __name__ == "__main__":
                     mpc_type = "n_wind_preview_samples"
 
                 mpc_df = agg_df.iloc[agg_df.index.get_level_values("CaseFamily")  == mpc_type][[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean"), ("OptimizationConvergenceTime", "mean")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False) #.reset_index(level="CaseFamily", drop=True)
-                
-                lut_df = agg_df.iloc[(agg_df.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_df.index.get_level_values("CaseName") == "LUT")][[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean"), ("OptimizationConvergenceTime", "mean")]] 
-                greedy_df = agg_df.iloc[(agg_df.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_df.index.get_level_values("CaseName") == "Greedy")][[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean"), ("OptimizationConvergenceTime", "mean")]]
 
-                if case_families.index("gradient_type") in args.case_ids:
-                    mpc_df["WindPreviewType"] = [re.findall(r"(?<=wind_preview_type_)(.*?)(?=$)", s)[0] for s in mpc_df.index.get_level_values("CaseName")]
-                    mpc_df["n_wind_preview_samples"] = mpc_df["CaseName"].apply(lambda s: re.findall(r"(?<=n_wind_preview_samples_)(.*?)(?=_nu)", s)[0]).astype("int")
-                    mpc_df["n_wind_preview_samples_index"] = None
-                    mpc_df["preview_type"] = mpc_df["CaseName"].apply(lambda s: re.findall(r"(?<=wind_preview_type_)(.*?)(?=$)", s)[0])
-                    mpc_df.loc[mpc_df["preview_type"] == "stochastic_interval_rectangular", "n_wind_preview_samples_index"] = mpc_df.loc[mpc_df["preview_type"] == "stochastic_interval_rectangular", "n_wind_preview_samples"].apply(lambda n: np.where(unique_sir_vals == n)[0][0]).astype("int")
-                    mpc_df.loc[mpc_df["preview_type"] == "stochastic_interval_elliptical", "n_wind_preview_samples_index"] = mpc_df.loc[mpc_df["preview_type"] == "stochastic_interval_elliptical", "n_wind_preview_samples"].apply(lambda n: np.where(unique_sie_vals == n)[0][0]).astype("int")
-                    mpc_df.loc[mpc_df["preview_type"] == "stochastic_sample", "n_wind_preview_samples_index"] = mpc_df.loc[mpc_df["preview_type"] == "stochastic_sample", "n_wind_preview_samples"].apply(lambda n: np.where(unique_ss_vals == n)[0][0]).astype("int")
-                    mpc_df["diff_type"] = mpc_df["CaseName"].apply(lambda s: re.findall(r"(?<=diff_type_)(.*?)(?=_dt)", s)[0])
-                    mpc_df["diff_direction"] = mpc_df["diff_type"].apply(lambda s: s.split("_")[1] if s != "none" else None)
-                    mpc_df["diff_steps"] = mpc_df["diff_type"].apply(lambda s: s.split("_")[0] if s != "none" else None)
-                    mpc_df["nu"] = mpc_df["CaseName"].apply(lambda s: re.findall(r"(?<=nu_)(.*?)(?=_solver)", s)[0]).astype("float")
-                    mpc_df["decay_type"] = mpc_df["CaseName"].apply(lambda s: re.findall(r"(?<=decay_type_)(.*?)(?=_diff)", s)[0])
-                    mpc_df["max_std_dev"] = mpc_df["CaseName"].apply(lambda s: re.findall(r"(?<=max_std_dev_)(.*?)(?=_n_horizon)", s)[0])
-                    mpc_df.groupby("preview_type").head(3)[["FarmPowerMean", "YawAngleChangeAbsMean", "nu", "preview_type", "decay_type", "diff_type", "max_std_dev"]]
-                    better_than_lut_df = mpc_df.loc[(mpc_df[("FarmPowerMean", "mean")] > lut_df[("FarmPowerMean", "mean")].iloc[0]), [("YawAngleChangeAbsMean", "mean"), ("OptimizationConvergenceTime", "mean"), ("FarmPowerMean", "mean"), ("WindPreviewType", "")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False).reset_index(level="CaseFamily", drop=True).groupby("WindPreviewType").head(3)
-                
-                better_than_lut_df = mpc_df.loc[(mpc_df[("FarmPowerMean", "mean")] > lut_df[("FarmPowerMean", "mean")].iloc[0]), [("YawAngleChangeAbsMean", "mean"), ("OptimizationConvergenceTime", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("FarmPowerMean", "mean"), ascending=False).reset_index(level="CaseFamily", drop=True)
-                    # better_than_lut_df = better_than_lut_df.reset_index(level="CaseName", drop=True)
+                config_cols = ["n_wind_preview_samples", "wind_preview_type", "diff_type", "nu", "decay_type", "max_std_dev", "n_horizon"]
+                for (case_family, case_name), _ in mpc_df.iterrows():
+                    # input_fn = [fn for fn in os.listdir(os.path.join(args.save_dir, case_family)) if "input_config" in fn and case_name in fn][0]
+                    input_fn = f"input_config_case_{case_name}.yaml"
+                    with open(os.path.join(args.save_dir, case_family, input_fn), 'r') as fp:
+                        input_config = yaml.safe_load(fp)
+                    
+                    for col in config_cols:
+                        mpc_df.loc[(mpc_df.index.get_level_values("CaseFamily") == case_family) & (mpc_df.index.get_level_values("CaseName") == case_name), col] = input_config["controller"][col]
+
+                mpc_df["diff_direction"] = mpc_df["diff_type"].apply(lambda s: s.split("_")[1] if s != "none" else None)
+                mpc_df["diff_steps"] = mpc_df["diff_type"].apply(lambda s: s.split("_")[0] if s != "none" else None)
+                mpc_df["n_wind_preview_samples_index"] = None
+
+                unique_sir_n_samples = np.sort(pd.unique(mpc_df.loc[mpc_df["wind_preview_type"] == "stochastic_interval_rectangular", "n_wind_preview_samples"]))
+                unique_sie_n_samples = np.sort(pd.unique(mpc_df.loc[mpc_df["wind_preview_type"] == "stochastic_interval_elliptical", "n_wind_preview_samples"]))
+                unique_ss_n_samples = np.sort(pd.unique(mpc_df.loc[mpc_df["wind_preview_type"] == "stochastic_sample", "n_wind_preview_samples"]))
+                mpc_df.loc[mpc_df["wind_preview_type"] == "stochastic_interval_rectangular", "n_wind_preview_samples_index"] = mpc_df.loc[mpc_df["wind_preview_type"] == "stochastic_interval_rectangular", "n_wind_preview_samples"].apply(lambda n: np.where(unique_sir_n_samples == n)[0][0]).astype("int").values
+                mpc_df.loc[mpc_df["wind_preview_type"] == "stochastic_interval_elliptical", "n_wind_preview_samples_index"] = mpc_df.loc[mpc_df["wind_preview_type"] == "stochastic_interval_elliptical", "n_wind_preview_samples"].apply(lambda n: np.where(unique_sie_n_samples == n)[0][0]).astype("int").values
+                mpc_df.loc[mpc_df["wind_preview_type"] == "stochastic_sample", "n_wind_preview_samples_index"] = mpc_df.loc[mpc_df["wind_preview_type"] == "stochastic_sample", "n_wind_preview_samples"].apply(lambda n: np.where(unique_ss_n_samples == n)[0][0]).astype("int").values
+                mpc_df.columns = mpc_df.columns.droplevel(1)
+
+                # read params from input configs rather than CaseName
+                lut_df = agg_df.iloc[agg_df.index.get_level_values("CaseFamily").str.contains("baseline_controllers") & (agg_df.index.get_level_values("CaseName") == "LUT")][[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean"), ("OptimizationConvergenceTime", "mean")]] 
+                lut_df.columns = lut_df.columns.droplevel(1)
+                greedy_df = agg_df.iloc[agg_df.index.get_level_values("CaseFamily").str.contains("baseline_controllers") & (agg_df.index.get_level_values("CaseName") == "Greedy")][[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean"), ("OptimizationConvergenceTime", "mean")]]
+                greedy_df.columns = greedy_df.columns.droplevel(1)
+
+                better_than_lut_df = mpc_df.loc[(mpc_df["FarmPowerMean"] > lut_df["FarmPowerMean"].iloc[0]), ["YawAngleChangeAbsMean", "OptimizationConvergenceTime", "FarmPowerMean"] + config_cols].sort_values(by="FarmPowerMean", ascending=False).reset_index(level="CaseFamily", drop=True)
+                better_than_lut_df.groupby("wind_preview_type").head(3)[["n_wind_preview_samples", "wind_preview_type", "diff_type", "nu", "decay_type", "max_std_dev"]]
+                   # better_than_lut_df = better_than_lut_df.reset_index(level="CaseName", drop=True)
+
+                100 * (better_than_lut_df.iloc[0]["FarmPowerMean"] - lut_df.iloc[0]["FarmPowerMean"]) / lut_df.iloc[0]["FarmPowerMean"]
+                100 * (better_than_lut_df.iloc[0]["FarmPowerMean"] - greedy_df.iloc[0]["FarmPowerMean"]) / greedy_df.iloc[0]["FarmPowerMean"]
+
+                better_than_lut_df = better_than_lut_df.sort_values("YawAngleChangeAbsMean", ascending=True)
+                100 * (better_than_lut_df.iloc[0]["YawAngleChangeAbsMean"] - lut_df.iloc[0]["YawAngleChangeAbsMean"]) / lut_df.iloc[0]["YawAngleChangeAbsMean"]
+                100 * (better_than_lut_df.iloc[0]["YawAngleChangeAbsMean"] - greedy_df.iloc[0]["YawAngleChangeAbsMean"]) / greedy_df.iloc[0]["YawAngleChangeAbsMean"]             
 
                 if True:
-                    plot_parameter_sweep(pd.concat([mpc_df, lut_df, greedy_df]), mpc_type, args.save_dir)
+                    plot_parameter_sweep(pd.concat([mpc_df, lut_df, greedy_df]), mpc_type, args.save_dir, 
+                                         plot_columns=["FarmPowerMean", "diff_type", "decay_type", "max_std_dev", "n_wind_preview_samples", "wind_preview_type", "nu"],
+                                         merge_wind_preview_types=False)
                 
-                plotting_cases = [(mpc_type, better_than_lut_df.sort_values(by=("FarmPowerMean", "mean"), ascending=False).iloc[0]._name),   
+                plotting_cases = [(mpc_type, better_than_lut_df.sort_values(by="FarmPowerMean", ascending=False).iloc[0]._name),   
                                                 ("baseline_controllers", "LUT"),
                                                 ("baseline_controllers", "Greedy")
                 ]
