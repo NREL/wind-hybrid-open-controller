@@ -21,6 +21,9 @@ def simulate_controller(controller_class, input_dict, **kwargs):
         results_df = pd.read_csv(os.path.join(results_dir, fn))
         print(f"Loaded existing {fn} since rerun_simulations argument is false")
         return results_df
+    elif not kwargs["rerun_simulations"] and os.path.exists(os.path.join(results_dir, fn.replace("results", f"chk"))):
+        # TODO load checkpoint if exists
+        pass
     
     print(f"Running instance of {controller_class.__name__} - {kwargs['case_name']} with wind seed {kwargs['wind_case_idx']}")
     # Load a FLORIS object for AEP calculations

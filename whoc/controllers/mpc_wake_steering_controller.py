@@ -289,9 +289,6 @@ class YawOptimizationSRRHC(YawOptimizationSR):
 				# integrate linear cost function alpha, normalized powers and normalized yaw rate of changes
 				# just selecting one (and only) wind speed
 				norm_turbine_powers = turbine_powers / self.rated_turbine_power
-				# norm_turbine_powers = np.divide(turbine_powers, greedy_turbine_powers,
-				# 								out=np.zeros_like(turbine_powers),
-				# 								where=greedy_turbine_powers!=0) # choose power not in wake to normalize with
 				# for each value in farm_powers, get corresponding next_yaw_angles from evaluation grid
 				
 				# just selecting one (and only) wind speed, negative because the actual control inputs measure change in absolute yaw angle, not offset
