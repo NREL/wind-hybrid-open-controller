@@ -3,6 +3,7 @@ from whoc.controllers.hybrid_supervisory_controller import HybridSupervisoryCont
 from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
 from whoc.controllers.solar_passthrough_controller import SolarPassthroughController
 from whoc.controllers.wake_steering_rosco_standin import WakeSteeringROSCOStandin
+from whoc.controllers.wind_hydrogen_controller import WindHydrogenController
 from whoc.controllers.wind_farm_power_tracking_controller import (
     WindFarmPowerDistributingController,
     WindFarmPowerTrackingController,
