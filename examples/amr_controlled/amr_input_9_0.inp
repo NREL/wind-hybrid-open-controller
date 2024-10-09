@@ -65,7 +65,7 @@ ABL.bndry_output_format = native
 
 # Whether to use helics
 helics.activated        =   true
-helics.broker_port = 32001
+helics.broker_port = 32000
 
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
 #        ADAPTIVE MESH REFINEMENT       #

@@ -466,9 +466,9 @@ class MPC(ControllerBase):
 			# decay_range =  #* (2 * np.pi / 180.0)
 			self.decay_factor = (360.0 / (4 * decay_range)) #* (2 * np.pi / 180.0)
 		elif self.decay_type == "exp":
-			self.decay_factor = -np.log(1e-6) / decay_range
+			self.decay_factor = np.log(1e-6) / decay_range
 		elif self.decay_type == "linear":
-			self.decay_factor = -1 / decay_range
+			self.decay_factor = 1 / decay_range
 		
 		if False:
 			import matplotlib.pyplot as plt
@@ -488,8 +488,9 @@ class MPC(ControllerBase):
 		self._last_measured_time = None
 		self.current_time = 0.0
 		self.run_custom_sens = "chain" in input_dict["controller"]["diff_type"] or "direct" in input_dict["controller"]["diff_type"] or input_dict["controller"]["diff_type"] == "none"
-		self.run_cd_sens = input_dict["controller"]["diff_type"] == "central_diff"
-		# self.run_cd_sens = True
+		# self.run_brute_force_sens = input_dict["controller"]["diff_type"] == "brute_force"
+		self.run_brute_force_sens = False
+		# self.run_brute_force_sens = True
 		if not isinstance(input_dict["controller"]["clip_value"], (int, float)) or input_dict["controller"]["clip_value"] < np.max(np.abs(self.yaw_limits)):
 			raise TypeError("clip_value must be a integer or a float representing a yaw offset at which perturbed values are clipped before entering FLORIS, greater or equal to yaw limits")	
 
@@ -537,13 +538,6 @@ class MPC(ControllerBase):
 			self.stochastic_sample_u_scale = input_dict["controller"]["stochastic_sample_u_scale"]
 
 		if "stochastic_interval" in self.wind_preview_type:
-			# if self.state_con_type == "check_all_samples":
-			# 	print("state_con_type can't equal 'check_all_samples' for wind_preview_type = stochastic_interval, changing to 'extreme'")
-			# 	self.state_con_type = "extreme"
-			# always have at least three samples for the constraints
-			# if (input_dict["controller"]["n_wind_preview_samples"] < 3):
-			# 	print(f"n_wind_preview_samples must be at least 3, to allow for worst-case wind directions in the lower/upper state constraints")
-			# 	input_dict["controller"]["n_wind_preview_samples"] = 3
 			
 			if (input_dict["controller"]["n_wind_preview_samples"] % 2 == 0):
 				print(f"n_wind_preview_samples must be an odd number to include mean value of distribution, increasing to {input_dict['controller']['n_wind_preview_samples'] + 1}")
@@ -560,7 +554,10 @@ class MPC(ControllerBase):
 			self.n_wind_preview_samples = input_dict["controller"]["n_wind_preview_samples"]**2 # cross-product of u an v values
 			self.n_wind_preview_intervals = input_dict["controller"]["n_wind_preview_samples"]
 		elif self.wind_preview_type == "stochastic_interval_elliptical": # ((n_intervals**2 - 1) * (int(n_intervals // 2))) + 1
-			self.n_wind_preview_samples = (input_dict["controller"]["n_wind_preview_samples"]**2 - 1) * (int(input_dict["controller"]["n_wind_preview_samples"] // 2)) + 1 #
+			# self.n_wind_preview_samples = (input_dict["controller"]["n_wind_preview_samples"]**2 - 1) * (int(input_dict["controller"]["n_wind_preview_samples"] // 2)) + 1 #
+			self.n_wind_preview_samples = ((int((input_dict["controller"]["n_wind_preview_samples"] // 4) \
+									   + np.ceil((input_dict["controller"]["n_wind_preview_samples"] % 4) / 4)) * 4) - 1)\
+										  * (int(input_dict["controller"]["n_wind_preview_samples"] // 2)) + 1
 			self.n_wind_preview_intervals = input_dict["controller"]["n_wind_preview_samples"]
 		else:
 			self.n_wind_preview_samples = 1
@@ -575,11 +572,45 @@ class MPC(ControllerBase):
 									wind_preview_generator=wf._sample_wind_preview, 
 									return_params=True)
 					
-					if self.wind_preview_type == "stochastic_interval_rectangular":
-						n_samples = n_intervals**2
-					elif self.wind_preview_type == "stochastic_interval_elliptical" or self.wind_preview_type == "stochastic_sample":
-						n_samples = ((n_intervals**2 - 1) * (int(n_intervals // 2))) + 1
+					# if self.wind_preview_type == "stochastic_interval_rectangular":
+					# 	n_samples = n_intervals**2
+					# elif self.wind_preview_type == "stochastic_interval_elliptical" or self.wind_preview_type == "stochastic_sample":
+					# 	n_samples = ((n_intervals**2 - 1) * (int(n_intervals // 2))) + 1
 					
+
+					
+					std_u = np.sqrt(np.diag(distribution_params[2]))[np.newaxis, :]
+					std_v = np.sqrt(np.diag(distribution_params[3]))[np.newaxis, :]
+					 # creates trajectories over the horizon for each standard deviation from the mean e.g. trajectory for -2 stds from mean for u, v .... to +2 stds from mean for u, v
+					if self.wind_preview_type == "stochastic_interval_rectangular" or self.wind_preview_type == "stochastic_sample":
+						if n_intervals > 1:
+							std_divisions = np.linspace(-max_std_dev, max_std_dev, n_intervals)[:, np.newaxis]
+						else:
+							std_divisions = np.array([0])[:, np.newaxis]
+						dev_u = np.matmul(std_divisions, std_u)
+						dev_v = np.matmul(std_divisions, std_v)
+						u_vals = distribution_params[0] + dev_u
+						v_vals = distribution_params[1] + dev_v
+						uv_combs = np.swapaxes(list(product(u_vals, v_vals)), 1, 2)
+					elif self.wind_preview_type == "stochastic_interval_elliptical": 
+						# Choose the probabilistic constraints for the stochastic_sample method with the stochastic_interval_elliptical method
+						if n_intervals > 1:
+							std_divisions = np.linspace(0, max_std_dev, (n_intervals // 2) + 1)[:, np.newaxis]
+						else:
+							std_divisions = np.array([0])[:, np.newaxis]
+						dev_u = np.matmul(std_divisions, std_u)
+						dev_v = np.matmul(std_divisions, std_v)
+						# multiple of 4 number of angular intervals, equally divided over each quadrature
+						theta = np.linspace(0, 2 * np.pi, int((n_intervals // 4) + np.ceil((n_intervals % 4) / 4)) * 4)[:-1, np.newaxis] 
+						u_vals = np.vstack([distribution_params[0] + dev_u[0, :], 
+						  					distribution_params[0] + (
+												  dev_u[1:, :] * np.cos(theta)[:, np.newaxis]).reshape(-1, self.n_horizon)])
+						v_vals = np.vstack([distribution_params[1] + dev_v[0, :], 
+						  					distribution_params[1] + (
+												  dev_v[1:, :] * np.sin(theta)[:, np.newaxis]).reshape(-1, self.n_horizon)])
+						uv_combs = np.dstack([u_vals, v_vals])
+					
+					n_samples = uv_combs.shape[0]
 					wind_preview_data = {"FreestreamWindMag": np.zeros((n_samples, self.n_horizon + 1)), 
 							"FreestreamWindDir": np.zeros((n_samples, self.n_horizon + 1))}
 					
@@ -591,32 +622,7 @@ class MPC(ControllerBase):
 					direction = (270.0 - (direction * (180 / np.pi))) % 360.0
 
 					wind_preview_data[f"FreestreamWindDir"][:, 0] = [direction] * n_samples
-					
-					std_u = np.sqrt(np.diag(distribution_params[2]))[np.newaxis, :]
-					std_v = np.sqrt(np.diag(distribution_params[3]))[np.newaxis, :]
 
-					if self.wind_preview_type == "stochastic_interval_rectangular":
-						if n_intervals > 1:
-							std_divisions = np.linspace(-max_std_dev, max_std_dev, n_intervals)[:, np.newaxis]
-						else:
-							std_divisions = np.array([0])[:, np.newaxis]
-						dev_u = np.matmul(std_divisions, std_u)
-						dev_v = np.matmul(std_divisions, std_v)
-						u_vals = distribution_params[0] + dev_u
-						v_vals = distribution_params[1] + dev_v
-						uv_combs = np.swapaxes(list(product(u_vals, v_vals)), 1, 2)
-					elif self.wind_preview_type == "stochastic_interval_elliptical" or self.wind_preview_type == "stochastic_sample":
-						if n_intervals > 1:
-							std_divisions = np.linspace(0, max_std_dev, (n_intervals // 2) + 1)[:, np.newaxis]
-						else:
-							std_divisions = np.array([0])[:, np.newaxis]
-						dev_u = np.matmul(std_divisions, std_u)
-						dev_v = np.matmul(std_divisions, std_v)
-						theta = np.linspace(0, 2 * np.pi, n_intervals**2)[:-1, np.newaxis]
-						u_vals = np.vstack([distribution_params[0] + dev_u[0, :], distribution_params[0] + (dev_u[1:, :] * np.cos(theta)[:, np.newaxis]).reshape(-1, self.n_horizon)])
-						v_vals = np.vstack([distribution_params[1] + dev_v[0, :], distribution_params[1] + (dev_v[1:, :] * np.sin(theta)[:, np.newaxis]).reshape(-1, self.n_horizon)])
-						uv_combs = np.dstack([u_vals, v_vals])
-					
 					mag_vals = np.linalg.norm(uv_combs, axis=2)
 					# compute directions
 					dir_vals = np.arctan2(uv_combs[:, :, 1], uv_combs[:, :, 0])
@@ -626,13 +632,14 @@ class MPC(ControllerBase):
 					 	* norm.pdf(uv_combs[:, :, 1], loc=distribution_params[1], scale=std_v))
 
 					# add values and marginal probabilities corresponding to n_wind_preview_samples division of gaussian
+					
 					wind_preview_data[f"FreestreamWindMag"][:, 1:] = mag_vals
 					wind_preview_data[f"FreestreamWindDir"][:, 1:] = dir_vals
 
 					# wind_preview_probs = np.array(wind_preview_probs).T
 					wind_preview_probs = np.divide(wind_preview_probs, np.sum(wind_preview_probs, axis=0))
 
-					if False and dev_u.shape[0] == 5:
+					if False and self.wind_preview_type in ["stochastic_interval_rectangular", "stochastic_interval_elliptical"]:
 						import matplotlib.pyplot as plt
 						import seaborn as sns
 						import pandas as pd
@@ -642,41 +649,73 @@ class MPC(ControllerBase):
 							"Vertical": uv_combs[:, :, 1].flatten(), 
 							"Direction": dir_vals.flatten(), 
 							"Magnitude": mag_vals.flatten(), 
-						 	"Time-Step": np.tile(np.arange(self.n_horizon) + 1, (uv_combs.shape[0], )),
+						 	"Time Step": np.tile(np.arange(self.n_horizon) + 1, (uv_combs.shape[0], )).astype(int),
 							#  "Std. Dev": np.tile(list(product(std_divisions, std_divisions)), (uv_combs.shape[0], )), 
 							 "Sample": np.repeat(np.arange(uv_combs.shape[0]), (self.n_horizon, )) 
 						})
 
 						fig, ax = plt.subplots(1, 2)
-						sns.scatterplot(ax=ax[0], data=df, x="Horizontal", y="Vertical", hue="Time-Step")
-						sns.scatterplot(ax=ax[1], data=df, x="Direction", y="Magnitude", hue="Time-Step")
+						sns.scatterplot(ax=ax[0], data=df, x="Horizontal", y="Vertical", hue="Time Step")
+						sns.scatterplot(ax=ax[1], data=df, x="Direction", y="Magnitude", hue="Time Step")
 						ax[0].legend([], [], frameon=False)
 						ax[0].set(ylabel="Vertical Wind Speed [m/s]", xlabel="Horizontal Wind Speed [m/s]")
 						ax[1].set(ylabel="Wind Magnitude [m/s]", xlabel="Wind Direction [$^\\circ$]")
 						sns.move_legend(ax[1], "upper left", bbox_to_anchor=(1, 1))
 						plt.tight_layout(pad=2.0)
+						fig.suptitle(f"{self.wind_preview_type}_scatter")
 						# fig.show()
 						fig.savefig(f"/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/{self.wind_preview_type}_scatter.png")
+						
+						# plot trajectories
+						fig, ax = plt.subplots(2, 2)
+						sns.lineplot(ax=ax[0, 0], data=df, x="Time Step", y="Horizontal", hue="Sample", marker="o")
+						sns.lineplot(ax=ax[1, 0], data=df, x="Time Step", y="Vertical", hue="Sample", marker="o")
+						sns.lineplot(ax=ax[0, 1], data=df, x="Time Step", y="Direction", hue="Sample", marker="o")
+						sns.lineplot(ax=ax[1, 1], data=df, x="Time Step", y="Magnitude", hue="Sample", marker="o")
+						# ax[0, 0].legend([], [], frameon=False)
+						ax[0, 0].set(ylabel="Horizontal Wind Speed [m/s]", xlabel="")
+						ax[1, 0].set(ylabel="Vertical Wind Speed [m/s]", xlabel="Horizon Time Step [-]")
+						ax[0, 1].set(ylabel="Wind Direction [$^\\circ$]", xlabel="")
+						ax[1, 1].set(ylabel="Wind Magnitude [m/s]", xlabel="Horizon Time Step [-]")
+						ax[0, 0].legend([], [], frameon=False)
+						ax[1, 0].legend([], [], frameon=False)
+						ax[1, 1].legend([], [], frameon=False)
+						sns.move_legend(ax[0, 1], "upper left", bbox_to_anchor=(1, 1))
+						plt.tight_layout(pad=2.0)
+						fig.suptitle(f"{self.wind_preview_type}_trajectories")
+						fig.savefig(f"/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/{self.wind_preview_type}_trajectories_time.png")
+						# df.sort_values(by=["Sample", "Time Step"])
+						fig, ax = plt.subplots(1, 2)
+						sns.lineplot(ax=ax[0], data=df[["Sample", "Time Step", "Horizontal", "Vertical"]].sort_values(by=["Sample", "Time Step"]), x="Horizontal", y="Vertical", hue="Sample", marker="o")
+						sns.lineplot(ax=ax[1], data=df[["Sample", "Time Step", "Direction", "Magnitude"]].sort_values(by=["Sample", "Time Step"]), x="Direction", y="Magnitude", hue="Sample", marker="o")
+						# ax[0, 0].legend([], [], frameon=False)
+						ax[0].set(ylabel="Vertical Wind Speed [m/s]", xlabel="Horizontal Wind Speed [m/s]")
+						ax[1].set(ylabel="Wind Magnitude [m/s]", xlabel="Wind Direction [$^\\circ$]")
+						ax[0].legend([], [], frameon=False)
+						sns.move_legend(ax[1], "upper left", bbox_to_anchor=(1, 1))
+						plt.tight_layout(pad=2.0)
+						fig.suptitle(f"{self.wind_preview_type}_trajectories_2d")
+						fig.savefig(f"/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/{self.wind_preview_type}_trajectories_2d.png")
 
-						if combination_type == "rectangular":
+						if self.wind_preview_type == "stochastic_interval_rectangular":
 							df = pd.DataFrame({
 								"Horizontal": u_vals.flatten(), 
 								"Vertical": v_vals.flatten(), 
 								# "Direction": dir_vals.flatten(), 
 								# "Magnitude": mag_vals.flatten(), 
-								"Time-Step": np.tile(np.arange(self.n_horizon) + 1, (u_vals.shape[0],)),
+								"Time Step": np.tile(np.arange(self.n_horizon) + 1, (u_vals.shape[0],)).astype(int),
 								"# Standard Deviations": np.repeat(std_divisions, (self.n_horizon,)), 
 								#  "Sample": np.repeat(np.arange(dev_u.shape[0]), (self.n_horizon, )) 
 							})
 							fig, ax = plt.subplots(1, 2)
-							sns.scatterplot(ax=ax[0], data=df, x="# Standard Deviations", y="Horizontal", hue="Time-Step")
-							sns.scatterplot(ax=ax[1], data=df, x="# Standard Deviations", y="Vertical", hue="Time-Step")
+							sns.scatterplot(ax=ax[0], data=df, x="# Standard Deviations", y="Horizontal", hue="Time Step")
+							sns.scatterplot(ax=ax[1], data=df, x="# Standard Deviations", y="Vertical", hue="Time Step")
 							ax[0].legend([], [], frameon=False)
 							ax[0].set(ylabel="Horizontal Wind Speed [m/s]")
 							ax[1].set(ylabel="Vertical Wind Speed [m/s]")
 							sns.move_legend(ax[1], "upper left", bbox_to_anchor=(1, 1))
 							plt.tight_layout(pad=2.0)
-							fig.savefig("/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/stochastic_interval_intervals.png")
+							# fig.savefig("/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/stochastic_interval_intervals.png")
 
 						# for i in range(self.n_horizon):
 						# ax[0, 0].scatter(std_divisions, u_vals[:, i])
@@ -700,26 +739,26 @@ class MPC(ControllerBase):
 								return_params=False, include_uv=False, seed=seed)
 					wind_preview_probs = None
 
-				if False and wind_preview_data["FreestreamWindMag"].shape[0] == 500:
+				if False and self.n_wind_preview_samples == 25 and self.wind_preview_type == "stochastic_sample":
 						import matplotlib.pyplot as plt
 						import pandas as pd
 						import seaborn as sns
 
-						wind_preview_data = generate_wind_preview(wf, current_freestream_measurements, time_step,
+						wind_preview_data_sample = generate_wind_preview(wf, current_freestream_measurements, time_step,
  								wind_preview_generator=wf._sample_wind_preview, 
 								return_params=False, include_uv=True)
 						
 						df = pd.DataFrame({
-							"Horizontal": wind_preview_data["FreestreamWindSpeedU"][:, 1:].flatten(), 
-							"Vertical": wind_preview_data["FreestreamWindSpeedV"][:, 1:].flatten(), 
-							"Direction": wind_preview_data["FreestreamWindDir"][:, 1:].flatten(), 
-							"Magnitude": wind_preview_data["FreestreamWindMag"][:, 1:].flatten(), 
-						 	"Time-Step": np.tile(np.arange(self.n_horizon) + 1, (wind_preview_data["FreestreamWindSpeedU"].shape[0], )),
-							 "Sample": np.repeat(np.arange(wind_preview_data["FreestreamWindSpeedU"].shape[0]), (self.n_horizon, )) 
+							"Horizontal": wind_preview_data_sample["FreestreamWindSpeedU"][:, 1:].flatten(), 
+							"Vertical": wind_preview_data_sample["FreestreamWindSpeedV"][:, 1:].flatten(), 
+							"Direction": wind_preview_data_sample["FreestreamWindDir"][:, 1:].flatten(), 
+							"Magnitude": wind_preview_data_sample["FreestreamWindMag"][:, 1:].flatten(), 
+						 	"Time Step": np.tile(np.arange(self.n_horizon) + 1, (wind_preview_data_sample["FreestreamWindSpeedU"].shape[0], )).astype(int),
+							 "Sample": np.repeat(np.arange(wind_preview_data_sample["FreestreamWindSpeedU"].shape[0]), (self.n_horizon, )) 
 						})
 						fig, ax = plt.subplots(1, 2)
-						sns.scatterplot(ax=ax[0], data=df, x="Horizontal", y="Vertical", hue="Time-Step")
-						sns.scatterplot(ax=ax[1], data=df, x="Direction", y="Magnitude", hue="Time-Step")
+						sns.scatterplot(ax=ax[0], data=df, x="Horizontal", y="Vertical", hue="Time Step")
+						sns.scatterplot(ax=ax[1], data=df, x="Direction", y="Magnitude", hue="Time Step")
 						ax[0].legend([], [], frameon=False)
 						ax[0].set(ylabel="Vertical Wind Speed [m/s]", xlabel="Horizontal Wind Speed [m/s]")
 						ax[1].set(ylabel="Wind Magnitude [m/s]", xlabel="Wind Direction [$^\\circ$]")
@@ -727,7 +766,38 @@ class MPC(ControllerBase):
 						plt.tight_layout(pad=2.0)
 						fig.show()
 						fig.savefig("/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/stochastic_sample_scatter.png")
-						
+
+						# plot trajectories
+						fig, ax = plt.subplots(2, 2)
+						sns.lineplot(ax=ax[0, 0], data=df, x="Time Step", y="Horizontal", hue="Sample", marker="o")
+						sns.lineplot(ax=ax[1, 0], data=df, x="Time Step", y="Vertical", hue="Sample", marker="o")
+						sns.lineplot(ax=ax[0, 1], data=df, x="Time Step", y="Direction", hue="Sample", marker="o")
+						sns.lineplot(ax=ax[1, 1], data=df, x="Time Step", y="Magnitude", hue="Sample", marker="o")
+						# ax[0, 0].legend([], [], frameon=False)
+						ax[0, 0].set(ylabel="Horizontal Wind Speed [m/s]", xlabel="")
+						ax[1, 0].set(ylabel="Vertical Wind Speed [m/s]", xlabel="Horizon Time Step [-]")
+						ax[0, 1].set(ylabel="Wind Direction [$^\\circ$]", xlabel="")
+						ax[1, 1].set(ylabel="Wind Magnitude [m/s]", xlabel="Horizon Time Step [-]")
+						ax[0, 0].legend([], [], frameon=False)
+						ax[1, 0].legend([], [], frameon=False)
+						ax[1, 1].legend([], [], frameon=False)
+						sns.move_legend(ax[0, 1], "upper left", bbox_to_anchor=(1, 1))
+						plt.tight_layout(pad=2.0)
+						fig.suptitle(f"{self.wind_preview_type}_trajectories")
+						fig.savefig("/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/stochastic_sample_trajectories_time.png")	
+
+						fig, ax = plt.subplots(1, 2)
+						sns.lineplot(ax=ax[0], data=df[["Sample", "Time Step", "Horizontal", "Vertical"]].sort_values(by=["Sample", "Time Step"]), x="Horizontal", y="Vertical", hue="Sample", marker="o")
+						sns.lineplot(ax=ax[1], data=df[["Sample", "Time Step", "Direction", "Magnitude"]].sort_values(by=["Sample", "Time Step"]), x="Direction", y="Magnitude", hue="Sample", marker="o")
+						# ax[0, 0].legend([], [], frameon=False)
+						ax[0].set(ylabel="Vertical Wind Speed [m/s]", xlabel="Horizontal Wind Speed [m/s]")
+						ax[1].set(ylabel="Wind Magnitude [m/s]", xlabel="Wind Direction [$^\\circ$]")
+						ax[0].legend([], [], frameon=False)
+						sns.move_legend(ax[1], "upper left", bbox_to_anchor=(1, 1))
+						plt.tight_layout(pad=2.0)
+						fig.suptitle(f"{self.wind_preview_type}_trajectories")
+						fig.savefig(f"/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/{self.wind_preview_type}_trajectories_2d.png")
+	
 						# ax = ax.flatten()
 						# for i in range(self.n_horizon):
 						# 	# ax[i].scatter(wind_preview_data["FreestreamWindMag"][:, i], wind_preview_data["FreestreamWindDir"][:, i])
@@ -844,7 +914,7 @@ class MPC(ControllerBase):
 		elif self.solver == "slsqp":
 			if self.run_custom_sens:
 				self.pyopt_prob = self.setup_slsqp_solver(list(range(self.n_turbines)), [], use_sens_rules=True)
-			if self.run_cd_sens:
+			if self.run_brute_force_sens:
 				self.pyopt_prob_nosens = self.setup_slsqp_solver(list(range(self.n_turbines)), [], use_sens_rules=False)
 		elif self.solver == "zsgd":
 			pass
@@ -1090,9 +1160,7 @@ class MPC(ControllerBase):
 			self.offline_status = np.isclose(current_powers, 0.0)
 
 			self.fi._load_floris()
-			# TODO update floris_model, warm start LUT for turbine breakdown
-			
-			
+
 			wd_arr = self.wind_preview_samples[f"FreestreamWindDir"][:, 1:].flatten()
 			ws_arr = self.wind_preview_samples[f"FreestreamWindMag"][:, 1:].flatten()
 			ti_arr = [self.fi.env.core.flow_field.turbulence_intensities[0]] * self.n_wind_preview_samples * self.n_horizon
@@ -1102,7 +1170,6 @@ class MPC(ControllerBase):
 				turbulence_intensities=np.tile(ti_arr, (n_wind_preview_repeats,))
 			)
 			self.offline_status = np.broadcast_to(self.offline_status, (self.fi.env.core.flow_field.n_findex, self.n_turbines))
-			
 			
 			if self.solver == "slsqp":
 				yaw_star = self.slsqp_solve()
@@ -1362,30 +1429,6 @@ class MPC(ControllerBase):
 			
 			opt_cost = np.sum(opt_cost)
 			opt_cost_terms = np.sum(opt_cost_terms, axis=0)
-		else:
-			for j in range(self.n_horizon):
-				for m in range(self.n_wind_preview_samples):
-					# solve at each time-step, checking that new yaw angles are feasible given last yaw angles, then average solutions over all samples
-					# optimize yaw angles
-					yaw_offset_opt = YawOptimizationSRRHC(self.fi.env, 
-									self.yaw_rate, self.dt, self.alpha,
-									n_wind_preview_samples=self.n_wind_preview_samples,
-									n_horizon=self.n_horizon,
-									minimum_yaw_angle=self.yaw_limits[0],
-									maximum_yaw_angle=self.yaw_limits[1],
-								yaw_angles_baseline=np.zeros((self.n_turbines,)),
-									Ny_passes=[12, 8, 6],
-									verify_convergence=False)#, exploit_layout_symmetry=False)
-					if j == 0:
-						current_yaw_offsets = np.zeros((self.n_turbines, ))
-					else:
-						current_yaw_offsets = self.wind_preview_intervals[f"FreestreamWindDir"][m, j] - opt_yaw_setpoints[m, j - 1, :]
-						
-					opt_yaw_offsets_df = yaw_offset_opt.optimize(current_yaw_offsets, self.offline_status, print_progress=self.verbose)
-					opt_yaw_setpoints[m, j, :] = self.wind_preview_intervals[f"FreestreamWindDi"][m, j + 1] - opt_yaw_offsets_df["yaw_angles_opt"].iloc[0]
-					opt_cost[m, j] = opt_yaw_offsets_df["cost"].iloc[0]
-					opt_cost_terms[m, j, 0] = opt_yaw_offsets_df["cost_states"].iloc[0]
-					opt_cost_terms[m, j, 1] = opt_yaw_offsets_df["cost_control_inputs"].iloc[0]
 
 			opt_yaw_setpoints = opt_yaw_setpoints
 			opt_cost = np.sum(opt_cost)
@@ -1528,13 +1571,14 @@ class MPC(ControllerBase):
 					self.pyopt_prob.variables["control_inputs"][current_idx].value \
 					= self.init_sol["control_inputs"][current_idx]
 				
-				if self.run_cd_sens:
+				if self.run_brute_force_sens:
 					self.pyopt_prob_nosens.variables["states"][current_idx].value \
 						= self.init_sol["states"][current_idx]
 					self.pyopt_prob_nosens.variables["control_inputs"][current_idx].value \
 						= self.init_sol["control_inputs"][current_idx]
 			
-		if False and self.run_cd_sens and self.run_custom_sens:
+		if True and self.run_brute_force_sens and self.run_custom_sens:
+			
 			self.optimizer.optProb = self.pyopt_prob_nosens
 			self.optimizer.optProb.finalize()
 			self.optimizer._setInitialCacheValues()
@@ -1551,35 +1595,39 @@ class MPC(ControllerBase):
 
 			# np.random.seed(0)
 			# sample_sol = {"states": np.random.uniform(0, 1, self.init_sol["states"].shape), "control_inputs": np.random.uniform(-1, 1, self.init_sol["control_inputs"].shape)}
-			sample_sol = {"states": 0.7 * np.ones_like(self.init_sol["states"]), "control_inputs": 0.0 * np.ones_like(self.init_sol["control_inputs"])}
+			# sample_sol = {"states": 0.7 * np.ones_like(self.init_sol["states"]), "control_inputs": 0.5 * np.ones_like(self.init_sol["control_inputs"])}
+			sample_sol = {"states": np.random.choice([0.7, 0.7, 0.7], size=self.init_sol["states"].shape), "control_inputs": np.random.uniform(-1, 1, self.init_sol["control_inputs"].shape)}
 			#funcs1, fail = self.optimizer.optProb.objFun(sample_sol)
 			funcs = {"state_cons": [0] * self.n_turbines * self.n_horizon * 2, "dyn_state_cons": [0] * self.n_turbines * self.n_horizon, "cost_states": 0, "cost_control_inputs": 0, "cost": 0}
-			self._last_yaw_setpoints = None
+			self._last_yaw_setpoints = sample_sol["states"][:self.n_turbines] * self.yaw_norm_const
 			self._last_solve_turbine_ids = None
 			grad_sens_res = grad_sens(sample_sol, funcs) # no computation bc update_norm_powers computed in line above
-			self._last_yaw_setpoints = None
+			self._last_yaw_setpoints = sample_sol["states"][:self.n_turbines] * self.yaw_norm_const
 			self._last_solve_turbine_ids = None
 			grad_nosens_res = grad_nosens(sample_sol, funcs)
-			
+			np.vstack([grad_nosens_res[0]["cost"]["control_inputs"], np.array(grad_sens_res["cost"]["control_inputs"])]).T	
 			np.vstack([grad_nosens_res[0]["cost"]["states"], np.array(grad_sens_res["cost"]["states"])]).T
 			# False for  0,  1,  2,  3,  5,  7, 10, 12, 13 with states part of cost only, no Falses for control inputs only
 			# print(np.where(~np.isclose(grad_nosens_res[0]["cost"]["states"], np.array(grad_sens_res["cost"]["states"]), atol=1e-5)))
 			# no Falses with states part of cost only, no Falses for control inputs only
-			np.where(~np.isclose(grad_nosens_res[0]["cost"]["states"], np.array(grad_sens_res["cost"]["states"]), atol=1e-5))
+			print(f"\nwind_preview_type - {self.wind_preview_type} - {self.n_wind_preview_samples}, alpha = {self.alpha}")
+			print("state sens diff", np.where(~np.isclose(grad_nosens_res[0]["cost"]["states"], np.array(grad_sens_res["cost"]["states"]))))
+			print("ctrl_input sens diff", np.where(~np.isclose(grad_nosens_res[0]["cost"]["control_inputs"], np.array(grad_sens_res["cost"]["control_inputs"]))))
 		
 		if self.run_custom_sens:
 			sol = self.optimizer(self.pyopt_prob) #, storeHistory=f"{os.path.dirname(whoc.__file__)}/floris_case_studies/optimizer_histories/custom_sens_{current_time}.hst") # timeLimit=self.dt) #, sens=sens_rules) #, sensMode='pgc')
 		else:
 			sol = self.optimizer(self.pyopt_prob_nosens, sensStep=self.nu)
 		
-		if self.run_cd_sens and self.run_custom_sens:
+		if self.run_brute_force_sens and self.run_custom_sens:
 			sol_nosens = self.optimizer(self.pyopt_prob_nosens, sensStep=self.nu)
 			s_diff = np.vstack([sol.xStar["states"] - self.init_sol["states"], sol_nosens.xStar["states"] - self.init_sol["states"]]).T
 			s_diff_dir = s_diff / np.abs(s_diff)
 			np.vstack([sol.xStar["states"], sol_nosens.xStar["states"]]).T * self.yaw_norm_const
 			(sol.xStar["states"] - sol_nosens.xStar["states"]) * self.yaw_norm_const
-			print(f"\nwind_preview_type - {self.wind_preview_type} - {self.n_wind_preview_samples}")
+			
 			# print(np.where(~np.isclose(grad_nosens_res[0]["cost"]["states"], np.array(grad_sens_res["cost"]["states"]), atol=1e-3)))	
+			print(f"\nwind_preview_type - {self.wind_preview_type} - {self.n_wind_preview_samples}, alpha = {self.alpha}")
 			print("max yaw_setpoint diff = ", np.max(np.abs(s_diff[:, 0] - s_diff[:, 1]) * self.yaw_norm_const))
 			print(f"sol.fStar vs. sol_nosens.fStar = {100 * (sol.fStar - sol_nosens.fStar) / sol_nosens.fStar} %")
 			# assert np.all(s_diff_dir[:, 0] == s_diff_dir[:, 1])
@@ -1588,7 +1636,8 @@ class MPC(ControllerBase):
 		
 		# check if optimal solution is on boundary anywhere.
 		# assert not any(var.value > var.upper or var.value < var.lower for var in sol.variables["states"]) or any(var.value > var.upper or var.value < var.lower for var in sol.variables["control_inputs"]), "optimization variables should satisfy upper bounds in slsqp_solve"
-
+		# print(f"alpha = {self.alpha}, wind_preview_type = {self.wind_preview_type}")
+		# print(f"state cost term = {self.opt_cost_terms[0]}, ctrl_inp cost term = {self.opt_cost_terms[1]}")
 		# sol = MPC.optimizers[self.optimizer_idx](self.pyopt_prob, sens="FD")
 		self.pyopt_sol_obj = sol
 		self.opt_sol = {k: v[:] for k, v in sol.xStar.items()}
@@ -1762,14 +1811,14 @@ class MPC(ControllerBase):
 				all_yaw_offsets = np.tile(current_yaw_offsets, (self.n_turbines + 1, 1)) + mask * self.nu * self.yaw_norm_const
 		else:
 		# if (not compute_derivatives) or (self.diff_type == "central_diff"): 
-			if self.run_cd_sens:
+			if self.run_brute_force_sens:
 				all_yaw_offsets = np.tile(current_yaw_offsets, (int(self.fi.env.n_findex // current_yaw_offsets.shape[0]), 1)) # TODO only needed if computing w/ central_diff and custom in same run
 			else:
 				all_yaw_offsets = current_yaw_offsets
 
 		self.fi.env.set_operation(
 			yaw_angles=np.clip(all_yaw_offsets, -self.clip_value, self.clip_value), #, dtype="float16"), # must provide cushion because added_yaw brings in gauss.py it over 90.0
-			disable_turbines=self.offline_status, # TODO this is only needed if comparing central diff to not
+			disable_turbines=self.offline_status,
 		)
 		
 		self.fi.env.run()
@@ -1785,52 +1834,52 @@ class MPC(ControllerBase):
 			# if effective yaw is greater than90, set negative powers, sim to interior point method, gradual penalty above 30deg offsets TEST
 			# all_yaw_offsets[n_wind_samples:, :].shape[0]
 			# perturbed_mask = np.zeros((all_yaw_offsets.shape[0],1), dtype=bool)
-			# perturbed_mask[n_wind_samples:, 0] = True # TODO why do we need this
+			# perturbed_mask[n_wind_samples:, 0] = True
 			# perturbed_mask[:, 0] = True
 			pos_idx = (all_yaw_offsets > self.yaw_limits[1]) #& perturbed_mask
 			multi_clip_row_idx = pos_idx.sum(axis=1) > 1
 			pos_idx[multi_clip_row_idx, :] = False
 			pos_idx[multi_clip_row_idx, np.argmax(all_yaw_offsets[multi_clip_row_idx, :], axis=1)] = True
 			pos_decay_idx = np.broadcast_to(pos_idx.any(1)[:, np.newaxis], pos_idx.shape) if self.decay_all else pos_idx#& decay_mask
-			
-			if self.decay_type == "cosine":
-				pos_decay = np.cos(self.decay_factor * (all_yaw_offsets[pos_idx] - self.yaw_limits[1]))
-			elif self.decay_type == "exp":
-				try:
-					pos_decay = np.exp(-self.decay_factor * (all_yaw_offsets[pos_idx] - self.yaw_limits[1]))
-				except FloatingPointError:
-					pos_decay = np.array([0]) 
-			elif self.decay_type == "linear":
-				pos_decay = self.decay_factor * (all_yaw_offsets[pos_idx] - self.yaw_limits[1]) + 1.0
-			elif self.decay_type == "zero":
-				pos_decay = np.array([0])
-			
-			if self.decay_all:
-				all_yawed_turbine_powers[pos_idx.any(1), :] = all_yawed_turbine_powers[pos_idx.any(1), :] * pos_decay[:, np.newaxis]
-			else:
-				all_yawed_turbine_powers[pos_decay_idx] = all_yawed_turbine_powers[pos_decay_idx] * pos_decay
-			
+
 			neg_idx = (all_yaw_offsets < self.yaw_limits[0])# & perturbed_mask
 			multi_clip_row_idx = neg_idx.sum(axis=1) > 1
 			neg_idx[multi_clip_row_idx, :] = False
 			neg_idx[multi_clip_row_idx, np.argmin(all_yaw_offsets[multi_clip_row_idx, :], axis=1)] = True
 			neg_decay_idx = np.broadcast_to(neg_idx.any(1)[:, np.newaxis], neg_idx.shape) if self.decay_all else neg_idx #& decay_mask
-
+			# TODO can I merge this into single operation for pos and neg
+			# oob_yaw_range = np.vstack([all_yaw_offsets[pos_idx] - self.yaw_limits[1], self.yaw_limits[0] - all_yaw_offsets[neg_idx]])
 			if self.decay_type == "cosine":
+				pos_decay = np.cos(self.decay_factor * (all_yaw_offsets[pos_idx] - self.yaw_limits[1]))
 				neg_decay = np.cos(self.decay_factor * (self.yaw_limits[0] - all_yaw_offsets[neg_idx]))
+				# pos_neg_decay = np.cos(self.decay_factor * oob_yaw_range)
 			elif self.decay_type == "exp":
 				try:
-					neg_decay = np.exp(-self.decay_factor * (self.yaw_limits[0] - all_yaw_offsets[neg_idx]))
+					pos_decay = np.exp(self.decay_factor * (all_yaw_offsets[pos_idx] - self.yaw_limits[1]))
+				except FloatingPointError:
+					pos_decay = np.array([0])
+				try:
+					neg_decay = np.exp(self.decay_factor * (self.yaw_limits[0] - all_yaw_offsets[neg_idx]))
 				except FloatingPointError:
 					neg_decay = np.array([0])
-			elif self.decay_type == "linear":
-				neg_decay = self.decay_factor * (self.yaw_limits[0] - all_yaw_offsets[neg_idx]) + 1.0
-			elif self.decay_type == "zero":
-				neg_decay = np.array([0])
 
+				# pos_neg_decay = np.exp(-self.decay_factor * oob_yaw_range)
+			elif self.decay_type == "linear":
+				pos_decay = -self.decay_factor * (all_yaw_offsets[pos_idx] - self.yaw_limits[1]) + 1.0
+				neg_decay = -self.decay_factor * (self.yaw_limits[0] - all_yaw_offsets[neg_idx]) + 1.0
+				# pos_neg_decay = self.decay_factor * oob_yaw_range + 1.0
+			elif self.decay_type == "zero":
+				pos_decay = np.array([0])
+				neg_decay = np.array([0])
+				#pos_neg_decay = np.array([0])
+			
 			if self.decay_all:
+				# all_yawed_turbine_powers[pos_idx.any(1) & neg_idx.any(1), :] = all_yawed_turbine_powers[pos_idx.any(1) & neg_idx.any(1), :] * np.minimum(pos_decay[:, np.newaxis], neg_decay[:, np.newaxis]) # TODO test
+				all_yawed_turbine_powers[pos_idx.any(1), :] = all_yawed_turbine_powers[pos_idx.any(1), :] * pos_decay[:, np.newaxis]
 				all_yawed_turbine_powers[neg_idx.any(1), :] = all_yawed_turbine_powers[neg_idx.any(1), :] * neg_decay[:, np.newaxis]
+				# all_yawed_turbine_powers[pos_idx.any(1), :] = all_yawed_turbine_powers[pos_idx.any(1), :] * pos_neg_decay[:, np.newaxis]	
 			else:
+				all_yawed_turbine_powers[pos_decay_idx] = all_yawed_turbine_powers[pos_decay_idx] * pos_decay
 				all_yawed_turbine_powers[neg_decay_idx] = all_yawed_turbine_powers[neg_decay_idx] * neg_decay
 
 		self.norm_turbine_powers = all_yawed_turbine_powers[:n_wind_samples, :].copy() / self.rated_turbine_power
@@ -1839,12 +1888,6 @@ class MPC(ControllerBase):
 		if compute_derivatives:
 			if self.wind_preview_type == "stochastic_sample":
 				# should compute derivative of each power of each turbine wrt state (yaw angle) of each turbine
-				# if "chain" in self.diff_type:
-					# norm_turbine_power_diff = (all_yawed_turbine_powers[n_wind_samples:, :] - all_yawed_turbine_powers[:n_wind_samples, :]) / self.rated_turbine_power	
-					# self.norm_turbine_powers_states_drvt = np.reshape(np.einsum("ia, ib->iab", norm_turbine_power_diff / self.nu, self.stochastic_sample_u), (self.n_wind_preview_samples, self.n_horizon, n_influenced_turbines, n_solve_turbines))
-				# elif "direct" in self.diff_type:
-				# 	self.plus_norm_turbine_powers = all_yawed_turbine_powers[n_wind_samples:, :] / self.rated_turbine_power
-
 				if self.diff_type == "chain_zscg":
 					norm_turbine_power_diff = (all_yawed_turbine_powers[n_wind_samples:, :] - all_yawed_turbine_powers[:n_wind_samples, :]) / self.rated_turbine_power	
 					self.norm_turbine_powers_states_drvt = np.reshape(np.einsum("ia, ib->iab", norm_turbine_power_diff / self.nu, self.stochastic_sample_u), (self.n_wind_preview_samples, self.n_horizon, n_influenced_turbines, n_solve_turbines))
@@ -1863,7 +1906,9 @@ class MPC(ControllerBase):
 					self.norm_turbine_powers_states_drvt = np.reshape(self.norm_turbine_powers_states_drvt, (self.n_wind_preview_samples, self.n_horizon, n_influenced_turbines, n_solve_turbines))
 
 				elif self.diff_type == "direct_cd":
+					# adding to yaw setpoints, subtracting from yaw offsets
 					self.plus_norm_turbine_powers = np.dstack([all_yawed_turbine_powers[i, :] for i in self.plus_slices]) / self.rated_turbine_power	
+					# subtracting from yaw setpoints, adding to yaw offsets
 					self.neg_norm_turbine_powers = np.dstack([all_yawed_turbine_powers[i, :] for i in self.neg_slices])	/ self.rated_turbine_power
 				
 				elif self.diff_type == "direct_fd":
@@ -1871,25 +1916,24 @@ class MPC(ControllerBase):
 	
 				
 			else:
-				if "chain" in self.diff_type:
-
-					if self.diff_type == "chain_cd":
-						self.norm_turbine_powers_states_drvt = (
-							np.dstack([all_yawed_turbine_powers[i, :] for i in self.plus_slices]) 
-								- np.dstack([all_yawed_turbine_powers[i, :] for i in self.neg_slices])) / (self.rated_turbine_power * 2 * self.nu)
-					elif self.diff_type == "chain_fd":
-						self.norm_turbine_powers_states_drvt = (
-							np.dstack([all_yawed_turbine_powers[i, :] for i in self.plus_slices]) 
-								- all_yawed_turbine_powers[:n_wind_samples, :, np.newaxis]) / (self.rated_turbine_power * self.nu)
+				if self.diff_type == "chain_cd":
+					self.norm_turbine_powers_states_drvt = (
+						np.dstack([all_yawed_turbine_powers[i, :] for i in self.plus_slices]) 
+							- np.dstack([all_yawed_turbine_powers[i, :] for i in self.neg_slices])) / (self.rated_turbine_power * 2 * self.nu)
+					self.norm_turbine_powers_states_drvt = np.reshape(self.norm_turbine_powers_states_drvt, (self.n_wind_preview_samples, self.n_horizon, n_influenced_turbines, n_solve_turbines))
+				
+				elif self.diff_type == "chain_fd":
+					self.norm_turbine_powers_states_drvt = (
+						np.dstack([all_yawed_turbine_powers[i, :] for i in self.plus_slices]) 
+							- all_yawed_turbine_powers[:n_wind_samples, :, np.newaxis]) / (self.rated_turbine_power * self.nu)
 					self.norm_turbine_powers_states_drvt = np.reshape(self.norm_turbine_powers_states_drvt, (self.n_wind_preview_samples, self.n_horizon, n_influenced_turbines, n_solve_turbines))
 
-				elif "direct" in self.diff_type:
-					if self.diff_type == "direct_cd":
-						self.plus_norm_turbine_powers = np.dstack([all_yawed_turbine_powers[i, :] for i in self.plus_slices]) / self.rated_turbine_power	
-						self.neg_norm_turbine_powers = np.dstack([all_yawed_turbine_powers[i, :] for i in self.neg_slices])	/ self.rated_turbine_power
-					
-					elif self.diff_type == "direct_fd":
-						self.plus_norm_turbine_powers = np.dstack([all_yawed_turbine_powers[i, :] for i in self.plus_slices]) / self.rated_turbine_power
+				if self.diff_type == "direct_cd":
+					self.plus_norm_turbine_powers = np.dstack([all_yawed_turbine_powers[i, :] for i in self.plus_slices]) / self.rated_turbine_power	
+					self.neg_norm_turbine_powers = np.dstack([all_yawed_turbine_powers[i, :] for i in self.neg_slices])	/ self.rated_turbine_power
+				
+				elif self.diff_type == "direct_fd":
+					self.plus_norm_turbine_powers = np.dstack([all_yawed_turbine_powers[i, :] for i in self.plus_slices]) / self.rated_turbine_power
 
 				# NOTE for chain_cd diff_type, if positive yaw offsets and negative yaw offsets are out of range for a turbine and a given wind sample row, then both will be decayed, if both are decayed to zero, then the gradient will show that perturbing that turbine's yaw offset result in no power change for that turbine...
 

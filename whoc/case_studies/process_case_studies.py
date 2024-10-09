@@ -1,16 +1,13 @@
-import pandas as pd
 import os
 import yaml
 import re
-import matplotlib.pyplot as plt
+from itertools import cycle
+import warnings
 
 import numpy as np
 import pandas as pd
+from matplotlib import colormaps
 import matplotlib.pyplot as plt
-import matplotlib
-import os
-from itertools import cycle
-import yaml
 import seaborn as sns
 sns.set_theme(style="darkgrid", rc={'figure.figsize':(4,4)})
 
@@ -19,10 +16,7 @@ from floris import FlorisModel
 from floris.flow_visualization import visualize_cut_plane
 
 from scipy.interpolate import LinearNDInterpolator
-from scipy.interpolate import UnivariateSpline
 from scipy.interpolate import interp1d
-
-from whoc import __file__ as whoc_file
 
 factor = 1.5
 plt.rc('font', size=12*factor)          # controls default text sizes
@@ -80,14 +74,44 @@ def plot_wind_farm(floris_input_files, lut_paths, save_dir):
         fig.savefig(os.path.join(save_dir, f"wind_farm_plot_{fmodel.n_turbines}.png"))
         # plt.close(fig)
 
+def read_case_family_agg_data(case_family, save_dir):
+    all_agg_df_path = os.path.join(save_dir, case_family, "agg_results_all.csv")
+    print(f"Reading case family {case_family} aggregate dataframe.")
+    return pd.read_csv(all_agg_df_path, header=[0,1], index_col=[0, 1], skipinitialspace=True)
+
+def write_case_family_agg_data(case_family, new_agg_df, save_dir):
+    all_agg_df_path = os.path.join(save_dir, case_family, "agg_results_all.csv")
+    print(f"Writing case family {case_family} aggregate dataframe.")
+    new_agg_df.loc[new_agg_df.index.get_level_values("CaseFamily") == case_family, :].to_csv(all_agg_df_path)   
+
+def read_case_family_time_series_data(case_family, save_dir):
+    # if reaggregate_simulations, or if the aggregated time series data doesn't exist for this case family, read the csv files for that case family
+    all_ts_df_path = os.path.join(save_dir, case_family, "time_series_results_all.csv") 
+    print(f"Reading combined case family {case_family} time-series dataframe.")
+    return pd.read_csv(all_ts_df_path, index_col=[0, 1])
+
+def write_case_family_time_series_data(case_family, new_time_series_df, save_dir):
+    all_ts_df_path = os.path.join(save_dir, case_family, "time_series_results_all.csv") # if reaggregate_simulations, or if the aggregated time series data doesn't exist for this case family, read the csv files for that case family
+    print(f"Writing combined case family {case_family} time-series dataframe.")
+    new_time_series_df.iloc[new_time_series_df.index.get_level_values("CaseFamily") == case_family].to_csv(all_ts_df_path)
+
 def read_time_series_data(results_path):
-    # case_family = os.path.split(os.path.dirname(results_path))[-1]
-    df = pd.read_csv(results_path, index_col=0)
-    if df["CaseFamily"].iloc[0] == "baseline_controllers":
-        df["CaseFamily"] = "baseline_controllers_3"
-    df.to_csv(results_path) 
-    df = df.set_index(["CaseFamily", "CaseName"])
-    return df
+    # TODO fix scalability Greedy/LUT offline status at end for 25 turbines
+    warnings.simplefilter('error', pd.errors.DtypeWarning)
+    try:
+        df = pd.read_csv(results_path, index_col=0)
+        print(f"Read {results_path}")
+        df = df.set_index(["CaseFamily", "CaseName"])
+        return df
+    except pd.errors.DtypeWarning as w:
+        print(f"DtypeWarning with combined time series file {results_path}: {w}")
+        warnings.simplefilter('ignore', pd.errors.DtypeWarning)
+        bad_df = pd.read_csv(results_path, index_col=0)
+        bad_cols = [bad_df.columns[int(s) - len(bad_df.index.names)] for s in re.findall(r"(?<=Columns \()(.*)(?=\))", w.args[0])[0].split(",")]
+        bad_df.loc[bad_df[bad_cols].isna().any(axis=1)][["Time", "CaseFamily", "CaseName"]].values
+        bad_df["Time"].max()
+    except pd.errors.EmptyDataError as e:
+        print(f"Dataframe {results_path} not read correctly due to error {e}")
 
 def generate_outputs(agg_results_df, save_dir):
 
@@ -439,29 +463,39 @@ def plot_yaw_power_distribution(data_df, save_path):
 #     return result_summary_df
 
 def aggregate_time_series_data(time_series_df, yaml_path, n_seeds):
-    """
+    """_summary_
     Process csv data (all wind seeds) for single case name and single case family, from single diretory in floris_case_studies
+    Args:
+        time_series_df (_type_): _description_
+        yaml_path (_type_): _description_
+        n_seeds (_type_): _description_
+
+    Returns:
+        _type_: _description_
     """
+    x = time_series_df.loc[(time_series_df["WindSeed"] == 0), sorted([c for c in time_series_df.columns if "TurbineOfflineStatus_" in c], key=lambda s: int(s.split("_")[-1]))].isna().any(axis=1)
+    x.index[x]
     # time_series_df = read_time_series_data(results_path=time_series_path)
     case_seeds = pd.unique(time_series_df["WindSeed"])
+    time = pd.unique(time_series_df["Time"])
     case_family = time_series_df.index.get_level_values("CaseFamily")[0]
     # case_family = df_name.replace(f"_{results_df['CaseName'].iloc[0]}", "")
     case_name = time_series_df.index.get_level_values("CaseName")[0]
     if len(case_seeds) < n_seeds:
        print(f"NOT aggregating data for {case_family}={case_name} due to insufficient seed simulations.")
        return None
-    
-    # if not reaggregate_simulations and os.path.exists(os.path.join(os.path.dirname(results_path), f"agg_results_all.csv")) and os.path.exists(os.path.join(os.path.dirname(results_path), f"time_series_results_all.csv")): # os.path.join(args.save_dir, case_families[i], f"agg_results_all.csv")
-    #     # results_df = pd.read_csv(results_path, index_col=0) #header=[0,1], index_col=[0, 1], skipinitialspace=True
-    #     print(f"Loaded existing {results_path} since rerun_postprocessing argument is false")
-    #     # return time_series_df, results_df
-    #     return None 
+
+    with open(yaml_path, 'r') as fp:
+        input_config = yaml.safe_load(fp)
+
+    if len(pd.unique(time)) != int(input_config["hercules_comms"]["helics"]["config"]["stoptime"] // input_config["dt"]):
+       print(f"NOT aggregating data for {case_family}={case_name} due to insufficient time steps.")
+       return None
    
     result_summary = []
     # input_fn = f"input_config_case_{case_name}.yaml"
     print(f"Aggregating data for {case_family}={case_name}")
-    with open(yaml_path, 'r') as fp:
-        input_config = yaml.safe_load(fp)
+    
 
     if "lpf_start_time" in input_config["controller"]:
         lpf_start_time = input_config["controller"]["lpf_start_time"]
@@ -475,20 +509,24 @@ def aggregate_time_series_data(time_series_df, yaml_path, n_seeds):
         else:
             seed_df = time_series_df.loc[(time_series_df["WindSeed"] == seed), :]
         
-        yaw_angles_change_ts = seed_df[sorted(list([c for c in time_series_df.columns if "TurbineYawAngleChange_" in c]))]
-        turbine_offline_status_ts = seed_df[sorted(list([c for c in time_series_df.columns if "TurbineOfflineStatus_" in c]))]
-        turbine_power_ts = seed_df[sorted(list([c for c in time_series_df.columns if "TurbinePower_" in c]))]
+        yaw_angles_change_ts = seed_df[sorted([c for c in time_series_df.columns if "TurbineYawAngleChange_" in c], key=lambda s: int(s.split("_")[-1]))]
+        turbine_offline_status_ts = seed_df[sorted([c for c in time_series_df.columns if "TurbineOfflineStatus_" in c], key=lambda s: int(s.split("_")[-1]))]
+        turbine_power_ts = seed_df[sorted([c for c in time_series_df.columns if "TurbinePower_" in c], key=lambda s: int(s.split("_")[-1]))]
         
-        result_summary.append((seed_df.index.get_level_values("CaseFamily")[0], seed_df.index.get_level_values("CaseName")[0], seed, 
-                               yaw_angles_change_ts.abs().sum(axis=1).mean(), 
-                               ((yaw_angles_change_ts.abs().to_numpy() * np.logical_not(turbine_offline_status_ts)).sum(axis=1) / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean(),
-                               turbine_power_ts.sum(axis=1).mean(), 
-                               ((turbine_power_ts.to_numpy() * np.logical_not(turbine_offline_status_ts)).sum(axis=1) / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean(),
-                               seed_df["TotalRunningOptimizationCost"].mean(), 
-                               (seed_df["TotalRunningOptimizationCost"] / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean(),
-                               (seed_df["RunningOptimizationCostTerm_0"] / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean(),
-                               (seed_df["RunningOptimizationCostTerm_1"] / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean(),
-                               seed_df["OptimizationConvergenceTime"].mean()))
+        try:
+            result_summary.append((seed_df.index.get_level_values("CaseFamily")[0], seed_df.index.get_level_values("CaseName")[0], seed, 
+                                yaw_angles_change_ts.abs().sum(axis=1).mean(), 
+                                ((yaw_angles_change_ts.abs().to_numpy() * np.logical_not(turbine_offline_status_ts)).sum(axis=1) / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean(),
+                                turbine_power_ts.sum(axis=1).mean(), 
+                                ((turbine_power_ts.to_numpy() * np.logical_not(turbine_offline_status_ts)).sum(axis=1) / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean(),
+                                seed_df["TotalRunningOptimizationCost"].mean(), 
+                                (seed_df["TotalRunningOptimizationCost"] / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean(),
+                                (seed_df["RunningOptimizationCostTerm_0"] / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean(),
+                                (seed_df["RunningOptimizationCostTerm_1"] / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean(),
+                                seed_df["OptimizationConvergenceTime"].mean()))
+        except ZeroDivisionError:
+            print("oh")
+        
     # print(f"Aggregated data for {case_family}={case_name}")
     agg_df = pd.DataFrame(result_summary, columns=["CaseFamily", "CaseName", "WindSeed",
                                               "YawAngleChangeAbsMean", "RelativeYawAngleChangeAbsMean",
@@ -522,8 +560,8 @@ def plot_wind_field_ts(data_df, save_path, filter_func=None):
 
 def plot_opt_var_ts(data_df, yaw_offset_bounds, save_path):
     colors = sns.color_palette(palette='Paired')
-    yaw_angle_cols = sorted([col for col in data_df.columns if "TurbineYawAngle_" == col[:len("TurbineYawAngle_") and not pd.isna(data_df[col]).any()]])
-    yaw_angle_change_cols = sorted([col for col in data_df.columns if "TurbineYawAngleChange_" in col])
+    yaw_angle_cols = sorted([col for col in data_df.columns if "TurbineYawAngle_" == col[:len("TurbineYawAngle_") and not pd.isna(data_df[col]).any()]], key=lambda s: int(s.split("_")[-1]))
+    yaw_angle_change_cols = sorted([col for col in data_df.columns if "TurbineYawAngleChange_" in col], key=lambda s: int(s.split("_")[-1]))
 
     fig_opt_vars, ax_opt_vars = plt.subplots(2, 1, sharex=True)
     # fig_opt_vars.set_size_inches(10, 5)
@@ -591,9 +629,9 @@ def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, 
                 ax.append(plt.subplot(int(include_yaw + include_power), len(plot_turbine_ids), subplot_idx + 1, sharex=ax[0], sharey=ax[0]))
 
             for case_name, case_label, color in zip(case_names, case_labels, cycle(colors)):
-                case_df = data_dfs.loc[(data_dfs["CaseFamily"] == "yaw_offset_study") & (data_dfs["CaseName"] == case_name), :]
+                case_df = data_dfs.loc[(data_dfs.index.get_level_values("CaseFamily") == "yaw_offset_study") & (data_dfs.index.get_level_values("CaseName") == case_name), :]
                 # turbine_wind_direction_cols = sorted([col for col in case_df.columns if "TurbineWindDir_" in col])
-                yaw_angle_cols = sorted([col for col in case_df.columns if "TurbineYawAngle_" == col[:len("TurbineYawAngle_")] and not pd.isna(case_df[col]).any()]) 
+                yaw_angle_cols = sorted([col for col in case_df.columns if "TurbineYawAngle_" == col[:len("TurbineYawAngle_")] and not pd.isna(case_df[col]).any()], key=lambda s: int(s.split("_")[-1]))
 
                 # turbine_wind_dirs = case_df[turbine_wind_direction_cols[turbine_idx]].sort_values(by="Time")
                 freestream_wind_dirs = case_df["FreestreamWindDir"]
@@ -644,12 +682,16 @@ def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, 
                 ax[col_idx].legend([], [], frameon=False)
             else:
                 sns.move_legend(ax[col_idx], "upper left", bbox_to_anchor=(1, 1), ncols=1)
+                for lh in ax[col_idx].legend_.legendHandles:
+                    lh.set_sizes([200])
             
             if col_idx != 0:
                 ax[col_idx].set(ylabel="")
             # else:
             #     ax.legend()
-        
+            if not include_power:
+                ax[col_idx].set(xlabel="Freestream Wind Dir. [$^\\circ$]") 
+
         ax[0].set(ylabel="Yaw Offset [$^\\circ$]")
         # ax[0].legend()
 
@@ -668,9 +710,9 @@ def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, 
                     ax.append(plt.subplot(int(include_yaw + include_power), len(plot_turbine_ids), subplot_idx + 1, sharex=ax[0], sharey=ax[0]))
 
             for case_name, case_label, color in zip(case_names, case_labels, cycle(colors)):
-                case_df = data_dfs.loc[(data_dfs["CaseFamily"] == "yaw_offset_study") & (data_dfs["CaseName"] == case_name), :]
+                case_df = data_dfs.loc[(data_dfs.index.get_level_values("CaseFamily") == "yaw_offset_study") & (data_dfs.index.get_level_values("CaseName") == case_name), :]
                 # turbine_wind_direction_cols = sorted([col for col in case_df.columns if "TurbineWindDir_" in col])
-                turbine_power_cols = sorted([col for col in case_df.columns if "TurbinePower_" in col])
+                turbine_power_cols = sorted([col for col in case_df.columns if "TurbinePower_" in col], key=lambda s: int(s.split("_")[-1]))
 
                 # turbine_wind_dirs = case_df[turbine_wind_direction_cols[turbine_idx]].sort_values(by="Time")
                 freestream_wind_dirs = case_df["FreestreamWindDir"]
@@ -702,10 +744,13 @@ def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, 
                     ax[subplot_idx].legend([], [], frameon=False) 
                 else:
                     sns.move_legend(ax[subplot_idx], "upper left", bbox_to_anchor=(1, 1), ncols=1)
+                    for lh in ax[subplot_idx].legend_.legendHandles:
+                        lh.set_sizes([200])
                 
                 if subplot_idx != 0:
                     ax[subplot_idx].set(ylabel="")
-        
+            ax[subplot_idx].set(xlabel="Freestream Wind Dir. [$^\\circ$]")
+
         ax[-len(plot_turbine_ids)].set(ylabel="Turbine Power [MW]")
 
     results_dir = os.path.dirname(save_path)
@@ -727,9 +772,9 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
     
     ax = np.atleast_1d(ax)
     
-    turbine_wind_direction_cols = sorted([col for col in data_df.columns if "TurbineWindDir_" in col and not pd.isna(data_df[col]).any()])
-    turbine_power_cols = sorted([col for col in data_df.columns if "TurbinePower_" in col and not pd.isna(data_df[col]).any()])
-    yaw_angle_cols = sorted([col for col in data_df.columns if "TurbineYawAngle_" == col[:len("TurbineYawAngle_")] and not pd.isna(data_df[col]).any()])
+    turbine_wind_direction_cols = sorted([col for col in data_df.columns if "TurbineWindDir_" in col and not pd.isna(data_df[col]).any()], key=lambda s: int(s.split("_")[-1]))
+    turbine_power_cols = sorted([col for col in data_df.columns if "TurbinePower_" in col and not pd.isna(data_df[col]).any()], key=lambda s: int(s.split("_")[-1]))
+    yaw_angle_cols = sorted([col for col in data_df.columns if "TurbineYawAngle_" == col[:len("TurbineYawAngle_")] and not pd.isna(data_df[col]).any()], key=lambda s: int(s.split("_")[-1]))
 
     plot_seed = 0
     
@@ -810,7 +855,7 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
     results_dir = os.path.dirname(save_path)
     # figManager = plt.get_current_fig_manager()
     # figManager.full_screen_toggle()
-    fig.suptitle("_".join([os.path.basename(results_dir), data_df["CaseName"].iloc[0].replace('/', '_'), "yaw_power_ts"]))
+    fig.suptitle("_".join([os.path.basename(results_dir), data_df.index.get_level_values("CaseName")[0].replace('/', '_'), "yaw_power_ts"]))
     # plt.get_current_fig_manager().full_screen_toggle()
     plt.tight_layout()
     fig.savefig(save_path)
@@ -818,7 +863,7 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
     # fig.show()
     return fig, ax
     
-def plot_parameter_sweep(agg_dfs, mpc_type, save_dir, plot_columns, merge_wind_preview_types):
+def plot_parameter_sweep(agg_dfs, mpc_type, save_dir, plot_columns, merge_wind_preview_types, estimator="max"):
     mpc_df = agg_dfs.iloc[agg_dfs.index.get_level_values("CaseFamily")  == mpc_type, :]
     lut_df = agg_dfs.iloc[(agg_dfs.index.get_level_values("CaseFamily").str.contains("baseline_controllers")) & (agg_dfs.index.get_level_values("CaseName") == "LUT")] 
     greedy_df = agg_dfs.iloc[(agg_dfs.index.get_level_values("CaseFamily").str.contains("baseline_controllers")) & (agg_dfs.index.get_level_values("CaseName") == "Greedy")]
@@ -832,9 +877,9 @@ def plot_parameter_sweep(agg_dfs, mpc_type, save_dir, plot_columns, merge_wind_p
         unique_sir_vals = np.sort(pd.unique(mpc_df.loc[mpc_df["wind_preview_type"] == "stochastic_interval_rectangular", "n_wind_preview_samples"])).astype(int)
         unique_sie_vals = np.sort(pd.unique(mpc_df.loc[mpc_df["wind_preview_type"] == "stochastic_interval_elliptical", "n_wind_preview_samples"])).astype(int)
         unique_ss_vals = np.sort(pd.unique(mpc_df.loc[mpc_df["wind_preview_type"] == "stochastic_sample", "n_wind_preview_samples"])).astype(int)
-        ax = sns.catplot(data=mpc_df, kind="bar", x="n_wind_preview_samples_index", y="FarmPowerMean", estimator="max", hue="wind_preview_type", errorbar=None, legend_out=False)
+        ax = sns.catplot(data=mpc_df, kind="bar", x="n_wind_preview_samples_index", y="FarmPowerMean", estimator=estimator, hue="wind_preview_type", errorbar=None, legend_out=False)
         ax.ax.set(ylabel="", xlabel="# Wind Preview Samples", title="Farm Power [MW]")
-        ax.ax.set_ylim((2.7, 3.015))
+        ax.ax.set_ylim((2.65, 3.04))
         ax.ax.set_xticklabels([f"{ss_val}    {sie_val}    {sir_val}" for sir_val, sie_val, ss_val in zip(unique_sir_vals, unique_sie_vals, unique_ss_vals)]) 
         n_xticks = len(pd.unique(mpc_df["n_wind_preview_samples_index"]))
         ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(greedy_df["FarmPowerMean"] / 1e6).iloc[0]] * n_xticks, marker="^", s=250, color="green", label="Greedy")
@@ -847,7 +892,7 @@ def plot_parameter_sweep(agg_dfs, mpc_type, save_dir, plot_columns, merge_wind_p
         plt.tight_layout()
         plt.savefig(os.path.join(save_dir, "n_wind_preview_samples", "param_sweep_n_wind_preview_samples.png"))
 
-        ax.ax.set_ylim((3.0, 3.015))
+        ax.ax.set_ylim((3.02, 3.04))
         handles, labels = ax.ax.get_legend_handles_labels()
         handles = [h for h, l in zip(handles, labels) if l not in ["Greedy", "LUT"]]
         labels = [l for l in labels if l not in ["Greedy", "LUT"]]
@@ -869,13 +914,13 @@ def plot_parameter_sweep(agg_dfs, mpc_type, save_dir, plot_columns, merge_wind_p
     if all(c in plot_columns for c in ["diff_type", "wind_preview_type", "FarmPowerMean"]):
         
         if merge_wind_preview_types:
-            ax = sns.catplot(data=mpc_df, kind="bar", x="diff_type", y="FarmPowerMean", estimator="max", errorbar=None, legend_out=False)
+            ax = sns.catplot(data=mpc_df, kind="bar", x="diff_type", y="FarmPowerMean", estimator=estimator, errorbar=None, legend_out=False)
             n_xticks = len(pd.unique(mpc_df["diff_type"]))
             ax.ax.scatter(x=np.arange(n_xticks), y=[(greedy_df["FarmPowerMean"] / 1e6).iloc[0]] * n_xticks, marker="^", s=250, color="green", label="Greedy")
             ax.ax.scatter(x=np.arange(n_xticks), y=[(lut_df["FarmPowerMean"] / 1e6).iloc[0]] * n_xticks, marker="s", s=250, color="red", label="LUT")
             fn = "param_sweep_diff_type_merge"
         else:
-            ax = sns.catplot(data=mpc_df, kind="bar", x="diff_type", y="FarmPowerMean", estimator="max", hue="wind_preview_type", errorbar=None, legend_out=False)
+            ax = sns.catplot(data=mpc_df, kind="bar", x="diff_type", y="FarmPowerMean", estimator=estimator, hue="wind_preview_type", errorbar=None, legend_out=False)
             n_xticks = len(pd.unique(mpc_df["diff_type"]))
             ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(greedy_df["FarmPowerMean"] / 1e6).iloc[0]] * n_xticks, marker="^", s=250, color="green", label="Greedy")
             ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(lut_df["FarmPowerMean"] / 1e6).iloc[0]] * n_xticks, marker="s", s=250, color="red", label="LUT")
@@ -888,12 +933,12 @@ def plot_parameter_sweep(agg_dfs, mpc_type, save_dir, plot_columns, merge_wind_p
             fn = "param_sweep_diff_type"
 
         ax.ax.set(ylabel="", xlabel="Differentiation Method", title="Farm Power [MW]")
-        ax.ax.set_ylim((2.7, 3.015))
+        ax.ax.set_ylim((2.65, 3.05))
 
         plt.tight_layout()
         plt.savefig(os.path.join(save_dir, "gradient_type", f"{fn}.png"))
         
-        ax.ax.set_ylim((3.0, 3.015))
+        ax.ax.set_ylim((3.02, 3.04))
 
         if not merge_wind_preview_types:
             handles, labels = ax.ax.get_legend_handles_labels()
@@ -910,13 +955,13 @@ def plot_parameter_sweep(agg_dfs, mpc_type, save_dir, plot_columns, merge_wind_p
     
     if all(c in plot_columns for c in ["nu", "wind_preview_type", "FarmPowerMean"]):
         if merge_wind_preview_types:
-            ax = sns.catplot(data=mpc_df, kind="bar", x="nu", y="FarmPowerMean", estimator="max", errorbar=None, legend_out=False)
+            ax = sns.catplot(data=mpc_df, kind="bar", x="nu", y="FarmPowerMean", estimator=estimator, errorbar=None, legend_out=False)
             n_xticks = len(pd.unique(mpc_df["nu"]))
             ax.ax.scatter(x=np.arange(n_xticks), y=[(greedy_df["FarmPowerMean"] / 1e6).iloc[0]] * n_xticks, marker="^", s=250, color="green", label="Greedy")
             ax.ax.scatter(x=np.arange(n_xticks), y=[(lut_df["FarmPowerMean"] / 1e6).iloc[0]] * n_xticks, marker="s", s=250, color="red", label="LUT")
             fn = f"param_sweep_{mpc_type}_nu_merge"
         else: 
-            ax = sns.catplot(data=mpc_df, kind="bar", x="nu", y="FarmPowerMean", estimator="max", hue="wind_preview_type", errorbar=None, legend_out=False)
+            ax = sns.catplot(data=mpc_df, kind="bar", x="nu", y="FarmPowerMean", estimator=estimator, hue="wind_preview_type", errorbar=None, legend_out=False)
             n_xticks = len(pd.unique(mpc_df["nu"]))
             ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(greedy_df["FarmPowerMean"] / 1e6).iloc[0]] * n_xticks, marker="^", s=250, color="green", label="Greedy")
             ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(lut_df["FarmPowerMean"] / 1e6).iloc[0]] * n_xticks, marker="s", s=250, color="red", label="LUT")
@@ -928,11 +973,11 @@ def plot_parameter_sweep(agg_dfs, mpc_type, save_dir, plot_columns, merge_wind_p
             fn = f"param_sweep_{mpc_type}_nu"
         
         ax.ax.set(ylabel="", xlabel="Step Size", title="Farm Power [MW]")
-        ax.ax.set_ylim((2.7, 3.015))
+        ax.ax.set_ylim((2.65, 3.05))
         plt.tight_layout()
         plt.savefig(os.path.join(save_dir, "gradient_type", f"{fn}.png"))
 
-        ax.ax.set_ylim((3.0, 3.015))
+        ax.ax.set_ylim((3.02, 3.04))
 
         if not merge_wind_preview_types:
             handles, labels = ax.ax.get_legend_handles_labels()
@@ -950,13 +995,13 @@ def plot_parameter_sweep(agg_dfs, mpc_type, save_dir, plot_columns, merge_wind_p
     if all(c in plot_columns for c in ["decay_type", "wind_preview_type", "FarmPowerMean"]):
 
         if merge_wind_preview_types:
-            ax = sns.catplot(data=mpc_df, kind="bar", x="decay_type", y="FarmPowerMean", estimator="max", errorbar=None, legend_out=False)
+            ax = sns.catplot(data=mpc_df, kind="bar", x="decay_type", y="FarmPowerMean", estimator=estimator, errorbar=None, legend_out=False)
             n_xticks = len(pd.unique(mpc_df["decay_type"]))
             ax.ax.scatter(x=np.arange(n_xticks), y=[(greedy_df["FarmPowerMean"] / 1e6).iloc[0]] * n_xticks, marker="^", s=250, color="green", label="Greedy")
             ax.ax.scatter(x=np.arange(n_xticks), y=[(lut_df["FarmPowerMean"] / 1e6).iloc[0]] * n_xticks, marker="s", s=250, color="red", label="LUT")
             fn = f"param_sweep_{mpc_type}_decay_type_merge"
         else:  
-            ax = sns.catplot(data=mpc_df, kind="bar", x="decay_type", y="FarmPowerMean", estimator="max", hue="wind_preview_type", errorbar=None, legend_out=False)
+            ax = sns.catplot(data=mpc_df, kind="bar", x="decay_type", y="FarmPowerMean", estimator=estimator, hue="wind_preview_type", errorbar=None, legend_out=False)
             n_xticks = len(pd.unique(mpc_df["decay_type"]))
             ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(greedy_df["FarmPowerMean"] / 1e6).iloc[0]] * n_xticks, marker="^", s=250, color="green", label="Greedy")
             ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(lut_df["FarmPowerMean"] / 1e6).iloc[0]] * n_xticks, marker="s", s=250, color="red", label="LUT")
@@ -968,11 +1013,11 @@ def plot_parameter_sweep(agg_dfs, mpc_type, save_dir, plot_columns, merge_wind_p
             fn = f"param_sweep_{mpc_type}_decay_type"
         
         ax.ax.set(ylabel="", xlabel="Decay Type", title="Farm Power [MW]")
-        ax.ax.set_ylim((2.7, 3.015))
+        ax.ax.set_ylim((2.65, 3.05))
         plt.tight_layout()
         plt.savefig(os.path.join(save_dir, "gradient_type", f"{fn}.png"))
         
-        ax.ax.set_ylim((3.0, 3.015))
+        ax.ax.set_ylim((3.02, 3.04))
 
         if not merge_wind_preview_types:
             handles, labels = ax.ax.get_legend_handles_labels()
@@ -991,13 +1036,13 @@ def plot_parameter_sweep(agg_dfs, mpc_type, save_dir, plot_columns, merge_wind_p
     if all(c in plot_columns for c in ["max_std_dev", "wind_preview_type", "FarmPowerMean"]):
 
         if merge_wind_preview_types:
-            ax = sns.catplot(data=mpc_df, kind="bar", x="max_std_dev", y="FarmPowerMean", estimator="max", errorbar=None, legend_out=False)
+            ax = sns.catplot(data=mpc_df, kind="bar", x="max_std_dev", y="FarmPowerMean", estimator=estimator, errorbar=None, legend_out=False)
             n_xticks = len(pd.unique(mpc_df["max_std_dev"]))
             ax.ax.scatter(x=np.arange(n_xticks), y=[(greedy_df["FarmPowerMean"] / 1e6).iloc[0]] * n_xticks, marker="^", s=250, color="green", label="Greedy")
             ax.ax.scatter(x=np.arange(n_xticks), y=[(lut_df["FarmPowerMean"] / 1e6).iloc[0]] * n_xticks, marker="s", s=250, color="red", label="LUT")
             fn = f"param_sweep_{mpc_type}_max_std_dev_merge"
         else:  
-            ax = sns.catplot(data=mpc_df, kind="bar", x="max_std_dev", y="FarmPowerMean", estimator="max", hue="wind_preview_type", errorbar=None, legend_out=False)
+            ax = sns.catplot(data=mpc_df, kind="bar", x="max_std_dev", y="FarmPowerMean", estimator=estimator, hue="wind_preview_type", errorbar=None, legend_out=False)
             n_xticks = len(pd.unique(mpc_df["max_std_dev"]))
             ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(greedy_df["FarmPowerMean"] / 1e6).iloc[0]] * n_xticks, marker="^", s=250, color="green", label="Greedy")
             ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(lut_df["FarmPowerMean"] / 1e6).iloc[0]] * n_xticks, marker="s", s=250, color="red", label="LUT")
@@ -1009,12 +1054,12 @@ def plot_parameter_sweep(agg_dfs, mpc_type, save_dir, plot_columns, merge_wind_p
             fn = f"param_sweep_{mpc_type}_max_std_dev"
         
         ax.ax.set(ylabel="", xlabel="Maximum Standard Deviation", title="Farm Power [MW]")
-        ax.ax.set_ylim((2.7, 3.015))
+        ax.ax.set_ylim((2.65, 3.05))
 
         plt.tight_layout()
         plt.savefig(os.path.join(save_dir, "gradient_type", f"{fn}.png"))
             
-        ax.ax.set_ylim((3.0, 3.015))
+        ax.ax.set_ylim((3.02, 3.04))
 
         if not merge_wind_preview_types:
             handles, labels = ax.ax.get_legend_handles_labels()
@@ -1032,9 +1077,9 @@ def plot_parameter_sweep(agg_dfs, mpc_type, save_dir, plot_columns, merge_wind_p
     if all(c in plot_columns for c in ["diff_steps", "diff_direction", "wind_preview_type", "FarmPowerMean", "diff_type", "nu"]):
         # plot of direct vs. chain fd/cd, with size of scatter = farm power, hue = nu
         ax = sns.catplot(data=mpc_df.loc[mpc_df["wind_preview_type"] != "stochastic_sample"].sort_values(by=["diff_steps", "diff_direction"]), 
-                        kind="bar", x="diff_type", y="FarmPowerMean", hue="nu", estimator="max", legend_out=False, errorbar=None)
+                        kind="bar", x="diff_type", y="FarmPowerMean", hue="nu", estimator=estimator, legend_out=False, errorbar=None)
         ax.ax.set(ylabel="", xlabel="Derivative Type", title="Farm Power [MW]")
-        ax.ax.set_ylim((2.7, 3.015))
+        ax.ax.set_ylim((2.65, 3.05))
         ax.ax.set_xticklabels(["Chain \nCentral Diff.", "Chain \nForward Diff.", "Direct \nCentral Diff.", "Direct \nForward Diff."])
         n_xticks = len(pd.unique(mpc_df.loc[mpc_df["preview_type"] != "stochastic_sample"]["diff_type"]))
         ax.ax.scatter(x=np.arange(n_xticks) - ax.ax.patches[0].get_width(), y=[(greedy_df["FarmPowerMean"] / 1e6).iloc[0]] * n_xticks, marker="^", s=250, color="green", label="Greedy")
@@ -1046,7 +1091,7 @@ def plot_parameter_sweep(agg_dfs, mpc_type, save_dir, plot_columns, merge_wind_p
         plt.tight_layout()
         plt.savefig(os.path.join(save_dir, "gradient_type", f"param_sweep_{mpc_type}_drvt.png"))
             
-        ax.ax.set_ylim((3.0, 3.015))
+        ax.ax.set_ylim((3.02, 3.04))
         handles, labels = ax.ax.get_legend_handles_labels()
         handles = [h for h, l in zip(handles, labels) if l not in ["Greedy", "LUT"]]
         labels = [l for l in labels if l not in ["Greedy", "LUT"]]
@@ -1088,7 +1133,7 @@ def barplot_opt_cost(data_summary_df, save_dir, relative=False):
             y = 100.0 * y / base_case
             # y = 100.0 * (y - base_case) / base_case
 
-        cmap = matplotlib.colormaps[sequential_colormaps[case_group_idx]]
+        cmap = colormaps[sequential_colormaps[case_group_idx]]
         colors = [cmap(f) for f in np.linspace(0.5, 1, len(grouped_cases[case_group_idx]))]
         rects = ax.bar(x_vals[-1], y, width, label=case_groups[case_group_idx])
         for r, rect in enumerate(rects):
@@ -1139,8 +1184,7 @@ def plot_cost_function_pareto_curve(data_summary_df, save_dir):
     h, l = ax.get_legend_handles_labels()
     ax.legend(h[-2:], l[-2:])
     ax.set(xlim=(0, ax.get_xlim()[-1]))
-    figManager = plt.get_current_fig_manager()
-    figManager.full_screen_toggle()   
+    fig.tight_layout()
     fig.savefig(os.path.join(save_dir, "cost_function_pareto_curve.png"))
     plt.close(fig)
 
@@ -1198,8 +1242,9 @@ def plot_breakdown_robustness(data_summary_df, save_dir):
     h, l = ax.get_legend_handles_labels()
     greedy_idx = [i for i in range(len(l)) if "GreedyController" in l[i]][-1]
     lut_idx = [i for i in range(len(l)) if "LookupBasedWakeSteeringController" in l[i]][-1]
-    ax.legend([h[greedy_idx], h[lut_idx]], ["Greedy", "LUT"]) 
     ax.collections[0].set_sizes(ax.collections[0].get_sizes() * 5)
+    ax.legend([h[greedy_idx], h[lut_idx]], ["Greedy", "LUT"]) 
+    
     # ax.legend()
     # ax.legend_.set_title("Chance of Breakdown") d
     # ax.collections[0].set_sizes(ax.collections[0].get_sizes() * 5)
@@ -1209,7 +1254,6 @@ def plot_breakdown_robustness(data_summary_df, save_dir):
     # ax.legend_.texts[2].set_text("5%")
     # ax.legend_.texts[3].set_text("2.5%")
     # ax.legend_.texts[4].set_text("0%")
-    figManager = plt.get_current_fig_manager()
-    figManager.full_screen_toggle()
+    fig.tight_layout()
     fig.savefig(os.path.join(save_dir, "breakdown_robustness.png"))
     plt.close(fig)
