@@ -110,12 +110,12 @@ case_studies = {
                                                     f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{nturb}.csv") for nturb in [3, 9, 25]]},
     },
     "cost_func_tuning": {"controller_class": {"group": 0, "vals": ["MPC"]},
-                         "case_names": {"group": 1, "vals": [f"alpha_{np.round(f, 3)}" for f in list(np.linspace(0.001, 0.999, N_COST_FUNC_TUNINGS))]},
-                         "alpha": {"group": 1, "vals": list(np.logspace(0.001, 0.999, N_COST_FUNC_TUNINGS))},
+                         "case_names": {"group": 1, "vals": [f"alpha_{np.round(f, 3)}" for f in list(np.concatenate([np.linspace(0, 0.8, int(N_COST_FUNC_TUNINGS//2)), 0.801 + (1-np.logspace(-3, 0, N_COST_FUNC_TUNINGS - int(N_COST_FUNC_TUNINGS//2)))*0.199]))]},
+                         "alpha": {"group": 1, "vals": list(np.concatenate([np.linspace(0, 0.8, int(N_COST_FUNC_TUNINGS//2)), 0.801 + (1-np.logspace(-3, 0, N_COST_FUNC_TUNINGS - int(N_COST_FUNC_TUNINGS//2)))*0.199]))},
                          "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_{9}.yaml")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_{3}.yaml")]},
                         "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{9}.csv")]},
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv")]},
     },
     "yaw_offset_study": {"controller_class": {"group": 1, "vals": ["MPC", "MPC", "MPC", "LookupBasedWakeSteeringController", "MPC", "MPC"]},
                           "case_names": {"group": 1, "vals":[f"StochasticIntervalRectangular_1_3turb", f"StochasticIntervalRectangular_9_3turb", f"StochasticIntervalElliptical_9_3turb", 
@@ -186,14 +186,14 @@ case_studies = {
     "cost_func_tuning_small": {
         "controller_class": {"group": 0, "vals": ["MPC"]},
         "n_horizon": {"group": 0, "vals": [6]},
-        "wind_preview_type": {"group": 2, "vals": ["stochastic_sample", "stochastic_interval_rectangular", "stochastic_interval_elliptical"]},
-        "n_wind_preview_samples": {"group": 2, "vals": [100, 10, 10]},
-        "case_names": {"group": 1, "vals": [f"alpha_{np.round(f, 3)}" for f in [0.001, 0.0, 0.999, 1]]},
-        "alpha": {"group": 1, "vals": [0.001, 0.0, 0.999, 1]},
+        # "wind_preview_type": {"group": 2, "vals": ["stochastic_sample", "stochastic_interval_rectangular", "stochastic_interval_elliptical"]},
+        # "n_wind_preview_samples": {"group": 2, "vals": [100, 10, 10]},
+        "case_names": {"group": 1, "vals": [f"alpha_{np.round(f, 3)}" for f in [0.0, 0.001, 0.5, 0.999, 1]]},
+        "alpha": {"group": 1, "vals": [0.0, 0.001, 0.5, 0.999, 1]},
         "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                    f"../examples/mpc_wake_steering_florisstandin/floris_gch_{9}.yaml")]},
+                                                    f"../examples/mpc_wake_steering_florisstandin/floris_gch_{3}.yaml")]},
         "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
-                                                       f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{9}.csv")]},
+                                                       f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv")]},
     }
 }
 
@@ -435,9 +435,9 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
 # 0, 1, 2, 3, 6
 case_families = ["baseline_controllers", "solver_type", # 0, 1
                     "wind_preview_type", "warm_start", # 2, 3
-                     "horizon_length", "breakdown_robustness", # 4, 5
-                    "scalability", "cost_func_tuning", # 6, 7
-                    "yaw_offset_study", # 8
+                     "horizon_length", "cost_func_tuning",  # 4, 5
+                    "yaw_offset_study", "scalability", # 6, 7
+                    "breakdown_robustness", # 8
                     "gradient_type", "n_wind_preview_samples", # 9, 10
                     "generate_sample_figures", "baseline_controllers_3", # 11, 12
                     "cost_func_tuning_small"] # 13

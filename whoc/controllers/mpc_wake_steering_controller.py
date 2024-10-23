@@ -1642,6 +1642,9 @@ class MPC(ControllerBase):
 		self.pyopt_sol_obj = sol
 		self.opt_sol = {k: v[:] for k, v in sol.xStar.items()}
 		self.opt_code = sol.optInform
+
+		if self.opt_code["value"]:
+			print(f"Warning, nonzero inform code: {self.opt_code['text']}")
 		# self.opt_cost = sol.fStar
 		# assert sum(self.opt_cost_terms) == self.opt_cost, "sum of self.opt_cost_terms should equal self.opt_cost in slsqp_solve"
 		# solution is scaled by yaw limit

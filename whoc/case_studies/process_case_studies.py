@@ -1157,7 +1157,7 @@ def plot_cost_function_pareto_curve(data_summary_df, save_dir):
     
 
     fig, ax = plt.subplots(1)
-    baseline_df = data_summary_df.loc[data_summary_df.index.get_level_values("CaseFamily") == "baseline_controllers", :].copy().reset_index(level="CaseName")
+    baseline_df = data_summary_df.loc[data_summary_df.index.get_level_values("CaseFamily").str.contains("baseline_controllers"), :].copy().reset_index(level="CaseName")
     baseline_df[("FarmPowerMean", "mean")] = baseline_df[("FarmPowerMean", "mean")] / 1e6
     # baseline_df[("FarmPowerMean", "min")] = baseline_df[("FarmPowerMean", "min")] / 1e6
     # baseline_df[("FarmPowerMean", "max")] = baseline_df[("FarmPowerMean", "max")] / 1e6

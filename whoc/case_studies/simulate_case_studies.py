@@ -193,7 +193,10 @@ def simulate_controller(controller_class, input_dict, **kwargs):
 
     running_opt_cost_terms_ts = np.zeros_like(opt_cost_terms_ts)
     Q = input_dict["controller"]["alpha"]
-    R = (1 - input_dict["controller"]["alpha"])
+    R = (1 - input_dict["controller"]["alpha"]) 
+    # TODO greatest farm power should not occur for alpha = 0, and should not coincide with greatest cost term 0
+    # TODO cost term 1 should not = 0 for alpha = 0
+    # TODO cost term 1 should never be negative
 
     # norm_turbine_powers = np.divide(turbine_powers_ts, greedy_turbine_powers_ts[:, np.newaxis],
     #                                 where=greedy_turbine_powers_ts[:, np.newaxis]!=0,

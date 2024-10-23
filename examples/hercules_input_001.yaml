@@ -84,7 +84,7 @@ controller:
   offline_probability: 0.0
   state_con_type: extreme # extreme or check_all_samples
   beta: 0.9
-  max_iter: 25
+  max_iter: 250
   acc: 0.000001
   use_state_cons: True
   use_dyn_state_cons: True

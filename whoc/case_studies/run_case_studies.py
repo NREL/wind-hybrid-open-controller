@@ -273,24 +273,35 @@ if __name__ == "__main__":
             agg_df = pd.concat(agg_df)
 
         if RUN_ONCE and PLOT:
-            if (case_families.index("baseline_controllers") in args.case_ids) and (case_families.index("cost_func_tuning") in args.case_ids):
+            if ((case_families.index("baseline_controllers") in args.case_ids) or (case_families.index("baseline_controllers_3") in args.case_ids)) and (case_families.index("cost_func_tuning") in args.case_ids):
                 # TODO HIGH find out why lower alpha is resulting in higher power, and why higher alpha is not resulting in significantly lower yaw actuation 
                 mpc_alpha_df = agg_df.iloc[agg_df.index.get_level_values("CaseFamily") == "cost_func_tuning"]
-                lut_df = agg_df.iloc[(agg_df.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_df.index.get_level_values("CaseName") == "LUT")] 
-                greedy_df = agg_df.iloc[(agg_df.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_df.index.get_level_values("CaseName") == "Greedy")]
+
+                if case_families.index("baseline_controllers") in args.case_ids:
+                    lut_df = agg_df.iloc[(agg_df.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_df.index.get_level_values("CaseName") == "LUT")] 
+                    greedy_df = agg_df.iloc[(agg_df.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_df.index.get_level_values("CaseName") == "Greedy")]
+                elif case_families.index("baseline_controllers_3") in args.case_ids:
+                    lut_df = agg_df.iloc[(agg_df.index.get_level_values("CaseFamily") == "baseline_controllers_3") & (agg_df.index.get_level_values("CaseName") == "LUT")] 
+                    greedy_df = agg_df.iloc[(agg_df.index.get_level_values("CaseFamily") == "baseline_controllers_3") & (agg_df.index.get_level_values("CaseName") == "Greedy")]
+
+                mpc_alpha_df[[("RelativeTotalRunningOptimizationCostMean", "mean"), ("RelativeRunningOptimizationCostTerm_0", "mean"), ("RelativeRunningOptimizationCostTerm_1", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]]\
+                        .sort_values(by=("FarmPowerMean", "mean"), ascending=False).reset_index(level="CaseFamily", drop=True) 
+            
+
+                better_than_lut_df = mpc_alpha_df.loc[(mpc_alpha_df[("FarmPowerMean", "mean")] > lut_df[("FarmPowerMean", "mean")].iloc[0]), [("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True).reset_index(level="CaseFamily", drop=True)
                 better_than_lut_df = mpc_alpha_df.loc[(mpc_alpha_df[("FarmPowerMean", "mean")] > lut_df[("FarmPowerMean", "mean")].iloc[0]) & (mpc_alpha_df[("YawAngleChangeAbsMean", "mean")] < lut_df[("YawAngleChangeAbsMean", "mean")].iloc[0]), [("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True).reset_index(level="CaseFamily", drop=True)
                 better_than_greedy_df = mpc_alpha_df.loc[(mpc_alpha_df[("FarmPowerMean", "mean")] > greedy_df[("FarmPowerMean", "mean")].iloc[0]), [("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]].sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True).reset_index(level="CaseFamily", drop=True)
 
-                plot_simulations(time_series_df, [("cost_func_tuning", "alpha_0.001"),
-                                                  ("cost_func_tuning", "alpha_0.999")], args.save_dir)
+                # plot_simulations(time_series_df=time_series_df, plotting_cases=[("cost_func_tuning", "alpha_0.001"),
+                #                                   ("cost_func_tuning", "alpha_0.999")], save_dir=args.save_dir)
                 
-                x = agg_df.loc[(agg_df.index.get_level_values("CaseFamily") == "cost_func_tuning") 
-                           & ((agg_df.index.get_level_values("CaseName") == "alpha_0.001") 
-                              | (agg_df.index.get_level_values("CaseName") == "alpha_0.999")), 
-                           [('YawAngleChangeAbsMean', 'mean'), ('FarmPowerMean', 'mean'), 
-                            ('RelativeRunningOptimizationCostTerm_0', 'mean'), ('RelativeRunningOptimizationCostTerm_1', 'mean')]
-                            ].sort_values(by=('FarmPowerMean', 'mean'), ascending=False).reset_index(level="CaseFamily", drop=True)
-                x.columns = x.columns.droplevel(1)
+                # x = agg_df.loc[(agg_df.index.get_level_values("CaseFamily") == "cost_func_tuning") 
+                #            & ((agg_df.index.get_level_values("CaseName") == "alpha_0.001") 
+                #               | (agg_df.index.get_level_values("CaseName") == "alpha_0.999")), 
+                #            [('YawAngleChangeAbsMean', 'mean'), ('FarmPowerMean', 'mean'), 
+                #             ('RelativeRunningOptimizationCostTerm_0', 'mean'), ('RelativeRunningOptimizationCostTerm_1', 'mean')]
+                #             ].sort_values(by=('FarmPowerMean', 'mean'), ascending=False).reset_index(level="CaseFamily", drop=True)
+                # x.columns = x.columns.droplevel(1)
 
                 plot_cost_function_pareto_curve(agg_df, args.save_dir)
 
