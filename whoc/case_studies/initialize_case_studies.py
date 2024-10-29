@@ -87,8 +87,9 @@ case_studies = {
                                                                     f"../examples/mpc_wake_steering_florisstandin/floris_gch_{9}.yaml")]},
                         "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                     f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{9}.csv")]},
-                       "case_names": {"group": 1, "vals": [f"N_p = {n}" for n in [12, 24, 36]]},
-                       "n_horizon": {"group": 1, "vals": [12, 24, 36]}
+                    #    "case_names": {"group": 1, "vals": [f"N_p = {n}" for n in [6, 12, 24, 36]]},
+                        "dt": {"group": 1, "vals": [15, 30, 45, 60]},
+                       "n_horizon": {"group": 2, "vals": [6, 12, 18, 24]}
                     },
     "breakdown_robustness":  # case_families[5]
         {"controller_class": {"group": 1, "vals": ["MPC", "LookupBasedWakeSteeringController", "GreedyController"]},
@@ -194,7 +195,15 @@ case_studies = {
                                                     f"../examples/mpc_wake_steering_florisstandin/floris_gch_{3}.yaml")]},
         "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv")]},
-    }
+    },
+    "sr_solve": {"controller_class": {"group": 0, "vals": ["MPC"]},
+                          "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/floris_gch_{9}.yaml")]},
+                          "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
+                                                                        f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{9}.csv")]},
+                         "case_names": {"group": 0, "vals": ["Serial Refine"]},
+                        "solver": {"group": 0, "vals": ["serial_refine"]}
+    },
 }
 
 def convert_str(val):
@@ -440,4 +449,4 @@ case_families = ["baseline_controllers", "solver_type", # 0, 1
                     "breakdown_robustness", # 8
                     "gradient_type", "n_wind_preview_samples", # 9, 10
                     "generate_sample_figures", "baseline_controllers_3", # 11, 12
-                    "cost_func_tuning_small"] # 13
+                    "cost_func_tuning_small", "sr_solve"] # 13, 14

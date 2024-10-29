@@ -1439,7 +1439,6 @@ class MPC(ControllerBase):
 			"control_inputs": np.array([(opt_yaw_setpoints[i, j] - (opt_yaw_setpoints[i, j - 1] if j > 0 else self.initial_state[i] * self.yaw_norm_const)) * (1 / (self.yaw_rate * self.dt)) for j in range(self.n_horizon) for i in range(self.n_turbines)])
 		}
 		
-
 		self.opt_code = {"text": None}
 		self.opt_cost = opt_cost
 		# funcs, _ = self.opt_rules(self.opt_sol)

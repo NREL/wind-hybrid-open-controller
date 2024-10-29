@@ -161,7 +161,6 @@ def simulate_controller(controller_class, input_dict, **kwargs):
         t += ctrl.dt
         k += int(ctrl.dt / input_dict["dt"])
     else:
-        
         for tt in np.arange(t, t + ctrl.dt, input_dict["dt"]):
             fi.time = tt
             last_measurements = fi.get_measurements()
