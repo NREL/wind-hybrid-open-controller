@@ -1397,7 +1397,7 @@ class MPC(ControllerBase):
 							minimum_yaw_angle=self.yaw_limits[0],
 							maximum_yaw_angle=self.yaw_limits[1],
 							yaw_angles_baseline=np.zeros((self.n_turbines,)),
-							Ny_passes=[12, 8, 6],
+							Ny_passes=[5, 5],
 							verify_convergence=False)
 
 			opt_yaw_offsets_df = yaw_offset_opt.optimize(current_yaw_offsets=current_yaw_offsets, 
@@ -1429,11 +1429,9 @@ class MPC(ControllerBase):
 			
 			opt_cost = np.sum(opt_cost)
 			opt_cost_terms = np.sum(opt_cost_terms, axis=0)
-
 			opt_yaw_setpoints = opt_yaw_setpoints
-			opt_cost = np.sum(opt_cost)
-			opt_cost_terms = np.sum(opt_cost_terms, axis=0)
 					
+			
 		self.opt_sol = {
 			"states": np.array([opt_yaw_setpoints[i, j] / self.yaw_norm_const for j in range(self.n_horizon) for i in range(self.n_turbines)]), 
 			"control_inputs": np.array([(opt_yaw_setpoints[i, j] - (opt_yaw_setpoints[i, j - 1] if j > 0 else self.initial_state[i] * self.yaw_norm_const)) * (1 / (self.yaw_rate * self.dt)) for j in range(self.n_horizon) for i in range(self.n_turbines)])
