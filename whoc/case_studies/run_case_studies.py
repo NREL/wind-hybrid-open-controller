@@ -96,7 +96,9 @@ if __name__ == "__main__":
     if args.postprocess_simulations:
         # if (not os.path.exists(os.path.join(args.save_dir, f"time_series_results.csv"))) or (not os.path.exists(os.path.join(args.save_dir, f"agg_results.csv"))):
         # regenerate some or all of the time_series_results_all and agg_results_all .csv files for each case family in case ids
-        if args.reprocess_simulations:
+        if args.reprocess_simulations \
+            or not all(os.path.exists(os.path.join(args.save_dir, case_families[i], "time_series_results_all.csv")) for i in args.case_ids) \
+                or not all(os.path.join(args.save_dir, case_families[i], "agg_results_all.csv") for i in args.case_ids):
             if RUN_ONCE:
                 # make a list of the time series csv files for all case_names and seeds in each case family directory
                 case_family_case_names = {}
