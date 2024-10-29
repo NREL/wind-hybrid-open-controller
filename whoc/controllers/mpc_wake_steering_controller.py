@@ -1397,7 +1397,7 @@ class MPC(ControllerBase):
 							minimum_yaw_angle=self.yaw_limits[0],
 							maximum_yaw_angle=self.yaw_limits[1],
 							yaw_angles_baseline=np.zeros((self.n_turbines,)),
-							Ny_passes=[5, 5],
+							Ny_passes=[5, 4],
 							verify_convergence=False)
 
 			opt_yaw_offsets_df = yaw_offset_opt.optimize(current_yaw_offsets=current_yaw_offsets, 
