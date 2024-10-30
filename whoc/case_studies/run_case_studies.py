@@ -18,7 +18,7 @@ from whoc.case_studies.initialize_case_studies import initialize_simulations, ca
 from whoc.case_studies.simulate_case_studies import simulate_controller
 from whoc.case_studies.process_case_studies import (read_time_series_data, write_case_family_time_series_data, read_case_family_time_series_data, 
                                                     aggregate_time_series_data, read_case_family_agg_data, write_case_family_agg_data, 
-                                                    generate_outputs, plot_simulations, plot_wind_farm, plot_breakdown_robustness, 
+                                                    generate_outputs, plot_simulations, plot_wind_farm, plot_breakdown_robustness, plot_horizon_length,
                                                     plot_cost_function_pareto_curve, plot_yaw_offset_wind_direction, plot_parameter_sweep)
 
 # np.seterr("raise")
@@ -275,7 +275,7 @@ if __name__ == "__main__":
             agg_df = pd.concat(agg_df)
 
         if RUN_ONCE and PLOT:
-            if ((case_families.index("baseline_controllers") in args.case_ids) or (case_families.index("baseline_controllers_3") in args.case_ids)) and (case_families.index("cost_func_tuning") in args.case_ids):
+            if False and ((case_families.index("baseline_controllers") in args.case_ids) or (case_families.index("baseline_controllers_3") in args.case_ids)) and (case_families.index("cost_func_tuning") in args.case_ids):
                 # TODO HIGH find out why lower alpha is resulting in higher power, and why higher alpha is not resulting in significantly lower yaw actuation 
                 mpc_alpha_df = agg_df.iloc[agg_df.index.get_level_values("CaseFamily") == "cost_func_tuning"]
 
@@ -315,7 +315,27 @@ if __name__ == "__main__":
             if case_families.index("breakdown_robustness") in args.case_ids:
                 plot_breakdown_robustness(agg_df, args.save_dir)
 
-            if case_families.index("yaw_offset_study") in args.case_ids:
+            if (case_families.index("baseline_controllers") in args.case_ids) and (case_families.index("horizon_length") in args.case_ids):
+                mpc_df = agg_df.iloc[agg_df.index.get_level_values("CaseFamily")  == "horizon_length"][
+                    [("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean"), ("OptimizationConvergenceTime", "mean")]
+                    ].sort_values(by=("FarmPowerMean", "mean"), ascending=False) #.reset_index(level="CaseFamily", drop=True)
+
+                config_cols = ["dt", "n_horizon"]
+                for (case_family, case_name), _ in mpc_df.iterrows():
+                    # input_fn = [fn for fn in os.listdir(os.path.join(args.save_dir, case_family)) if "input_config" in fn and case_name in fn][0]
+                    input_fn = f"input_config_case_{case_name}.yaml"
+                    with open(os.path.join(args.save_dir, case_family, input_fn), mode='r') as fp:
+                        input_config = yaml.safe_load(fp)
+                    
+                    for col in config_cols:
+                        mpc_df.loc[(mpc_df.index.get_level_values("CaseFamily") == case_family) & (mpc_df.index.get_level_values("CaseName") == case_name), col] = input_config["controller"][col]
+
+                lut_df = agg_df.iloc[agg_df.index.get_level_values("CaseFamily").str.contains("baseline_controllers") & (agg_df.index.get_level_values("CaseName") == "LUT")][[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean"), ("OptimizationConvergenceTime", "mean")]] 
+                greedy_df = agg_df.iloc[agg_df.index.get_level_values("CaseFamily").str.contains("baseline_controllers") & (agg_df.index.get_level_values("CaseName") == "Greedy")][[("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean"), ("OptimizationConvergenceTime", "mean")]]
+                 
+                plot_horizon_length(pd.concat([mpc_df, lut_df, greedy_df]), args.save_dir)
+
+            if False and case_families.index("yaw_offset_study") in args.case_ids:
                 
                 mpc_alpha_df = agg_df.iloc[(agg_df.index.get_level_values("CaseFamily") == "yaw_offset_study") & (~agg_df.index.get_level_values("CaseName").str.contains("LUT"))]
                 lut_df = agg_df.iloc[(agg_df.index.get_level_values("CaseFamily") == "yaw_offset_study") & (agg_df.index.get_level_values("CaseName").str.contains("LUT"))] 
@@ -462,6 +482,5 @@ if __name__ == "__main__":
 
 
             if all(case_families.index(cf) in args.case_ids for cf in ["baseline_controllers", "solver_type",
-             "wind_preview_type", "warm_start", 
-              "horizon_length", "scalability"]):
+             "wind_preview_type", "warm_start"]):
                 generate_outputs(agg_df, args.save_dir)
