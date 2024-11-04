@@ -8,20 +8,24 @@
 
 # A lot of modules and conda stuff
 module purge
-ml intel-oneapi-mpi
-ml netcdf/4.9.2-intel-oneapi-mpi-intel
+module load PrgEnv-intel
+module load netcdf/4.9.2-intel-oneapi-mpi-intel
+module load netlib-scalapack/2.2.0-gcc
+ml mamba
+mamba activate whoc
+
 ml mamba
 mamba activate whoc
 #helics_broker -t zmq -f 2 --loglevel="debug" --local_port=32001 &
 #python hercules_runscript.py hercules_input_000.yaml 0 &
 
 # Set the helics port to use: 
-export HELICS_PORT=32001
+export HELICS_PORT=32000
 export NUM_TURBINES=9
 export WIND_CASE_IDX=0
 
 PATH=$PATH:/home/ahenry/toolboxes/whoc_env/amr-wind/build
-PATH=$PATH:/home/ahenry/toolboxes/whoc_env/helics/build/bin
+PATH=$PATH:/home/ahenry/toolboxes/whoc_env/HELICS/build/bin
 # PATH=$PATH:/projects/ssc/ahenry/whoc/amr_controlled/greedy/wf_$WIND_CASE_IDX
 input_file="amr_input_${NUM_TURBINES}_${WIND_CASE_IDX}.inp"
 echo $input_file

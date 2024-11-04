@@ -187,7 +187,7 @@ if __name__ == "__main__":
                                         if args.reaggregate_simulations or not os.path.exists(os.path.join(args.save_dir, case_families[i], "agg_results_all.csv"))]
                         _ = [fut.result() for fut in write_futures]
 
-                agg_df = pd.concat(existing_agg_df + [new_agg_df])
+                    agg_df = pd.concat(existing_agg_df + [new_agg_df])
                     
             # else, run sequentially
             else:
@@ -275,7 +275,27 @@ if __name__ == "__main__":
             agg_df = pd.concat(agg_df)
 
         if RUN_ONCE and PLOT:
-            if False and ((case_families.index("baseline_controllers") in args.case_ids) or (case_families.index("baseline_controllers_3") in args.case_ids)) and (case_families.index("cost_func_tuning") in args.case_ids):
+            if ((case_families.index("baseline_controllers") in args.case_ids))
+                mpc_df = agg_df.iloc[agg_df.index.get_level_values("CaseFamily") != "baseline_controllers"]
+                lut_df = agg_df.iloc[(agg_df.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_df.index.get_level_values("CaseName") == "LUT")] 
+                greedy_df = agg_df.iloc[(agg_df.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_df.index.get_level_values("CaseName") == "Greedy")]
+                
+                better_than_lut_df = mpc_df.loc[(mpc_df[("FarmPowerMean", "mean")] > lut_df[("FarmPowerMean", "mean")].iloc[0]) 
+                                                & (mpc_df[("YawAngleChangeAbsMean", "mean")] < lut_df[("YawAngleChangeAbsMean", "mean")].iloc[0]), 
+                                                [("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]]\
+                                                    .sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True)\
+                                                        .reset_index(level="CaseFamily", drop=True)
+                better_than_greedy_df = mpc_df.loc[(mpc_df[("FarmPowerMean", "mean")] > greedy_df[("FarmPowerMean", "mean")].iloc[0]), 
+                                                   [("RelativeTotalRunningOptimizationCostMean", "mean"), ("YawAngleChangeAbsMean", "mean"), ("FarmPowerMean", "mean")]]\
+                                                    .sort_values(by=("YawAngleChangeAbsMean", "mean"), ascending=True)\
+                                                        .reset_index(level="CaseFamily", drop=True)
+
+                100 * (better_than_lut_df.iloc[0]["FarmPowerMean"] - lut_df.iloc[0]["FarmPowerMean"]) / lut_df.iloc[0]["FarmPowerMean"]
+                100 * (better_than_lut_df.iloc[0]["FarmPowerMean"] - greedy_df.iloc[0]["FarmPowerMean"]) / greedy_df.iloc[0]["FarmPowerMean"]
+                100 * (better_than_lut_df.iloc[0]["YawAngleChangeAbsMean"] - lut_df.iloc[0]["YawAngleChangeAbsMean"]) / lut_df.iloc[0]["YawAngleChangeAbsMean"]
+                100 * (better_than_lut_df.iloc[0]["YawAngleChangeAbsMean"] - greedy_df.iloc[0]["YawAngleChangeAbsMean"]) / greedy_df.iloc[0]["YawAngleChangeAbsMean"]
+
+            if ((case_families.index("baseline_controllers") in args.case_ids)) and (case_families.index("cost_func_tuning") in args.case_ids):
                 # TODO HIGH find out why lower alpha is resulting in higher power, and why higher alpha is not resulting in significantly lower yaw actuation 
                 mpc_alpha_df = agg_df.iloc[agg_df.index.get_level_values("CaseFamily") == "cost_func_tuning"]
 
@@ -304,6 +324,14 @@ if __name__ == "__main__":
                 #             ('RelativeRunningOptimizationCostTerm_0', 'mean'), ('RelativeRunningOptimizationCostTerm_1', 'mean')]
                 #             ].sort_values(by=('FarmPowerMean', 'mean'), ascending=False).reset_index(level="CaseFamily", drop=True)
                 # x.columns = x.columns.droplevel(1)
+
+                100 * (better_than_lut_df.iloc[0]["FarmPowerMean"] - lut_df.iloc[0]["FarmPowerMean"]) / lut_df.iloc[0]["FarmPowerMean"]
+                100 * (better_than_lut_df.iloc[0]["FarmPowerMean"] - greedy_df.iloc[0]["FarmPowerMean"]) / greedy_df.iloc[0]["FarmPowerMean"]
+                100 * (better_than_lut_df.iloc[0]["YawAngleChangeAbsMean"] - lut_df.iloc[0]["YawAngleChangeAbsMean"]) / lut_df.iloc[0]["YawAngleChangeAbsMean"]
+                100 * (better_than_lut_df.iloc[0]["YawAngleChangeAbsMean"] - greedy_df.iloc[0]["YawAngleChangeAbsMean"]) / greedy_df.iloc[0]["YawAngleChangeAbsMean"]
+
+                100 * (lut_df.iloc[0]["FarmPowerMean"] - greedy_df.iloc[0]["FarmPowerMean"]) / greedy_df.iloc[0]["FarmPowerMean"]
+                100 * (lut_df.iloc[0]["YawAngleChangeAbsMean"] - greedy_df.iloc[0]["YawAngleChangeAbsMean"]) / greedy_df.iloc[0]["YawAngleChangeAbsMean"]
 
                 plot_cost_function_pareto_curve(agg_df, args.save_dir)
 
@@ -335,7 +363,7 @@ if __name__ == "__main__":
                  
                 plot_horizon_length(pd.concat([mpc_df, lut_df, greedy_df]), args.save_dir)
 
-            if False and case_families.index("yaw_offset_study") in args.case_ids:
+            if case_families.index("yaw_offset_study") in args.case_ids:
                 
                 mpc_alpha_df = agg_df.iloc[(agg_df.index.get_level_values("CaseFamily") == "yaw_offset_study") & (~agg_df.index.get_level_values("CaseName").str.contains("LUT"))]
                 lut_df = agg_df.iloc[(agg_df.index.get_level_values("CaseFamily") == "yaw_offset_study") & (agg_df.index.get_level_values("CaseName").str.contains("LUT"))] 
@@ -353,10 +381,9 @@ if __name__ == "__main__":
                                             os.path.join(args.save_dir, "yaw_offset_study", "yawoffset_winddir_ts.png"), plot_turbine_ids=[0, 1, 2], include_yaw=True, include_power=True)
                 
                 for sub_case_names, sub_case_labels, filename in zip([["LUT_3turb"], 
-                                                                      ["StochasticIntervalRectangular_1_3turb", "StochasticIntervalRectangular_9_3turb"],
-                                                                      ["StochasticIntervalElliptical_9_3turb"],  
+                                                                      ["StochasticIntervalRectangular_1_3turb", "StochasticIntervalRectangular_9_3turb", "StochasticIntervalElliptical_9_3turb"],
                                                                       ["StochasticSample_50_3turb", "StochasticSample_500_3turb"]], 
-                                                           [["LUT"], ["MPC\n1 * RI Samples", "MPC\n9 * RI Samples"], ["MPC\n9 * EI Samples"], 
+                                                           [["LUT"], ["MPC\n1 * RI Samples", "MPC\n9 * RI Samples", "MPC\n9 * EI Samples"], 
                                                             ["MPC\n50 * Stochastic Samples", "MPC\n500 * Stochastic Samples"]],
                                                            ["lut", "stochastic_interval_rectangular", "stochastic_interval_elliptical", "stochastic_sample"]):
                     plot_yaw_offset_wind_direction(time_series_df, sub_case_names, sub_case_labels,
@@ -366,7 +393,7 @@ if __name__ == "__main__":
                                                              f"yawoffset_winddir_{filename}_ts.png"), 
                                                              plot_turbine_ids=[0, 1, 2], include_yaw=True, include_power=True)
 
-            if (case_families.index("baseline_controllers") in args.case_ids or case_families.index("baseline_controllers_3") in args.case_ids) and (case_families.index("gradient_type") in args.case_ids or case_families.index("n_wind_preview_samples") in args.case_ids):
+            if (case_families.index("baseline_controllers_3") in args.case_ids) and (case_families.index("gradient_type") in args.case_ids or case_families.index("n_wind_preview_samples") in args.case_ids):
                 # find best diff_type, nu, and decay for each sampling type
                  
                 if case_families.index("gradient_type") in args.case_ids:
@@ -422,7 +449,7 @@ if __name__ == "__main__":
                 # 100 * (better_than_lut_df.iloc[0]["YawAngleChangeAbsMean"] - lut_df.iloc[0]["YawAngleChangeAbsMean"]) / lut_df.iloc[0]["YawAngleChangeAbsMean"]
                 # 100 * (better_than_lut_df.iloc[0]["YawAngleChangeAbsMean"] - greedy_df.iloc[0]["YawAngleChangeAbsMean"]) / greedy_df.iloc[0]["YawAngleChangeAbsMean"]             
 
-                if True:
+                if False:
                     plot_parameter_sweep(pd.concat([mpc_df, lut_df, greedy_df]), MPC_TYPE, args.save_dir, 
                                          plot_columns=["FarmPowerMean", "diff_type", "decay_type", "max_std_dev", "n_wind_preview_samples", "wind_preview_type", "nu"],
                                          merge_wind_preview_types=False, estimator="max")

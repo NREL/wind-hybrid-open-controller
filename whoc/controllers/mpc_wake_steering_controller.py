@@ -302,7 +302,7 @@ class YawOptimizationSRRHC(YawOptimizationSR):
 				assert np.isclose(np.sum(np.diff(subsequent_yaw_setpoint_changes, axis=1)), 0.0), "dynamic state equation for subsequent time-step in horizon should be satisfied in YawOptimizationSRRHC.optimize"
 
 				control_inputs = np.concatenate([init_yaw_setpoint_change[:, 0, :, :], subsequent_yaw_setpoint_changes[:, 0, :, :]], axis=1) * (1 / (self.yaw_rate * self.dt))
-				
+
 				norm_turbine_powers = np.reshape(norm_turbine_powers, (self.Ny_passes[Nii], self.n_wind_preview_samples, self.n_horizon, self.nturbs))
 				
 				if self.wind_preview_type == "stochastic_sample":
@@ -892,6 +892,7 @@ class MPC(ControllerBase):
 		
 		self.opt_sol = {"states": np.tile(self.initial_state, self.n_horizon), 
 						"control_inputs": np.zeros((self.n_horizon * self.n_turbines,))}
+						# "control_inputs_start": np.zeros((self.n_horizon * self.n_turbines,))}
 		
 		if input_dict["controller"]["control_input_domain"].lower() in ['discrete', 'continuous']:
 			self.control_input_domain = input_dict["controller"]["control_input_domain"].lower()
@@ -930,10 +931,11 @@ class MPC(ControllerBase):
 		n_solve_states = n_solve_turbines * self.n_horizon
 		n_solve_control_inputs = n_solve_turbines * self.n_horizon
 
-		dyn_state_con_sens = {"states": [], "control_inputs": []}
-		state_con_sens = {"states": [], "control_inputs": []}
+		dyn_state_con_sens = {"states": [], "control_inputs": []}#, "control_inputs_start": []}
+		state_con_sens = {"states": [], "control_inputs": []}#, "control_inputs_start": []}
 
 		dyn_state_con_sens["control_inputs"] = -(self.dt * (self.yaw_rate / self.yaw_norm_const)) * np.eye(n_solve_control_inputs)
+		# dyn_state_con_sens["control_inputs_start"] = 0 * np.eye(n_solve_control_inputs)
 		
 		dyn_state_con_sens["states"] = np.zeros((n_solve_states, n_solve_states))
 		dyn_state_con_sens["states"][n_solve_turbines:, :-n_solve_turbines] = -np.eye(n_solve_states - n_solve_turbines)
@@ -941,10 +943,12 @@ class MPC(ControllerBase):
 
 		state_con_sens["states"] = -np.eye(n_solve_control_inputs)
 		state_con_sens["control_inputs"] = np.zeros((n_solve_control_inputs, n_solve_control_inputs))
+		# state_con_sens["control_inputs_start"] = np.zeros((n_solve_control_inputs, n_solve_control_inputs))
 
 		if self.state_con_type == "extreme":
 			state_con_sens["states"] = np.tile(state_con_sens["states"], (2, 1))
 			state_con_sens["control_inputs"] = np.tile(state_con_sens["control_inputs"], (2, 1))
+			# state_con_sens["control_inputs_start"] = np.tile(state_con_sens["control_inputs_start"], (2, 1))
 
 		return dyn_state_con_sens, state_con_sens
 	
@@ -952,6 +956,7 @@ class MPC(ControllerBase):
 		n_solve_turbines = len(solve_turbine_ids)
 		opt_var_dict["states"] = np.array(opt_var_dict["states"])
 		opt_var_dict["control_inputs"] = np.array(opt_var_dict["control_inputs"])
+		# opt_var_dict["control_inputs_start"] = np.array(opt_var_dict["control_inputs_start"])
 		# define constraints
 		n_solve_states = self.n_horizon * n_solve_turbines
 		delta_yaw = self.dt * (self.yaw_rate / self.yaw_norm_const) * opt_var_dict["control_inputs"]
