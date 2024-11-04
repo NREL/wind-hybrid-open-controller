@@ -243,8 +243,8 @@ def test_HybridSupervisoryControllerBaseline():
     )
 
     # Simply test the supervisory_control method, for the time being
-    test_hercules_dict["external_signals"]["plant_power_reference"] = 1000
+    test_hercules_dict["external_signals"]["plant_power_reference"] = 100
     test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [500, 500]
     test_controller.step(test_hercules_dict) # Run the controller once to update measurements
     supervisory_control_output = test_controller.supervisory_control()
-    assert np.allclose(supervisory_control_output, [10500.0, 10500.0, 1000.0]) # To charge battery
+    assert np.allclose(supervisory_control_output, [10050.0, 10050.0, 280.0]) # To charge battery
