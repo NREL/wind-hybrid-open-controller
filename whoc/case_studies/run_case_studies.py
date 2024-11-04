@@ -275,7 +275,7 @@ if __name__ == "__main__":
             agg_df = pd.concat(agg_df)
 
         if RUN_ONCE and PLOT:
-            if ((case_families.index("baseline_controllers") in args.case_ids))
+            if ((case_families.index("baseline_controllers") in args.case_ids)):
                 mpc_df = agg_df.iloc[agg_df.index.get_level_values("CaseFamily") != "baseline_controllers"]
                 lut_df = agg_df.iloc[(agg_df.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_df.index.get_level_values("CaseName") == "LUT")] 
                 greedy_df = agg_df.iloc[(agg_df.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_df.index.get_level_values("CaseName") == "Greedy")]
