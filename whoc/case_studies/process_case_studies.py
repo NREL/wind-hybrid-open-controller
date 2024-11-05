@@ -167,7 +167,7 @@ def generate_outputs(agg_results_df, save_dir):
                            "yaw_change": [get_result('solver_type', 'SLSQP', 'YawAngleChangeAbsMean'), get_result('solver_type', 'Sequential SLSQP', 'YawAngleChangeAbsMean'), get_result('solver_type', 'Sequential Refine', 'YawAngleChangeAbsMean')],
                            "conv_time": [get_result('solver_type', 'SLSQP', 'OptimizationConvergenceTime'), get_result('solver_type', 'Sequential SLSQP', 'OptimizationConvergenceTime'), get_result('solver_type', 'Sequential Refine', 'OptimizationConvergenceTime')]
                            },
-                "Wind Preview Model": {"labels": ["Perfect", "Persistent", 
+                "Wind Preview Type": {"labels": ["Perfect", "Persistent", 
                                                   "$3$ Elliptical Interval Samples", "$5$ Elliptical Interval Samples", "$7$ Elliptical Interval Samples", "$9$ Elliptical Interval Samples", "$11$ Elliptical Interval Samples", 
                                                   "$3$ Rectangular Interval Samples", "$5$ Rectangular Interval Samples", "$7$ Rectangular Interval Samples", "$9$ Rectangular Interval Samples", "$11$ Rectangular Interval Samples", 
                                                   "$25$ Stochastic Samples", "$50$ Stochastic Samples", "$100$ Stochastic Samples", "$250$ Stochastic Samples", "$500$ Stochastic Samples"], 
@@ -328,7 +328,7 @@ def plot_simulations(time_series_df, plotting_cases, save_dir, include_power=Tru
                                         controller_dt=None, include_filtered_wind_dir=(case_family=="baseline_controllers"), single_plot=single_plot, fig=yaw_power_ts_fig, ax=yaw_power_ts_ax, case_label=case_name)
             else:
                 fig, _ = plot_yaw_power_ts(case_name_df, os.path.join(save_dir, case_family, f"yaw_power_ts_{case_name}.png"), include_power=include_power, legend_loc=legend_loc,
-                                        controller_dt=None, include_filtered_wind_dir=(case_family=="baseline_controllers"), single_plot=single_plot)
+                                        controller_dt=None, include_filtered_wind_dir=(case_family=="baseline_controllers_3"), single_plot=single_plot)
                                     #    controller_dt=input_config["controller"]["dt"])
 
     
@@ -910,7 +910,7 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
             sns.move_legend(ax[ax_idx], "upper left", bbox_to_anchor=(1, 1), ncols=n_cols)
         # ax[ax_idx].legend([], [], frameon=False)
         if not include_power:
-            ax[ax_idx].set(xlabel="Time [s]", title="Turbine Powers [MW]")
+            ax[ax_idx].set(xlabel="Time [s]")
     
     if include_power:
         next_ax_idx = (1 if include_yaw else 0)

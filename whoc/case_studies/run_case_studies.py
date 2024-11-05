@@ -460,7 +460,7 @@ if __name__ == "__main__":
                 ]
 
                 plot_simulations(
-                    time_series_df, plotting_cases, args.save_dir, include_power=False, legend_loc="outer", single_plot=False) 
+                    time_series_df, plotting_cases, args.save_dir, include_power=True, legend_loc="outer", single_plot=False) 
 
 
                 # find best power decay type
