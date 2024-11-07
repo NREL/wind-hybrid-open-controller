@@ -449,10 +449,28 @@ if __name__ == "__main__":
                 # 100 * (better_than_lut_df.iloc[0]["YawAngleChangeAbsMean"] - lut_df.iloc[0]["YawAngleChangeAbsMean"]) / lut_df.iloc[0]["YawAngleChangeAbsMean"]
                 # 100 * (better_than_lut_df.iloc[0]["YawAngleChangeAbsMean"] - greedy_df.iloc[0]["YawAngleChangeAbsMean"]) / greedy_df.iloc[0]["YawAngleChangeAbsMean"]             
 
-                if False:
+                # best_case_names = better_than_lut_df.groupby(["wind_preview_type"])["diff_type"].idxmax()
+                # better_than_lut_df.drop(["n_wind_preview_samples", "n_horizon"], axis=1)
+                better_than_lut_df.drop(["n_wind_preview_samples", "n_horizon"], axis=1)\
+                                  .loc[better_than_lut_df.index.get_level_values("CaseName").isin(
+                                      better_than_lut_df.groupby(["wind_preview_type"])["FarmPowerMean"].idxmax()),
+                                      ["wind_preview_type", "diff_type", "decay_type", "max_std_dev", "nu"]]
+
+                for param in ["diff_type", "decay_type", "max_std_dev", "nu"]:
+                    for agg_type in ["mean", "max"]: 
+                        print(f"\nFor parameter {param}, taking the {agg_type} of FarmPowerMean over all other parameters, the best parameter for each wind_preview_type is:")
+                        print(better_than_lut_df.drop(["n_wind_preview_samples", "n_horizon"], axis=1)\
+                                        .groupby(["wind_preview_type", param])["FarmPowerMean"].agg(agg_type)\
+                                        .groupby("wind_preview_type").idxmax().values)
+                
+                                #   .loc[better_than_lut_df.index.get_level_values("CaseName").isin(
+                                #       better_than_lut_df.groupby(["wind_preview_type"])["FarmPowerMean"].idxmax()),
+                                #       ["wind_preview_type", "diff_type", "decay_type", "max_std_dev", "nu"]]
+
+                if True:
                     plot_parameter_sweep(pd.concat([mpc_df, lut_df, greedy_df]), MPC_TYPE, args.save_dir, 
                                          plot_columns=["FarmPowerMean", "diff_type", "decay_type", "max_std_dev", "n_wind_preview_samples", "wind_preview_type", "nu"],
-                                         merge_wind_preview_types=False, estimator="max")
+                                         merge_wind_preview_types=False, estimator="mean")
                 
                 plotting_cases = [(MPC_TYPE, better_than_lut_df.sort_values(by="FarmPowerMean", ascending=False).iloc[0]._name),   
                                                 ("baseline_controllers_3", "LUT"),

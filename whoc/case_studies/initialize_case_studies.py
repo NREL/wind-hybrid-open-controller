@@ -71,7 +71,8 @@ case_studies = {
                                                             "Stochastic Sample 25", "Stochastic Sample 50", "Stochastic Sample 100", "Stochastic Sample 250", "Stochastic Sample 500",
                                                             "Perfect", "Persistent"]},
                          "n_wind_preview_samples": {"group": 1, "vals": [3, 5, 11, 15, 25] * 2 + [25, 50, 100, 250, 500] + [1, 1]},
-                       
+                         "decay_type": {"group": 1, "vals": ["exp"] * 5 + ["none"] * 5 + ["cosine"] * 5 + [None] * 2},
+                         "max_std_dev": {"group": 1, "vals": [2] * 5 + [2] * 5 + [1] * 5 + [None] * 2},  
                          "wind_preview_type": {"group": 1, "vals": ["stochastic_interval_elliptical"] * 5 + ["stochastic_interval_rectangular"] * 5 + ["stochastic_sample"] * 5 + ["perfect", "persistent"]}
                           },
     "warm_start": {"controller_class": {"group": 0, "vals": ["MPC"]},

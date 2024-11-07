@@ -70,13 +70,13 @@ controller:
   control_input_domain: continuous
   wind_preview_type: stochastic_interval_elliptical # wind preview type assumed in MPC: persistent (assumes that current freestream measurements will stay constant over horizon), stochastic_interval, stochastic_sample (sample from Gaussian model of preview), perfect (preview known)
   stochastic_sample_u_scale: 1.0
-  max_std_dev: 1.5 # for wind_preview_intervals, +/- number of standard deviations from mean to select sample intervals from
-  n_wind_preview_samples: 25
-  warm_start: lut # may equal 'previous' to warm-start with time-shifted previous solution,  "lut" to warm-start with lookup table solution, or "random" #TODO
+  max_std_dev: 2.0 # for wind_preview_intervals, +/- number of standard deviations from mean to select sample intervals from
+  n_wind_preview_samples: 11
+  warm_start: greedy # may equal 'previous' to warm-start with time-shifted previous solution,  "lut" to warm-start with lookup table solution, or "random" #TODO
   use_lut_filtered_wind_dir: False
   lut_path: "../../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_9.csv"
   generate_lut: False
-  nu: 0.001 # 0.00138 step size to add/subtract from yaw angles for stochastic gradient estimate
+  nu: 0.0001 # 0.00138 step size to add/subtract from yaw angles for stochastic gradient estimate
   use_filtered_wind_dir: False
   floris_input_file: ../../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml
   solver: slsqp # may equal serial_refine, slsqp, sequential_slsqp, or zsgd
@@ -88,7 +88,7 @@ controller:
   acc: 0.000001
   use_state_cons: True
   use_dyn_state_cons: True
-  diff_type: direct_fd
+  diff_type: direct_cd
   use_norm_power: True
   decay_const: 60 # yaw offset at which decay should ~ zero, must be greater than yaw_limits given above and up to 90deg
   decay_type: exp
