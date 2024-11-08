@@ -242,9 +242,27 @@ def test_HybridSupervisoryControllerBaseline():
         interface=test_interface, input_dict=test_hercules_dict
     )
 
+    solar_current = 800 
+    wind_current = [600, 300]
+    power_ref = 1000
+
     # Simply test the supervisory_control method, for the time being
-    test_hercules_dict["external_signals"]["plant_power_reference"] = 100
-    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [500, 500]
+    test_hercules_dict["external_signals"]["plant_power_reference"] = power_ref
+    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = wind_current
+    test_hercules_dict["py_sims"]["test_solar"]["outputs"]["power_mw"] = solar_current / 1e3
+    test_controller.prev_solar_power = solar_current # To override filtering
+    test_controller.prev_wind_power = sum(wind_current) # To override filtering
+
     test_controller.step(test_hercules_dict) # Run the controller once to update measurements
     supervisory_control_output = test_controller.supervisory_control()
-    assert np.allclose(supervisory_control_output, [10050.0, 10050.0, 280.0]) # To charge battery
+
+    # Expected outputs
+    wind_solar_current = sum(wind_current)+solar_current
+    wind_power_cmd = 20000/2 + sum(wind_current)-(wind_solar_current - power_ref)/2
+    solar_power_cmd = 20000/2 + solar_current-(wind_solar_current - power_ref)/2
+    battery_power_cmd = wind_solar_current - power_ref
+
+    assert np.allclose(
+            supervisory_control_output,
+            [wind_power_cmd, solar_power_cmd, battery_power_cmd]
+        ) # To charge battery
