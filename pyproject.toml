@@ -3,6 +3,50 @@ requires = ["setuptools >= 40.6.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 
+
+[project]
+name = "whoc"
+version = "0.2"
+description = "Wind Hybrid Open Controller."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+    { name = "Michael (Misha) Sinner", email = "Michael.Sinner@nrel.gov" },
+]
+license = { file = "LICENSE.txt" }
+keywords = ["whoc"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "numpy~=1.20",
+    "flasc~=2.0",
+    "zmq",
+]
+
+[project.optional-dependencies]
+docs = [
+    "jupyter-book",
+    "sphinx-book-theme",
+]
+develop = [
+    "pytest",
+    "pre-commit",
+    "ruff",
+    "isort"
+]
+
+[tool.setuptools.packages.find]
+include = ["whoc*"]
+
+[project.urls]
+Homepage = "https://github.com/NREL/wind-hybrid-open-controller"
+Documentation = "https://nrel.github.io/wind-hybrid-open-controller/intro.html"
+
 [coverage.run]
 # Coverage.py configuration file
 # https://coverage.readthedocs.io/en/latest/config.html
