@@ -373,18 +373,19 @@ if __name__ == "__main__":
                                                             .reset_index(level="CaseFamily", drop=True)
 
                 # plot yaw vs wind dir
-                case_names = ["LUT_3turb", "StochasticIntervalRectangular_1_3turb", "StochasticIntervalRectangular_9_3turb", 
-                              "StochasticIntervalElliptical_9_3turb", "StochasticSample_50_3turb", "StochasticSample_500_3turb"]
-                case_labels = ["LUT", "MPC\n1 RI Samples", "MPC\n5 RI Samples", "MPC\n9 EI Samples", "MPC\n50 * S Samples", "MPC\n500 S Samples"]
+                # set(time_series_df.loc[time_series_df.index.get_level_values("CaseFamily") == "yaw_offset_study", :].index.get_level_values("CaseName").values)
+                case_names = ["LUT_3turb", "StochasticIntervalRectangular_1_3turb", "StochasticIntervalRectangular_11_3turb", 
+                              "StochasticIntervalElliptical_11_3turb", "StochasticSample_25_3turb", "StochasticSample_100_3turb"]
+                case_labels = ["LUT", "MPC\n1 RI Samples", "MPC\n11 RI Samples", "MPC\n11 EI Samples", "MPC\n25 * S Samples", "MPC\n100 S Samples"]
                 plot_yaw_offset_wind_direction(time_series_df, case_names, case_labels,
                                             os.path.join(os.path.dirname(whoc.__file__), f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{3}.csv"), 
                                             os.path.join(args.save_dir, "yaw_offset_study", "yawoffset_winddir_ts.png"), plot_turbine_ids=[0, 1, 2], include_yaw=True, include_power=True)
                 
                 for sub_case_names, sub_case_labels, filename in zip([["LUT_3turb"], 
-                                                                      ["StochasticIntervalRectangular_1_3turb", "StochasticIntervalRectangular_9_3turb", "StochasticIntervalElliptical_9_3turb"],
-                                                                      ["StochasticSample_50_3turb", "StochasticSample_500_3turb"]], 
-                                                           [["LUT"], ["MPC\n1 * RI Samples", "MPC\n9 * RI Samples", "MPC\n9 * EI Samples"], 
-                                                            ["MPC\n50 * Stochastic Samples", "MPC\n500 * Stochastic Samples"]],
+                                                                      ["StochasticIntervalRectangular_1_3turb", "StochasticIntervalRectangular_11_3turb", "StochasticIntervalElliptical_11_3turb"],
+                                                                      ["StochasticSample_25_3turb", "StochasticSample_100_3turb"]], 
+                                                           [["LUT"], ["MPC\n1 * RI Samples", "MPC\n11 * RI Samples", "MPC\n11 * EI Samples"], 
+                                                            ["MPC\n25 * Stochastic Samples", "MPC\n100 * Stochastic Samples"]],
                                                            ["lut", "stochastic_interval_rectangular", "stochastic_interval_elliptical", "stochastic_sample"]):
                     plot_yaw_offset_wind_direction(time_series_df, sub_case_names, sub_case_labels,
                                                 os.path.join(os.path.dirname(whoc.__file__), 

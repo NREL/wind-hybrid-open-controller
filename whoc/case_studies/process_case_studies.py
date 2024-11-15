@@ -134,7 +134,7 @@ def generate_outputs(agg_results_df, save_dir):
     # # agg_results_df.groupby("CaseFamily", group_keys=False).apply(lambda x: x.sort_values(by=("RelativeTotalRunningOptimizationCostMean", "mean"), ascending=True).head(3))[("RelativeTotalRunningOptimizationCostMean", "mean")]
     # x = agg_results_df.loc[agg_results_df[("RelativeYawAngleChangeAbsMean", "mean")] > 0, :].groupby("CaseFamily", group_keys=False).apply(lambda x: x.sort_values(by=("RelativeYawAngleChangeAbsMean", "mean"), ascending=True).head(10))[("RelativeYawAngleChangeAbsMean", "mean")]
     # y = agg_results_df.groupby("CaseFamily", group_keys=False).apply(lambda x: x.sort_values(by=("RelativeFarmPowerMean", "mean"), ascending=False).head(10))[("RelativeFarmPowerMean", "mean")]
-    
+    agg_results_df.groupby("CaseFamily", group_keys=False).apply(lambda x: x.sort_values(by=("RelativeFarmPowerMean", "mean"), ascending=False).head(10))[("RelativeFarmPowerMean", "mean")] 
 
 
     # generate results table in tex
@@ -172,17 +172,17 @@ def generate_outputs(agg_results_df, save_dir):
                                                   "$3$ Rectangular Interval Samples", "$5$ Rectangular Interval Samples", "$7$ Rectangular Interval Samples", "$9$ Rectangular Interval Samples", "$11$ Rectangular Interval Samples", 
                                                   "$25$ Stochastic Samples", "$50$ Stochastic Samples", "$100$ Stochastic Samples", "$250$ Stochastic Samples", "$500$ Stochastic Samples"], 
                            "farm_power": ([get_result('wind_preview_type', 'Perfect', 'FarmPowerMean') / 1e6, get_result('wind_preview_type', 'Persistent', 'FarmPowerMean') / 1e6] 
-                                          + [get_result('wind_preview_type', f"Stochastic Interval Elliptical {x}", 'FarmPowerMean') / 1e6 for x in [3, 5, 7, 9, 11]] 
-                                          + [get_result('wind_preview_type', f"Stochastic Interval Rectangular {x}", 'FarmPowerMean') / 1e6 for x in [3, 5, 7, 9, 11]] 
-                                          + [get_result('wind_preview_type', f"Stochastic Sample {x}", 'FarmPowerMean') / 1e6 for x in [25, 50, 100, 250, 500]]),
+                                          + [get_result('wind_preview_type', f"Stochastic Interval Elliptical {x}", 'FarmPowerMean') / 1e6 for x in [3, 5, 11]] 
+                                          + [get_result('wind_preview_type', f"Stochastic Interval Rectangular {x}", 'FarmPowerMean') / 1e6 for x in [3, 5, 11]] 
+                                          + [get_result('wind_preview_type', f"Stochastic Sample {x}", 'FarmPowerMean') / 1e6 for x in [25, 50, 100]]),
                            "yaw_change": ([get_result('wind_preview_type', 'Perfect', 'YawAngleChangeAbsMean'), get_result('wind_preview_type', 'Persistent', 'YawAngleChangeAbsMean')] 
-                                          + [get_result('wind_preview_type', f"Stochastic Interval Elliptical {x}", 'YawAngleChangeAbsMean') for x in [3, 5, 7, 9, 11]] 
-                                          + [get_result('wind_preview_type', f"Stochastic Interval Rectangular {x}", 'YawAngleChangeAbsMean') for x in [3, 5, 7, 9, 11]] 
-                                          + [get_result('wind_preview_type', f"Stochastic Sample {x}", 'YawAngleChangeAbsMean') for x in [25, 50, 100, 250, 500]]),
+                                          + [get_result('wind_preview_type', f"Stochastic Interval Elliptical {x}", 'YawAngleChangeAbsMean') for x in [3, 5, 11]] 
+                                          + [get_result('wind_preview_type', f"Stochastic Interval Rectangular {x}", 'YawAngleChangeAbsMean') for x in [3, 5, 11]] 
+                                          + [get_result('wind_preview_type', f"Stochastic Sample {x}", 'YawAngleChangeAbsMean') for x in [25, 50, 100]]),
                            "conv_time": ([get_result('wind_preview_type', 'Perfect', 'OptimizationConvergenceTime'), get_result('wind_preview_type', 'Persistent', 'OptimizationConvergenceTime')] 
-                                          + [get_result('wind_preview_type', f"Stochastic Interval Elliptical {x}", 'OptimizationConvergenceTime') for x in [3, 5, 7, 9, 11]] 
-                                          + [get_result('wind_preview_type', f"Stochastic Interval Rectangular {x}", 'OptimizationConvergenceTime') for x in [3, 5, 7, 9, 11]] 
-                                          + [get_result('wind_preview_type', f"Stochastic Sample {x}", 'OptimizationConvergenceTime') for x in [25, 50, 100, 250, 500]]),
+                                          + [get_result('wind_preview_type', f"Stochastic Interval Elliptical {x}", 'OptimizationConvergenceTime') for x in [3, 5, 11]] 
+                                          + [get_result('wind_preview_type', f"Stochastic Interval Rectangular {x}", 'OptimizationConvergenceTime') for x in [3, 5, 11]] 
+                                          + [get_result('wind_preview_type', f"Stochastic Sample {x}", 'OptimizationConvergenceTime') for x in [25, 50, 100]]),
                            },
                 "Warm-Starting Method": {"labels": ["Greedy", "LUT", "Previous Solution"], 
                            "farm_power": [get_result('warm_start', 'Greedy', 'FarmPowerMean') / 1e6, get_result('warm_start', 'LUT', 'FarmPowerMean') / 1e6, get_result('warm_start', 'Previous', 'FarmPowerMean') / 1e6],
@@ -1303,7 +1303,7 @@ def plot_horizon_length(data_summary_df, save_dir):
     sns.scatterplot(data=sub_df, x="YawAngleChangeAbsMean", y="FarmPowerMean", 
                      hue="n_horizon", style="dt", ax=ax)
                     # size_order=reversed(sub_df["CaseName"]), ax=ax)
-    ax.collections[1].set_sizes(ax.collections[1].get_sizes() * 5)
+    ax.collections[1].set_sizes(ax.collections[1].get_sizes() * 7)
 
     ax.set(xlabel="Mean Absolute Yaw Angle Change [$^\\circ$]", ylabel="Mean Farm Power [MW]")
     
@@ -1322,7 +1322,7 @@ def plot_horizon_length(data_summary_df, save_dir):
     ax.legend(markerscale=2.0) 
     ax.legend_.texts[1].set_text("Horizon Length")
     ax.legend_.texts[2 + len(pd.unique(sub_df["dt"]))].set_text("$\\Delta t_c^{\\text{MPC}}$")
-    ax.collections[0].set_sizes(ax.collections[0].get_sizes() * 5)
+    ax.collections[0].set_sizes(ax.collections[0].get_sizes() * 7)
     # ax.collections[0].set_sizes(ax.collections[0].get_sizes() * 5)
     
     # ax.legend_.texts[0].set_text("50%")
