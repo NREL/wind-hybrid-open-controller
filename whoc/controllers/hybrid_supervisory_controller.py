@@ -93,6 +93,12 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
         solar_aoi = self.measurements_dict["solar_aoi"] # angle of incidence # noqa: F841
         reference_power = self.measurements_dict["plant_power_reference"]
 
+        # Filter the wind and solar power measurements to reduce noise and improve closed-loop
+        # controller damping
+        a = 0.1
+        wind_power = (1-a)*self.prev_wind_power + a*wind_power
+        solar_power = (1-a)*self.prev_solar_power + a*solar_power
+
         # Temporary print statements (note that negative battery indicates discharging)
         print("Measured powers (wind, solar, battery):", wind_power, solar_power, battery_power)
         print("Reference power:", reference_power)
