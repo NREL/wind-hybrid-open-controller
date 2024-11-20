@@ -14,14 +14,10 @@
 
 import numpy as np
 import pandas as pd
-from floris.tools import FlorisInterface
-from floris.tools.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
+from floris import FlorisModel
 
-"""
-NOTE: Currently, FLORIS v3 is required to run this! Will fix when v4 more mature.
-"""
+from whoc.design_tools.wake_steering_design import build_simple_wake_steering_lookup_table
 
-optimize_yaw_offsets = True
 build_external_data = True
 
 floris_dict = {
@@ -40,6 +36,7 @@ floris_dict = {
         "enable_secondary_steering": True,
         "enable_yaw_added_recovery": True,
         "enable_transverse_velocities": True,
+        "enable_active_wake_mixing": False,
         "wake_deflection_parameters": {
             "gauss": {
                 "ad": 0.0,
@@ -50,14 +47,12 @@ floris_dict = {
                 "ka": 0.38,
                 "kb": 0.004,
             },
-            "jimenez": {"ad": 0.0, "bd": 0.0, "kd": 0.05},
         },
         "wake_turbulence_parameters": {
             "crespo_hernandez": {"initial": 0.1, "constant": 0.5, "ai": 0.8, "downstream": -0.32}
         },
         "wake_velocity_parameters": {
             "gauss": {"alpha": 0.58, "beta": 0.077, "ka": 0.38, "kb": 0.004},
-            "jensen": {"we": 0.05},
         },
     },
     "farm": {
@@ -68,10 +63,10 @@ floris_dict = {
     "flow_field": {
         "wind_speeds": [8.0],
         "wind_directions": [270.0],
+        "turbulence_intensities": [0.06],
         "wind_veer": 0.0,
         "wind_shear": 0.12,
         "air_density": 1.225,
-        "turbulence_intensity": 0.06,
         "reference_wind_height": 90.0,
     },
     "name": "GCH_for_FlorisStandin",
@@ -79,23 +74,19 @@ floris_dict = {
     "floris_version": "v4.x",
 }
 
-if optimize_yaw_offsets:
-    fi = FlorisInterface(floris_dict)
+fmodel = FlorisModel(floris_dict)
 
-    fi.reinitialize(
-        layout_x=[0.0, 1000.0],
-        layout_y=[0.0, 0.0],
-        wind_directions=np.arange(0.0, 360.0, 3.0),
-        wind_speeds=np.arange(2.0, 18.0, 1.0),
-    )
+df_opt = build_simple_wake_steering_lookup_table(
+    fmodel,
+    wd_resolution=5.0,
+    minimum_yaw_angle=-20.0,
+    maximum_yaw_angle=20.0
+)
 
-    yaw_opt = YawOptimizationSR(fi, verify_convergence=True)
-    df_opt = yaw_opt.optimize()
+print("Optimization results:")
+print(df_opt)
 
-    print("Optimization results:")
-    print(df_opt)
-
-    df_opt.to_pickle("yaw_offsets.pkl")
+df_opt.to_pickle("yaw_offsets.pkl")
 
 if build_external_data:
     # Also, build an example external data file
