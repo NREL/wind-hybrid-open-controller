@@ -17,6 +17,12 @@ from floris.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizatio
 def build_simple_wake_steering_lookup_table(
         fmodel: FlorisModel,
         wd_resolution: float = 5,
+        wd_min: float = 0,
+        wd_max: float = 360,
+        ws_resolution: float = 1,
+        ws_min: float = 8,
+        ws_max: float = 8,
+        ti: float = 0.06,
         minimum_yaw_angle: float = 0.0,
         maximum_yaw_angle: float = 25.0,
     ):
@@ -34,12 +40,16 @@ def build_simple_wake_steering_lookup_table(
     - uncertainty?
     - wd resolution?
     """
+    if wd_min == 0 and wd_max == 360:
+        wd_max = wd_max - wd_resolution
+    wind_directions = np.arange(wd_min, wd_max+wd_resolution, wd_resolution)
+    
+    wind_speeds = np.arange(ws_min, ws_max+ws_resolution, ws_resolution)
 
-    wind_directions = np.arange(0, 360, wd_resolution)
     wind_rose = WindRose(
-        wind_speeds=np.array([8.0]),
+        wind_speeds=wind_speeds,
         wind_directions=wind_directions,
-        ti_table=0.06,
+        ti_table=ti,
     )
 
     fmodel.set(wind_data=wind_rose)

@@ -78,9 +78,12 @@ fmodel = FlorisModel(floris_dict)
 
 df_opt = build_simple_wake_steering_lookup_table(
     fmodel,
-    wd_resolution=5.0,
-    minimum_yaw_angle=-20.0,
-    maximum_yaw_angle=20.0
+    wd_resolution=3.0,
+    ws_resolution=1.0,
+    ws_min=2.0,
+    ws_max=17.0,
+    minimum_yaw_angle=0.0,
+    maximum_yaw_angle=25.0,
 )
 
 print("Optimization results:")
