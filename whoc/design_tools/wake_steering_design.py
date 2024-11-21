@@ -33,17 +33,23 @@ def build_simple_wake_steering_lookup_table(
         fm (FlorisModel): An instantiated FlorisModel object.
         wd_resolution (float, optional): The resolution of the wind direction in degrees.
             Defaults to 5.
-
-    TODO:
-    - single wind speed or all wind speeds? 
-    - uncertainty?
-    - wd resolution?
+        wd_min (float, optional): The minimum wind direction in degrees. Defaults to 0.
+        wd_max (float, optional): The maximum wind direction in degrees. Defaults to 360.
+        ws_resolution (float, optional): The resolution of the wind speed in m/s.
+            Defaults to 1.
+        ws_min (float, optional): The minimum wind speed in m/s. Defaults to 8.
+        ws_max (float, optional): The maximum wind speed in m/s. Defaults to 8.
+        ti (float, optional): The turbulence intensity for wake steering design. Defaults to 0.06.
+        minimum_yaw_angle (float, optional): The minimum allowable misalignment in degrees.
+            Defaults to 0.0.
+        maximum_yaw_angle (float, optional): The maximum allowable misalignment in degrees.
+            Defaults to 25.0.
     """
     if wd_min == 0 and wd_max == 360:
         wd_max = wd_max - wd_resolution
-    wind_directions = np.arange(wd_min, wd_max+wd_resolution, wd_resolution)
+    wind_directions = np.arange(wd_min, wd_max+0.001, wd_resolution)
     
-    wind_speeds = np.arange(ws_min, ws_max+ws_resolution, ws_resolution)
+    wind_speeds = np.arange(ws_min, ws_max+0.001, ws_resolution)
 
     wind_rose = WindRose(
         wind_speeds=wind_speeds,
