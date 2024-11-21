@@ -1,5 +1,4 @@
 import numpy as np
-
 from floris import FlorisModel, WindRose
 from floris.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
 

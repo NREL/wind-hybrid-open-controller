@@ -15,7 +15,6 @@
 import numpy as np
 import pandas as pd
 from floris import FlorisModel
-
 from whoc.design_tools.wake_steering_design import build_simple_wake_steering_lookup_table
 
 build_external_data = True
