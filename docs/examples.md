@@ -15,21 +15,17 @@ Not that, currently, construct_yaw_offsets.py requires FLORIS version 3, whereas
 example requires FLORIS version 4. As a result, we provide the generated offsets in
 yaw_offsets.pkl. To avoid regenerating yaw_offsets.pkl (and therefore avoid the current need for 
 floris v3), set `optimize_yaw_offsets = False` at the beginning of construct_yaw_offsets.py before
-running.
+running. The dependency on FLORIS version 3 will be removed soon.
 
-Next, run
+Next, run the shell script run_script.sh:
 ```
-./bash_script.sh
+bash run_script.sh
 ```
 You will need to have and up-to-date Hercules (possibly on the develop branch) in your conda
-environment to run this. You may also need to changed permissions to run bash_script.sh as an 
-executable (`chmod +x bash_script.sh`).
+environment to run this. You may also need to changed permissions to run bash_script.sh as an executable (`chmod +x run_script.sh`).
 
-Finally, run the post-processing script
-```
-python plot_output_data.py
-```
-This should produce the following plot.
+The plotting script plot_output_data.py is run at the end of the shell script,
+and should produce the following plot.
 ![Results of lookup-based_wake_steering_florisstandin example](
     graphics/lookup-table-example-plot.png
 )
