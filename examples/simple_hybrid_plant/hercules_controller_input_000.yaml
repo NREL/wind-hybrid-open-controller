@@ -15,7 +15,7 @@ hercules_comms:
 
     wind_farm_0:
       type: amr_wind_local #options are amr_wind or amr_wind_local
-      amr_wind_input_file: amr_input.inp
+      amr_wind_input_file: inputs/amr_input.inp
 
   helics:
 
@@ -41,8 +41,8 @@ py_sims:
   solar_farm_0: # The name of py_sim object 1
 
     py_sim_type: SolarPySAM
-    weather_file_name: NonAnnualSimulation-sample_data-interpolated-daytime.csv
-    system_info_file_name: 100MW_1axis_pvsamv1.json
+    weather_file_name: inputs/NonAnnualSimulation-sample_data-interpolated-daytime.csv
+    system_info_file_name: inputs/100MW_1axis_pvsamv1.json
     lat: 39.7442
     lon: -105.1778
     elev: 1829
@@ -74,7 +74,7 @@ controller:
   solar_capacity_MW: 100 # Should match solar system info file TODO: fix so this comes from pysims
 
 
-external_data_file: plant_power_reference.csv
+external_data_file: inputs/plant_power_reference.csv
 
 
 
