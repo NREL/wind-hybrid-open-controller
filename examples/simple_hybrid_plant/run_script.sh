@@ -35,10 +35,10 @@ export HELICS_PORT=32000
 
 # Set up the helics broker and run the simulation
 helics_broker -t zmq -f 2 --loglevel="debug" --local_port=$HELICS_PORT & 
-echo "Starting hercules"
-python3 hercules_runscript.py hercules_controller_input_000.yaml >> outputs/loghercules.log 2>&1 &
-echo "Starting floris standin wind simulator"
-python3 floris_runscript.py inputs/amr_input.inp inputs/floris_standin_data_fixedwd.csv >> outputs/logfloris.log 2>&1
+echo "Starting hercules with WHOC."
+python hercules_runscript.py hercules_input.yaml >> outputs/loghercules.log 2>&1 &
+echo "Starting floris standin wind simulator."
+python floris_runscript.py inputs/amr_input.inp inputs/floris_standin_data_fixedwd.csv >> outputs/logfloris.log 2>&1
 
 # Clean up helics output if there
 # Search for a file that begins with the current year
@@ -52,5 +52,9 @@ for file in ${current_year}*.csv; do
 done
 
 # If everything is successful
-echo "Finished running simulation"
+echo "Finished running simulation. Plotting results."
+
+# Generate plots
+python plot_output_data.py
+
 exit 0
