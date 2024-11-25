@@ -1,7 +1,8 @@
 # Examples
 
 The `examples` subdirectory contains a series of examples that can be run to test the functionality
-of certain controllers and interfaces.
+of certain controllers and interfaces. Make sure you have installed Hercules
+(see {ref}`installation_examples`).
 
 ### lookup-based_wake_steering_florisstandin
 2-turbine example of lookup-based wake steering control, run using Hercules with the FLORIS standin
