@@ -37,9 +37,9 @@ This should produce the following plot.
 ## wind_farm_power_tracking_florisstandin
 2-turbine example of wind-farm-level power reference tracking, run using Hercules with the FLORIS 
 standin in place of AMR-Wind for exposition purposes. To run this example, navigate to the 
-examples/wind_farm_power_tracking_florisstandin folder and run the following:
+examples/wind_farm_power_tracking_florisstandin folder and execute the shell script run_script.sh:
 ```
-./bash_script.sh
+bash run_script.sh
 ```
 
 This will run both a closed-loop controller, which compensates for underproduction at individual 
