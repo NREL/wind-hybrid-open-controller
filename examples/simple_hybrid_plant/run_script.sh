@@ -1,39 +1,56 @@
 #!/bin/bash
 
-# Ensure hercules conda or venv is activated before running this script
+# Determine the base path for Conda initialization
+if [ -f "/home/$USER/anaconda3/etc/profile.d/conda.sh" ]; then
+    # Common path for Anaconda on Linux
+    CONDA_PATH="/home/$USER/anaconda3/etc/profile.d/conda.sh"
+elif [ -f "/Users/$USER/anaconda3/etc/profile.d/conda.sh" ]; then
+    # Common path for Anaconda on macOS
+    CONDA_PATH="/Users/$USER/anaconda3/etc/profile.d/conda.sh"
+elif [ -f "/opt/anaconda3/etc/profile.d/conda.sh" ]; then
+    # Alternative system-wide installation path
+    CONDA_PATH="/opt/anaconda3/etc/profile.d/conda.sh"
+elif [ -f "opt/miniconda3/etc/profile.d/conda.sh" ]; then
+    # Alternative system-wide installation path
+    CONDA_PATH="/opt/miniconda3/etc/profile.d/conda.sh"
+elif command -v conda &> /dev/null; then
+    # If conda is in PATH, use the which command to find conda location
+    CONDA_PATH=$(dirname "$(which conda)")/../etc/profile.d/conda.sh
+else
+    echo "Conda installation not found. Please ensure Conda is installed and in your PATH."
+    exit 1
+fi
 
-# Run this script via the command: 
-#    bash batch_script.sh
-#    ./batch_script.sh
+# Source the Conda initialization script. Assumes the environment is named "hercules". Change if necessary.
+source "$CONDA_PATH"
+conda activate hercules
+
+# Clean up existing outputs
+if [ -d outputs ]; then rm -r outputs; fi
+mkdir -p outputs
 
 # Set the helics port to use: 
 #make sure you use the same port number in the amr_input.inp and hercules_input_000.yaml files. 
 export HELICS_PORT=32000
 
-# Delete the logs within the outputs folder (if the output folder exists)
-if [ -d "outputs" ]; then
-  rm -f outputs/*.log
-fi
-
-# Create the outputs folder
-mkdir -p outputs
-
-# Set up the helics broker
-helics_broker -t zmq  -f 2 --loglevel="debug" --local_port=$HELICS_PORT & 
-# For debugging add --consoleloglevel=trace
-
-# Start the controller center and pass in input file
+# Set up the helics broker and run the simulation
+helics_broker -t zmq -f 2 --loglevel="debug" --local_port=$HELICS_PORT & 
 echo "Starting hercules"
-# python3 hercules_runscript.py hercules_input_000.yaml >> outputs/loghercules.log 2>&1 &
 python3 hercules_runscript.py hercules_controller_input_000.yaml >> outputs/loghercules.log 2>&1 &
-
-# Start the floris standin
-echo "Starting floris"
+echo "Starting floris standin wind simulator"
 python3 floris_runscript.py inputs/amr_input.inp inputs/floris_standin_data_fixedwd.csv >> outputs/logfloris.log 2>&1
 
+# Clean up helics output if there
+# Search for a file that begins with the current year
+# And ends with csv
+# If the file exists, move to outputs folder
+current_year=$(date +"%Y")
+for file in ${current_year}*.csv; do
+    if [ -f "$file" ]; then
+        mv "$file" outputs/
+    fi
+done
+
 # If everything is successful
-echo "Finished running hercules"
+echo "Finished running simulation"
 exit 0
-
-
-
