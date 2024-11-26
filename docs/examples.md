@@ -1,9 +1,11 @@
+(examples)=
 # Examples
 
 The `examples` subdirectory contains a series of examples that can be run to test the functionality
 of certain controllers and interfaces. Make sure you have installed Hercules
 (see {ref}`installation_examples`).
 
+(examples_luwakesteer)=
 ### lookup-based_wake_steering_florisstandin
 2-turbine example of lookup-based wake steering control, run using Hercules with the FLORIS standin
 in place of AMR-Wind for exposition purposes. To run this example, navigate to the 
@@ -31,6 +33,7 @@ and should produce the following plot.
     graphics/lookup-table-example-plot.png
 )
 
+(examples_wfpowertracking)=
 ## wind_farm_power_tracking_florisstandin
 2-turbine example of wind-farm-level power reference tracking, run using Hercules with the FLORIS 
 standin in place of AMR-Wind for exposition purposes. To run this example, navigate to the 
@@ -46,3 +49,25 @@ producing:
 ![Results of wind_farm_power_tracking_florisstandin example](
     graphics/wf-power-tracking-plot.png
 )
+
+(examples_simplehybrid)=
+## simple_hybrid_plant
+Example of a wind + solar + battery hybrid power plant using the `HybridSupervisoryControllerBaseline` to
+track a steady power reference. The plant comprises 10 NREL 5MW reference wind turbines
+(50 MW total wind capacity); a 100MW solar PV array; and a 4-hour, 20MW battery (80MWh energy
+storage capacity).
+
+To run this example, navigate to the examples/simple_hybrid_plant folder and execute the shell
+script run_script.sh:
+```
+bash run_script.sh
+```
+
+This will run a short (5 minute) simulation of the plant and controller tracking a steady power
+reference. The resulting trajectories are plotted, producing:
+![Results of wind_farm_power_tracking_florisstandin example](
+    graphics/simple-hybrid-example-plot.png
+)
+
+along with some extra plots showing each of the components (wind, solar, and battery) in more
+detail.

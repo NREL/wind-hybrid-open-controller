@@ -33,7 +33,7 @@ hercules_comms:
         publication_interval: 1
         endpoint_interval: 1
         starttime: 0
-        stoptime: 60 # must be at least 2*dt smaller than last timestep in weather file
+        stoptime: 300 # must be at least 2*dt smaller than last timestep in weather file
         Agent: ControlCenter
 
 py_sims:

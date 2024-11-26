@@ -32,8 +32,10 @@ ax.plot(power_ref_input['time'] / 60, power_ref_input['plant_power_reference']/1
 ax.set_ylabel("Power [MW]")
 ax.set_xlabel("Time [mins]")
 ax.grid()
-ax.legend(loc="upper right")
-ax.set_xlim([0, 1])
+ax.legend(loc="lower right")
+ax.set_xlim([0, 5])
+
+# fig.savefig("../../docs/graphics/simple-hybrid-example-plot.png", dpi=300, format="png")
 
 # Plot the battery power and state of charge
 battery_soc = df["py_sims.battery_0.outputs.soc"]
