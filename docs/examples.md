@@ -7,7 +7,9 @@ of certain controllers and interfaces. Make sure you have installed Hercules
 
 (examples_luwakesteer)=
 ### lookup-based_wake_steering_florisstandin
-2-turbine example of lookup-based wake steering control, run using Hercules with the FLORIS standin
+2-turbine example of lookup-based wake steering control with
+{ref}`controllers_luwakesteer`,
+run using Hercules with the FLORIS standin
 in place of AMR-Wind for exposition purposes. To run this example, navigate to the 
 examples/lookup-based_wake_steering_florisstandin folder and then run the following.
 ```
@@ -35,7 +37,9 @@ and should produce the following plot.
 
 (examples_wfpowertracking)=
 ## wind_farm_power_tracking_florisstandin
-2-turbine example of wind-farm-level power reference tracking, run using Hercules with the FLORIS 
+2-turbine example of wind-farm-level power reference tracking with 
+{ref}`controllers_wfpowertracking` and {ref}`controllers_wfpowerdistributing`, 
+run using Hercules with the FLORIS 
 standin in place of AMR-Wind for exposition purposes. To run this example, navigate to the 
 examples/wind_farm_power_tracking_florisstandin folder and execute the shell script run_script.sh:
 ```
@@ -52,7 +56,8 @@ producing:
 
 (examples_simplehybrid)=
 ## simple_hybrid_plant
-Example of a wind + solar + battery hybrid power plant using the `HybridSupervisoryControllerBaseline` to
+Example of a wind + solar + battery hybrid power plant using the 
+{ref}`controllers_simplehybrid` to
 track a steady power reference. The plant comprises 10 NREL 5MW reference wind turbines
 (50 MW total wind capacity); a 100MW solar PV array; and a 4-hour, 20MW battery (80MWh energy
 storage capacity).
