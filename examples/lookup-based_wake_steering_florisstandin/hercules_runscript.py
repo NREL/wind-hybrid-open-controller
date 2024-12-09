@@ -24,7 +24,7 @@ from whoc.interfaces.hercules_actuator_disk_interface import HerculesADInterface
 input_dict = load_yaml(sys.argv[1])
 
 # Load the optimal yaw angle lookup table for controller us
-df_opt = pd.read_pickle("yaw_offsets.pkl")
+df_opt = pd.read_pickle("inputs/yaw_offsets.pkl")
 
 interface = HerculesADInterface(input_dict)
 controller = LookupBasedWakeSteeringController(interface, input_dict, df_yaw=df_opt)

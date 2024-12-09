@@ -13,9 +13,9 @@ slices
 examples/*/logstandin*
 examples/*/loghercules*
 examples/*/logfloris*
+*.pkl
 
 # Exceptions
-!examples/lookup-based_wake_steering_florisstandin/amr_standin_data.csv
 !examples/wind_farm_power_tracking_florisstandin/amr_standin_data.csv
 !examples/wind_farm_power_tracking_florisstandin/wind_power_reference_data.csv
 
@@ -28,4 +28,7 @@ examples/*/logfloris*
 
 # Outputs
 *echo
+
+# Documentation build
+docs/_build/
 

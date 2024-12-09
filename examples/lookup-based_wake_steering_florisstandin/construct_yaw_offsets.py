@@ -5,8 +5,6 @@ import pandas as pd
 from floris import FlorisModel
 from whoc.design_tools.wake_steering_design import build_simple_wake_steering_lookup_table
 
-build_external_data = True
-
 floris_dict = {
     "logging": {
         "console": {"enable": True, "level": "WARNING"},
@@ -86,20 +84,19 @@ if __name__ == "__main__":
 
     df_opt.to_pickle(args.yaw_offset_filename)
 
-    if build_external_data:
-        # Also, build an example external data file
-        total_time = 100 # seconds
-        dt = 0.5
-        np.random.seed(0)
-        wind_directions = np.concatenate((
-            260*np.ones(60),
-            np.linspace(260., 270., 80),
-            270. + 5.*np.random.randn(round(total_time/dt)-60-80)
-        ))
-        df_data = pd.DataFrame(data={
-            "time": np.arange(0, total_time, dt),
-            "amr_wind_speed": 8.0*np.ones_like(wind_directions),
-            "amr_wind_direction": wind_directions
-        })
+    # Also, build an example external data file
+    total_time = 100 # seconds
+    dt = 0.5
+    np.random.seed(0)
+    wind_directions = np.concatenate((
+        260*np.ones(60),
+        np.linspace(260., 270., 80),
+        270. + 5.*np.random.randn(round(total_time/dt)-60-80)
+    ))
+    df_data = pd.DataFrame(data={
+        "time": np.arange(0, total_time, dt),
+        "amr_wind_speed": 8.0*np.ones_like(wind_directions),
+        "amr_wind_direction": wind_directions
+    })
 
-        df_data.to_csv(args.input_wind_filename, index=False)
+    df_data.to_csv(args.input_wind_filename, index=False)
