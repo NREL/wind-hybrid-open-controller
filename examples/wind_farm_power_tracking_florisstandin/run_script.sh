@@ -36,13 +36,13 @@ export HELICS_PORT=32000
 # Set up the helics broker and run the simulation
 echo "Running open-loop simulation."
 helics_broker -t zmq -f 2 --loglevel="debug" --local_port=$HELICS_PORT &
-python hercules_runscript_OLcontrol.py hercules_input.yaml >> outputs/loghercules_ol.log 2>&1 &
+python hercules_runscript_OLcontrol.py inputs/hercules_input.yaml >> outputs/loghercules_ol.log 2>&1 &
 python floris_runscript.py inputs/amr_input.inp inputs/amr_standin_data.csv >> outputs/logfloris_ol.log 2>&1
 
 # Wait for the open-loop control simulation to finish and then run the closed-loop simulation
 echo "Running closed-loop simulation."
 helics_broker -t zmq  -f 2 --loglevel="debug" --local_port=$HELICS_PORT & 
-python hercules_runscript_CLcontrol.py hercules_input.yaml >> outputs/loghercules_cl.log 2>&1 &
+python hercules_runscript_CLcontrol.py inputs/hercules_input.yaml >> outputs/loghercules_cl.log 2>&1 &
 python floris_runscript.py inputs/amr_input.inp inputs/amr_standin_data.csv >> outputs/logfloris_cl.log 2>&1
 
 # Clean up helics output if there

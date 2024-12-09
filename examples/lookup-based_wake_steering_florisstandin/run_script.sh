@@ -36,7 +36,7 @@ export HELICS_PORT=32000
 # Set up the helics broker and run the simulation
 echo "Running simulation."
 helics_broker -t zmq  -f 2 --loglevel="debug" --local_port=$HELICS_PORT &
-python hercules_runscript.py hercules_input.yaml >> outputs/loghercules.log 2>&1 &
+python hercules_runscript.py inputs/hercules_input.yaml >> outputs/loghercules.log 2>&1 &
 python floris_runscript.py inputs/amr_input.inp inputs/amr_standin_data.csv >> outputs/logfloris.log 2>&1
 
 # Clean up helics output if there

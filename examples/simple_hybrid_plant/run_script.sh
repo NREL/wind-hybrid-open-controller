@@ -36,7 +36,7 @@ export HELICS_PORT=32000
 # Set up the helics broker and run the simulation
 helics_broker -t zmq -f 2 --loglevel="debug" --local_port=$HELICS_PORT & 
 echo "Starting hercules with WHOC."
-python hercules_runscript.py hercules_input.yaml >> outputs/loghercules.log 2>&1 &
+python hercules_runscript.py inputs/hercules_input.yaml >> outputs/loghercules.log 2>&1 &
 echo "Starting floris standin wind simulator."
 python floris_runscript.py inputs/amr_input.inp inputs/floris_standin_data_fixedwd.csv >> outputs/logfloris.log 2>&1
 
