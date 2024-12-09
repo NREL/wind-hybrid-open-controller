@@ -10,6 +10,7 @@ method of `ControllerBase`.
 
 ## Available controllers
 
+(controllers_luwakesteer)=
 ### LookupBasedWakeSteeringController
 Yaw controller that implements wake steering based on a lookup table. 
 Requires a `df_opt` object produced by a FLORIS yaw optimization routine. See example 
@@ -26,6 +27,7 @@ Not yet developed. May be combined into a universal simple LookupBasedWakeSteeri
 Placeholder for a controller that manages both a wind power plant and colocated
 battery.
 
+(controllers_wfpowerdistributing)=
 ### WindFarmPowerDistributingController
 
 Wind farm-level power controller that simply distributes a farm-level power 
@@ -35,6 +37,7 @@ wind turbines are waked or cannot produce the desired power for other reasons.
 However, is a useful comparison case for the WindFarmPowerTrackingController 
 (described below).
 
+(controllers_wfpowertracking)=
 ### WindFarmPowerTrackingController
 
 Closed-loop wind farm-level power controller that distributes a farm-level 
@@ -49,6 +52,7 @@ simple proportional control appears sufficient currently. However, these may be 
 later date if needed. The `proportional_gain` for the controller may be provided on instantiation,
 and defaults to `proportional_gain = 1`.
 
+(controllers_simplehybrid)=
 ### HybridSupervisoryControllerBaseline
 
 Simple closed-loop supervisory controller for a hybrid wind/solar/battery plant.

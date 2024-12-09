@@ -16,17 +16,19 @@
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
   </script>
+  <!-- 
+    this give us a css class that will be invisible only if js is disabled 
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="_static/styles/theme.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
-<link href="_static/styles/bootstrap.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
-<link href="_static/styles/pydata-sphinx-theme.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
-
-  
-  <link href="_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
-  <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
-<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
-<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+  <link href="_static/styles/theme.css?digest=26a4bc78f4c0ddb94549" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=26a4bc78f4c0ddb94549" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
     <link rel="stylesheet" type="text/css" href="_static/styles/sphinx-book-theme.css?v=a3416100" />
@@ -34,12 +36,13 @@
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-thebe.css?v=4fa983c6" />
-    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=87e54e7c" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
   
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=26a4bc78f4c0ddb94549"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=dfe6caa3a7d634c4db9b" />
-<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
-  <script src="_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=26a4bc78f4c0ddb94549" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=26a4bc78f4c0ddb94549" />
 
     <script src="_static/documentation_options.js?v=9eb32ce0"></script>
     <script src="_static/doctools.js?v=9a2dae69"></script>
@@ -76,6 +79,7 @@
     <link rel="prev" title="Interfaces" href="interfaces.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
   </head>
   
   
@@ -91,19 +95,8 @@
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
 
   
-  <input type="checkbox"
-          class="sidebar-toggle"
-          id="pst-primary-sidebar-checkbox"/>
-  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
-  
-  <input type="checkbox"
-          class="sidebar-toggle"
-          id="pst-secondary-sidebar-checkbox"/>
-  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
-  
-  <div class="search-button__wrapper">
-    <div class="search-button__overlay"></div>
-    <div class="search-button__search-container">
+  <dialog id="pst-search-dialog">
+    
 <form class="bd-search d-flex align-items-center"
       action="search.html"
       method="get">
@@ -111,7 +104,6 @@
   <input type="search"
          class="form-control"
          name="q"
-         id="search-input"
          placeholder="Search this book..."
          aria-label="Search this book..."
          autocomplete="off"
@@ -119,8 +111,8 @@
          autocapitalize="off"
          spellcheck="false"/>
   <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
-</form></div>
-  </div>
+</form>
+  </dialog>
 
   <div class="pst-async-banner-revealer d-none">
   <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
@@ -136,7 +128,8 @@
       
       
       
-      <div class="bd-sidebar-primary bd-sidebar">
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
         
 
   
@@ -166,15 +159,11 @@
 </a></div>
         <div class="sidebar-primary-item">
 
- <script>
- document.write(`
-   <button class="btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
-    <i class="fa-solid fa-magnifying-glass"></i>
-    <span class="search-button__default-text">Search</span>
-    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
-   </button>
- `);
- </script></div>
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
         <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item navbar-nav active">
         
@@ -372,24 +361,16 @@
 
 
 
-<script>
-document.write(`
-  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
-    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light"></i>
-    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark"></i>
-    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"></i>
-  </button>
-`);
-</script>
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
 
 
-<script>
-document.write(`
-  <button class="btn btn-sm pst-navbar-icon search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
     <i class="fa-solid fa-magnifying-glass fa-lg"></i>
-  </button>
-`);
-</script>
+</button>
 <button class="sidebar-toggle secondary-toggle btn btn-sm" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
     <span class="fa-solid fa-list"></span>
 </button>
@@ -415,6 +396,7 @@ document.write(`
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#lookup-based-wake-steering-florisstandin">lookup-based_wake_steering_florisstandin</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#wind-farm-power-tracking-florisstandin">wind_farm_power_tracking_florisstandin</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#simple-hybrid-plant">simple_hybrid_plant</a></li>
 </ul>
             </nav>
         </div>
@@ -427,12 +409,15 @@ document.write(`
                 <article class="bd-article">
                   
   <section class="tex2jax_ignore mathjax_ignore" id="examples">
-<h1>Examples<a class="headerlink" href="#examples" title="Link to this heading">#</a></h1>
+<span id="id1"></span><h1>Examples<a class="headerlink" href="#examples" title="Link to this heading">#</a></h1>
 <p>The <code class="docutils literal notranslate"><span class="pre">examples</span></code> subdirectory contains a series of examples that can be run to test the functionality
-of certain controllers and interfaces.</p>
+of certain controllers and interfaces. Make sure you have installed Hercules
+(see <a class="reference internal" href="install_instructions.html#installation-examples"><span class="std std-ref">To run examples</span></a>).</p>
 <section id="lookup-based-wake-steering-florisstandin">
-<h2>lookup-based_wake_steering_florisstandin<a class="headerlink" href="#lookup-based-wake-steering-florisstandin" title="Link to this heading">#</a></h2>
-<p>2-turbine example of lookup-based wake steering control, run using Hercules with the FLORIS standin
+<span id="examples-luwakesteer"></span><h2>lookup-based_wake_steering_florisstandin<a class="headerlink" href="#lookup-based-wake-steering-florisstandin" title="Link to this heading">#</a></h2>
+<p>2-turbine example of lookup-based wake steering control with
+<a class="reference internal" href="controllers.html#controllers-luwakesteer"><span class="std std-ref">LookupBasedWakeSteeringController</span></a>,
+run using Hercules with the FLORIS standin
 in place of AMR-Wind for exposition purposes. To run this example, navigate to the
 examples/lookup-based_wake_steering_florisstandin folder and then run the following.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">construct_yaw_offsets</span><span class="o">.</span><span class="n">py</span>
@@ -442,27 +427,25 @@ examples/lookup-based_wake_steering_florisstandin folder and then run the follow
 example requires FLORIS version 4. As a result, we provide the generated offsets in
 yaw_offsets.pkl. To avoid regenerating yaw_offsets.pkl (and therefore avoid the current need for
 floris v3), set <code class="docutils literal notranslate"><span class="pre">optimize_yaw_offsets</span> <span class="pre">=</span> <span class="pre">False</span></code> at the beginning of construct_yaw_offsets.py before
-running.</p>
-<p>Next, run</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">bash_script</span><span class="o">.</span><span class="n">sh</span>
+running. The dependency on FLORIS version 3 will be removed soon.</p>
+<p>Next, run the shell script run_script.sh:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bash</span> <span class="n">run_script</span><span class="o">.</span><span class="n">sh</span>
 </pre></div>
 </div>
 <p>You will need to have and up-to-date Hercules (possibly on the develop branch) in your conda
-environment to run this. You may also need to changed permissions to run bash_script.sh as an
-executable (<code class="docutils literal notranslate"><span class="pre">chmod</span> <span class="pre">+x</span> <span class="pre">bash_script.sh</span></code>).</p>
-<p>Finally, run the post-processing script</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">plot_output_data</span><span class="o">.</span><span class="n">py</span>
-</pre></div>
-</div>
-<p>This should produce the following plot.
+environment to run this. You may also need to changed permissions to run bash_script.sh as an executable (<code class="docutils literal notranslate"><span class="pre">chmod</span> <span class="pre">+x</span> <span class="pre">run_script.sh</span></code>).</p>
+<p>The plotting script plot_output_data.py is run at the end of the shell script,
+and should produce the following plot.
 <img alt="Results of lookup-based_wake_steering_florisstandin example" src="_images/lookup-table-example-plot.png" /></p>
 </section>
 <section id="wind-farm-power-tracking-florisstandin">
-<h2>wind_farm_power_tracking_florisstandin<a class="headerlink" href="#wind-farm-power-tracking-florisstandin" title="Link to this heading">#</a></h2>
-<p>2-turbine example of wind-farm-level power reference tracking, run using Hercules with the FLORIS
+<span id="examples-wfpowertracking"></span><h2>wind_farm_power_tracking_florisstandin<a class="headerlink" href="#wind-farm-power-tracking-florisstandin" title="Link to this heading">#</a></h2>
+<p>2-turbine example of wind-farm-level power reference tracking with
+<a class="reference internal" href="controllers.html#controllers-wfpowertracking"><span class="std std-ref">WindFarmPowerTrackingController</span></a> and <a class="reference internal" href="controllers.html#controllers-wfpowerdistributing"><span class="std std-ref">WindFarmPowerDistributingController</span></a>,
+run using Hercules with the FLORIS
 standin in place of AMR-Wind for exposition purposes. To run this example, navigate to the
-examples/wind_farm_power_tracking_florisstandin folder and run the following:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">bash_script</span><span class="o">.</span><span class="n">sh</span>
+examples/wind_farm_power_tracking_florisstandin folder and execute the shell script run_script.sh:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bash</span> <span class="n">run_script</span><span class="o">.</span><span class="n">sh</span>
 </pre></div>
 </div>
 <p>This will run both a closed-loop controller, which compensates for underproduction at individual
@@ -470,6 +453,24 @@ turbines, and an open-loop controller, which simply distributes the farm-wide re
 amongst the turbines of the farm without feedback. The resulting trajectories are plotted,
 producing:
 <img alt="Results of wind_farm_power_tracking_florisstandin example" src="_images/wf-power-tracking-plot.png" /></p>
+</section>
+<section id="simple-hybrid-plant">
+<span id="examples-simplehybrid"></span><h2>simple_hybrid_plant<a class="headerlink" href="#simple-hybrid-plant" title="Link to this heading">#</a></h2>
+<p>Example of a wind + solar + battery hybrid power plant using the
+<a class="reference internal" href="controllers.html#controllers-simplehybrid"><span class="std std-ref">HybridSupervisoryControllerBaseline</span></a> to
+track a steady power reference. The plant comprises 10 NREL 5MW reference wind turbines
+(50 MW total wind capacity); a 100MW solar PV array; and a 4-hour, 20MW battery (80MWh energy
+storage capacity).</p>
+<p>To run this example, navigate to the examples/simple_hybrid_plant folder and execute the shell
+script run_script.sh:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bash</span> <span class="n">run_script</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>This will run a short (5 minute) simulation of the plant and controller tracking a steady power
+reference. The resulting trajectories are plotted, producing:
+<img alt="Results of wind_farm_power_tracking_florisstandin example" src="_images/simple-hybrid-example-plot.png" /></p>
+<p>along with some extra plots showing each of the components (wind, solar, and battery) in more
+detail.</p>
 </section>
 </section>
 
@@ -519,7 +520,8 @@ producing:
             
             
               
-                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
 
 
   <div class="sidebar-secondary-item">
@@ -530,6 +532,7 @@ producing:
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#lookup-based-wake-steering-florisstandin">lookup-based_wake_steering_florisstandin</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#wind-farm-power-tracking-florisstandin">wind_farm_power_tracking_florisstandin</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#simple-hybrid-plant">simple_hybrid_plant</a></li>
 </ul>
   </nav></div>
 
@@ -578,8 +581,8 @@ By National Renewable Energy Laboratory
   </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script src="_static/scripts/bootstrap.js?digest=dfe6caa3a7d634c4db9b"></script>
-<script src="_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b"></script>
+  <script defer src="_static/scripts/bootstrap.js?digest=26a4bc78f4c0ddb94549"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=26a4bc78f4c0ddb94549"></script>
 
   <footer class="bd-footer">
   </footer>
