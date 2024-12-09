@@ -112,8 +112,8 @@ def build_uncertain_wake_steering_lookup_table(
     fmodel.set(wind_data=wind_rose)
 
     ufmodel = UncertainFlorisModel(
-        fmodel=fmodel,
-        wind_direction_std=wd_std,
+        configuration=fmodel.core.as_dict(),
+        wd_std=wd_std,
     )
 
     yaw_opt = YawOptimizationSR(
@@ -186,21 +186,16 @@ def apply_wind_speed_ramps(
         raise ValueError("Wind speed ramp values must be in the order: cut in, fully engaged low, fully engaged high, cut out.")
 
     # Check if there is more than one wind speed specified
-    if len(df_opt_ramped["wind_speed"].unique()) > 1:
+    if len(df_opt["wind_speed"].unique()) > 1:
         raise ValueError("Wind speed ramps can only be applied to a dataframe with a single wind speed.")
     
     # Check that all wind speeds are between the fully engaged limits
-    if (df_opt_ramped["wind_speed"].unique() < ws_wake_steering_fully_engaged_low).any():
+    if (df_opt["wind_speed"].unique() < ws_wake_steering_fully_engaged_low).any():
         raise ValueError("All wind speeds must be greater than or equal to the lower fully engaged wind speed.")
-    if (df_opt_ramped["wind_speed"].unique() > ws_wake_steering_fully_engaged_high).any():
+    if (df_opt["wind_speed"].unique() > ws_wake_steering_fully_engaged_high).any():
         raise ValueError("All wind speeds must be less than or equal to the higher fully engaged wind speed.")
-    
-
 
     df_opt_ramped = df_opt.copy()
-
-
-
 
 def create_uniform_wind_rose(
     wd_resolution: float = 5,

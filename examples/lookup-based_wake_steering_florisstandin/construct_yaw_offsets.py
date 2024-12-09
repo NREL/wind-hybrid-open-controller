@@ -43,8 +43,8 @@ floris_dict = {
         },
     },
     "farm": {
-        "layout_x": [0.0],
-        "layout_y": [0.0],
+        "layout_x": [0.0, 1000.0],
+        "layout_y": [0.0, 0.0],
         "turbine_type": ["nrel_5MW"],
     },
     "flow_field": {
