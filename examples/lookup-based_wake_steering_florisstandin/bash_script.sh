@@ -12,6 +12,10 @@ export HELICS_PORT=32000
 # Clear old log files for clarity
 rm loghercules logfloris
 
+# Create the yaw offset table. This is quick for a small farm. Output will be saved.
+echo "Creating yaw offset table and wind data input"
+python3 construct_yaw_offsets.py --yaw_offset_filename yaw_offsets.pkl --input_wind_filename amr_standin_data.csv
+
 # Set up the helics broker
 helics_broker -t zmq  -f 2 --loglevel="debug" --local_port=$HELICS_PORT & 
 #helics_broker -f 2 --consoleloglevel=trace --loglevel=debug --local_port=$HELICS_PORT >> loghelics &

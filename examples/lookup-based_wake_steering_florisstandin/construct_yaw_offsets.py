@@ -1,16 +1,4 @@
-# Copyright 2022 NREL
-
-# Licensed under the Apache License, Version 2.0 (the "License"); you may not
-# use this file except in compliance with the License. You may obtain a copy of
-# the License at http://www.apache.org/licenses/LICENSE-2.0
-
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations under
-# the License.
-
-# See https://floris.readthedocs.io for documentation
+import argparse
 
 import numpy as np
 import pandas as pd
@@ -73,37 +61,45 @@ floris_dict = {
     "floris_version": "v4.x",
 }
 
-fmodel = FlorisModel(floris_dict)
+if __name__ == "__main__":
+    # Handle inputs
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--yaw_offset_filename", default="yaw_offsets.pkl")
+    parser.add_argument("--input_wind_filename", default="amr_standin_data.csv")
 
-df_opt = build_simple_wake_steering_lookup_table(
-    fmodel,
-    wd_resolution=3.0,
-    ws_resolution=1.0,
-    ws_min=2.0,
-    ws_max=17.0,
-    minimum_yaw_angle=0.0,
-    maximum_yaw_angle=25.0,
-)
+    args = parser.parse_args()
 
-print("Optimization results:")
-print(df_opt)
+    fmodel = FlorisModel(floris_dict)
 
-df_opt.to_pickle("yaw_offsets.pkl")
+    df_opt = build_simple_wake_steering_lookup_table(
+        fmodel,
+        wd_resolution=3.0,
+        ws_resolution=1.0,
+        ws_min=2.0,
+        ws_max=17.0,
+        minimum_yaw_angle=0.0,
+        maximum_yaw_angle=25.0,
+    )
 
-if build_external_data:
-    # Also, build an example external data file
-    total_time = 100 # seconds
-    dt = 0.5
-    np.random.seed(0)
-    wind_directions = np.concatenate((
-        260*np.ones(60),
-        np.linspace(260., 270., 80),
-        270. + 5.*np.random.randn(round(total_time/dt)-60-80)
-    ))
-    df_data = pd.DataFrame(data={
-        "time": np.arange(0, total_time, dt),
-        "amr_wind_speed": 8.0*np.ones_like(wind_directions),
-        "amr_wind_direction": wind_directions
-    })
+    print("Optimization results:")
+    print(df_opt)
 
-    df_data.to_csv("amr_standin_data.csv")
+    df_opt.to_pickle(args.yaw_offset_filename)
+
+    if build_external_data:
+        # Also, build an example external data file
+        total_time = 100 # seconds
+        dt = 0.5
+        np.random.seed(0)
+        wind_directions = np.concatenate((
+            260*np.ones(60),
+            np.linspace(260., 270., 80),
+            270. + 5.*np.random.randn(round(total_time/dt)-60-80)
+        ))
+        df_data = pd.DataFrame(data={
+            "time": np.arange(0, total_time, dt),
+            "amr_wind_speed": 8.0*np.ones_like(wind_directions),
+            "amr_wind_direction": wind_directions
+        })
+
+        df_data.to_csv(args.input_wind_filename, index=False)
