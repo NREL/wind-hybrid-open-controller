@@ -12,7 +12,6 @@ from whoc.controllers import (
 from whoc.interfaces.hercules_hybrid_actuator_disk_interface import HerculesHybridADInterface
 
 input_dict = load_yaml(sys.argv[1])
-# input_dict["output_file"] = "hercules_output_hybrid.csv"
 
 interface = HerculesHybridADInterface(input_dict)
 

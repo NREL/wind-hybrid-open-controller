@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 
-dfs = [pd.read_csv("hercules_output_ol.csv"), pd.read_csv("hercules_output_cl.csv")]
+dfs = [pd.read_csv("outputs/hercules_output_ol.csv"), pd.read_csv("outputs/hercules_output_cl.csv")]
 labels = ["Open-loop control", "Closed-loop control"]
 
 n_turbines = 2

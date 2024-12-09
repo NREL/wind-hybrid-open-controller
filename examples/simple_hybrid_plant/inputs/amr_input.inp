@@ -1,7 +1,7 @@
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
 #            SIMULATION STOP            #
 #.......................................#
-time.stop_time               =   60.0     # Max (simulated) time to evolve
+time.stop_time               =   300.0     # Max (simulated) time to evolve
 time.max_step                =   -1          # Max number of time steps
 
 #¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨#
