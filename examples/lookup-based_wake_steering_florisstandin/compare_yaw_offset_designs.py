@@ -4,15 +4,10 @@ various capabilities of the wake_steering_design toolbox in WHOC by designing
 a range of offset lookup tables and comparing them to one-another.
 """
 
-import argparse
 
-import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 from floris import FlorisModel
-
-from whoc.design_tools import wake_steering_design as wsd
-from whoc.design_tools import wake_steering_visualization as wsv
+from whoc.design_tools import wake_steering_design as wsd, wake_steering_visualization as wsv
 
 floris_dict = {
     "logging": {
