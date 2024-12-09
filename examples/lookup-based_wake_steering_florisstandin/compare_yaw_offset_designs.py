@@ -74,15 +74,19 @@ if __name__ == "__main__":
     ws_resolution = 1.0
     ws_min = 2.0
     ws_max = 17.0
-    minimum_yaw_angle = 0.0
+    minimum_yaw_angle = -25.0
     maximum_yaw_angle = 25.0
     wd_std = 3.0
     ws_main = 8.0
+    wd_rate_limit = 1.0
+    ws_rate_limit = 100.0 # No rate limit on wind speed
     plot_turbine = 0
+    plot_wd_lims = (240, 300)
 
     # Plotting
     col_simple = "black"
     col_unc = "C0"
+    col_rate_limited = "C1"
     
     fmodel = FlorisModel(floris_dict)
 
@@ -109,6 +113,13 @@ if __name__ == "__main__":
         maximum_yaw_angle=maximum_yaw_angle,
     )
 
+    print("\nApplying rate limits to simple lookup table.")
+    df_opt_rate_limited = wsd.apply_static_rate_limits(
+        df_opt_simple,
+        wd_rate_limit=wd_rate_limit,
+        ws_rate_limit=ws_rate_limit,
+    )
+
     # Plot various designs
     fig, ax = plt.subplots(2, 1, figsize=(7, 7), sharex=True, sharey=True)
 
@@ -130,6 +141,15 @@ if __name__ == "__main__":
         ax=ax[0]
     )
 
+    wsv.plot_offsets_wd(
+        df_opt_rate_limited,
+        plot_turbine,
+        ws_plot=ws_main,
+        color=col_rate_limited,
+        label="Rate limited",
+        ax=ax[0]
+    )
+
     ax[0].set_ylabel("Yaw offset [deg]")
     ax[0].set_xlabel("")
     ax[0].legend()
@@ -137,9 +157,23 @@ if __name__ == "__main__":
     ax[1].set_ylabel("Yaw offset [deg]")
     ax[1].grid()
     ax[-1].set_xlabel("Wind direction [deg]")
-    ax[-1].set_xlim([240, 300])
+    ax[-1].set_xlim(plot_wd_lims)
+
+    # Also, plot heatmap of offsets for Simple design
+    # Tile these!
+    fig, ax = plt.subplots(2, 2, sharex=True, sharey=True, figsize=(10,10))
+    _, cbar = wsv.plot_offsets_wswd_heatmap(df_opt_simple, plot_turbine, ax=ax[0,0])
+    ax[0,0].set_title("Simple")
+    _, cbar = wsv.plot_offsets_wswd_heatmap(df_opt_unc, plot_turbine, ax=ax[0,1])
+    ax[0,1].set_title("Uncertain")
+    _, cbar = wsv.plot_offsets_wswd_heatmap(df_opt_rate_limited, plot_turbine, ax=ax[1,0])
+    ax[1,0].set_title("Rate limited")
+
+    for ax_ in ax[:,0]:
+        ax_.set_ylabel("Wind speed [m/s]")
+    for ax_ in ax[-1,:]:
+        ax_.set_xlabel("Wind direction [deg]")
+    cbar.set_label("Yaw offset [deg]")
+    ax[0,0].set_xlim(plot_wd_lims)
 
     plt.show()
-
-    # Plot the wake steering misalignments for the first turbine
-    # We have tools for this---where are they?

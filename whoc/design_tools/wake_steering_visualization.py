@@ -28,32 +28,21 @@ def plot_offsets_wswd_heatmap(df_opt, turb_id, ax=None):
         A tuple containing a matplotlib.axes.Axes object and a matplotlib.colorbar.Colorbar
 
     """
-    if isinstance(turb_id, int):
-        if "yaw_angles_opt" in df_offsets.columns:
-            offsets = np.vstack(df_offsets.yaw_angles_opt.to_numpy())[:, turb_id]
-            df_offsets = pd.DataFrame(
-                {
-                    "wind_direction": df_offsets.wind_direction,
-                    "wind_speed": df_offsets.wind_speed,
-                    "yaw_offset": offsets,
-                }
-            )
-            turb_id = "yaw_offset"
-        else:
-            raise TypeError(
-                "Specify turb_id as a full string for the " + "correct dataframe column."
-            )
+    if "yaw_angles_opt" not in df_opt.columns:
+        raise ValueError("df_opt must contain yaw_angles_opt column.")
+    else:
+        offsets_all = np.vstack(df_opt.yaw_angles_opt.to_numpy())[:, turb_id]
 
-    ws_array = np.unique(df_offsets.wind_speed)
-    wd_array = np.unique(df_offsets.wind_direction)
+    ws_array = np.unique(df_opt.wind_speed)
+    wd_array = np.unique(df_opt.wind_direction)
 
     # Construct array of offets
     offsets_array = np.zeros((len(ws_array), len(wd_array)))
     for i, ws in enumerate(ws_array):
-        offsets_array[-i, :] = df_offsets[df_offsets.wind_speed == ws][turb_id].values
+        offsets_array[-i, :] = offsets_all[df_opt.wind_speed == ws]
 
     if ax is None:
-        fig, ax = plt.subplots(1, 1)
+        _, ax = plt.subplots(1, 1)
     d_wd = (wd_array[1] - wd_array[0]) / 2
     d_ws = (ws_array[1] - ws_array[0]) / 2
     im = ax.imshow(
@@ -115,7 +104,7 @@ def plot_offsets_wd(df_opt, turb_id, ws_plot, color="black", alpha=1.0, label=No
         offsets_list = [offsets_all[df_opt.wind_speed == ws_plot]]
 
     if ax is None:
-        fig, ax = plt.subplots(1, 1)
+        _, ax = plt.subplots(1, 1)
 
     for offsets in offsets_list:
         ax.plot(wd_array, offsets, color=color, alpha=alpha, label=label)

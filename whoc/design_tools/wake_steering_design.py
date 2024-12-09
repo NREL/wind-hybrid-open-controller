@@ -140,8 +140,85 @@ def apply_static_rate_limits(
             wind speed [deg / m/s]. Defaults to 10.
     """
 
+    offsets_all = np.vstack(df_opt.yaw_angles_opt.to_numpy()).transpose()
+
+    wd_array = np.unique(df_opt.wind_direction)
+    ws_array = np.unique(df_opt.wind_speed)
+    ti_array = np.unique(df_opt.turbulence_intensity)
+
+    wd_step = wd_array[1] - wd_array[0]
+    ws_step = ws_array[1] - ws_array[0]
+
+    # 4D array, with dimensions: (turbine, wd, ws, ti)
+    # TODO: will this ordering always work? Or not?
+    offsets_array = offsets_all.reshape(
+        (offsets_all.shape[0], len(wd_array), len(ws_array), len(ti_array))
+    )
+    offsets_array_original = offsets_array.copy()
+
+    # Apply wd rate limits
+    offsets_limited_lr = -np.cumsum(
+        np.clip(
+            np.diff(
+                np.concatenate(
+                    (offsets_array[:,0:1,:,:], offsets_array),
+                    axis=1
+                ),
+                axis=1
+            ),
+            -wd_rate_limit*wd_step, 
+            wd_rate_limit*wd_step
+        ),
+        axis=1
+    )
+    offsets_limited_rl = -np.flip(
+        np.cumsum(
+            np.clip(
+                np.diff(
+                    np.flip(
+                        np.concatenate(
+                            (offsets_array, offsets_array[:,-2:-1,:,:]),
+                            axis=1
+                        ),
+                        axis=1
+                    ),
+                    axis=1
+                ),
+                -wd_rate_limit,
+                wd_rate_limit
+            ),
+            axis=1
+        ),
+        axis=1
+    )
+    # Is this correct, with the zero terms?
+    offsets_array[offsets_array_original > 0] = offsets_limited_lr[offsets_array_original > 0]
+    offsets_array[offsets_array_original < 0] = offsets_limited_rl[offsets_array_original < 0]
+
+    # Apply ws rate limits (increasing ws)
+    offsets_limited = np.cumsum(
+        np.clip(
+            np.diff(
+                np.concatenate(
+                    (offsets_array[:,:,0:1,:], offsets_array),
+                    axis=2
+                ),
+                axis=2
+            ),
+            -ws_rate_limit*ws_step,
+            ws_rate_limit*ws_step
+        ),
+        axis=2
+    )
+    offsets_array[offsets_array != 0] = offsets_limited[offsets_array != 0]
+
+    # Flatten array back into 2D array for dataframe
+    offsets_shape = offsets_array.shape
+    offsets_all_limited = offsets_array.reshape(
+        (offsets_shape[0], offsets_shape[1]*offsets_shape[2]*offsets_shape[3])
+    ).transpose()
     df_opt_rate_limited = df_opt.copy()
-    # TODO: Build this out
+    df_opt_rate_limited["yaw_angles_opt"] = [*offsets_all_limited]
 
     return df_opt_rate_limited
 
