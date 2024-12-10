@@ -2,7 +2,7 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
+
 
 def plot_offsets_wswd_heatmap(df_opt, turb_id, ax=None):
     """Plot offsets for a single turbine as a heatmap in wind speed.
