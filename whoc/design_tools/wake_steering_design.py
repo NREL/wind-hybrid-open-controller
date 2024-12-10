@@ -154,63 +154,25 @@ def apply_static_rate_limits(
     offsets_array = offsets_all.reshape(
         (offsets_all.shape[0], len(wd_array), len(ws_array), len(ti_array))
     )
-    offsets_array_original = offsets_array.copy()
 
     # Apply wd rate limits
-    offsets_limited_lr = -np.cumsum(
-        np.clip(
-            np.diff(
-                np.concatenate(
-                    (offsets_array[:,0:1,:,:], offsets_array),
-                    axis=1
-                ),
-                axis=1
-            ),
-            -wd_rate_limit*wd_step, 
-            wd_rate_limit*wd_step
-        ),
-        axis=1
-    )
-    offsets_limited_rl = -np.flip(
-        np.cumsum(
-            np.clip(
-                np.diff(
-                    np.flip(
-                        np.concatenate(
-                            (offsets_array, offsets_array[:,-2:-1,:,:]),
-                            axis=1
-                        ),
-                        axis=1
-                    ),
-                    axis=1
-                ),
-                -wd_rate_limit,
-                wd_rate_limit
-            ),
-            axis=1
-        ),
-        axis=1
-    )
-    # Is this correct, with the zero terms?
-    offsets_array[offsets_array_original > 0] = offsets_limited_lr[offsets_array_original > 0]
-    offsets_array[offsets_array_original < 0] = offsets_limited_rl[offsets_array_original < 0]
+    offsets_limited_lr = offsets_array.copy()
+    for i in range(1, len(wd_array)):
+        delta_yaw = offsets_limited_lr[:, i, :, :] - offsets_limited_lr[:, i-1, :, :]
+        delta_yaw = np.clip(delta_yaw, -wd_rate_limit*wd_step, wd_rate_limit*wd_step)
+        offsets_limited_lr[:, i, :, :] = offsets_limited_lr[:, i-1, :, :] + delta_yaw
+    offsets_limited_rl = offsets_array.copy()
+    for i in range(len(wd_array)-2, -1, -1):
+        delta_yaw = offsets_limited_rl[:, i, :, :] - offsets_limited_rl[:, i+1, :, :]
+        delta_yaw = np.clip(delta_yaw, -wd_rate_limit*wd_step, wd_rate_limit*wd_step)
+        offsets_limited_rl[:, i, :, :] = offsets_limited_rl[:, i+1, :, :] + delta_yaw
+    offsets_array = (offsets_limited_lr + offsets_limited_rl) / 2
 
     # Apply ws rate limits (increasing ws)
-    offsets_limited = np.cumsum(
-        np.clip(
-            np.diff(
-                np.concatenate(
-                    (offsets_array[:,:,0:1,:], offsets_array),
-                    axis=2
-                ),
-                axis=2
-            ),
-            -ws_rate_limit*ws_step,
-            ws_rate_limit*ws_step
-        ),
-        axis=2
-    )
-    offsets_array[offsets_array != 0] = offsets_limited[offsets_array != 0]
+    for j in range(1, len(ws_array)):
+        delta_yaw = offsets_array[:, :, j, :] - offsets_array[:, :, j-1, :]
+        delta_yaw = np.clip(delta_yaw, -ws_rate_limit*ws_step, ws_rate_limit*ws_step)
+        offsets_array[:, :, j, :] = offsets_array[:, :, j-1, :] + delta_yaw
 
     # Flatten array back into 2D array for dataframe
     offsets_shape = offsets_array.shape

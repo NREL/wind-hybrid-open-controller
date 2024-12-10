@@ -73,7 +73,7 @@ if __name__ == "__main__":
     maximum_yaw_angle = 25.0
     wd_std = 3.0
     ws_main = 8.0
-    wd_rate_limit = 1.0
+    wd_rate_limit = 3.0
     ws_rate_limit = 100.0 # No rate limit on wind speed
     plot_turbine = 0
     plot_wd_lims = (240, 300)
@@ -108,7 +108,7 @@ if __name__ == "__main__":
         maximum_yaw_angle=maximum_yaw_angle,
     )
 
-    print("\nApplying rate limits to simple lookup table.")
+    print("\nApplying rate limits to simple lookup table (3 deg/deg).")
     df_opt_rate_limited = wsd.apply_static_rate_limits(
         df_opt_simple,
         wd_rate_limit=wd_rate_limit,
