@@ -154,3 +154,14 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
         # battery_reference = -30 # kW, Negative requests discharging, positive requests charging
 
         return wind_reference, solar_reference, battery_reference
+
+class HybridSupervisoryControllerBaseline_ForecastDemo(HybridSupervisoryControllerBaseline):
+
+    def return_forecast(self):
+        return self.measurements_dict["forecast"]
+
+    def compute_controls(self):
+
+        self.return_forecast()
+
+        return super().compute_controls()

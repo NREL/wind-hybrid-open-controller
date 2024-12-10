@@ -38,11 +38,18 @@ class HerculesHybridADInterface(InterfaceBase):
         )
         time = hercules_dict["time"]
 
-        if ("external_signals" in hercules_dict
-            and "plant_power_reference" in hercules_dict["external_signals"]):
-            plant_power_reference = hercules_dict["external_signals"]["plant_power_reference"]
-        else:
-            plant_power_reference = POWER_SETPOINT_DEFAULT
+        # Defaults for external signals
+        plant_power_reference = POWER_SETPOINT_DEFAULT
+        forecast = {}
+
+        # Handle external signals
+        if "external_signals" in hercules_dict:
+            if "plant_power_reference" in hercules_dict["external_signals"]:
+                plant_power_reference = hercules_dict["external_signals"]["plant_power_reference"]
+
+            for k in hercules_dict["external_signals"].keys():
+                if "forecast" in k != "wind_power_reference":
+                    forecast[k] = hercules_dict["external_signals"][k]
 
         measurements = {
             "time": time,
@@ -54,6 +61,7 @@ class HerculesHybridADInterface(InterfaceBase):
             "solar_power": hercules_dict["py_sims"][self.solar_name]["outputs"]["power_mw"] * 1000,
             "solar_dni": hercules_dict["py_sims"][self.solar_name]["outputs"]["dni"],
             "solar_aoi": hercules_dict["py_sims"][self.solar_name]["outputs"]["aoi"],
+            "forecast": forecast,
         } 
         # Notes: solar_power converted to kW here
         # solar_dni is the direct normal irradiance
