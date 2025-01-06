@@ -32,8 +32,8 @@ class WindHydrogenController(ControllerBase):
         # Assign the individual asset controllers
         self.wind_controller = wind_controller
 
-        # Set constants
-        py_sims = list(input_dict["py_sims"].keys())
+        # # Set constants
+        # py_sims = list(input_dict["py_sims"].keys())
 
         # Initialize Power references
         self.wind_reference = 0
