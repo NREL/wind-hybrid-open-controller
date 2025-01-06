@@ -10,9 +10,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-from pathlib import Path
+from importlib.metadata import version
 
-ROOT = Path(__file__).parent
-with open(ROOT / "version.py") as version_file:
-    VERSION = version_file.read().strip()
-__version__ = VERSION
+__version__ = version("whoc")
+
