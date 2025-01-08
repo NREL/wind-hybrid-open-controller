@@ -162,6 +162,9 @@ class HybridSupervisoryControllerBaseline_ForecastDemo(HybridSupervisoryControll
 
     def compute_controls(self):
 
-        self.return_forecast()
+        forecast = self.return_forecast()
+        print("Demo forecast:", forecast) # print statement eventually can be removed
+
+        # Predictive controller code to be put here, and may replace super().compute_controls()
 
         return super().compute_controls()
