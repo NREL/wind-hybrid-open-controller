@@ -28,17 +28,23 @@ fig, ax = plt.subplots(1,2,sharey=True)
 
 # Plot all predictions for all time steps
 for t in range(len(df_truth)-5):
-   ax[0].plot(df_truth.time.loc[t:t+4], ws_pred[t,:], color="lightgray", alpha=0.5)
+   ax[0].plot(df_truth.time.loc[t:t+4], ws_pred[t,:], color="gray", alpha=0.5)
 ax[0].plot(df_truth.time, df_truth.amr_wind_speed, color="red", linestyle="--")
 ax[0].set_ylabel("Wind Speed [m/s]")
 ax[0].set_xlabel("Time [s]")
 ax[0].set_xlim([0, 600])
 
 # Plot only the prediction for the first time step, as well as the true wind speed
-ax[1].plot(df_truth.time.loc[0:4], ws_pred[0,:], color="lightgray")
-ax[1].plot(df_truth.time, df_truth.amr_wind_speed, color="red", linestyle="--")
+ax[1].plot(df_truth.time.loc[0:4], ws_pred[0,:], color="gray", label="Forecast mean")
+ax[1].plot(df_truth.time, df_truth.amr_wind_speed, color="red", linestyle="--", label="Truth")
+ax[1].fill_between(
+    df_truth.time.loc[0:4],
+    ws_pred[0,:]+np.sqrt(np.diag(cov)),
+    ws_pred[0,:]-np.sqrt(np.diag(cov)),
+    color="gray", edgecolor=None, alpha=0.3, label="$\pm 1\sigma$")
 ax[1].set_xlim([0, 2])
 ax[1].set_xlabel("Time [s]")
+ax[1].legend()
 
 # Save off the data (mean and standard dev)
 df_pred = pd.DataFrame(ws_pred, columns=[f"forecast_ws_mean_{i}" for i in range(5)])
