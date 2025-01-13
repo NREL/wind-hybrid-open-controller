@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from floris import FlorisModel, UncertainFlorisModel, WindRose
 from floris.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, LinearNDInterpolator
 
 # TODO
 # DONE basic wake steering design tool, will require an instantiated FlorisModel as input
@@ -295,6 +295,78 @@ def apply_wind_speed_ramps(
         "wind_speed": wind_speed_stacked,
         "yaw_angles_opt": [offsets_stacked[i,:] for i in range(offsets_stacked.shape[0])]
     })
+
+def get_yaw_angles_interpolant(df_opt):
+    """Get an interpolant for the optimal yaw angles from a dataframe.
+
+    Create an interpolant for the optimal yaw angles from a dataframe
+    'df_opt', which contains the rows 'wind_direction', 'wind_speed',
+    'turbulence_intensity', and 'yaw_angles_opt'. This dataframe is typically
+    produced automatically from a FLORIS yaw optimization using Serial Refine
+    or SciPy. One can additionally apply a ramp-up and ramp-down region
+    to transition between non-wake-steering and wake-steering operation.
+
+    Note that, in contrast to the previous implementation in FLASC, this implementation
+    does not allow ramp_up_ws, ramp_down_ws, minimum_yaw_angle, or maximum_yaw_angle.
+    Minimum and maximum yaw angles should be specified during the design optimization,
+    while ramping with wind speed is now handled by apply_wind_speed_ramps.
+
+    Args:
+        df_opt (pd.DataFrame): Dataframe containing the rows 'wind_direction',
+            'wind_speed', 'turbulence_intensity', and 'yaw_angles_opt'.
+
+    Returns:
+        LinearNDInterpolator: An interpolant function which takes the inputs
+            (wind_directions, wind_speeds, turbulence_intensities), all of equal
+            dimensions, and returns the yaw angles for all turbines. This function
+            incorporates the ramp-up and ramp-down regions.
+    """
+
+    # Load data and set up a linear interpolant
+    points = df_opt[["wind_direction", "wind_speed", "turbulence_intensity"]]
+    values = np.vstack(df_opt["yaw_angles_opt"])
+
+    # Expand wind direction range to cover 0 deg to 360 deg
+    points_copied = points[points["wind_direction"] == 0.0].copy()
+    points_copied.loc[points_copied.index, "wind_direction"] = 360.0
+    values_copied = values[points["wind_direction"] == 0.0, :]
+    points = np.vstack([points, points_copied])
+    values = np.vstack([values, values_copied])
+
+    # Copy lowest wind speed / TI solutions to -1.0 to create lower bound
+    for col in [1, 2]:
+        ids_to_copy_lb = points[:, col] == np.min(points[:, col])
+        points_copied = np.array(points[ids_to_copy_lb, :], copy=True)
+        values_copied = np.array(values[ids_to_copy_lb, :], copy=True)
+        points_copied[:, col] = -1.0  # Lower bound
+        points = np.vstack([points, points_copied])
+        values = np.vstack([values, values_copied])
+
+        # Copy highest wind speed / TI solutions to 999.0
+        ids_to_copy_ub = points[:, col] == np.max(points[:, col])
+        points_copied = np.array(points[ids_to_copy_ub, :], copy=True)
+        values_copied = np.array(values[ids_to_copy_ub, :], copy=True)
+        points_copied[:, col] = 999.0  # Upper bound
+        points = np.vstack([points, points_copied])
+        values = np.vstack([values, values_copied])
+
+    # Now create a linear interpolant for the yaw angles
+    interpolant = LinearNDInterpolator(points=points, values=values, fill_value=np.nan)
+
+    # Now create a wrapper function with ramp-up and ramp-down
+    def yaw_angle_interpolant(wd_array, ws_array, ti_array=None):
+        # Deal with missing ti_array
+        if ti_array is None:
+            ti_ref = float(np.median(interpolant.points[:, 2]))
+            ti_array = np.ones(np.shape(wd_array), dtype=float) * ti_ref
+
+        # Format inputs
+        wd_array = np.array(wd_array, dtype=float)
+        ws_array = np.array(ws_array, dtype=float)
+        ti_array = np.array(ti_array, dtype=float)
+        return np.array(interpolant(wd_array, ws_array, ti_array), dtype=float)
+
+    return yaw_angle_interpolant
 
 def create_uniform_wind_rose(
     wd_resolution: float = 5,

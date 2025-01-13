@@ -14,8 +14,8 @@
 
 import numpy as np
 
-from flasc.utilities.lookup_table_tools import get_yaw_angles_interpolant
 from whoc.controllers.controller_base import ControllerBase
+from whoc.design_tools.wake_steering_design import get_yaw_angles_interpolant
 
 
 class LookupBasedWakeSteeringController(ControllerBase):

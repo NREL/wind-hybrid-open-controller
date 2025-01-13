@@ -2,7 +2,10 @@ from pathlib import Path
 
 import numpy as np
 from floris import FlorisModel
-from whoc.design_tools.wake_steering_design import build_simple_wake_steering_lookup_table
+from whoc.design_tools.wake_steering_design import (
+    build_simple_wake_steering_lookup_table,
+    get_yaw_angles_interpolant,
+)
 
 TEST_DATA = Path(__file__).resolve().parent
 YAML_INPUT = TEST_DATA / "floris_input.yaml"
@@ -62,3 +65,39 @@ def test_build_simple_wake_steering_lookup_table():
     assert opt_yaw_angles.shape == (n_conditions, 2)
     assert (opt_yaw_angles >= minimum_yaw_angle).all()
     assert (opt_yaw_angles <= maximum_yaw_angle).all()
+
+def test_wake_steering_interpolant():
+
+    fmodel_test = FlorisModel(YAML_INPUT)
+
+    # Start with the simple case
+    wd_resolution = 4.0
+    wd_min = 220.0
+    wd_max = 310.0
+    ws_resolution = 0.5
+    ws_min = 8.0
+    ws_max = 10.0
+    minimum_yaw_angle = -20
+    maximum_yaw_angle = 20
+    df_opt = build_simple_wake_steering_lookup_table(
+        fmodel_test,
+        wd_resolution=wd_resolution,
+        wd_min=wd_min,
+        wd_max=wd_max,
+        ws_resolution=ws_resolution,
+        ws_min=ws_min,
+        ws_max=ws_max,
+        minimum_yaw_angle=minimum_yaw_angle,
+        maximum_yaw_angle=maximum_yaw_angle,
+    )
+
+    yaw_interpolant = get_yaw_angles_interpolant(df_opt)
+
+    # Confirm the yaw interpolant matches the lookup table
+    offsets_interp = yaw_interpolant(
+        df_opt.wind_direction.values,
+        df_opt.wind_speed.values,
+        df_opt.turbulence_intensity.values,
+    )
+
+    assert np.allclose(offsets_interp, np.vstack(df_opt.yaw_angles_opt.values))
