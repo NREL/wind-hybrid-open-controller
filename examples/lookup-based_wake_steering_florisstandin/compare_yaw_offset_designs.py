@@ -82,6 +82,7 @@ if __name__ == "__main__":
     col_simple = "black"
     col_unc = "C0"
     col_rate_limited = "C1"
+    col_ws_ramps = "C2"
     
     fmodel = FlorisModel(floris_dict)
 
@@ -115,8 +116,30 @@ if __name__ == "__main__":
         ws_rate_limit=ws_rate_limit,
     )
 
+    print("\nGenerating offsets using single wind speed.")
+    df_opt_single_ws = wsd.build_simple_wake_steering_lookup_table(
+        fmodel,
+        wd_resolution=wd_resolution,
+        ws_resolution=ws_resolution,
+        ws_min=ws_main,
+        ws_max=ws_main,
+        minimum_yaw_angle=minimum_yaw_angle,
+        maximum_yaw_angle=maximum_yaw_angle,
+    )
+
+    df_opt_ws_ramps = wsd.apply_wind_speed_ramps(
+        df_opt_single_ws,
+        ws_resolution=ws_resolution,
+        ws_min=ws_min,
+        ws_max=ws_max,
+        ws_wake_steering_cut_in=3.0,
+        ws_wake_steering_fully_engaged_low=4.0,
+        ws_wake_steering_fully_engaged_high=11.0,
+        ws_wake_steering_cut_out=13.0
+    )
+
     # Plot various designs
-    fig, ax = plt.subplots(2, 1, figsize=(7, 7), sharex=True, sharey=True)
+    fig, ax = plt.subplots(1, 1, figsize=(7, 4), sharex=True, sharey=True)
 
     wsv.plot_offsets_wd(
         df_opt_simple,
@@ -124,7 +147,7 @@ if __name__ == "__main__":
         ws_plot=ws_main,
         color=col_simple,
         label="Simple",
-        ax=ax[0]
+        ax=ax
     )
 
     wsv.plot_offsets_wd(
@@ -133,7 +156,7 @@ if __name__ == "__main__":
         ws_plot=ws_main,
         color=col_unc,
         label="Uncertain",
-        ax=ax[0]
+        ax=ax
     )
 
     wsv.plot_offsets_wd(
@@ -142,20 +165,27 @@ if __name__ == "__main__":
         ws_plot=ws_main,
         color=col_rate_limited,
         label="Rate limited",
-        ax=ax[0]
+        ax=ax
     )
 
-    ax[0].set_ylabel("Yaw offset [deg]")
-    ax[0].set_xlabel("")
-    ax[0].legend()
-    ax[0].grid()
-    ax[1].set_ylabel("Yaw offset [deg]")
-    ax[1].grid()
-    ax[-1].set_xlabel("Wind direction [deg]")
-    ax[-1].set_xlim(plot_wd_lims)
+    wsv.plot_offsets_wd(
+        df_opt_ws_ramps,
+        plot_turbine,
+        ws_plot=ws_main,
+        color=col_ws_ramps,
+        label="Single wind speed",
+        linestyle="dotted",
+        ax=ax
+    )
+
+    ax.set_title("Yaw offsets at {} m/s".format(ws_main))
+    ax.set_ylabel("Yaw offset [deg]")
+    ax.grid()
+    ax.set_xlabel("Wind direction [deg]")
+    ax.set_xlim(plot_wd_lims)
+    ax.legend()
 
     # Also, plot heatmap of offsets for Simple design
-    # Tile these!
     fig, ax = plt.subplots(2, 2, sharex=True, sharey=True, figsize=(10,10))
     _, cbar = wsv.plot_offsets_wswd_heatmap(df_opt_simple, plot_turbine, ax=ax[0,0])
     ax[0,0].set_title("Simple")
@@ -163,6 +193,8 @@ if __name__ == "__main__":
     ax[0,1].set_title("Uncertain")
     _, cbar = wsv.plot_offsets_wswd_heatmap(df_opt_rate_limited, plot_turbine, ax=ax[1,0])
     ax[1,0].set_title("Rate limited")
+    _, cbar = wsv.plot_offsets_wswd_heatmap(df_opt_ws_ramps, plot_turbine, ax=ax[1,1])
+    ax[1,1].set_title("Wind speed heuristic")
 
     for ax_ in ax[:,0]:
         ax_.set_ylabel("Wind speed [m/s]")

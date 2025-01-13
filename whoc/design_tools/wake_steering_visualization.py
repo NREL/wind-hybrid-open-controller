@@ -39,7 +39,7 @@ def plot_offsets_wswd_heatmap(df_opt, turb_id, ax=None):
     # Construct array of offets
     offsets_array = np.zeros((len(ws_array), len(wd_array)))
     for i, ws in enumerate(ws_array):
-        offsets_array[-i, :] = offsets_all[df_opt.wind_speed == ws]
+        offsets_array[i, :] = offsets_all[df_opt.wind_speed == ws]
 
     if ax is None:
         _, ax = plt.subplots(1, 1)
@@ -50,6 +50,7 @@ def plot_offsets_wswd_heatmap(df_opt, turb_id, ax=None):
         interpolation=None,
         extent=[wd_array[0] - d_wd, wd_array[-1] + d_wd, ws_array[0] - d_ws, ws_array[-1] + d_ws],
         aspect="auto",
+        origin="lower",
     )
     ax.set_xlabel("Wind direction")
     ax.set_ylabel("Wind speed")
@@ -59,7 +60,16 @@ def plot_offsets_wswd_heatmap(df_opt, turb_id, ax=None):
     return ax, cbar
 
 
-def plot_offsets_wd(df_opt, turb_id, ws_plot, color="black", alpha=1.0, label=None, ax=None):
+def plot_offsets_wd(
+    df_opt,
+    turb_id,
+    ws_plot,
+    color = "black",
+    linestyle = "-",
+    alpha = 1.0,
+    label = None,
+    ax = None
+):
     """Plot offsets for a single turbine as a function of wind direction.
 
     df_opt should be a dataframe with columns:
@@ -88,26 +98,31 @@ def plot_offsets_wd(df_opt, turb_id, ws_plot, color="black", alpha=1.0, label=No
     else:
         offsets_all = np.vstack(df_opt.yaw_angles_opt.to_numpy())[:, turb_id]
     
-    if hasattr(ws_plot, "__len__") and label is not None:
+    if not hasattr(ws_plot, "__len__"):
+        ws_plot = [ws_plot]
+    
+    if len(ws_plot) > 1 and label is not None:
         label = None
         print("label option can only be used for single wind speed plot.")
+    
+    if set(ws_plot) <= set(df_opt.wind_speed):
+        pass
+    else:
+        raise ValueError("One or more ws_plot values not found in df_opt.wind_speed.")
 
     ws_array = np.unique(df_opt.wind_speed)
     wd_array = np.unique(df_opt.wind_direction)
 
-    if hasattr(ws_plot, "__len__"):
-        offsets_list = []
-        for ws in ws_array:
-            if ws >= ws_plot[0] and ws <= ws_plot[-1]:
-                offsets_list.append(offsets_all[df_opt.wind_speed == ws])
-    else:
-        offsets_list = [offsets_all[df_opt.wind_speed == ws_plot]]
+    offsets_list = []
+    for ws in ws_array:
+        if ws >= ws_plot[0] and ws <= ws_plot[-1]:
+            offsets_list.append(offsets_all[df_opt.wind_speed == ws])
 
     if ax is None:
         _, ax = plt.subplots(1, 1)
 
     for offsets in offsets_list:
-        ax.plot(wd_array, offsets, color=color, alpha=alpha, label=label)
+        ax.plot(wd_array, offsets, color=color, linestyle=linestyle, alpha=alpha, label=label)
 
     ax.set_xlabel("Wind direction")
     ax.set_ylabel("Yaw offset")

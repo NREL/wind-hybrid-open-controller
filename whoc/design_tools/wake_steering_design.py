@@ -2,17 +2,22 @@ import numpy as np
 import pandas as pd
 from floris import FlorisModel, UncertainFlorisModel, WindRose
 from floris.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
+from scipy.interpolate import interp1d
 
 # TODO
-# basic wake steering design tool, will require an instantiated FlorisModel as input
+# DONE basic wake steering design tool, will require an instantiated FlorisModel as input
 
-# wake steering designer that uses uncertainty (?)
+# DONE wake steering designer that uses uncertainty (?)
 
-# Slopes across wind speeds (how to do?)
+# TODO Slopes across wind speeds (how to do?)
 
-# Spline approximation
+# TODO Interpolator (from FLASC)
 
-# Maximum slope constraint approach
+# TODO Spline approximation
+
+# TODO Dynamic controller that uses hysteresis
+
+# DONE Maximum slope constraint approach
 
 def build_simple_wake_steering_lookup_table(
     fmodel: FlorisModel,
@@ -198,7 +203,7 @@ def create_linear_spline_approximation(
 
     return df_opt_spline
 
-def compute_hysterisis_zones(
+def compute_hysteresis_zones(
     df_opt: pd.DataFrame,
 ):
     
@@ -206,6 +211,9 @@ def compute_hysterisis_zones(
 
 def apply_wind_speed_ramps(
     df_opt: pd.DataFrame,
+    ws_resolution: float = 1,
+    ws_min: float = 0,
+    ws_max: float = 30,
     ws_wake_steering_cut_in: float = 3,
     ws_wake_steering_fully_engaged_low: float = 5,
     ws_wake_steering_fully_engaged_high: float = 10,
@@ -235,20 +243,58 @@ def apply_wind_speed_ramps(
         raise ValueError(
             "Wind speed ramps can only be applied to a dataframe with a single wind speed."
         )
-    
-    # Check that all wind speeds are between the fully engaged limits
-    if (df_opt["wind_speed"].unique() < ws_wake_steering_fully_engaged_low).any():
+    else:
+        ws_specified = df_opt["wind_speed"].unique()
+
+    # Check that provided wind speed is between the fully engaged limits
+    if (ws_specified < ws_wake_steering_fully_engaged_low
+        or ws_specified > ws_wake_steering_fully_engaged_high):
         raise ValueError(
-            "All wind speeds must be greater than or equal to the lower fully engaged wind speed."
-        )
-    if (df_opt["wind_speed"].unique() > ws_wake_steering_fully_engaged_high).any():
-        raise ValueError(
-            "All wind speeds must be less than or equal to the higher fully engaged wind speed."
+            "Provided wind speed must be between fully engaged limits."
         )
 
-    df_opt_ramped = df_opt.copy()
+    offsets_specified = np.vstack(df_opt.yaw_angles_opt.to_numpy())[None,:,:]
 
-    return df_opt_ramped
+    # Pack offsets with zero values at the cut in, start, finish, and cut out wind speeds
+    offsets_ramps = np.concatenate(
+        (
+            np.zeros_like(offsets_specified),
+            np.zeros_like(offsets_specified),
+            offsets_specified,
+            offsets_specified,
+            np.zeros_like(offsets_specified),
+            np.zeros_like(offsets_specified)
+        ),
+        axis=0
+    )
+    wind_speed_ramps = np.array([
+        ws_min,
+        ws_wake_steering_cut_in,
+        ws_wake_steering_fully_engaged_low,
+        ws_wake_steering_fully_engaged_high,
+        ws_wake_steering_cut_out,
+        ws_max
+    ])
+
+    # Build interpolator and interpolate to desired wind speeds
+    interp = interp1d(
+        wind_speed_ramps,
+        offsets_ramps,
+        axis=0,
+        bounds_error=False,
+        fill_value=np.zeros_like(offsets_ramps[0,:,:])
+    )
+    wind_speed_all = np.arange(ws_min, ws_max, ws_resolution)
+    offsets_stacked = interp(wind_speed_all).reshape(-1, offsets_ramps.shape[2])
+
+    wind_direction_stacked = np.tile(df_opt.wind_direction, len(wind_speed_all))
+    wind_speed_stacked = np.repeat(wind_speed_all, len(df_opt))
+
+    return pd.DataFrame({
+        "wind_direction": wind_direction_stacked,
+        "wind_speed": wind_speed_stacked,
+        "yaw_angles_opt": [offsets_stacked[i,:] for i in range(offsets_stacked.shape[0])]
+    })
 
 def create_uniform_wind_rose(
     wd_resolution: float = 5,
