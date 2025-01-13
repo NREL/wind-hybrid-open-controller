@@ -24,7 +24,7 @@ classifiers = [
 ]
 dependencies = [
     "numpy~=1.20",
-    "flasc~=2.0",
+    "floris~=4.0",
     "zmq",
 ]
 
