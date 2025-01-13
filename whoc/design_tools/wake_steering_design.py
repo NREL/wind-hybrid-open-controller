@@ -132,7 +132,8 @@ def build_uncertain_wake_steering_lookup_table(
 def apply_static_rate_limits(
     df_opt: pd.DataFrame,
     wd_rate_limit: float = 5,
-    ws_rate_limit: float = 10
+    ws_rate_limit: float = 10,
+    ti_rate_limit: float = 1
 ):
     """
     Apply static rate limits to a yaw offset lookup table.
@@ -143,6 +144,8 @@ def apply_static_rate_limits(
             in wind direction [deg / deg]. Defaults to 5.
         ws_rate_limit (float, optional): The maximum rate of change in yaw offset per change in
             wind speed [deg / m/s]. Defaults to 10.
+        ti_rate_limit (float, optional): The maximum rate of change in yaw offset per change in
+            turbulence intensity [deg / -]. Defaults to 1.
     """
 
     offsets_all = np.vstack(df_opt.yaw_angles_opt.to_numpy()).transpose()
@@ -178,6 +181,12 @@ def apply_static_rate_limits(
         delta_yaw = offsets_array[:, :, j, :] - offsets_array[:, :, j-1, :]
         delta_yaw = np.clip(delta_yaw, -ws_rate_limit*ws_step, ws_rate_limit*ws_step)
         offsets_array[:, :, j, :] = offsets_array[:, :, j-1, :] + delta_yaw
+
+    # Apply ti rate limits (increasing ti)
+    for k in range(1, len(ti_array)):
+        delta_yaw = offsets_array[:, :, :, k] - offsets_array[:, :, :, k-1]
+        delta_yaw = np.clip(delta_yaw, -ti_rate_limit, ti_rate_limit)
+        offsets_array[:, :, :, k] = offsets_array[:, :, :, k-1] + delta_yaw
 
     # Flatten array back into 2D array for dataframe
     offsets_shape = offsets_array.shape
@@ -289,10 +298,12 @@ def apply_wind_speed_ramps(
 
     wind_direction_stacked = np.tile(df_opt.wind_direction, len(wind_speed_all))
     wind_speed_stacked = np.repeat(wind_speed_all, len(df_opt))
+    turbulence_intensity_stacked = np.tile(df_opt.turbulence_intensity, len(wind_speed_all))
 
     return pd.DataFrame({
         "wind_direction": wind_direction_stacked,
         "wind_speed": wind_speed_stacked,
+        "turbulence_intensity": turbulence_intensity_stacked,
         "yaw_angles_opt": [offsets_stacked[i,:] for i in range(offsets_stacked.shape[0])]
     })
 
