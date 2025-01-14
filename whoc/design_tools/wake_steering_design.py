@@ -15,11 +15,13 @@ from scipy.interpolate import interp1d, LinearNDInterpolator
 
 # TODO Spline approximation
 
-# TODO Compute hysteresis zones; dynamic controller that uses hysteresis
+# DONE Compute hysteresis zones; dynamic controller that uses hysteresis
 
 # DONE Maximum slope constraint approach
 
 # TODO Tests for all new features
+
+# TODO Documentation update, including possibly new examples (hysteresis)
 
 def build_simple_wake_steering_lookup_table(
     fmodel: FlorisModel,
