@@ -13,13 +13,35 @@
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
 import numpy as np
+import pandas as pd
 
 from whoc.controllers.controller_base import ControllerBase
 from whoc.design_tools.wake_steering_design import get_yaw_angles_interpolant
+from whoc.interfaces.interface import InterfaceBase
 
 
 class LookupBasedWakeSteeringController(ControllerBase):
-    def __init__(self, interface, input_dict, df_yaw=None, verbose=False):
+    def __init__(
+            self,
+            interface: InterfaceBase,
+            input_dict: dict,
+            df_yaw: pd.DataFrame | None = None,
+            hysteresis_dict: dict | None = None,
+            verbose: bool = False
+        ):
+        """
+        Constructor for LookupBasedWakeSteeringController.
+
+        Args:
+            interface (InterfaceBase): Interface object for communicating with the plant.
+            input_dict (dict): Dictionary of input parameters.
+            df_yaw (pd.DataFrame): DataFrame of yaw offsets. May be produced using tools in 
+                whoc.design_tools.wake_steering_design. Defaults to None.
+            hysteresis_dict (dict): Dictionary of hysteresis zones. May be produced using
+                compute_hysteresis_zones function in whoc.design_tools.wake_steering_design.
+                Defaults to None.
+            verbose (bool): Verbosity flag.
+        """
         super().__init__(interface, verbose=verbose)
 
         self.dt = input_dict["dt"]  # Won't be needed here, but generally good to have
@@ -28,11 +50,18 @@ class LookupBasedWakeSteeringController(ControllerBase):
 
         # Handle yaw optimizer object
         if df_yaw is None:
+            if hysteresis_dict is not None:
+                raise ValueError(
+                    "Hysteresis zones provided without yaw offsets. "
+                    "Please provide yaw offsets."
+                )
             if self.verbose:
                 print("No offsets received; assuming nominal aligned control.")
             self.wake_steering_interpolant = None
         else:
             self.wake_steering_interpolant = get_yaw_angles_interpolant(df_yaw)
+
+        self.hysteresis_dict = hysteresis_dict
 
         # Set initial conditions
         yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
@@ -77,6 +106,10 @@ class LookupBasedWakeSteeringController(ControllerBase):
             )
             yaw_offsets = np.diag(interpolated_angles)
             yaw_setpoint = (np.array(wind_directions) - yaw_offsets).tolist()
+
+        # Apply hysteresis
+        if self.hysteresis_dict is not None:
+            raise NotImplementedError("Hysteresis not yet implemented.")
 
         self.controls_dict = {"yaw_angles": yaw_setpoint}
 
