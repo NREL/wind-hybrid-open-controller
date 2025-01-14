@@ -4,20 +4,22 @@ from floris import FlorisModel, UncertainFlorisModel, WindRose
 from floris.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
 from scipy.interpolate import interp1d, LinearNDInterpolator
 
-# TODO
+# To do list
 # DONE basic wake steering design tool, will require an instantiated FlorisModel as input
 
 # DONE wake steering designer that uses uncertainty (?)
 
-# TODO Slopes across wind speeds (how to do?)
+# DONE Slopes across wind speeds (how to do?)
 
-# TODO Interpolator (from FLASC)
+# DONE Interpolator (from FLASC)
 
 # TODO Spline approximation
 
-# TODO Dynamic controller that uses hysteresis
+# TODO Compute hysteresis zones; dynamic controller that uses hysteresis
 
 # DONE Maximum slope constraint approach
+
+# TODO Tests for all new features
 
 def build_simple_wake_steering_lookup_table(
     fmodel: FlorisModel,
@@ -214,9 +216,89 @@ def create_linear_spline_approximation(
 
 def compute_hysteresis_zones(
     df_opt: pd.DataFrame,
-):
+    min_region_width: float = 2.0,
+    yaw_rate_threshold: float = 10.0,
+    verbose: bool = False,
+) -> list[tuple[float, float]]:
+    """
+    Compute wind direction sectors where hysteresis is applied.
+
+    Identifies wind direction sectors over which hysteresis is applied when
+    there is a switch in sign in the yaw offset. Note that this is only applied
+    for wind direction, that is, no hysteresis is applied for wind speed or
+    turbulence intensity changes.
+
+    Args:
+        df_opt (pd.DataFrame): A yaw offset lookup table.
+        min_region_width (float, optional): The minimum width of a hysteresis
+            region in degrees. Defaults to 2.0.
+        yaw_rate_threshold (float, optional): The threshold for identifying a
+            hysteresis region in degrees per degree change in wind direction.
+            Defaults to 10.0.
+        verbose (bool, optional): Whether to print verbose output. Defaults to
+            False.
+    """
+
+    # Extract yaw offsets, wind directions
+    offsets_stacked = np.vstack(df_opt.yaw_angles_opt.to_numpy())
+    wind_directions = np.unique(df_opt.wind_direction)
+    offsets = offsets_stacked.reshape(
+        len(wind_directions),
+        len(np.unique(df_opt.wind_speed)),
+        len(np.unique(df_opt.turbulence_intensity)), 
+        offsets_stacked.shape[1]
+    )
+
+    # Add 360 to end, if starting at/near 0
+    if len(wind_directions) == 1:
+        raise ValueError("Cannot compute hysteresis regions for single wind direction.")
+    wd_step = (wind_directions[1]-wind_directions[0])
+    if wind_directions[0] - wd_step < 0:
+        offsets = np.concatenate((offsets, offsets[0:1, :, :, :]), axis=0)
+        wd_centers = wind_directions + 0.5 * wd_step
+    else:
+        wd_centers = wind_directions[:-1] + 0.5 * wd_step
     
-    return 0
+    # Define function that identifies hysteresis zones
+    switching_idx = np.argwhere(np.diff(offsets, axis=0) >= yaw_rate_threshold*wd_step)
+    # Drop information about ws, ti
+    switching_idx = np.unique(switching_idx[:, [0, 3]], axis=0)
+    # Convert to a per-turbine dictionary of switching wind directions
+    hysteresis_dict = {}
+    for t in np.unique(switching_idx[:,1]):
+        hysteresis_dict["T{:03d}".format(t)] = (
+            wd_centers[switching_idx[switching_idx[:,1] == t][:,0]]
+        )
+    if verbose:
+        print("Center wind directions for hysteresis, per turbine: {}".format(hysteresis_dict))
+        print("Computing hysteresis regions.")
+
+    # Find hysteresis regions for each switching point
+    # Note: doesn't handle the (unlikely) case that there is a large jump without a sign change
+    for turbine_tag in hysteresis_dict.keys():
+        hysteresis_wds = []
+        for wd_switch_point in hysteresis_dict[turbine_tag]:
+            t = int(turbine_tag[1:])
+            # Starting point for hysteresis region
+            lb = np.max(wind_directions[
+                (wind_directions < wd_switch_point) & (offsets[:,:,:,t] < 0.1).any(axis=(1,2))
+            ])
+            # Ending point for hysteresis region
+            ub = np.min(wind_directions[
+                (wind_directions > wd_switch_point) & (offsets[:,:,:,t] > -0.1).any(axis=(1,2))
+            ])
+            # Check wide enough to satisfy min_region_width; if not, widen
+            if (ub - lb) < min_region_width:
+                center_point = (lb + ub)/2
+                lb = center_point - min_region_width/2
+                ub = center_point + min_region_width/2
+            hysteresis_wds.append((lb, ub))
+        hysteresis_dict[turbine_tag] = hysteresis_wds
+
+    if verbose:
+        print("Identified hysteresis regions: {}".format(hysteresis_dict))
+
+    return hysteresis_dict
 
 def apply_wind_speed_ramps(
     df_opt: pd.DataFrame,

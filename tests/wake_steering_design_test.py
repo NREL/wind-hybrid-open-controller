@@ -4,6 +4,7 @@ import numpy as np
 from floris import FlorisModel
 from whoc.design_tools.wake_steering_design import (
     build_simple_wake_steering_lookup_table,
+    compute_hysteresis_zones,
     get_yaw_angles_interpolant,
 )
 
@@ -101,3 +102,40 @@ def test_wake_steering_interpolant():
     )
 
     assert np.allclose(offsets_interp, np.vstack(df_opt.yaw_angles_opt.values))
+
+    # TODO: test interpolation itself on a single point?
+
+def test_hysteresis_zones():
+
+    fmodel_test = FlorisModel(YAML_INPUT)
+
+    # Build basic lookup table
+    wd_resolution = 4.0
+    wd_min = 220.0
+    wd_max = 310.0
+    ws_resolution = 0.5
+    ws_min = 8.0
+    ws_max = 10.0
+    minimum_yaw_angle = -20
+    maximum_yaw_angle = 20
+    df_opt = build_simple_wake_steering_lookup_table(
+        fmodel_test,
+        wd_resolution=wd_resolution,
+        wd_min=wd_min,
+        wd_max=wd_max,
+        ws_resolution=ws_resolution,
+        ws_min=ws_min,
+        ws_max=ws_max,
+        minimum_yaw_angle=minimum_yaw_angle,
+        maximum_yaw_angle=maximum_yaw_angle,
+    )
+
+    hysteresis_dict_base = {"T000": [(270-wd_resolution/2, 270+wd_resolution/2)]}
+
+    # Calculate hysteresis regions
+    hysteresis_dict_test = compute_hysteresis_zones(df_opt, verbose=True)
+
+    # Check for full rotation of wds, too.
+    assert hysteresis_dict_test == hysteresis_dict_base
+
+    # TODO: test 360 wrapping
