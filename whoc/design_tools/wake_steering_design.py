@@ -256,6 +256,7 @@ def compute_hysteresis_zones(
     if wind_directions[0] - wd_step < 0:
         offsets = np.concatenate((offsets, offsets[0:1, :, :, :]), axis=0)
         wd_centers = wind_directions + 0.5 * wd_step
+        wind_directions = np.concatenate((wind_directions, [wind_directions[-1] + wd_step]))
     else:
         wd_centers = wind_directions[:-1] + 0.5 * wd_step
     

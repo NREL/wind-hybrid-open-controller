@@ -17,7 +17,7 @@ import pandas as pd
 
 from whoc.controllers.controller_base import ControllerBase
 from whoc.design_tools.wake_steering_design import get_yaw_angles_interpolant
-from whoc.interfaces.interface import InterfaceBase
+from whoc.interfaces.interface_base import InterfaceBase
 
 
 class LookupBasedWakeSteeringController(ControllerBase):
@@ -61,6 +61,13 @@ class LookupBasedWakeSteeringController(ControllerBase):
         else:
             self.wake_steering_interpolant = get_yaw_angles_interpolant(df_yaw)
 
+        if isinstance(hysteresis_dict, dict) and len(hysteresis_dict) == 0:
+            print((
+                "Received empty hysteresis dictionary. Assuming no hysteresis."
+                "This may happen if yaw offsets are one-sided."
+            ))
+            hysteresis_dict = None
+
         self.hysteresis_dict = hysteresis_dict
 
         # Set initial conditions
@@ -78,13 +85,14 @@ class LookupBasedWakeSteeringController(ControllerBase):
 
         # For startup
         self.wd_store = [270.]*self.n_turbines # TODO: update this?
+        self.yaw_store = yaw_IC
 
 
     def compute_controls(self):
         self.wake_steering_angles()
 
     def wake_steering_angles(self):
-        
+
         # Handle possible bad data
         wind_directions = self.measurements_dict["wind_directions"]
         wind_speeds = [8.0]*self.n_turbines # TODO: enable extraction of wind speed in Hercules
@@ -109,7 +117,13 @@ class LookupBasedWakeSteeringController(ControllerBase):
 
         # Apply hysteresis
         if self.hysteresis_dict is not None:
-            raise NotImplementedError("Hysteresis not yet implemented.")
+            for t in range(self.n_turbines):
+                for zone in self.hysteresis_dict["T{:03d}".format(t)]:
+                    if zone[0] < wind_directions[t] < zone[1]:
+                        # In hysteresis zone, overwrite yaw angle with previous setpoint
+                        yaw_setpoint[t] = self.yaw_store[t]
+
+        self.yaw_store = yaw_setpoint
 
         self.controls_dict = {"yaw_angles": yaw_setpoint}
 
