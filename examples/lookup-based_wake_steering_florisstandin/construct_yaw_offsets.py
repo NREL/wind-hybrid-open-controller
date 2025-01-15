@@ -75,7 +75,7 @@ if __name__ == "__main__":
         ws_resolution=1.0,
         ws_min=2.0,
         ws_max=17.0,
-        minimum_yaw_angle=0.0,
+        minimum_yaw_angle=-25.0,
         maximum_yaw_angle=25.0,
     )
 

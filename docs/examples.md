@@ -11,29 +11,45 @@ of certain controllers and interfaces. Make sure you have installed Hercules
 {ref}`controllers_luwakesteer`,
 run using Hercules with the FLORIS standin
 in place of AMR-Wind for exposition purposes. To run this example, navigate to the 
-examples/lookup-based_wake_steering_florisstandin folder and then run the following.
-```
-python construct_yaw_offsets.py
-```
-
-Not that, currently, construct_yaw_offsets.py requires FLORIS version 3, whereas the rest of the 
-example requires FLORIS version 4. As a result, we provide the generated offsets in
-yaw_offsets.pkl. To avoid regenerating yaw_offsets.pkl (and therefore avoid the current need for 
-floris v3), set `optimize_yaw_offsets = False` at the beginning of construct_yaw_offsets.py before
-running. The dependency on FLORIS version 3 will be removed soon.
-
-Next, run the shell script run_script.sh:
+examples/lookup-based_wake_steering_florisstandin folder and then run
 ```
 bash run_script.sh
 ```
-You will need to have and up-to-date Hercules (possibly on the develop branch) in your conda
-environment to run this. You may also need to changed permissions to run bash_script.sh as an executable (`chmod +x run_script.sh`).
+You will need to have and up-to-date Hercules (possibly on the develop branch) in your conda environment to run this. You may also need to changed permissions to run bash_script.sh as an executable (`chmod +x run_script.sh`).
 
-The plotting script plot_output_data.py is run at the end of the shell script,
-and should produce the following plot.
+Running the script performs several steps:
+
+1. It first executes construct_yaw_offsets.py, a python script for generating an
+optimized set of yaw offsets.
+
+2. It then uses the constructed yaw offsets to instantiate an run the wake 
+steering simulation.
+
+3. The time series output is plotted in plot_output_data.py
+
+This should produce the following plot:
 ![Results of lookup-based_wake_steering_florisstandin example](
     graphics/lookup-table-example-plot.png
 )
+
+Note that in construct_yaw_offsets.py, the minimum and maximum offset are defined
+as 25 and -25 degrees, respectively. 
+
+The example can also be run with hysteresis added to the yaw controller to mitigate large yaw
+maneuvers near the aligned wind directions. To run with hysteresis, set `use_hysteresis = True` in
+hercules_runscript.py. The simulation then produces the following plot:
+![Results of lookup-based_wake_steering_florisstandin example](
+    graphics/lookup-table-example-plot_hysteresis.png
+)
+
+Finally, an extra script is provided to compare various options for designing the wake steering 
+look-up tables. This is run using
+```
+python compare_yaw_offset_designs.py
+```
+and compares the yaw offsets computed using the base approach; adding wind direction uncertainty;
+applying rate limits to the yaw offsets; and computing offsets for a single wind speed and extending
+to all operational wind speeds following a simple ramping heuristic.
 
 (examples_wfpowertracking)=
 ## wind_farm_power_tracking_florisstandin
