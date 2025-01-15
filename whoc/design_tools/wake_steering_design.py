@@ -13,13 +13,13 @@ from scipy.interpolate import interp1d, LinearNDInterpolator
 
 # DONE Interpolator (from FLASC)
 
-# TODO Spline approximation
+# TODO Spline approximation (?)
 
 # DONE Compute hysteresis zones; dynamic controller that uses hysteresis
 
 # DONE Maximum slope constraint approach
 
-# TODO Tests for all new features
+# DONE Tests for all new features
 
 # TODO Documentation update, including possibly new examples (hysteresis)
 
@@ -34,7 +34,7 @@ def build_simple_wake_steering_lookup_table(
     ti: float = 0.06,
     minimum_yaw_angle: float = 0.0,
     maximum_yaw_angle: float = 25.0,
-):
+) -> pd.DataFrame:
     """
     Build a simple wake steering lookup table for a given FlorisModel using the Serial Refine
     method.
@@ -54,6 +54,9 @@ def build_simple_wake_steering_lookup_table(
             Defaults to 0.0.
         maximum_yaw_angle (float, optional): The maximum allowable misalignment in degrees.
             Defaults to 25.0.
+
+    Returns:
+        pd.DataFrame: A yaw offset lookup table.
     """
     wind_rose = create_uniform_wind_rose(
         wd_resolution=wd_resolution,
@@ -87,7 +90,7 @@ def build_uncertain_wake_steering_lookup_table(
     ti: float = 0.06,
     minimum_yaw_angle: float = 0.0,
     maximum_yaw_angle: float = 25.0,
-):
+) -> pd.DataFrame:
     """
     Build a simple wake steering lookup table for a given FlorisModel using the Serial Refine
     method, with uncertainty in the wind direction.
@@ -107,6 +110,9 @@ def build_uncertain_wake_steering_lookup_table(
             Defaults to 0.0.
         maximum_yaw_angle (float, optional): The maximum allowable misalignment in degrees.
             Defaults to 25.0.
+
+    Returns:
+        pd.DataFrame: A yaw offset lookup table.
     """
     wind_rose = create_uniform_wind_rose(
         wd_resolution=wd_resolution,
@@ -138,7 +144,7 @@ def apply_static_rate_limits(
     wd_rate_limit: float = 5,
     ws_rate_limit: float = 10,
     ti_rate_limit: float = 1
-):
+) -> pd.DataFrame:
     """
     Apply static rate limits to a yaw offset lookup table.
 
@@ -150,6 +156,9 @@ def apply_static_rate_limits(
             wind speed [deg / m/s]. Defaults to 10.
         ti_rate_limit (float, optional): The maximum rate of change in yaw offset per change in
             turbulence intensity [deg / -]. Defaults to 1.
+    
+    Returns:
+        pd.DataFrame: A yaw offset lookup table with rate limits applied.
     """
 
     offsets_all = np.vstack(df_opt.yaw_angles_opt.to_numpy()).transpose()
@@ -212,16 +221,14 @@ def create_linear_spline_approximation(
         df_opt (pd.DataFrame): A yaw offset lookup table.
     """
 
-    df_opt_spline = df_opt.copy()
-
-    return df_opt_spline
+    raise NotImplementedError("Spline approximations are not yet implemented.")
 
 def compute_hysteresis_zones(
     df_opt: pd.DataFrame,
     min_region_width: float = 2.0,
     yaw_rate_threshold: float = 10.0,
     verbose: bool = False,
-) -> list[tuple[float, float]]:
+) -> dict[str: list[tuple[float, float]]]:
     """
     Compute wind direction sectors where hysteresis is applied.
 
@@ -239,6 +246,12 @@ def compute_hysteresis_zones(
             Defaults to 10.0.
         verbose (bool, optional): Whether to print verbose output. Defaults to
             False.
+
+    Returns:
+        hysteresis_dict: A dictionary of hysteresis regions. Keys are turbine
+           labels, following "T000", T001", etc. Values are lists of two-tuples
+            representing the lower and upper wind direction bounds of the
+            hysteresis region.
     """
 
     # Extract yaw offsets, wind directions
@@ -255,7 +268,7 @@ def compute_hysteresis_zones(
     if len(wind_directions) == 1:
         raise ValueError("Cannot compute hysteresis regions for single wind direction.")
     wd_step = (wind_directions[1]-wind_directions[0])
-    if wind_directions[0] - wd_step < 0:
+    if (wind_directions[0] - wd_step < 0) & (wind_directions[-1] + wd_step >= 360):
         offsets = np.concatenate((offsets, offsets[0:1, :, :, :]), axis=0)
         wd_centers = wind_directions + 0.5 * wd_step
         wind_directions = np.concatenate((wind_directions, [wind_directions[-1] + wd_step]))
@@ -312,12 +325,28 @@ def apply_wind_speed_ramps(
     ws_wake_steering_fully_engaged_low: float = 5,
     ws_wake_steering_fully_engaged_high: float = 10,
     ws_wake_steering_cut_out: float = 13,
-):
+) -> pd.DataFrame:
     """
     Apply wind speed ramps to a yaw offset lookup table.
 
     Args:
         df_opt (pd.DataFrame): A yaw offset lookup table.
+        ws_resolution (float, optional): The resolution of the wind speed in m/s.
+            Defaults to 1.
+        ws_min (float, optional): The minimum wind speed in m/s. Defaults to 0.
+        ws_max (float, optional): The maximum wind speed in m/s. Defaults to 30.
+        ws_wake_steering_cut_in (float, optional): The wind speed at which wake steering
+            begins to be applied. Defaults to 3.
+        ws_wake_steering_fully_engaged_low (float, optional): The lower wind speed at which
+            wake steering is fully engaged at the value provided in df_opt. Defaults to 5.
+        ws_wake_steering_fully_engaged_high (float, optional): The upper wind speed at which
+            wake steering is fully engaged at the value provided in df_opt. Defaults to 10.
+        ws_wake_steering_cut_out (float, optional): The wind speed at which wake steering
+            ceases to be applied. Defaults to 13.
+
+    Returns:
+        pd.DataFrame: A yaw offset lookup table for all wind speeds between ws_min and ws_max
+            with wind speed ramps applied.
     """
 
     # Check valid ordering of wind speeds
