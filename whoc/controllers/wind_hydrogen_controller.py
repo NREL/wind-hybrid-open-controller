@@ -31,6 +31,7 @@ class WindHydrogenController(ControllerBase):
 
         # Assign the individual asset controllers
         self.wind_controller = wind_controller
+        self.wind_ref_value = interface.wind_capacity_kW
 
         # # Set constants
         # py_sims = list(input_dict["py_sims"].keys())
@@ -55,6 +56,7 @@ class WindHydrogenController(ControllerBase):
             self.controls_dict["wind_power_setpoints"] = (
                 self.wind_controller.controls_dict["power_setpoints"]
             )
+        print('Wind ref, final', self.controls_dict["wind_power_setpoints"])
 
         return None
 
@@ -76,12 +78,21 @@ class WindHydrogenController(ControllerBase):
 
         # Calculate difference between hydrogen reference and hydrogen actual
         hydrogen_difference = reference_hydrogen - hydrogen_output
+        if wind_power > 0:
+            wind_scaling = wind_power
+        else:
+            wind_scaling = self.wind_ref_value
+        if hydrogen_output> 0 :
+            h2_scaling = hydrogen_output
+        else:
+            h2_scaling = reference_hydrogen
+        
 
         # Scale gain by hydrogen output
-        K = wind_power/hydrogen_output
+        K = (wind_scaling/h2_scaling) * hydrogen_difference
 
         # Apply gain to wind power output
-        wind_reference = wind_power + K * hydrogen_difference
+        wind_reference = wind_power + K 
 
         print(
             "Power reference value (wind)",
@@ -96,4 +107,5 @@ class WindHydrogenController(ControllerBase):
         # solar_reference = 5000 # kW, not currently working
         # battery_reference = -30 # kW, Negative requests discharging, positive requests charging
 
+        print('wind reference', wind_reference)
         return wind_reference
