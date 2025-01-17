@@ -8,3 +8,4 @@ from whoc.controllers.wind_farm_power_tracking_controller import (
     WindFarmPowerDistributingController,
     WindFarmPowerTrackingController,
 )
+from whoc.controllers.wind_hydrogen_controller import WindHydrogenController
