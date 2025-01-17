@@ -25,6 +25,7 @@ class HerculesWindHydrogenInterface(InterfaceBase):
         self.dt = hercules_dict["dt"]
         self.n_turbines = hercules_dict["controller"]["num_turbines"]
         self.turbines = range(self.n_turbines)
+        self.wind_capacity_kW = hercules_dict["controller"]["wind_capacity_MW"]*1000
 
         # Grab name of wind, solar, and battery (assumes there is EXACTLY one of each)
         self.wind_name = list(hercules_dict["hercules_comms"]["amr_wind"].keys())[0]
