@@ -25,7 +25,7 @@ FLORIS-produced optimal offsets for various practical purposes, as described bel
 Generally speaking, while the dependency of optimal offsets on wind direction is complex,
 the dependency on wind speed is simpler. The `apply_wind_speed_ramps()` function allows users to
 define a simple heuristic relationship of the optimal offsets on wind speeds, given a set of
-yaw angles optimized for a single "middle" wind speed. Offsets are linearly ramped "up" between
+yaw angles optimized for a single "middle" wind speed. Offsets are linearly "ramped up" between
 `ws_wake_steering_cut_in` and `ws_wake_steering_fully_engaged_low`; take the optimized value between
 `ws_wake_steering_fully_engaged_low` and `ws_wake_steering_fully_engaged_high`; and are linearly
 ramped down again between `ws_wake_steering_fully_engaged_high` and `ws_wake_steering_cut_out`.
@@ -44,7 +44,7 @@ performance reduction.
 
 ___
 
-Two final utilities are provided in the `whoc.design_tools.wake_steering_design` module.
+Two other wake steering-based utilities are provided in the `whoc.design_tools.wake_steering_design` module.
 
 ### Finding hysteresis zones
 
@@ -75,4 +75,19 @@ using arrays of equal length to interpolate in a vectorized manner.
 Note that in {ref}`controllers_luwakesteer`,
 the construction of the interpolator happens automatically based on the `df_opt` passed in on
 instantiation.
+
+___
+
+### Wake steering offset visualization
+
+Visualization tools for wake steering lookup tables are provided in the 
+`whoc.design_tools.wake_steering_visualization` module. There are currently two functions:
+
+- `plot_offsets_wswd_heatmap()` creates a heatmap of offsets by wind speed and wind direction based
+on `df_opt` for a given turbine index `turb_id`.
+- `plot_offsets_wd()` plots the offsets from `df_opt` for turbine `turb_id` at a specified (set of)
+wind speeds `wd_plot`. 
+
+Both functions, as well as many of the design functions described here, are demonstrated in the
+compare_yaw_offset_designs.py python script provided in {ref}`examples_luwakesteer`.
 
