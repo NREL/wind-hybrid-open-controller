@@ -4,24 +4,6 @@ from floris import FlorisModel, UncertainFlorisModel, WindRose
 from floris.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
 from scipy.interpolate import interp1d, LinearNDInterpolator
 
-# To do list
-# DONE basic wake steering design tool, will require an instantiated FlorisModel as input
-
-# DONE wake steering designer that uses uncertainty (?)
-
-# DONE Slopes across wind speeds (how to do?)
-
-# DONE Interpolator (from FLASC)
-
-# TODO Spline approximation (?)
-
-# DONE Compute hysteresis zones; dynamic controller that uses hysteresis
-
-# DONE Maximum slope constraint approach
-
-# DONE Tests for all new features
-
-# TODO Documentation update, including possibly new examples (hysteresis)
 
 def build_simple_wake_steering_lookup_table(
     fmodel: FlorisModel,
@@ -77,6 +59,7 @@ def build_simple_wake_steering_lookup_table(
     )
 
     return yaw_opt.optimize()
+
 
 def build_uncertain_wake_steering_lookup_table(
     fmodel: FlorisModel,
@@ -138,6 +121,7 @@ def build_uncertain_wake_steering_lookup_table(
     )
 
     return yaw_opt.optimize()
+
 
 def apply_static_rate_limits(
     df_opt: pd.DataFrame,
@@ -211,17 +195,6 @@ def apply_static_rate_limits(
 
     return df_opt_rate_limited
 
-def create_linear_spline_approximation(
-        df_opt: pd.DataFrame,
-):
-    """
-    Create a linear spline approximation to a yaw offset lookup table.
-
-    Args:
-        df_opt (pd.DataFrame): A yaw offset lookup table.
-    """
-
-    raise NotImplementedError("Spline approximations are not yet implemented.")
 
 def compute_hysteresis_zones(
     df_opt: pd.DataFrame,
@@ -315,6 +288,7 @@ def compute_hysteresis_zones(
         print("Identified hysteresis regions: {}".format(hysteresis_dict))
 
     return hysteresis_dict
+
 
 def apply_wind_speed_ramps(
     df_opt: pd.DataFrame,
@@ -421,6 +395,7 @@ def apply_wind_speed_ramps(
         "yaw_angles_opt": [offsets_stacked[i,:] for i in range(offsets_stacked.shape[0])]
     })
 
+
 def get_yaw_angles_interpolant(df_opt):
     """Get an interpolant for the optimal yaw angles from a dataframe.
 
@@ -492,6 +467,7 @@ def get_yaw_angles_interpolant(df_opt):
         return np.array(interpolant(wd_array, ws_array, ti_array), dtype=float)
 
     return yaw_angle_interpolant
+
 
 def create_uniform_wind_rose(
     wd_resolution: float = 5,
