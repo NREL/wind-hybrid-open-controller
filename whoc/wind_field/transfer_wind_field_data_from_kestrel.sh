@@ -6,3 +6,5 @@ scp -r ahenry@kestrel.hpc.nrel.gov:/projects/ssc/ahenry/whoc/floris_case_studies
 scp -r ahenry@kestrel.hpc.nrel.gov:/projects/ssc/ahenry/whoc/floris_case_studies/slsqp_solver_sweep /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/floris_case_studies
 
 scp -r ahenry@kestrel.hpc.nrel.gov:/projects/ssc/ahenry/whoc/floris_case_studies/wind_field_data /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/floris_case_studies/
+
+scp -r ahenry@kestrel.hpc.nrel.gov:/projects/ssc/ahenry/whoc/floris_case_studies/wind_preview_type /Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/floris_case_studies

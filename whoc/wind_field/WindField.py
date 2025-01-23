@@ -35,7 +35,7 @@ from glob import glob
 from moa_python.post_abl_stats import Post_abl_stats
 from scipy.signal import lfilter
 
-factor = 1.5
+factor = 1.5 # double column
 plt.rc('font', size=12*factor)          # controls default text sizes
 plt.rc('axes', titlesize=20*factor)     # fontsize of the axes title
 plt.rc('axes', labelsize=15*factor)     # fontsize of the x and y labels
@@ -417,9 +417,11 @@ class WindField:
         return effective_ai_factor_ts
 
 
-def plot_ts(df, fig_dir):
+def plot_ts(df, fig_dir, include_transformation=False):
+    if not include_transformation:
+        sns.set(font_scale=1.5) # for single column figure
     # Plot vs. time
-    fig_ts, ax_ts = plt.subplots(2, 2, sharex=True)  # len(case_list), 5)
+    fig_ts, ax_ts = plt.subplots(2, 2 if include_transformation else 1, sharex=True)  # len(case_list), 5)
     # fig_ts.set_size_inches(12, 6)
     if hasattr(ax_ts, '__len__'):
         ax_ts = ax_ts.flatten()
@@ -428,22 +430,24 @@ def plot_ts(df, fig_dir):
     
     sns.lineplot(data=df, hue="WindSeed", x="Time", y="FreestreamWindSpeedU", ax=ax_ts[0])
     sns.lineplot(data=df, hue="WindSeed", x="Time", y="FreestreamWindSpeedV", ax=ax_ts[1])
-    sns.lineplot(data=df, hue="WindSeed", x="Time", y="FreestreamWindMag", ax=ax_ts[2])
-    sns.lineplot(data=df, hue="WindSeed", x="Time", y="FreestreamWindDir", ax=ax_ts[3])
+    if include_transformation:
+        sns.lineplot(data=df, hue="WindSeed", x="Time", y="FreestreamWindMag", ax=ax_ts[2])
+        sns.lineplot(data=df, hue="WindSeed", x="Time", y="FreestreamWindDir", ax=ax_ts[3])
 
-    ax_ts[0].set(title='Freestream Wind Speed, U [m/s]', ylabel="")
-    ax_ts[1].set(title='Freestream Wind Speed, V [m/s]', ylabel="")
-    ax_ts[2].set(title='Freestream Wind Magnitude [m/s]', ylabel="")
-    ax_ts[3].set(title='Freestream Wind Direction [$^\\circ$]', ylabel="")
+    ax_ts[0].set(title='Downwind Freestream Wind Speed, U [m/s]', ylabel="")
+    ax_ts[1].set(title='Crosswind Freestream Wind Speed, V [m/s]', ylabel="")
+    if include_transformation:
+        ax_ts[2].set(title='Freestream Wind Magnitude [m/s]', ylabel="")
+        ax_ts[3].set(title='Freestream Wind Direction [$^\\circ$]', ylabel="")
 
     # handles, labels, kwargs = mlegend._parse_legend_args([ax_ts[0]], ncol=2, title="Wind Seed")
     # ax_ts[0].legend_ = mlegend.Legend(ax_ts[0], handles, labels, **kwargs)
     # ax_ts[0].legend_.set_ncols(2)
-    for i in range(0, 4):
+    for i in range(0, len(ax_ts)):
         ax_ts[i].legend([], [], frameon=False)
     
     time = df.loc[df["WindSeed"] == 0, "Time"]
-    for i in range(2, 4):
+    for i in range(len(ax_ts) - 2, len(ax_ts)):
         ax_ts[i].set(xticks=time.iloc[0:-1:int(60 * 12 // (time.iloc[1] - time.iloc[0]))], xlabel='Time [s]', xlim=(time.iloc[0], 3600.0)) 
     
     # for seed in pd.unique(df["WindSeed"]):
@@ -470,6 +474,7 @@ def plot_ts(df, fig_dir):
     #         ax.set(xticks=time.iloc[0:-1:int(60 * 12 // (time.iloc[1] - time.iloc[0]))], xlabel='Time [s]', xlim=(time.iloc[0], time.iloc[-1]))
     
     # ax_ts[0].legend(ncol=2)
+    plt.tight_layout()
     fig_ts.savefig(os.path.join(fig_dir, f'wind_field_ts.png'))
     # fig_ts.show()
 

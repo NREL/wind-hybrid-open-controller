@@ -177,9 +177,9 @@ case_studies = {
      },
     "generate_sample_figures": {
                              "controller_class": {"group": 0, "vals": ["MPC"]},
-                             "n_horizon": {"group": 0, "vals": [3]},
+                             "n_horizon": {"group": 0, "vals": [24]},
                              "wind_preview_type": {"group": 1, "vals": ["stochastic_interval_rectangular", "stochastic_interval_elliptical", "stochastic_sample"]},
-                             "n_wind_preview_samples": {"group": 1, "vals": [5, 8, 25]},
+                             "n_wind_preview_samples": {"group": 1, "vals": [5, 8, 500]},
                              "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_{1}.yaml")]},
                              "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
