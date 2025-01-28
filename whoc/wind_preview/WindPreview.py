@@ -84,12 +84,15 @@ class WindPreview:
         return cross_val_score(model, X_train, y_train, n_jobs=-1, cv=3, scoring="neg_mean_squared_error").mean()
     
     
-    def tune_hyperparameters_single(self, historic_measurements, scaler, storage, n_trials=1):
+    def tune_hyperparameters_single(self, historic_measurements, scaler, study_name, storage, n_trials=1):
         X_train, y_train = self._get_training_data(historic_measurements, scaler)
         
-        study = create_study(study_name="svr_tuning",
+        logging.info(f"Creating Optuna study {study_name}.") 
+        study = create_study(study_name=study_name,
                              storage=storage,
                              load_if_exists=True)
+        
+        logging.info(f"Optimizing Optuna study {study_name}.") 
         study.optimize(partial(self._tuning_objective, X_train=X_train, y_train=y_train), n_trials=n_trials, show_progress_bar=True)
         return study.best_params
     
@@ -119,6 +122,7 @@ class WindPreview:
                 best_params[output] = self.tune_hyperparameters_single(
                                                 historic_measurements=historic_measurements.select(pl.col(output)),
                                                 scaler=self.scaler[output],
+                                                study_name=study_name,
                                                 storage=storage, n_trials=n_trials)
             
                 # self.model[output].set_params(best_params[output]) 
