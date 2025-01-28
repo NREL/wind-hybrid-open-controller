@@ -7,6 +7,7 @@ from collections import defaultdict
 import os
 import datetime
 import yaml
+from functools import partial
 from mysql.connector import connect as sql_connect
 
 # import multiprocessing as mp
@@ -37,8 +38,10 @@ import polars as pl
 import polars.selectors as cs
 
 from optuna import create_study
+from optuna.storages import JournalStorage, RDBStorage
+from optuna.storages.journal import JournalFileBackend
 
-from sklearn.pipeline import make_pipeline
+# from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.svm import SVR
 from sklearn.model_selection import cross_val_score
@@ -64,8 +67,71 @@ class WindPreview:
     def __post_init__(self):
         self.n_context = int(self.context_timedelta / self.freq)
         self.n_prediction = int(self.prediction_timedelta / self.freq)
+        
+    def _tuning_objective(self, trial, X_train, y_train):
+        """
+        Objective function to be minimized in Optuna
+        """
+        # define hyperparameter search space
+        params = self.get_params(trial)
+         
+        # train svr model
+        model = self.__class__.create_model(**params)
+        
+        # evaluate with cross-validation
+        return cross_val_score(model, X_train, y_train, n_jobs=-1, cv=3, scoring="neg_mean_squared_error").mean()
     
     
+    def tune_hyperparameters_single(self, historic_measurements, scaler, storage, n_trials=1):
+        X_train, y_train = self._get_training_data(historic_measurements, scaler)
+        
+        study = create_study(study_name="svr_tuning",
+                             storage=storage,
+                             load_if_exists=True)
+        study.optimize(partial(self._tuning_objective, X_train=X_train, y_train=y_train), n_trials=n_trials, show_progress_bar=True)
+        return study.best_params
+    
+    def tune_hyperparameters_multi(self, historic_measurements, study_name, n_trials=1, use_rdb=False, journal_storage_dir=None):
+        
+        outputs = historic_measurements.select(cs.starts_with("ws_horz") | cs.starts_with("ws_vert")).columns
+        best_params = {}
+        
+        if True:
+            for output in outputs:
+                
+                if use_rdb:
+                    try:
+                        db = sql_connect(host="localhost", user="root",
+                                        database=f"{study_name}_{output}")       
+                    except Exception: 
+                        db = sql_connect(host="localhost", user="root")
+                        cursor = db.cursor()
+                        cursor.execute(f"CREATE DATABASE {study_name}_{output}") 
+                    finally:
+                        storage = RDBStorage(url=f"mysql://{db.user}@{db.server_host}:{db.server_port}/{db.database}")
+                else:
+                    storage = JournalStorage(JournalFileBackend(os.path.join(journal_storage_fp, f"{study_name}_{output}.log")))
+                
+                best_params[output] = self.tune_hyperparameters_single(
+                                                historic_measurements=historic_measurements.select(pl.col(output)),
+                                                scaler=self.scaler[output],
+                                                storage=storage, n_trials=n_trials)
+            
+                # self.model[output].set_params(best_params[output]) 
+        
+        # np.save("./svr_best_params.npz", best_params, allow_pickle=True)
+        else:
+            executor = ProcessPoolExecutor()
+            with executor as tune_exec:
+                futures = {output: tune_exec.submit(self.tune_hyperparameters_single,
+                                                    historic_measurements=historic_measurements.select(pl.col(output)),
+                                                    scaler=self.scaler[output],
+                                                    storage=storage,
+                                                    n_trials=n_trials)
+                        for output in outputs}
+                best_params = {output: futures[output].result() for output in outputs}
+        
+   
     def predict_sample(self, historic_measurements: pd.DataFrame, n_samples: int):
         """_summary_
         Predict a given number of samples for each time step in the horizon
@@ -210,16 +276,25 @@ class SVRPreview(WindPreview):
     def __post_init__(self):
         # TODO try to compute for each turbine? No just individual turbines, but can use consensus for historic measurments...
         super().__post_init__()
-        # self.pipeline = make_pipeline(MinMaxScaler(feature_range=(-1, 1)), SVR(**self.svr_kwargs))
-        self.model = {}
-        self.scaler = {}
+        self.scaler = defaultdict(SVRPreview.create_scaler)
+        self.model = defaultdict(SVRPreview.create_model)
         # self.model = defaultdict(lambda: make_pipeline(MinMaxScaler(feature_range=(-1, 1)), SVR(**self.svr_kwargs)))
         
     # def read_measurements(self):
     #     pass
     
+    @staticmethod
+    def create_scaler():
+        return MinMaxScaler(feature_range=(-1, 1))
+    
+    @staticmethod
+    def create_model(**kwargs):
+        return SVR(**kwargs)
+    
     def _get_training_data(self, historic_measurements, scaler):
-        historic_measurements = scaler.fit_transform(historic_measurements.to_numpy())
+        if scaler:
+            historic_measurements = scaler.fit_transform(historic_measurements.to_numpy())
+            
         X_train = np.ascontiguousarray(np.vstack([
             historic_measurements[i:i+self.n_context, 0]
             for i in range(historic_measurements.shape[0] - self.n_context)
@@ -230,65 +305,14 @@ class SVRPreview(WindPreview):
         
         return X_train, y_train
     
-    def _tuning_objective(self, trial, X_train, y_train):
-        """
-        Objective function to be minimized in Optuna
-        """
-        # define hyperparameter search space
-        C = trial.suggest_float("C", 1e-6, 1e6, log=True) # regularization parameter
-        epsilon = trial.suggest_float("epsilon", 1e-6, 1e-1, log=True)
-        gamma = trial.suggest_categorical("gamma", ["scale", "auto"])
-        
-        # train svr model
-        model = SVR(C=C, epsilon=epsilon, gamma=gamma)
-        
-        # evaluate with cross-validation
-        return cross_val_score(model, X_train, y_train, n_jobs=-1, cv=3, scoring="neg_mean_squared_error").mean()
+    def get_params(self, trial):
+        return {
+            "C": trial.suggest_float("C", 1e-6, 1e6, log=True),
+            "epsilon": trial.suggest_float("epsilon", 1e-6, 1e-1, log=True),
+            "gamma": trial.suggest_categorical("gamma", ["scale", "auto"])
+        }
     
-    def tune_hyperparameters_single(self, historic_measurements, scaler, db, n_trials=1):
-        X_train, y_train = self._get_training_data(historic_measurements, scaler)
-        study = create_study(study_name="svr_tuning",
-                             storage=f"mysql://{db.user}@{db.server_host}:{db.server_port}/svr_tuning",
-                             load_if_exists=True)
-        study.optimize(lambda trial: self._tuning_objective(trial, X_train, y_train), n_trials=n_trials, show_progress_bar=True)
-        return study.best_params
-    
-    def tune_hyperparameters_multi(self, historic_measurements, n_trials=1):
-        
-        outputs = historic_measurements.select(cs.starts_with("ws_horz") | cs.starts_with("ws_vert")).columns
-        best_params = {}
-        
-        try:
-            db = sql_connect(host="localhost", user="root",
-                             database="svr_tuning")       
-        except Exception: 
-            db = sql_connect(host="localhost", user="root")
-            cursor = db.cursor()
-            cursor.execute("CREATE DATABASE svr_tuning") 
-        
-        for output in outputs:
-            if output not in self.scaler:
-                self.scaler[output] = MinMaxScaler(feature_range=(-1, 1))
-                self.model[output] = SVR(**self.svr_kwargs)
-            
-            best_params[output] = self.tune_hyperparameters_single(historic_measurements.select(pl.col(output)),
-                                             self.scaler[output],
-                                             db, n_trials)
-        
-            self.model[output].set_params(best_params[output]) 
-        
-        np.save("./svr_best_params.npz", best_params, allow_pickle=True)
-        # executor = ProcessPoolExecutor()
-        # with executor as tune_exec:
-        #     futures = {output: tune_exec.submit(self.tune_hyperparameters_single,
-        #                                         historic_measurements.select(pl.col(output)),
-        #                                         self.scaler[output],
-        #                                         n_trials)
-        #                for output in outputs}
-        #     best_params = {output: futures[output].result() for output in outputs}
-        
-        
-    
+
     def predict_sample(self, n_samples: int):
         pass
 
@@ -302,11 +326,6 @@ class SVRPreview(WindPreview):
         assert historic_measurements.select(context_expr.sum()).item() == self.n_context
         executor = ProcessPoolExecutor()
         outputs = historic_measurements.select(cs.starts_with("ws_horz") | cs.starts_with("ws_vert")).columns
-        
-        for output in outputs:
-            if output not in self.scaler:
-                self.scaler[output] = MinMaxScaler(feature_range=(-1, 1))
-                self.model[output] = SVR(**self.svr_kwargs)
         
         with executor as train_exec:
             # for output in historic_measurements.select(cs.starts_with("ws_horz") | cs.starts_with("ws_vert")).columns:
@@ -350,6 +369,27 @@ class SVRPreview(WindPreview):
     def predict_distr(self):
         pass
 
+class KalmanFilterWrapper(KalmanFilter):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    
+    def fit(self, X, y):
+        pred = []
+        self.x = X[0]
+        for i in range(X.shape[0]):
+            z = X[i]
+            self.predict()
+            self.update(z)
+            pred.append(self.x[0])
+    
+    def set_params(self, **kwargs):
+        if "R" in kwargs:
+            self.R = kwargs["R"]
+        if "H" in kwargs:
+            self.H = kwargs["H"]
+        if "Q" in kwargs:
+            self.Q = kwargs["Q"]
+
 @dataclass
 class KalmanFilterPreview(WindPreview):
     """Wind speed component forecasting using Kalman filtering."""
@@ -359,78 +399,41 @@ class KalmanFilterPreview(WindPreview):
     
     def __post_init__(self):
         super().__post_init__()
-        self.model = {}
+        self.model = defaultdict(KalmanFilterPreview.create_model)
+        self.scaler = defaultdict(KalmanFilterPreview.create_scaler)
+        
+    @staticmethod
+    def create_scaler():
+        return None
+    
+    @staticmethod
+    def create_model(**kwargs):
+        model = KalmanFilterWrapper(dim_x=1, dim_z=1)
+        if "R" in kwargs:
+            model.R = kwargs["R"]
+        if "H" in kwargs:
+            model.H = kwargs["H"]
+        if "Q" in kwargs:
+            model.Q = kwargs["Q"]
+        return model
     
     def _get_training_data(self, historic_measurements, scaler):
-        historic_measurements = scaler.fit_transform(historic_measurements.to_numpy())
+        if scaler:
+            historic_measurements = scaler.fit_transform(historic_measurements.to_numpy())
         X_train = historic_measurements[0:-self.n_context, 0]
         
         # X_train = np.ascontiguousarray(historic_measurements.iloc[:-self.context_timedelta][output])
         y_train = historic_measurements[self.n_context:, 0]
         
         return X_train, y_train
-     
-    def _tuning_objective(self, trial, X_train, y_train):
-        """
-        Objective function to be minimized in Optuna
-        """
-        # TODO define hyperparameter search space
-        R = trial.suggest_float("R", 1e-3, 1e2, log=True)
-        H = trial.suggest_float("H", 1e-3, 1e2, log=True)
-        Q = trial.suggest_float("Q", 1e-3, 1e2, log=True)
-        
-        # train svr model
-        model = KalmanFilter(dim_x=1, dim_z=1)
-        model.R = np.array([R])
-        model.H = np.array([H])
-        model.Q = np.array([Q])
-        
-        def fit_func(s, X, y):
-            pred = []
-            model.x = X[0]
-            for i in range(X.shape[0]):
-                z = X[i]
-                model.predict()
-                model.update(z)
-                pred.append(model.x[0])
-            
-        
-        # evaluate with cross-validation
-        return cross_val_score(model, X_train, y_train, n_jobs=-1, cv=3, scoring="neg_mean_squared_error").mean()
+    
+    def get_params(self, trial):
+        return {
+            "R": np.array([trial.suggest_float("R", 1e-3, 1e2, log=True)]),
+            "H": np.array([trial.suggest_float("H", 1e-3, 1e2, log=True)]),
+            "Q": np.array([trial.suggest_float("Q", 1e-3, 1e2, log=True)])
+        }
        
-    def tune_hyperparameters_single(self, historic_measurements, scaler, db, n_trials=100):
-        X_train, y_train = self._get_training_data(historic_measurements, scaler)
-        study = create_study(study_name="kf_tuning",
-                             storage=f"mysql://{db.user}@{db.server_host}:{db.server_port}/kf_tuning",
-                             load_if_exists=True)
-        study.optimize(lambda trial: self._tuning_objective(trial, X_train, y_train), n_trials=n_trials, show_progress_bar=True)
-        return study.best_params
-    
-    def tune_hyperparameters_multi(self, historic_measurements, n_trials=1):
-        
-        outputs = historic_measurements.select(cs.starts_with("ws_horz") | cs.starts_with("ws_vert")).columns
-        best_params = {}
-        
-        try:
-            db = sql_connect(host="localhost", user="root",
-                             database="kf_tuning")       
-        except Exception: 
-            db = sql_connect(host="localhost", user="root")
-            cursor = db.cursor()
-            cursor.execute("CREATE DATABASE kf_tuning") 
-        
-        for output in outputs:
-            if output not in self.scaler:
-                self.model[output] = KalmanFilter(dim_x=1, dim_z=1)
-            
-            best_params[output] = self.tune_hyperparameters_single(historic_measurements.select(pl.col(output)),
-                                             self.scaler[output],
-                                             db, n_trials)
-        
-            self.model[output].set_params(best_params[output]) 
-        
-        np.save("./svr_best_params.npz", best_params, allow_pickle=True)
-    
     def predict_sample(self, n_samples: int):
         pass
 
@@ -438,15 +441,6 @@ class KalmanFilterPreview(WindPreview):
         pred_slice = self.get_pred_interval(current_time)
         pred = defaultdict(list)
         outputs = historic_measurements.select(cs.starts_with("ws_horz") | cs.starts_with("ws_vert")).columns
-        for output in outputs:
-            if output not in self.model:
-                self.model[output] = KalmanFilter(dim_x=1, dim_z=1)
-                if "R" in self.kf_kwargs:
-                    self.model[output].R = self.kf_kwargs["R"]
-                if "H" in self.kf_kwargs:
-                    self.model[output].H = self.kf_kwargs["H"]
-                if "Q" in self.kf_kwargs:
-                    self.model[output].Q = self.kf_kwargs["Q"]
         
         # futures = {output: self._train_model(historic_measurements.select(pl.col(output)), 
         #                                          self.model[output]) for output in outputs}

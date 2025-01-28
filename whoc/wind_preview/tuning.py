@@ -6,11 +6,13 @@ import pandas as pd
 import datetime
 import argparse
 import yaml
+import os
 
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(prog="WindFarmForecasting")
     parser.add_argument("-cnf", "--config", type=str)
+    parser.add_argument("-sn", "--study_name", type=str)
     parser.add_argument("-m", "--model", type=str, choices=["svr", "kf", "informer", "autoformer", "spacetimeformer"], required=True)
     # pretrained_filename = "/Users/ahenry/Documents/toolboxes/wind_forecasting/examples/logging/wf_forecasting/lznjshyo/checkpoints/epoch=0-step=50.ckpt"
     args = parser.parse_args()
@@ -53,9 +55,15 @@ if __name__ == "__main__":
                                     context_timedelta=context_timedelta,
                                     svr_kwargs=dict(kernel="rbf", C=1.0, degree=3, gamma="auto", epsilon=0.1, cache_size=200))
     elif args.model == "kf":
-        kf_preview = KalmanFilterPreview(freq=wind_dt,
+        model = KalmanFilterPreview(freq=wind_dt,
                                         prediction_timedelta=prediction_timedelta,
                                         context_timedelta=context_timedelta,
                                         kf_kwargs=dict(H=np.array([1])))
-        
-    model.tune_hyperparameters_multi(historic_measurements)
+    
+    if not os.path.exists(config["optuna"]["journal_dir"]):
+        os.makedirs(config["optuna"]["journal_dir"]) 
+    
+    model.tune_hyperparameters_multi(historic_measurements, 
+                                     study_name=args.study_name,
+                                     use_rdb=config["optuna"]["use_rdb"], 
+                                     journal_storage_dir=config["optuna"]["journal_dir"])
