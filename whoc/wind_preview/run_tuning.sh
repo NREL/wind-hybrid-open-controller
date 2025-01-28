@@ -10,6 +10,7 @@
 # python tuning.py --config $HOME/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/training_inputs_kestrel.yaml --study_name "svr_tuning" --model "svr"
 ml mamba
 ml PrgEnv-intel
+ml cuda
 
 mamba activate wind_forecasting
 
