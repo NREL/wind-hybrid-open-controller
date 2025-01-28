@@ -47,9 +47,11 @@ from sklearn.svm import SVR
 from sklearn.model_selection import cross_val_score
 
 from filterpy.kalman import KalmanFilter
-from filterpy.common import Q_discrete_white_noise
 
 from wind_forecasting.preprocessing.data_module import DataModule
+
+import logging 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 @dataclass
 class WindPreview:
@@ -100,6 +102,7 @@ class WindPreview:
             for output in outputs:
                 
                 if use_rdb:
+                    logging.info(f"Connecting to RDB database {study_name}_{output}")
                     try:
                         db = sql_connect(host="localhost", user="root",
                                         database=f"{study_name}_{output}")       
@@ -110,7 +113,8 @@ class WindPreview:
                     finally:
                         storage = RDBStorage(url=f"mysql://{db.user}@{db.server_host}:{db.server_port}/{db.database}")
                 else:
-                    storage = JournalStorage(JournalFileBackend(os.path.join(journal_storage_fp, f"{study_name}_{output}.log")))
+                    logging.info(f"Connecting to Journal database {study_name}_{output}")
+                    storage = JournalStorage(JournalFileBackend(os.path.join(journal_storage_dir, f"{study_name}_{output}.log")))
                 
                 best_params[output] = self.tune_hyperparameters_single(
                                                 historic_measurements=historic_measurements.select(pl.col(output)),

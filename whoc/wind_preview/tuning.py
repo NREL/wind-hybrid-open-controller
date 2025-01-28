@@ -7,9 +7,13 @@ import datetime
 import argparse
 import yaml
 import os
+import logging 
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 if __name__ == "__main__":
     
+    logging.info("Parsing arguments and configuration yaml.")
     parser = argparse.ArgumentParser(prog="WindFarmForecasting")
     parser.add_argument("-cnf", "--config", type=str)
     parser.add_argument("-sn", "--study_name", type=str)
@@ -24,6 +28,7 @@ if __name__ == "__main__":
     context_timedelta = config["dataset"]["context_length"] * pd.Timedelta(config["dataset"]["resample_freq"]).to_pytimedelta()
     historic_measurements_limit = datetime.timedelta(minutes=30)
     
+    logging.info("Reading input wind field.") 
     true_wf = pl.scan_parquet(config["dataset"]["data_path"])
     true_wf_norm_consts = pd.read_csv(config["dataset"]["normalization_consts_path"], index_col=None)
     norm_min_cols = [col for col in true_wf_norm_consts if "_min" in col]
@@ -49,6 +54,7 @@ if __name__ == "__main__":
     true_wf = true_wf.filter(pl.col("continuity_group") == longest_cg)
     historic_measurements = true_wf.slice(0, true_wf.select(pl.len()).item() - int(prediction_timedelta / wind_dt))
     
+    logging.info("Instantiating model.")  
     if args.model == "svr": 
         model = SVRPreview(freq=wind_dt,
                                     prediction_timedelta=prediction_timedelta,
@@ -63,6 +69,7 @@ if __name__ == "__main__":
     if not os.path.exists(config["optuna"]["journal_dir"]):
         os.makedirs(config["optuna"]["journal_dir"]) 
     
+    logging.info("Running tune_hyperparameters_multi")   
     model.tune_hyperparameters_multi(historic_measurements, 
                                      study_name=args.study_name,
                                      use_rdb=config["optuna"]["use_rdb"], 
