@@ -17,6 +17,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="WindFarmForecasting")
     parser.add_argument("-cnf", "--config", type=str)
     parser.add_argument("-sn", "--study_name", type=str)
+    parser.add_argument("-rs", "--restart_study", action="store_true")
     parser.add_argument("-m", "--model", type=str, choices=["svr", "kf", "informer", "autoformer", "spacetimeformer"], required=True)
     # pretrained_filename = "/Users/ahenry/Documents/toolboxes/wind_forecasting/examples/logging/wf_forecasting/lznjshyo/checkpoints/epoch=0-step=50.ckpt"
     args = parser.parse_args()
@@ -71,6 +72,8 @@ if __name__ == "__main__":
     
     logging.info("Running tune_hyperparameters_multi")   
     model.tune_hyperparameters_multi(historic_measurements, 
-                                     study_name=args.study_name,
-                                     use_rdb=config["optuna"]["use_rdb"], 
-                                     journal_storage_dir=config["optuna"]["journal_dir"])
+                                     study_name_root=args.study_name,
+                                     use_rdb=config["optuna"]["use_rdb"],
+                                     n_trials=config["optuna"]["n_trials"], 
+                                     journal_storage_dir=config["optuna"]["journal_dir"],
+                                     restart_study=args.restart_study)
