@@ -114,7 +114,6 @@ def test_LookupBasedWakeSteeringController():
     )
     assert np.allclose(test_angles, wind_directions - test_offsets)
 
-
 def test_WindFarmPowerDistributingController():
     test_interface = HerculesADInterface(test_hercules_dict)
     test_controller = WindFarmPowerDistributingController(
@@ -141,7 +140,6 @@ def test_WindFarmPowerDistributingController():
         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
     )
     assert np.allclose(test_power_setpoints, 500)
-
 
 def test_WindFarmPowerTrackingController():
     test_interface = HerculesADInterface(test_hercules_dict)
@@ -183,7 +181,9 @@ def test_WindFarmPowerTrackingController():
 
     # Test that more aggressive control leads to faster response
     test_controller = WindFarmPowerTrackingController(
-        interface=test_interface, input_dict=test_hercules_dict, proportional_gain=2
+        interface=test_interface,
+        input_dict=test_hercules_dict,
+        proportional_gain=2
     )
     test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [600, 600]
     test_hercules_dict_out = test_controller.step(input_dict=test_hercules_dict)

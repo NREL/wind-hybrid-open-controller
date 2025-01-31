@@ -32,7 +32,8 @@ class ControllerBase(metaclass=ABCMeta):
         output_dict = self._send_controls(input_dict)
 
         return output_dict
-
+    
+    
     @abstractmethod
     def compute_controls(self):
         pass  # Control algorithms should be implemented in the compute_controls 
