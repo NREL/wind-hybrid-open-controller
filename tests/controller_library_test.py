@@ -83,7 +83,7 @@ def test_LookupBasedWakeSteeringController():
 
     # Check that the controller can be stepped
     test_hercules_dict["time"] = 20
-    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_hercules_dict_out = test_controller.step(input_dict=test_hercules_dict)
     test_angles = np.array(
         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_yaw_angles"]
     )
@@ -108,7 +108,7 @@ def test_LookupBasedWakeSteeringController():
     )
 
     test_hercules_dict["time"] = 20
-    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_hercules_dict_out = test_controller.step(input_dict=test_hercules_dict)
     test_angles = np.array(
         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_yaw_angles"]
     )
@@ -155,7 +155,7 @@ def test_WindFarmPowerDistributingController():
     # Default behavior when no power reference is given
     test_hercules_dict["time"] = 20
     test_hercules_dict["external_signals"] = {}
-    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_hercules_dict_out = test_controller.step(input_dict=test_hercules_dict)
     test_power_setpoints = np.array(
         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
     )
@@ -166,7 +166,7 @@ def test_WindFarmPowerDistributingController():
 
     # Test with power reference
     test_hercules_dict["external_signals"]["wind_power_reference"] = 1000
-    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_hercules_dict_out = test_controller.step(input_dict=test_hercules_dict)
     test_power_setpoints = np.array(
         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
     )
@@ -183,7 +183,7 @@ def test_WindFarmPowerTrackingController():
     # Test no change to power setpoints if producing desired power
     test_hercules_dict["external_signals"]["wind_power_reference"] = 1000
     test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [500, 500]
-    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_hercules_dict_out = test_controller.step(input_dict=test_hercules_dict)
     test_power_setpoints = np.array(
         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
     )
@@ -191,7 +191,7 @@ def test_WindFarmPowerTrackingController():
 
     # Test if power exceeds farm reference, power setpoints are reduced
     test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [600, 600]
-    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_hercules_dict_out = test_controller.step(input_dict=test_hercules_dict)
     test_power_setpoints = np.array(
         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
     )
@@ -202,7 +202,7 @@ def test_WindFarmPowerTrackingController():
 
     # Test if power is less than farm reference, power setpoints are increased
     test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [550, 400]
-    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_hercules_dict_out = test_controller.step(input_dict=test_hercules_dict)
     test_power_setpoints = np.array(
         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
     )
@@ -216,7 +216,7 @@ def test_WindFarmPowerTrackingController():
         interface=test_interface, input_dict=test_hercules_dict, proportional_gain=2
     )
     test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [600, 600]
-    test_hercules_dict_out = test_controller.step(hercules_dict=test_hercules_dict)
+    test_hercules_dict_out = test_controller.step(input_dict=test_hercules_dict)
     test_power_setpoints_a = np.array(
         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
     )
