@@ -5,7 +5,6 @@ import pandas as pd
 from whoc.controllers import (
     HybridSupervisoryControllerBaseline,
     LookupBasedWakeSteeringController,
-    WindBatteryController,
     WindFarmPowerDistributingController,
     WindFarmPowerTrackingController,
 )
@@ -13,7 +12,6 @@ from whoc.controllers.wind_farm_power_tracking_controller import POWER_SETPOINT_
 from whoc.interfaces import (
     HerculesADInterface,
     HerculesHybridADInterface,
-    HerculesWindBatteryInterface,
 )
 from whoc.interfaces.interface_base import InterfaceBase
 
@@ -66,7 +64,6 @@ def test_controller_instantiation():
     test_interface = StandinInterface()
 
     _ = LookupBasedWakeSteeringController(interface=test_interface, input_dict=test_hercules_dict)
-    _ = WindBatteryController(interface=test_interface, input_dict=test_hercules_dict)
     _ = WindFarmPowerDistributingController(interface=test_interface, input_dict=test_hercules_dict)
     _ = WindFarmPowerTrackingController(interface=test_interface, input_dict=test_hercules_dict)
     _ = HybridSupervisoryControllerBaseline(interface=test_interface, input_dict=test_hercules_dict)
@@ -116,33 +113,6 @@ def test_LookupBasedWakeSteeringController():
         test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_wind_directions"]
     )
     assert np.allclose(test_angles, wind_directions - test_offsets)
-
-
-def test_WindBatteryController():
-    test_interface = HerculesWindBatteryInterface(test_hercules_dict)
-    test_controller = WindBatteryController(test_interface, test_hercules_dict)
-
-    # Check the low level methods behave as expected
-    test_controller._receive_measurements(test_hercules_dict)
-
-    wind_setpoints = test_controller.calc_wind_setpoints()
-    assert not wind_setpoints  # wind setpoints should be empty
-
-    battery_setpoints = test_controller.calc_battery_setpoints()
-    assert battery_setpoints["signal"] == -500  # battery setpoints should not be empty
-
-    test_controller.compute_controls()
-    assert test_controller.setpoints_dict == {"wind": wind_setpoints, "battery": battery_setpoints}
-
-    # Test step
-    # We will need to change these cases when the wind_battery_controller has more general behavior
-    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [450, 450]
-    hercules_dict_out = test_controller.step(test_hercules_dict)
-    assert hercules_dict_out["py_sims"]["inputs"]["battery_signal"] == 900
-
-    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = [550, 550]
-    hercules_dict_out = test_controller.step(test_hercules_dict)
-    assert hercules_dict_out["py_sims"]["inputs"]["battery_signal"] == -500
 
 
 def test_WindFarmPowerDistributingController():

@@ -23,10 +23,6 @@ developed for a simulator that provides wind turbine wind speeds also.
 ### WakeSteeringROSCOStandin
 Not yet developed. May be combined into a universal simple LookupBasedWakeSteeringController.
 
-### WindBatteryController
-Placeholder for a controller that manages both a wind power plant and colocated
-battery.
-
 (controllers_wfpowerdistributing)=
 ### WindFarmPowerDistributingController
 

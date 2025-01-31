@@ -2,7 +2,6 @@ import pytest
 from whoc.interfaces import (
     HerculesADInterface,
     HerculesHybridADInterface,
-    HerculesWindBatteryInterface,
 )
 
 test_hercules_dict = {
@@ -34,7 +33,6 @@ def test_interface_instantiation():
     """
 
     _ = HerculesADInterface(hercules_dict=test_hercules_dict)
-    _ = HerculesWindBatteryInterface(hercules_dict=test_hercules_dict)
     _ = HerculesHybridADInterface(hercules_dict=test_hercules_dict)
     # _ = ROSCO_ZMQInterface()
 
@@ -93,40 +91,6 @@ def test_HerculesADInterface():
     with pytest.raises(TypeError):  # Bad kwarg
         interface.send_controls(test_hercules_dict, **bad_controls_dict2)
     # bad_controls_dict3 would pass, but faile the check_controls step.
-
-
-def test_HerculesWindBatteryInterface():
-    interface = HerculesWindBatteryInterface(hercules_dict=test_hercules_dict)
-
-    # Test get_measurements()
-    measurements = interface.get_measurements(hercules_dict=test_hercules_dict)
-
-    assert (
-        measurements["py_sims"]["battery"]
-        == test_hercules_dict["py_sims"]["test_battery"]["outputs"]
-    )
-    assert (
-        measurements["wind_farm"]["turbine_powers"]
-        == test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"]
-    )
-    assert (
-        measurements["wind_farm"]["turbine_wind_directions"]
-        == test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_wind_directions"]
-    )
-
-    # Test check_controls()
-    # check_controls is pass-through
-
-    # Test send_controls()
-    controls_dict = {"battery": {"signal": 0}}
-    test_hercules_dict_out = interface.send_controls(
-        hercules_dict=test_hercules_dict, controls_dict=controls_dict
-    )
-
-    assert (
-        test_hercules_dict_out["py_sims"]["inputs"]["battery_signal"]
-        == controls_dict["battery"]["signal"]
-    )
 
 def test_HerculesHybridADInterface():
     interface = HerculesHybridADInterface(hercules_dict=test_hercules_dict)
