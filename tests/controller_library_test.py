@@ -117,9 +117,9 @@ def test_LookupBasedWakeSteeringController():
 
 def test_WindFarmPowerDistributingController():
     test_interface = HerculesADInterface(test_hercules_dict)
-
     test_controller = WindFarmPowerDistributingController(
-        interface=test_interface, input_dict=test_hercules_dict
+        interface=test_interface,
+        input_dict=test_hercules_dict
     )
 
     # Default behavior when no power reference is given
@@ -130,8 +130,7 @@ def test_WindFarmPowerDistributingController():
         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
     )
     assert np.allclose(
-        test_power_setpoints,
-        POWER_SETPOINT_DEFAULT / test_hercules_dict["controller"]["num_turbines"],
+        test_power_setpoints, POWER_SETPOINT_DEFAULT/test_hercules_dict["controller"]["num_turbines"],
     )
 
     # Test with power reference
@@ -145,9 +144,9 @@ def test_WindFarmPowerDistributingController():
 
 def test_WindFarmPowerTrackingController():
     test_interface = HerculesADInterface(test_hercules_dict)
-
     test_controller = WindFarmPowerTrackingController(
-        interface=test_interface, input_dict=test_hercules_dict
+        interface=test_interface,
+        input_dict=test_hercules_dict
     )
 
     # Test no change to power setpoints if producing desired power
