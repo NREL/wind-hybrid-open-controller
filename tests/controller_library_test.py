@@ -130,7 +130,8 @@ def test_WindFarmPowerDistributingController():
         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
     )
     assert np.allclose(
-        test_power_setpoints, POWER_SETPOINT_DEFAULT/test_hercules_dict["controller"]["num_turbines"],
+        test_power_setpoints,
+        POWER_SETPOINT_DEFAULT/test_hercules_dict["controller"]["num_turbines"],
     )
 
     # Test with power reference
