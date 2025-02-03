@@ -4,12 +4,12 @@ import pytest
 
 # import pandas as pd
 from whoc.controllers import (
+    BatteryPassthroughController,
     HybridSupervisoryControllerBaseline,
     LookupBasedWakeSteeringController,
+    SolarPassthroughController,
     WindFarmPowerDistributingController,
     WindFarmPowerTrackingController,
-    SolarPassthroughController,
-    BatteryPassthroughController
 )
 from whoc.controllers.wind_farm_power_tracking_controller import POWER_SETPOINT_DEFAULT
 from whoc.interfaces import (

@@ -85,27 +85,22 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
         if self._has_wind_controller:
             wind_power = np.array(self.measurements_dict["wind_turbine_powers"]).sum()
             wind_speed = self.measurements_dict["wind_speed"] # noqa: F841
-            has_wind_controller = True
         else:
             wind_power = 0
             wind_speed = 0 # noqa: F841
-            has_wind_controller = False
 
         if self._has_solar_controller:
             solar_power = self.measurements_dict["solar_power"]
             solar_dni = self.measurements_dict["solar_dni"] # direct normal irradiance # noqa: F841
             solar_aoi = self.measurements_dict["solar_aoi"] # angle of incidence # noqa: F841
-            has_solar_controller = True
         else:
             solar_power = 0
             solar_dni = 0 # noqa: F841
             solar_aoi = 0 # noqa: F841
-            has_solar_controller = False
 
         if self._has_battery_controller:
             battery_power = self.measurements_dict["battery_power"]
             battery_soc = self.measurements_dict["battery_soc"]
-            has_battery_controller = True
         else:
             battery_power = 0
             battery_soc = 0
