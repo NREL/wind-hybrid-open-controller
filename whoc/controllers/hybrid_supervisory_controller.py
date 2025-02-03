@@ -22,6 +22,16 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
         self.solar_controller = solar_controller
         self.battery_controller = battery_controller
 
+        self._has_solar_controller = solar_controller is not None
+        self._has_wind_controller = wind_controller is not None
+        self._has_battery_controller = battery_controller is not None
+
+        # Must provide a controller for one type of generation
+        if not self._has_wind_controller and not self._has_solar_controller:
+            raise ValueError(
+                "Must provide a controller for at least one type of generation (wind or solar)"
+            )
+
         # Set constants
         py_sims = list(input_dict["py_sims"].keys())
         if self.battery_controller:
@@ -45,7 +55,7 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
 
         # Package the controls for the individual controllers, step, and return
         self.controls_dict = {}
-        if self.wind_controller:
+        if self._has_wind_controller:
             self.wind_controller.measurements_dict["wind_power_reference"] = wind_reference
             self.wind_controller.measurements_dict["turbine_powers"] = (
                 self.measurements_dict["wind_turbine_powers"]
@@ -54,13 +64,13 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
             self.controls_dict["wind_power_setpoints"] = (
                 self.wind_controller.controls_dict["power_setpoints"]
             )
-        if self.solar_controller:
+        if self._has_solar_controller:
             self.solar_controller.measurements_dict["solar_power_reference"] = solar_reference
             self.solar_controller.compute_controls()
             self.controls_dict["solar_power_setpoint"] = (
                 self.solar_controller.controls_dict["power_setpoint"]
             )
-        if self.battery_controller:
+        if self._has_battery_controller:
             self.battery_controller.measurements_dict["battery_power_reference"] = battery_reference
             self.battery_controller.compute_controls()
             self.controls_dict["battery_power_setpoint"] = (
@@ -72,25 +82,30 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
     def supervisory_control(self):
         # Extract measurements sent
         time = self.measurements_dict["time"] # noqa: F841 
-        if self.wind_controller:
+        if self._has_wind_controller:
             wind_power = np.array(self.measurements_dict["wind_turbine_powers"]).sum()
             wind_speed = self.measurements_dict["wind_speed"] # noqa: F841
+            has_wind_controller = True
         else:
             wind_power = 0
             wind_speed = 0 # noqa: F841
+            has_wind_controller = False
 
-        if self.solar_controller:
+        if self._has_solar_controller:
             solar_power = self.measurements_dict["solar_power"]
             solar_dni = self.measurements_dict["solar_dni"] # direct normal irradiance # noqa: F841
             solar_aoi = self.measurements_dict["solar_aoi"] # angle of incidence # noqa: F841
+            has_solar_controller = True
         else:
             solar_power = 0
             solar_dni = 0 # noqa: F841
             solar_aoi = 0 # noqa: F841
+            has_solar_controller = False
 
-        if self.battery_controller:
+        if self._has_battery_controller:
             battery_power = self.measurements_dict["battery_power"]
             battery_soc = self.measurements_dict["battery_soc"]
+            has_battery_controller = True
         else:
             battery_power = 0
             battery_soc = 0
@@ -108,7 +123,8 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
         print("Reference power:", plant_power_reference)
 
         # Calculate battery reference value
-        if self.battery_controller:
+        if self._has_battery_controller:
+            #import ipdb; ipdb.set_trace()
             battery_reference = (wind_power + solar_power) - plant_power_reference
         else:
             battery_reference = 0
@@ -123,6 +139,9 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
         else:
             K = ((wind_power + solar_power) - plant_power_reference) / 2
 
+        if not (self._has_wind_controller & self._has_solar_controller):
+            # Only one type of generation available, double the control gain
+            K = 2*K
 
         if (wind_power + solar_power) > (plant_power_reference+self.battery_charge_rate) or \
             ((wind_power + solar_power) > (plant_power_reference) and battery_soc>0.89):
@@ -143,6 +162,12 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
                 wind_reference = self.wind_reference
             else:
                 wind_reference = wind_power - K
+
+        # Reset references for invalid controllers
+        if not self._has_wind_controller:
+            wind_reference = 0
+        if not self._has_solar_controller:
+            solar_reference = 0
 
         print(
             "Power reference values (wind, solar, battery)",
