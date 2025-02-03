@@ -29,7 +29,8 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
         # Must provide a controller for one type of generation
         if not self._has_wind_controller and not self._has_solar_controller:
             raise ValueError(
-                "Must provide a controller for at least one type of generation (wind or solar)"
+                "The HybridSupervisoryControllerBaseline requires that either a solar_controller"
+                " or a wind_controller be provided."
             )
 
         # Set constants
