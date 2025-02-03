@@ -74,6 +74,8 @@ def test_controller_instantiation():
         input_dict=test_hercules_dict,
         wind_controller=1, # Override error raised for empty controllers
     )
+    _ = SolarPassthroughController(interface=test_interface, input_dict=test_hercules_dict)
+    _ = BatteryPassthroughController(interface=test_interface, input_dict=test_hercules_dict)
 
 
 def test_LookupBasedWakeSteeringController():
@@ -388,8 +390,20 @@ def test_HybridSupervisoryControllerBaseline_subsets():
     )
 
 def test_BatteryPassthroughController():
-    pass
+    test_interface = HerculesHybridADInterface(test_hercules_dict)
+    test_controller = BatteryPassthroughController(test_interface, test_hercules_dict)
+
+    power_ref = 1000
+    test_controller.measurements_dict["battery_power_reference"] = power_ref
+    test_controller.compute_controls()
+    assert test_controller.controls_dict["power_setpoint"] == power_ref
 
 def test_SolarPassthroughController():
-    pass
+    test_interface = HerculesHybridADInterface(test_hercules_dict)
+    test_controller = SolarPassthroughController(test_interface, test_hercules_dict)
+
+    power_ref = 1000
+    test_controller.measurements_dict["solar_power_reference"] = power_ref
+    test_controller.compute_controls()
+    assert test_controller.controls_dict["power_setpoint"] == power_ref
     
