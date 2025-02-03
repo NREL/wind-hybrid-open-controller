@@ -56,3 +56,9 @@ Reads in current power production from wind, solar, and battery, as well as a pl
 
 The power reference values for wind, solar and battery technologies are then handled by the operational controllers for wind, solar, and battery, which are assigned to the `HybridSupervisoryControllerBaseline` on instantiation to distribute the bulk references to each asset amongst the individual generators. Currently, only wind actually distributes the power.
 Intended as a baseline for comparison to more advanced supervisory controllers.
+
+This controller can also be run for a hybrid plant comprising wind or solar
+and/or a battery. At least one of the wind or solar components must be present,
+with the battery component optional. Upon instantiation, the user may set
+`wind_controller`, `solar_controller`, and/or `battery_controller` to `None` if
+no wind, solar, and/or battery component is available, respectively.
