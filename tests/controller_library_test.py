@@ -7,6 +7,8 @@ from whoc.controllers import (
     LookupBasedWakeSteeringController,
     WindFarmPowerDistributingController,
     WindFarmPowerTrackingController,
+    SolarPassthroughController,
+    BatteryPassthroughController
 )
 from whoc.controllers.wind_farm_power_tracking_controller import POWER_SETPOINT_DEFAULT
 from whoc.interfaces import (
@@ -140,7 +142,7 @@ def test_WindFarmPowerDistributingController():
         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
     )
     assert np.allclose(test_power_setpoints, 500)
-
+    
 def test_WindFarmPowerTrackingController():
     test_interface = HerculesADInterface(test_hercules_dict)
     test_controller = WindFarmPowerTrackingController(
@@ -195,8 +197,17 @@ def test_WindFarmPowerTrackingController():
 def test_HybridSupervisoryControllerBaseline():
     test_interface = HerculesHybridADInterface(test_hercules_dict)
 
+    # Establish lower controllers
+    wind_controller = WindFarmPowerTrackingController(test_interface, test_hercules_dict)
+    solar_controller = SolarPassthroughController(test_interface, test_hercules_dict)
+    battery_controller = BatteryPassthroughController(test_interface, test_hercules_dict)
+
     test_controller = HybridSupervisoryControllerBaseline(
-        interface=test_interface, input_dict=test_hercules_dict
+        interface=test_interface,
+        input_dict=test_hercules_dict,
+        wind_controller=wind_controller,
+        solar_controller=solar_controller,
+        battery_controller=battery_controller
     )
 
     solar_current = 800 
@@ -223,3 +234,16 @@ def test_HybridSupervisoryControllerBaseline():
             supervisory_control_output,
             [wind_power_cmd, solar_power_cmd, battery_power_cmd]
         ) # To charge battery
+    
+def test_BatteryPassthroughController():
+    pass
+
+def test_SolarPassthroughController():
+    pass
+    
+def test_HybridSupervisoryControllerBaseline_subsets():
+    """
+    Tests that the HybridSupervisoryControllerBaseline can be run with only
+    some of the wind, solar, and battery controllers.
+    """
+    pass
