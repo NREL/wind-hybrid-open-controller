@@ -7,7 +7,7 @@ from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 from whoc.wind_field.WindField import first_ord_filter
 
 #@profile
-def simulate_controller(controller_class, input_dict, **kwargs):
+def simulate_controller(controller_class, wind_forecast_class, input_dict, **kwargs):
 
     results_dir = os.path.join(kwargs["save_dir"], kwargs['case_family'])
 
@@ -29,19 +29,30 @@ def simulate_controller(controller_class, input_dict, **kwargs):
     # Load a FLORIS object for AEP calculations
     # greedy_fi = ControlledFlorisModel(yaw_limits=input_dict["controller"]["yaw_limits"],
     #                                       offline_probability=input_dict["controller"]["offline_probability"],
-    #                                     dt=input_dict["dt"],
+    #                                     dt=input_dict["simulation_dt"],
     #                                     yaw_rate=input_dict["controller"]["yaw_rate"],
     #                                     config_path=input_dict["controller"]["floris_input_file"])
-    fi = ControlledFlorisModel(yaw_limits=input_dict["controller"]["yaw_limits"],
-                                        offline_probability=input_dict["controller"]["offline_probability"],
-                                        dt=input_dict["dt"],
-                                        yaw_rate=input_dict["controller"]["yaw_rate"],
-                                        config_path=input_dict["controller"]["floris_input_file"])
+    fi = ControlledFlorisModel(t0=kwargs["wind_field_ts"]["time"].iloc[0],
+                               yaw_limits=input_dict["controller"]["yaw_limits"],
+                                offline_probability=input_dict["controller"]["offline_probability"],
+                                dt=input_dict["simulation_dt"],
+                                yaw_rate=input_dict["controller"]["yaw_rate"],
+                                config_path=input_dict["controller"]["floris_input_file"])
     
-    kwargs["wind_field_config"]["preview_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"]) 
-    kwargs["wind_field_config"]["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
-    kwargs["wind_field_config"]["time_series_dt"] = int(input_dict["controller"]["dt"] // input_dict["dt"]) 
-    ctrl = controller_class(fi, input_dict=input_dict, **kwargs)
+    kwargs["wind_field_config"]["preview_dt"] = int(input_dict["controller"]["controller_dt"] / input_dict["simulation_dt"]) 
+    kwargs["wind_field_config"]["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["controller_dt"] / input_dict["simulation_dt"])
+    kwargs["wind_field_config"]["time_series_dt"] = int(input_dict["controller"]["controller_dt"] // input_dict["simulation_dt"])
+    
+    if input_dict["controller"]["initial_conditions"]["yaw"] == "auto":
+        u = kwargs["wind_field_ts"].iloc[0][[col for col in kwargs["wind_field_ts"].columns if col.startswith("ws_horz")]].values.astype(float)
+        v = kwargs["wind_field_ts"].iloc[0][[col for col in kwargs["wind_field_ts"].columns if col.startswith("ws_vert")]].values.astype(float)
+        direc = (np.arctan2(u, v) * (180. / np.pi))
+        input_dict["controller"]["initial_conditions"]["yaw"] = list(direc)
+    
+    # pl.DataFrame(kwargs["wind_field_ts"]) 
+    wind_forecast = wind_forecast_class(true_wind_field=kwargs["wind_field_ts"], 
+                                        **input_dict["wind_forecast"])
+    ctrl = controller_class(fi, wind_forecast=wind_forecast, input_dict=input_dict, **kwargs)
     
     yaw_angles_ts = []
     init_yaw_angles_ts = []
@@ -51,27 +62,22 @@ def simulate_controller(controller_class, input_dict, **kwargs):
     turbine_wind_dir_ts = []
     turbine_offline_status_ts = []
 
-    greedy_turbine_powers_ts = []
-
     convergence_time_ts = []
-    # opt_codes_ts = []
 
     opt_cost_ts = []
     opt_cost_terms_ts = []
 
-    # n_time_steps = int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] / input_dict["dt"])
-    # greedy_fi.env.set(wind_speeds=kwargs["wind_mag_ts"][:n_time_steps], 
-    #                 wind_directions=kwargs["wind_dir_ts"][:n_time_steps],
-    #                 turbulence_intensities=[greedy_fi.env.core.flow_field.turbulence_intensities[0]] * n_time_steps,
-    #                 yaw_angles=np.zeros((1, ctrl.n_turbines)))
-    # greedy_fi.env.run()
-    # greedy_turbine_powers_ts = np.max(greedy_fi.env.get_turbine_powers(), axis=1)
-
-    n_future_steps = int(ctrl.dt // input_dict["dt"]) - 1
+    n_future_steps = int(ctrl.dt // input_dict["simulation_dt"]) - 1
     
-    # for k, t in enumerate(np.arange(0, kwargs["wind_field_config"]["simulation_max_time"], input_dict["dt"])):
     t = 0
     k = 0
+    
+    mean_u = kwargs["wind_field_ts"][[col for col in kwargs["wind_field_ts"].columns if col.startswith("ws_horz")]].mean(axis=1)
+    mean_v = kwargs["wind_field_ts"][[col for col in kwargs["wind_field_ts"].columns if col.startswith("ws_vert")]].mean(axis=1)
+    mean_mag = (mean_u**2 + mean_v**2)**0.5
+    mean_dir = (np.arctan2(mean_u, mean_v) * (180. / np.pi))
+    mean_dir[mean_dir < 0] = 360. + mean_dir[mean_dir < 0]
+    mean_dir[mean_dir > 360] = np.mod(mean_dir[mean_dir > 360], 360.) 
     
     while t < input_dict["hercules_comms"]["helics"]["config"]["stoptime"]:
 
@@ -79,27 +85,30 @@ def simulate_controller(controller_class, input_dict, **kwargs):
         # reiniitialize FLORIS interface with for current disturbances and disturbance up to (and excluding) next controls computation
         
         # consider yaw angles as most recently sent from last time-step
-        fi.step(disturbances={"wind_speeds": kwargs["wind_mag_ts"][k:k + n_future_steps + 1],
-                            "wind_directions": kwargs["wind_dir_ts"][k:k + n_future_steps + 1], 
+        
+        
+        fi.step(disturbances={"wind_speeds": mean_mag[k:k + n_future_steps + 1],
+                            "wind_directions": mean_dir[k:k + n_future_steps + 1], 
                             "turbulence_intensities": [fi.env.core.flow_field.turbulence_intensities[0]] * (n_future_steps + 1)},
-                            ctrl_dict=None if t > 0 else {"yaw_angles": [ctrl.yaw_IC] * ctrl.n_turbines},
+                            ctrl_dict=None if t > 0 else {"yaw_angles": [ctrl.yaw_IC] * ctrl.n_turbines if isinstance(ctrl.yaw_IC, float) else ctrl.yaw_IC},
                             seed=k)
         
-        ctrl.current_freestream_measurements = [
-                kwargs["wind_mag_ts"][k] * np.sin((kwargs["wind_dir_ts"][k] - 180.) * (np.pi / 180.)),
-                kwargs["wind_mag_ts"][k] * np.cos((kwargs["wind_dir_ts"][k] - 180.) * (np.pi / 180.))
-        ]
+        ctrl.current_freestream_measurements = [mean_u[k], mean_v[k]]
+        # [
+        #         mean_mag[k] * np.sin((mean_dir[k]) * (np.pi / 180.)),
+        #         mean_mag[k] * np.cos((mean_dir[k]) * (np.pi / 180.))
+        # ]
         
         start_time = perf_counter()
         # get measurements from FLORIS int, then compute controls in controller class, set controls_dict, then send controls to FLORIS interface (calling calculate_wake)
-        # fi.time = np.arange(t, t + ctrl.dt, input_dict["dt"])
+        # fi.time = np.arange(t, t + ctrl.dt, input_dict["simulation_dt"])
         
         fi.run_floris = False
-        # only step yaw angles by up to yaw_rate * input_dict["dt"] for each time-step
+        # only step yaw angles by up to yaw_rate * input_dict["simulation_dt"] for each time-step
         # run this in a loop, in compute_controls, update controls dict every 0.5 seconds, but store and run floris set every 60s in ControllerFlorisInterface
-        for tt in np.arange(t, t + ctrl.dt, input_dict["dt"]):
-            fi.time = tt
-            if tt == (t + ctrl.dt - input_dict["dt"]):
+        for tt in np.arange(t, t + ctrl.dt, input_dict["simulation_dt"]):
+            fi.time += pd.Timedelta(seconds=ctrl.dt)
+            if tt == (t + ctrl.dt - input_dict["simulation_dt"]):
                 fi.run_floris = True
             
             ctrl.step()
@@ -113,7 +122,7 @@ def simulate_controller(controller_class, input_dict, **kwargs):
             # turbine_offline_status_ts += [fi.offline_status[tt, :]]
             turbine_offline_status_ts += [np.isclose(ctrl.measurements_dict["turbine_powers"], 0, atol=1e-3)]
         
-        assert np.all(np.vstack(turbine_offline_status_ts)[-int(ctrl.dt // input_dict["dt"]):, :] == fi.offline_status), "collected turbine_offline_status_ts should be equal to fi.offline_status in simulate_controllers"
+        assert np.all(np.vstack(turbine_offline_status_ts)[-int(ctrl.dt // input_dict["simulation_dt"]):, :] == fi.offline_status), "collected turbine_offline_status_ts should be equal to fi.offline_status in simulate_controllers"
 
         end_time = perf_counter()
 
@@ -140,8 +149,8 @@ def simulate_controller(controller_class, input_dict, **kwargs):
 
         print(f"\nTime = {t} of {controller_class.__name__} - {kwargs['case_name']} with wind seed {kwargs['wind_case_idx']}")
         if ctrl.verbose:
-            print(f"Measured Freestream Wind Direction = {kwargs['wind_dir_ts'][k]}",
-                f"Measured Freestream Wind Magnitude = {kwargs['wind_mag_ts'][k]}",
+            print(f"Measured Freestream Wind Direction = {mean_dir[k]}",
+                f"Measured Freestream Wind Magnitude = {mean_mag[k]}",
                 f"Measured Turbine Wind Directions = {ctrl.measurements_dict['wind_directions'] if ctrl.measurements_dict['wind_directions'].ndim == 2 else ctrl.measurements_dict['wind_directions']}",
                 f"Measured Turbine Wind Magnitudes = {ctrl.measurements_dict['wind_speeds'] if ctrl.measurements_dict['wind_speeds'].ndim == 2 else ctrl.measurements_dict['wind_speeds']}",
                 f"Measured Yaw Angles = {ctrl.measurements_dict['yaw_angles'] if ctrl.measurements_dict['yaw_angles'].ndim == 2 else ctrl.measurements_dict['yaw_angles']}",
@@ -159,10 +168,10 @@ def simulate_controller(controller_class, input_dict, **kwargs):
                 sep='\n')
         
         t += ctrl.dt
-        k += int(ctrl.dt / input_dict["dt"])
+        k += int(ctrl.dt / input_dict["simulation_dt"])
     else:
-        for tt in np.arange(t, t + ctrl.dt, input_dict["dt"]):
-            fi.time = tt
+        for tt in np.arange(t, t + ctrl.dt, input_dict["simulation_dt"]):
+            fi.time += pd.Timedelta(seconds=ctrl.dt)
             last_measurements = fi.get_measurements()
             
             # Note these are results from previous time step
@@ -205,16 +214,16 @@ def simulate_controller(controller_class, input_dict, **kwargs):
     
     running_opt_cost_terms_ts[:, 0] = np.sum(np.stack([-0.5 * (norm_turbine_powers[:, i])**2 * Q for i in range(ctrl.n_turbines)], axis=1), axis=1)
     running_opt_cost_terms_ts[:, 1] = np.sum(np.stack([0.5 * (norm_yaw_angle_changes[:, i])**2 * R for i in range(ctrl.n_turbines)], axis=1), axis=1)
-
+        
     results_df = pd.DataFrame(data={
-        "CaseFamily": [kwargs["case_family"]] *  int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] // input_dict["dt"]), 
-        "CaseName": [kwargs["case_name"]] *  int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] // input_dict["dt"]),
-        "WindSeed": [kwargs["wind_case_idx"]] * int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] // input_dict["dt"]),
-        "Time": np.arange(0, input_dict["hercules_comms"]["helics"]["config"]["stoptime"], input_dict["dt"]),
-        "FreestreamWindMag": kwargs["wind_mag_ts"][:yaw_angles_ts.shape[0]],
-        "FreestreamWindDir": kwargs["wind_dir_ts"][:yaw_angles_ts.shape[0]],
-        "FilteredFreestreamWindDir": first_ord_filter(kwargs["wind_dir_ts"][:yaw_angles_ts.shape[0]], 
-                                                      alpha=np.exp(-(1 / input_dict["controller"]["lpf_time_const"]) * input_dict["dt"])),
+        "CaseFamily": [kwargs["case_family"]] *  int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] // input_dict["simulation_dt"]), 
+        "CaseName": [kwargs["case_name"]] *  int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] // input_dict["simulation_dt"]),
+        "WindSeed": [kwargs["wind_case_idx"]] * int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] // input_dict["simulation_dt"]),
+        "Time": np.arange(0, input_dict["hercules_comms"]["helics"]["config"]["stoptime"], input_dict["simulation_dt"]),
+        "FreestreamWindMag": mean_mag[:yaw_angles_ts.shape[0]],
+        "FreestreamWindDir": mean_dir[:yaw_angles_ts.shape[0]],
+        "FilteredFreestreamWindDir": first_ord_filter(mean_dir[:yaw_angles_ts.shape[0]], 
+                                                      alpha=np.exp(-(1 / input_dict["controller"]["lpf_time_const"]) * input_dict["simulation_dt"])),
         **{
             f"InitTurbineYawAngle_{i}": init_yaw_angles_ts[:, i] for i in range(ctrl.n_turbines)
         }, 

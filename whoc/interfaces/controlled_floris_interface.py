@@ -21,12 +21,13 @@ import floris.flow_visualization as wakeviz
 import matplotlib.pyplot as plt
 
 class ControlledFlorisModel(InterfaceBase):
-    def __init__(self, yaw_limits, dt, yaw_rate, config_path, offline_probability=0.0, floris_version='v4'):
+    def __init__(self, t0, yaw_limits, dt, yaw_rate, config_path, offline_probability=0.0, floris_version='v4'):
         super().__init__()
         self.floris_config_path = config_path
         self.yaw_limits = yaw_limits
         self.yaw_rate = yaw_rate
-        self.time = 0
+        self.init_time = t0
+        self.time = t0
         self.dt = dt
         self.floris_version = floris_version
         self.offline_probability = offline_probability
@@ -65,7 +66,7 @@ class ControlledFlorisModel(InterfaceBase):
     
     def get_measurements(self, hercules_dict=None):
         """ abstract method from Interface class """
-        time_step = np.array((self.time // self.dt) % self.env.core.flow_field.n_findex, dtype=int)
+        time_step = np.array(((self.time - self.init_time).total_seconds() // self.dt) % self.env.core.flow_field.n_findex, dtype=int)
         # mags = np.sqrt(self.env.core.flow_field.u**2 + self.env.core.flow_field.v**2 + self.env.core.flow_field.w**2)
         mag = np.sqrt(self.env.core.flow_field.u[time_step, :, :, :]**2)
         mag = np.mean(mag.reshape(*mag.shape[:1], -1), axis=1)

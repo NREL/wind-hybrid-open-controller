@@ -32,7 +32,6 @@ from scipy.interpolate import interp1d
 from collections import defaultdict
 from itertools import cycle, chain
 from glob import glob
-from moa_python.post_abl_stats import Post_abl_stats
 from scipy.signal import lfilter
 
 from whoc.wind_field.plotting import plot_ts, plot_distribution_samples, plot_distribution_ts
@@ -570,6 +569,7 @@ def write_abl_velocity_timetable(dfs, save_path, boundary_starttime=7200.0):
         df.to_csv(os.path.join(save_path, f"abl_velocity_timetable_{d}.txt"), index=False, sep=" ")
 
 def get_amr_timeseries(case_folders=None, abl_stats_files=None):
+    from moa_python.post_abl_stats import Post_abl_stats
     if case_folders is None:
         case_folders = ['/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples']#,'/lustre/eaglefs/projects/ssc/jfrederi/amr-wind-runs/precursor-new/baseline_8ms_dt002_dx2p5']#,'/projects/ssc/jfrederi/precursors-amr-wind/neutral_highti_8ms/precursor','/projects/ssc/jfrederi/precursors-amr-wind/neutral_highti_rthedin']#,'/projects/ssc/jfrederi/precursors-amr-wind/neutral_lowti_8ms/precursor','/projects/ssc/jfrederi/precursors-amr-wind/neutral_lowti_9ms/precursor','/projects/ssc/jfrederi/precursors-amr-wind/neutral_lowti_10ms/precursor','/projects/ssc/jfrederi/precursors-amr-wind/neutral_lowti_12ms','/projects/ssc/jfrederi/precursors-amr-wind/neutral_lowti_12ms']
 

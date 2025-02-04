@@ -431,7 +431,7 @@ class MPC(ControllerBase):
 	#     # CONMIN(options={"IPRINT": 1, "ITMAX": max_iter})
 	#     # ALPSO(options={}) #"maxOuterIter": 25})
 	#     ]
-	def __init__(self, interface, input_dict, wind_field_config, verbose=False, **kwargs):
+	def __init__(self, interface, wind_forecast, input_dict, wind_field_config, verbose=False, **kwargs):
 		
 		super().__init__(interface, verbose=verbose)
 		
@@ -482,8 +482,7 @@ class MPC(ControllerBase):
 		self.alpha = input_dict["controller"]["alpha"]
 		self.beta = input_dict["controller"]["beta"]
 		self.n_horizon = input_dict["controller"]["n_horizon"]
-		self.wind_mag_ts = kwargs["wind_mag_ts"]
-		self.wind_dir_ts = kwargs["wind_dir_ts"]
+		self.wind_field_ts = kwargs["wind_field_ts"]
 		self._last_yaw_setpoints = None
 		self._last_measured_time = None
 		self.current_time = 0.0
@@ -822,8 +821,8 @@ class MPC(ControllerBase):
 					"FreestreamWindDir": np.zeros((self.n_wind_preview_samples, self.n_horizon + 1))
 					}
 				# for j in range(input_dict["controller"]["n_horizon"] + 1):
-				wind_preview_data[f"FreestreamWindMag"] = np.broadcast_to(kwargs["wind_mag_ts"][time_step], wind_preview_data[f"FreestreamWindMag"].shape)
-				wind_preview_data[f"FreestreamWindDir"] = np.broadcast_to(kwargs["wind_dir_ts"][time_step], wind_preview_data[f"FreestreamWindDir"].shape)
+				wind_preview_data[f"FreestreamWindMag"] = np.broadcast_to(kwargs["wind_field_ts"]["FreestreamWindMag"].iloc[time_step], wind_preview_data[f"FreestreamWindMag"].shape)
+				wind_preview_data[f"FreestreamWindDir"] = np.broadcast_to(kwargs["wind_field_ts"]["FreestreamWindDir"].iloc[time_step], wind_preview_data[f"FreestreamWindDir"].shape)
 				
 				if return_interval_values:
 					return wind_preview_data, np.ones((1, self.n_horizon))
@@ -837,8 +836,8 @@ class MPC(ControllerBase):
 					"FreestreamWindDir": np.zeros((self.n_wind_preview_samples, self.n_horizon + 1))
 				}
 				delta_k = slice(0, (input_dict["controller"]["n_horizon"] + 1) * int(input_dict["controller"]["dt"] // input_dict["dt"]), int(input_dict["controller"]["dt"] // input_dict["dt"]))
-				wind_preview_data[f"FreestreamWindMag"] = np.broadcast_to(kwargs["wind_mag_ts"][delta_k], wind_preview_data[f"FreestreamWindMag"].shape)
-				wind_preview_data[f"FreestreamWindDir"] = np.broadcast_to(kwargs["wind_dir_ts"][delta_k], wind_preview_data[f"FreestreamWindDir"].shape)
+				wind_preview_data[f"FreestreamWindMag"] = np.broadcast_to(kwargs["wind_field_ts"]["FreestreamWindMag"].iloc[delta_k], wind_preview_data[f"FreestreamWindMag"].shape)
+				wind_preview_data[f"FreestreamWindDir"] = np.broadcast_to(kwargs["wind_field_ts"]["FreestreamWindDir"].iloc[delta_k], wind_preview_data[f"FreestreamWindDir"].shape)
 				
 				if return_interval_values:
 					return wind_preview_data, np.ones((1, self.n_horizon))
@@ -864,7 +863,7 @@ class MPC(ControllerBase):
 			self.ctrl_lut = LookupBasedWakeSteeringController(self.fi_lut, input_dict=lut_input_dict, 
 													lut_path=input_dict["controller"]["lut_path"], 
 													generate_lut=input_dict["controller"]["generate_lut"], 
-													wind_dir_ts=kwargs["wind_dir_ts"], wind_mag_ts=kwargs["wind_mag_ts"])
+													wind_field_ts=kwargs["wind_field_ts"])
 
 		self.Q = self.alpha
 		self.R = (1 - self.alpha)
@@ -880,7 +879,13 @@ class MPC(ControllerBase):
 		self.dyn_state_jac, self.state_jac = self.con_sens_rules(self.n_solve_turbines)
 		
 		# Set initial conditions
-		self.yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
+		if isinstance(input_dict["controller"]["initial_conditions"]["yaw"], (float, list)):
+			self.yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
+		elif input_dict["controller"]["initial_conditions"]["yaw"] == "auto":
+			self.yaw_IC = None
+		else:
+			raise Exception("must choose float or 'auto' for initial yaw value")
+
 		if hasattr(self.yaw_IC, "__len__"):
 			if len(self.yaw_IC) == self.n_turbines:
 				self.controls_dict = {"yaw_angles": np.array(self.yaw_IC)}
@@ -1141,8 +1146,8 @@ class MPC(ControllerBase):
 					ax[1].scatter([j], self.wind_preview_intervals[f"FreestreamWindDir"][-1, j], marker="s")
 					ax[0].set(title="FreestreamWindMag")
 					ax[1].set(title="FreestreamWindDir", xlabel="horizon step")
-				ax[0].plot(np.arange(self.n_horizon + 1), self.wind_mag_ts[int(self.measurements_dict["time"] // self.simulation_dt):int(self.measurements_dict["time"] // self.simulation_dt) + int(self.dt // self.simulation_dt) * (self.n_horizon + 1):int(self.dt // self.simulation_dt)])
-				ax[1].plot(np.arange(self.n_horizon + 1), self.wind_dir_ts[int(self.measurements_dict["time"] // self.simulation_dt):int(self.measurements_dict["time"] // self.simulation_dt) + int(self.dt // self.simulation_dt) * (self.n_horizon + 1):int(self.dt // self.simulation_dt)])
+				ax[0].plot(np.arange(self.n_horizon + 1), self.wind_field_ts["FreestreamWindMag"].iloc[int(self.measurements_dict["time"] // self.simulation_dt):int(self.measurements_dict["time"] // self.simulation_dt) + int(self.dt // self.simulation_dt) * (self.n_horizon + 1):int(self.dt // self.simulation_dt)])
+				ax[1].plot(np.arange(self.n_horizon + 1), self.wind_field_ts["FreestreamWindDir"].iloc[int(self.measurements_dict["time"] // self.simulation_dt):int(self.measurements_dict["time"] // self.simulation_dt) + int(self.dt // self.simulation_dt) * (self.n_horizon + 1):int(self.dt // self.simulation_dt)])
 
 			if "slsqp" in self.solver and self.wind_preview_type == "stochastic_sample":
 				# tile twice: once for current_yaw_offsets, once for plus_yaw_offsets
