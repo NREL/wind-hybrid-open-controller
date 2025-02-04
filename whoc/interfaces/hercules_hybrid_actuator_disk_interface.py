@@ -60,15 +60,21 @@ class HerculesHybridADInterface(InterfaceBase):
                 hercules_dict["hercules_comms"]["amr_wind"][self.wind_name]["turbine_powers"]
             )
             measurements["wind_turbine_powers"] =  turbine_powers
-            measurements["wind_speed"] =  hercules_dict["hercules_comms"]["amr_wind"][self.wind_name]["wind_speed"]
+            measurements["wind_speed"] =  \
+                hercules_dict["hercules_comms"]["amr_wind"][self.wind_name]["wind_speed"]
         if self._has_solar_controller:
-            measurements["solar_power"]= hercules_dict["py_sims"][self.solar_name]["outputs"]["power_mw"] * 1000
-            measurements["solar_dni"]= hercules_dict["py_sims"][self.solar_name]["outputs"]["dni"]
-            measurements["solar_aoi"]= hercules_dict["py_sims"][self.solar_name]["outputs"]["aoi"]
+            measurements["solar_power"]= \
+                hercules_dict["py_sims"][self.solar_name]["outputs"]["power_mw"] * 1000
+            measurements["solar_dni"]= \
+                hercules_dict["py_sims"][self.solar_name]["outputs"]["dni"]
+            measurements["solar_aoi"]= \
+                hercules_dict["py_sims"][self.solar_name]["outputs"]["aoi"]
             
         if self._has_battery_controller:             
-            measurements["battery_power"]= hercules_dict["py_sims"][self.battery_name]["outputs"]["power"]
-            measurements["battery_soc"]= hercules_dict["py_sims"][self.battery_name]["outputs"]["soc"]
+            measurements["battery_power"]= \
+                hercules_dict["py_sims"][self.battery_name]["outputs"]["power"]
+            measurements["battery_soc"]= \
+                hercules_dict["py_sims"][self.battery_name]["outputs"]["soc"]
             
         # Notes: solar_power converted to kW here
         # solar_dni is the direct normal irradiance
