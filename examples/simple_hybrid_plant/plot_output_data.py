@@ -17,7 +17,7 @@ if "py_sims.battery_0.outputs.power" in df.columns:
     battery_power = -df["py_sims.battery_0.outputs.power"] / 1e3 # discharging positive
 else:
     battery_power = [0] * len(df)
-power_output = (df["py_sims.inputs.available_power"] - battery_power) / 1e3
+power_output = (df["py_sims.inputs.available_power"] / 1e3 + battery_power)
 time = df["hercules_comms.amr_wind.wind_farm_0.sim_time_s_amr_wind"] / 60 # minutes
 
 # Set plotting aesthetics
