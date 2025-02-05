@@ -32,6 +32,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
     def __init__(self, interface, wind_forecast, input_dict, verbose=False, **kwargs):
         super().__init__(interface, verbose=verbose)
         self.init_time = interface.init_time
+        self.wind_forecast = wind_forecast
         self.simulation_dt = input_dict["simulation_dt"]
         self.dt = input_dict["controller"]["controller_dt"]  # Won't be needed here, but generally good to have
         self.n_turbines = interface.n_turbines #input_dict["controller"]["num_turbines"]
@@ -175,10 +176,6 @@ class LookupBasedWakeSteeringController(ControllerBase):
         current_wind_direction = self.measurements_dict["amr_wind_direction"]
         current_wind_speed = self.measurements_dict["amr_wind_speed"]
         
-        # if self.use_filt:
-            # self.historic_measurements["wind_directions"].append(current_wind_direction)
-            # self.historic_measurements["wind_directions"] = self.historic_measurements["wind_directions"][-int((self.lpf_time_const // self.simulation_dt) * 1e3):]
-            
         if len(self.measurements_dict["wind_directions"]) == 0 or np.all(np.isclose(self.measurements_dict["wind_directions"], 0)):
             # yaw angles will be set to initial values
             if self.verbose:

@@ -10,11 +10,10 @@ module purge
 module load mamba
 mamba activate wind_forecasting
 module load intel
-export LD_LIBRARY_PATH=/home/ahenry/.conda-envs/whoc/lib
+export LD_LIBRARY_PATH=/projects/ssc/ahenry/conda/envs/wind_forecasting/lib
 echo $SLURM_NTASKS
-mpirun -np $SLURM_NTASKS python run_case_studies.py 15 -rs -rrs -st 3600 -ns 3 -p -m mpi \
-        -sd /projects/ssc/ahenry/whoc/floris_case_studies \
-        -mcnf wind_forecasting_env/wind-forecasting/examples/inputs/training_inputs_kestrel_flasc.yaml \
-        -wf scada
-#mpirun -np $SLURM_NTASKS python run_case_studies.py 0 1 2 3 4 5 6 7 8 9 -rs -st 3600 -ns 6 -p -m mpi -sd /projects/ssc/ahenry/whoc/floris_case_studies
-#mpirun -np $SLURM_NTASKS python run_case_studies.py 5 6 -p -rs -st 3600 -ns 6 -m mpi -sd /projects/ssc/ahenry/whoc/floris_case_studies
+mpirun --mca opal_warn_on_missing_libcuda 0 \
+       -np $SLURM_NTASKS python run_case_studies.py 15 -rs -rrs -st 3600 -ns 3 -p -m mpi \
+       -sd /projects/ssc/ahenry/whoc/floris_case_studies \
+       -mcnf /home/ahenry/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/training_inputs_kestrel_flasc.yaml \
+       -wf scada
