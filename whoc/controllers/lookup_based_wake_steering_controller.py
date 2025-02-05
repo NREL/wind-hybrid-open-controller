@@ -185,23 +185,24 @@ class LookupBasedWakeSteeringController(ControllerBase):
             # if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
             if self.verbose:
                 print(f"unfiltered wind direction = {current_wind_direction}")
+            
+            # current_wind_directions = self.measurements_dict["wind_directions"]
+            current_ws_horz = self.measurements_dict["wind_speeds"] * np.sin(self.measurements_dict["wind_directions"] * (np.pi / 180.)) 
+            current_ws_vert = self.measurements_dict["wind_speeds"] * np.cos(self.measurements_dict["wind_directions"] * (np.pi / 180.)) 
+            
+            current_measurements = pd.DataFrame(data={
+                    "ws_horz": current_ws_horz,
+                    "ws_vert": current_ws_vert
+            })
+            current_measurements = current_measurements.unstack().to_frame().reset_index(names=["data", "turbine_id"])
+            current_measurements = current_measurements\
+                .assign(data=current_measurements["data"] + "_" + current_measurements["turbine_id"].astype(str), index=0)\
+                        .pivot(index="index", columns="data", values=0)
+                                # .droplevel(0, axis=0)
+            current_measurements = current_measurements.assign(time=self.current_time) 
                 
-            if self.use_filt:
-                current_wind_directions = self.measurements_dict["wind_directions"]
-                current_ws_horz = self.measurements_dict["wind_speeds"] * np.sin(self.measurements_dict["wind_directions"] * (np.pi / 180.)) 
-                current_ws_vert = self.measurements_dict["wind_speeds"] * np.cos(self.measurements_dict["wind_directions"] * (np.pi / 180.)) 
-                
-                current_measurements = pd.DataFrame(data={
-                        "ws_horz": current_ws_horz,
-                        "ws_vert": current_ws_vert
-                })
-                current_measurements = current_measurements.unstack().to_frame().reset_index(names=["data", "turbine_id"])
-                current_measurements = current_measurements\
-                    .assign(data=current_measurements["data"] + "_" + current_measurements["turbine_id"].astype(str), index=0)\
-                            .pivot(index="index", columns="data", values=0)
-                                    # .droplevel(0, axis=0)
-                current_measurements = current_measurements.assign(time=self.current_time) 
-                
+            # need current measurements for filter or for wind forecast
+            if self.use_filt or self.wind_forecast:
                 self.historic_measurements = pd.concat([self.historic_measurements, current_measurements], axis=0).iloc[-int((self.lpf_time_const // self.simulation_dt) * 1e3):]
 
             if self.wind_forecast:

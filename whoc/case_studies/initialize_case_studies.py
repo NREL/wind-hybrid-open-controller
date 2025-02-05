@@ -35,12 +35,13 @@ case_studies = {
                                     "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
                                     "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
                                     "use_filtered_wind_dir": {"group": 1, "vals": [True, True]},
+                                    "use_lut_filtered_wind_dir": {"group": 1, "vals": [True, True]},
                                     "simulation_dt": {"group": 0, "vals": [60]},
                                     "floris_input_file": {"group": 0, "vals": [
-                                        "/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/inputs/smarteole_farm.yaml"
+                                        "../../examples/inputs/smarteole_farm.yaml"
                                                                             ]},
                                     "lut_path": {"group": 0, "vals": [
-                                        "/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/inputs/smarteole_farm_lut.csv"
+                                        "../../examples/inputs/smarteole_farm_lut.csv"
                                     ]},
                                     "wind_forecast_class": {"group": 3, "vals": ["PersistentForecast", "PerfectForecast"]},
                                     "prediction_timedelta": {"group": 4, "vals": [120]},
@@ -50,12 +51,13 @@ case_studies = {
                                     "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
                                     "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
                                     "use_filtered_wind_dir": {"group": 1, "vals": [True, True]},
+                                    "use_lut_filtered_wind_dir": {"group": 1, "vals": [True, True]},
                                     "simulation_dt": {"group": 0, "vals": [0.5]},
                                     "floris_input_file": {"group": 0, "vals": [
-                                        "/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/inputs/gch_KP_v4.yaml"
+                                        "../../examples/inputs/gch_KP_v4.yaml"
                                                                             ]},
                                     "lut_path": {"group": 0, "vals": [
-                                        "/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/inputs/gch_KP_v4_lut.csv",
+                                        "../../examples/inputs/gch_KP_v4_lut.csv",
                                                                     ]},
                                     "wind_forecast_class": {"group": 3, "vals": ["PersistentForecast", "PerfectForecast"]},
                                     "prediction_timedelta": {"group": 4, "vals": [120]},

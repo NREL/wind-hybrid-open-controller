@@ -108,19 +108,20 @@ class GreedyController(ControllerBase):
             current_ws_horz = self.measurements_dict["wind_speeds"] * np.sin(self.measurements_dict["wind_directions"] * (np.pi / 180.)) 
             current_ws_vert = self.measurements_dict["wind_speeds"] * np.cos(self.measurements_dict["wind_directions"] * (np.pi / 180.)) 
             
-            if self.verbose:
-                print(f"unfiltered wind directions = {current_wind_directions}")
-            if self.use_filt:
-                current_measurements = pd.DataFrame(data={
+            current_measurements = pd.DataFrame(data={
                     "ws_horz": current_ws_horz,
                     "ws_vert": current_ws_vert
-                })
-                current_measurements = current_measurements.unstack().to_frame().reset_index(names=["data", "turbine_id"])
-                current_measurements = current_measurements\
-                    .assign(data=current_measurements["data"] + "_" + current_measurements["turbine_id"].astype(str), index=0)\
-                            .pivot(index="index", columns="data", values=0)
-                                    # .droplevel(0, axis=0)
-                current_measurements = current_measurements.assign(time=self.current_time) 
+            })
+            current_measurements = current_measurements.unstack().to_frame().reset_index(names=["data", "turbine_id"])
+            current_measurements = current_measurements\
+                .assign(data=current_measurements["data"] + "_" + current_measurements["turbine_id"].astype(str), index=0)\
+                        .pivot(index="index", columns="data", values=0)
+                                # .droplevel(0, axis=0)
+            current_measurements = current_measurements.assign(time=self.current_time) 
+            
+            if self.verbose:
+                print(f"unfiltered wind directions = {current_wind_directions}")
+            if self.use_filt or self.wind_forecast:
                 
                 self.historic_measurements = pd.concat([self.historic_measurements, current_measurements], axis=0).iloc[-int((self.lpf_time_const // self.simulation_dt) * 1e3):]
                 
