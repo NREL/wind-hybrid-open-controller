@@ -26,11 +26,11 @@ class ControllerBase(metaclass=ABCMeta):
         # If not running with direct hercules integration, hercules_dict may simply be None
         # throughout this method.
         self._receive_measurements(input_dict)
-
+        
         self.compute_controls()
-
+        
         output_dict = self._send_controls(input_dict)
-
+        
         return output_dict
     
     
