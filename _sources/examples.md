@@ -76,3 +76,7 @@ reference. The resulting trajectories are plotted, producing:
 
 along with some extra plots showing each of the components (wind, solar, and battery) in more
 detail.
+
+Users may also try switching off the solar or battery components of the hybrid plant by setting
+`include_solar` or `include_battery` to `False` in the hercules_runscript.py.
+

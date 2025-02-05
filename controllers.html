@@ -409,7 +409,6 @@
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#available-controllers">Available controllers</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#lookupbasedwakesteeringcontroller">LookupBasedWakeSteeringController</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#wakesteeringroscostandin">WakeSteeringROSCOStandin</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#windbatterycontroller">WindBatteryController</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#windfarmpowerdistributingcontroller">WindFarmPowerDistributingController</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#windfarmpowertrackingcontroller">WindFarmPowerTrackingController</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hybridsupervisorycontrollerbaseline">HybridSupervisoryControllerBaseline</a></li>
@@ -450,11 +449,6 @@ developed for a simulator that provides wind turbine wind speeds also.</p>
 <h3>WakeSteeringROSCOStandin<a class="headerlink" href="#wakesteeringroscostandin" title="Link to this heading">#</a></h3>
 <p>Not yet developed. May be combined into a universal simple LookupBasedWakeSteeringController.</p>
 </section>
-<section id="windbatterycontroller">
-<h3>WindBatteryController<a class="headerlink" href="#windbatterycontroller" title="Link to this heading">#</a></h3>
-<p>Placeholder for a controller that manages both a wind power plant and colocated
-battery.</p>
-</section>
 <section id="windfarmpowerdistributingcontroller">
 <span id="controllers-wfpowerdistributing"></span><h3>WindFarmPowerDistributingController<a class="headerlink" href="#windfarmpowerdistributingcontroller" title="Link to this heading">#</a></h3>
 <p>Wind farm-level power controller that simply distributes a farm-level power
@@ -483,6 +477,11 @@ and defaults to <code class="docutils literal notranslate"><span class="pre">pro
 Reads in current power production from wind, solar, and battery, as well as a plant power reference. Contains logic to determine technology set points for wind, solar and battery technologies to follow the plant power reference. The control is based on a proportional gain based on the error between the wind and solar production and the plant power reference. The controller increases the power references sent to wind, solar, and battery if the power reference is not met. If there is a power surplus from wind and solar, the controller adjusts the power reference values to charge the battery up to the battery capacity.</p>
 <p>The power reference values for wind, solar and battery technologies are then handled by the operational controllers for wind, solar, and battery, which are assigned to the <code class="docutils literal notranslate"><span class="pre">HybridSupervisoryControllerBaseline</span></code> on instantiation to distribute the bulk references to each asset amongst the individual generators. Currently, only wind actually distributes the power.
 Intended as a baseline for comparison to more advanced supervisory controllers.</p>
+<p>This controller can also be run for a hybrid plant comprising wind or solar
+and/or a battery. At least one of the wind or solar components must be present,
+with the battery component optional. Upon instantiation, the user may set
+<code class="docutils literal notranslate"><span class="pre">wind_controller</span></code>, <code class="docutils literal notranslate"><span class="pre">solar_controller</span></code>, and/or <code class="docutils literal notranslate"><span class="pre">battery_controller</span></code> to <code class="docutils literal notranslate"><span class="pre">None</span></code> if
+no wind, solar, and/or battery component is available, respectively.</p>
 </section>
 </section>
 </section>
@@ -555,7 +554,6 @@ Intended as a baseline for comparison to more advanced supervisory controllers.<
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#available-controllers">Available controllers</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#lookupbasedwakesteeringcontroller">LookupBasedWakeSteeringController</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#wakesteeringroscostandin">WakeSteeringROSCOStandin</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#windbatterycontroller">WindBatteryController</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#windfarmpowerdistributingcontroller">WindFarmPowerDistributingController</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#windfarmpowertrackingcontroller">WindFarmPowerTrackingController</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hybridsupervisorycontrollerbaseline">HybridSupervisoryControllerBaseline</a></li>
