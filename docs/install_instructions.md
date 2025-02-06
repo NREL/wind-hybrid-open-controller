@@ -1,3 +1,4 @@
+(installation)=
 # Installation
 
 WHOC is _not_ designed to be used as a stand-alone package. Most likely, 
@@ -7,6 +8,7 @@ For example, see the
 [Hercules installation instructions](https://nrel.github.io/hercules/install_instructions.html)
 for how to set up an appropriate conda environment.
 
+(installation_general_users)=
 ## General users
 
 If you intend to use WHOC, but not contribute, the following lines should
@@ -18,6 +20,7 @@ git clone https://github.com/NREL/wind-hybrid-open-controller
 pip install wind-hybrid-open-controller/
 ```
 
+(installation_developers)=
 ## Developers
 
 If you intend to contribute to WHOC, we request that your fork the WHOC 
@@ -43,4 +46,10 @@ contributions will appear there
 For more information on what your pull request should contain, see 
 [Code development](code_development.md).
 
+(installation_examples)=
+## To run examples
 
+All WHOC examples run in the [Hercules](https://github.com/NREL/hercules) simulation environment.
+To run the examples, you will need to additionally install Hercules. See the 
+[Hercules installation instructions](https://nrel.github.io/hercules/install_instructions.html)
+for details.

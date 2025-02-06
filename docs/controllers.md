@@ -10,6 +10,7 @@ method of `ControllerBase`.
 
 ## Available controllers
 
+(controllers_luwakesteer)=
 ### LookupBasedWakeSteeringController
 Yaw controller that implements wake steering based on a lookup table. 
 Requires a `df_opt` object produced by a FLORIS yaw optimization routine. See example 
@@ -22,10 +23,7 @@ developed for a simulator that provides wind turbine wind speeds also.
 ### WakeSteeringROSCOStandin
 Not yet developed. May be combined into a universal simple LookupBasedWakeSteeringController.
 
-### WindBatteryController
-Placeholder for a controller that manages both a wind power plant and colocated
-battery.
-
+(controllers_wfpowerdistributing)=
 ### WindFarmPowerDistributingController
 
 Wind farm-level power controller that simply distributes a farm-level power 
@@ -35,6 +33,7 @@ wind turbines are waked or cannot produce the desired power for other reasons.
 However, is a useful comparison case for the WindFarmPowerTrackingController 
 (described below).
 
+(controllers_wfpowertracking)=
 ### WindFarmPowerTrackingController
 
 Closed-loop wind farm-level power controller that distributes a farm-level 
@@ -49,6 +48,7 @@ simple proportional control appears sufficient currently. However, these may be 
 later date if needed. The `proportional_gain` for the controller may be provided on instantiation,
 and defaults to `proportional_gain = 1`.
 
+(controllers_simplehybrid)=
 ### HybridSupervisoryControllerBaseline
 
 Simple closed-loop supervisory controller for a hybrid wind/solar/battery plant.
@@ -56,3 +56,9 @@ Reads in current power production from wind, solar, and battery, as well as a pl
 
 The power reference values for wind, solar and battery technologies are then handled by the operational controllers for wind, solar, and battery, which are assigned to the `HybridSupervisoryControllerBaseline` on instantiation to distribute the bulk references to each asset amongst the individual generators. Currently, only wind actually distributes the power.
 Intended as a baseline for comparison to more advanced supervisory controllers.
+
+This controller can also be run for a hybrid plant comprising wind or solar
+and/or a battery. At least one of the wind or solar components must be present,
+with the battery component optional. Upon instantiation, the user may set
+`wind_controller`, `solar_controller`, and/or `battery_controller` to `None` if
+no wind, solar, and/or battery component is available, respectively.

@@ -3,7 +3,7 @@
 
 title: Wind Hybrid Open Controller
 author: National Renewable Energy Laboratory
-# logo: herc.png
+logo: graphics/whoc.png
 copyright: '2024'
 only_build_toc_files: false
 

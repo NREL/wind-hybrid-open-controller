@@ -29,3 +29,6 @@ examples/*/logfloris*
 # Outputs
 *echo
 
+# Documentation build
+docs/_build/
+
