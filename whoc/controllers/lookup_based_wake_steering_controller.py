@@ -38,11 +38,11 @@ class LookupBasedWakeSteeringController(ControllerBase):
         self.n_turbines = interface.n_turbines #input_dict["controller"]["num_turbines"]
         self.turbines = range(self.n_turbines)
         self.historic_measurements = pd.DataFrame(columns=["time"] + [f"ws_horz_{tid}" for tid in range(self.n_turbines)] + [f"ws_vert_{tid}" for tid in range(self.n_turbines)], dtype=pd.Float64Dtype())
-        self.filtered_measurements = pd.DataFrame(columns=["time"] + [f"ws_horz_{tid}" for tid in range(self.n_turbines)] + [f"ws_vert_{tid}" for tid in range(self.n_turbines)], dtype=pd.Float64Dtype())
+        # self.filtered_measurements = pd.DataFrame(columns=["time"] + [f"ws_horz_{tid}" for tid in range(self.n_turbines)] + [f"ws_vert_{tid}" for tid in range(self.n_turbines)], dtype=pd.Float64Dtype())
         # self.ws_lpf_alpha = np.exp(-input_dict["controller"]["ws_lpf_omega_c"] * input_dict["controller"]["lpf_T"])
         self.use_filt = input_dict["controller"]["use_lut_filtered_wind_dir"]
         self.lpf_time_const = input_dict["controller"]["lpf_time_const"]
-        self.lpf_start_time = input_dict["controller"]["lpf_start_time"]
+        self.lpf_start_time = self.init_time + pd.Timedelta(seconds=input_dict["controller"]["lpf_start_time"])        
         self.lpf_alpha = np.exp(-(1 / input_dict["controller"]["lpf_time_const"]) * input_dict["simulation_dt"])
         self.deadband_thr = input_dict["controller"]["deadband_thr"]
         self.floris_input_file = input_dict["controller"]["floris_input_file"]
@@ -88,10 +88,10 @@ class LookupBasedWakeSteeringController(ControllerBase):
         self.previous_target_yaw_setpoints = self.controls_dict["yaw_angles"]
         self.yaw_norm_const = 360.0
     
-    def _first_ord_filter(self, x, alpha):
+    def _first_ord_filter(self, x):
         
-        b = [1 - alpha]
-        a = [1, -alpha]
+        b = [1 - self.lpf_alpha]
+        a = [1, -self.lpf_alpha]
         return lfilter(b, a, x)
     
     # @profile
@@ -199,7 +199,8 @@ class LookupBasedWakeSteeringController(ControllerBase):
                 .assign(data=current_measurements["data"] + "_" + current_measurements["turbine_id"].astype(str), index=0)\
                         .pivot(index="index", columns="data", values=0)
                                 # .droplevel(0, axis=0)
-            current_measurements = current_measurements.assign(time=self.current_time) 
+            current_measurements = current_measurements.assign(time=self.current_time)
+            assert not pd.isna(current_measurements).values.any() 
                 
             # need current measurements for filter or for wind forecast
             if self.use_filt or self.wind_forecast:
@@ -224,8 +225,8 @@ class LookupBasedWakeSteeringController(ControllerBase):
                                        forecasted_wind_field], axis=0)[
                                            [col for col in forecasted_wind_field.columns if col.startswith("ws")]] \
                                                if self.wind_forecast else self.historic_measurements
-                wind_dirs = np.arctan2(wind_dirs[sorted([col for col in wind_dirs.columns if col.startswith("ws_horz")])].values.astype(float), 
-                                        wind_dirs[sorted([col for col in wind_dirs.columns if col.startswith("ws_vert")])].values.astype(float)) * (180.0 / np.pi)
+                wind_dirs = np.arctan2(wind[sorted([col for col in wind.columns if col.startswith("ws_horz")])].values.astype(float), 
+                                        wind[sorted([col for col in wind.columns if col.startswith("ws_vert")])].values.astype(float)) * (180.0 / np.pi)
                 wind_dirs = np.array([self._first_ord_filter(wind_dirs[:, i])
                                                 for i in range(self.n_turbines)]).T[-int(self.dt // self.simulation_dt), :]
                 wind_mags = (wind.iloc[-1][sorted([col for col in wind.columns if col.startswith("ws_horz")])].values.astype(float)**2 + wind.iloc[-1][sorted([col for col in wind.columns if col.startswith("ws_vert")])].values.astype(float)**2)**0.5
@@ -244,7 +245,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 
             new_yaw_setpoints = np.array(current_yaw_setpoints)
 
-            target_yaw_offsets = self.wake_steering_interpolant(wind_dirs, wind_mags)
+            target_yaw_offsets = self.wake_steering_interpolant(wind_dirs.mean(), wind_mags.mean())
             target_yaw_setpoints = np.rint((wind_dirs - target_yaw_offsets) / self.yaw_increment) * self.yaw_increment
 
             # change the turbine yaw setpoints that have surpassed the threshold difference AND are not already yawing towards a previous setpoint
