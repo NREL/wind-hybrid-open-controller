@@ -186,17 +186,31 @@ def apply_static_rate_limits(
         offsets_limited_rl[:, i, :, :] = offsets_limited_rl[:, i+1, :, :] + delta_yaw
     offsets_array = (offsets_limited_lr + offsets_limited_rl) / 2
 
-    # Apply ws rate limits (increasing ws)
+    # Apply ws rate limits
+    offsets_limited_lr = offsets_array.copy()
     for j in range(1, len(ws_array)):
-        delta_yaw = offsets_array[:, :, j, :] - offsets_array[:, :, j-1, :]
+        delta_yaw = offsets_limited_lr[:, :, j, :] - offsets_limited_lr[:, :, j-1, :]
         delta_yaw = np.clip(delta_yaw, -ws_rate_limit*ws_step, ws_rate_limit*ws_step)
-        offsets_array[:, :, j, :] = offsets_array[:, :, j-1, :] + delta_yaw
+        offsets_limited_lr[:, :, j, :] = offsets_limited_lr[:, :, j-1, :] + delta_yaw
+    offsets_limited_rl = offsets_array.copy()
+    for j in range(len(ws_array)-2, -1, -1):
+        delta_yaw = offsets_limited_rl[:, :, j, :] - offsets_limited_rl[:, :, j+1, :]
+        delta_yaw = np.clip(delta_yaw, -ws_rate_limit*ws_step, ws_rate_limit*ws_step)
+        offsets_limited_rl[:, :, j, :] = offsets_limited_rl[:, :, j+1, :] + delta_yaw
+    offsets_array = (offsets_limited_lr + offsets_limited_rl) / 2
 
-    # Apply ti rate limits (increasing ti)
+    # Apply ti rate limits
+    offsets_limited_lr = offsets_array.copy()
     for k in range(1, len(ti_array)):
-        delta_yaw = offsets_array[:, :, :, k] - offsets_array[:, :, :, k-1]
+        delta_yaw = offsets_limited_lr[:, :, :, k] - offsets_limited_lr[:, :, :, k-1]
         delta_yaw = np.clip(delta_yaw, -ti_rate_limit, ti_rate_limit)
-        offsets_array[:, :, :, k] = offsets_array[:, :, :, k-1] + delta_yaw
+        offsets_limited_lr[:, :, :, k] = offsets_limited_lr[:, :, :, k-1] + delta_yaw
+    offsets_limited_rl = offsets_array.copy()
+    for k in range(len(ti_array)-2, -1, -1):
+        delta_yaw = offsets_limited_rl[:, :, :, k] - offsets_limited_rl[:, :, :, k+1]
+        delta_yaw = np.clip(delta_yaw, -ti_rate_limit, ti_rate_limit)
+        offsets_limited_rl[:, :, :, k] = offsets_limited_rl[:, :, :, k+1] + delta_yaw
+    offsets_array = (offsets_limited_lr + offsets_limited_rl) / 2
 
     # Flatten array back into 2D array for dataframe
     offsets_shape = offsets_array.shape
