@@ -416,7 +416,8 @@ def get_yaw_angles_interpolant(df_opt):
     by copying the first and last values. Wind directions are extended to handle wind directions
     up to 360 degrees only if the first value is 0 degrees. 
 
-    A fill value of 0 is specified for extrapolation.
+    An error is raised if the resulting interpolant is queried outside of the extended
+    wind direction, wind speed, or turbulence intensity ranges.
 
     Args:
         df_opt (pd.DataFrame): Dataframe containing the rows 'wind_direction',
@@ -474,8 +475,16 @@ def get_yaw_angles_interpolant(df_opt):
     interpolant = RegularGridInterpolator(
         points=(wind_directions, wind_speeds, turbulence_intensities),
         values=yaw_offsets,
-        fill_value=0.0,
+        bounds_error=True
     )
+
+    # Store for bounds checks 
+    wd_min = wind_directions.min()
+    wd_max = wind_directions.max()
+    ws_min = wind_speeds.min()
+    ws_max = wind_speeds.max()
+    ti_min = turbulence_intensities.min()
+    ti_max = turbulence_intensities.max()
 
     # Create a wrapper function to return
     def yaw_angle_interpolant(wd_array, ws_array, ti_array=None):
@@ -487,6 +496,22 @@ def get_yaw_angles_interpolant(df_opt):
         wd_array = np.array(wd_array, dtype=float)
         ws_array = np.array(ws_array, dtype=float)
         ti_array = np.array(ti_array, dtype=float)
+
+        # Check inputs are within bounds
+        if (np.any(wd_array < wd_min) or np.any(wd_array > wd_max)
+            or np.any(ws_array < ws_min) or np.any(ws_array > ws_max)
+            or np.any(ti_array < ti_min) or np.any(ti_array > ti_max)):
+            err_msg = (
+                "Interpolator queried outside of allowable bounds:\n"
+                "Wind direction bounds: ["+str(wd_min)+", "+str(wd_max)+"]\n"
+                "Wind speed bounds: ["+str(ws_min)+", "+str(ws_max)+"]\n"
+                "Turbulence intensity bounds: ["+str(ti_min)+", "+str(ti_max)+"]\n\n"
+                "Queried at:\n"
+                "Wind directions: "+str(wd_array)+" \n"
+                "Wind speeds: "+str(ws_array)+" \n"
+                "Turbulence intensities: "+str(ti_array)
+            )
+            raise ValueError(err_msg)
 
         interpolation_points = np.column_stack((wd_array, ws_array, ti_array))
         return np.array(interpolant(interpolation_points), dtype=float)

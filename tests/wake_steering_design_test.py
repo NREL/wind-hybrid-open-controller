@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import numpy as np
+import pytest
 from floris import FlorisModel
 from whoc.design_tools.wake_steering_design import (
     apply_static_rate_limits,
@@ -216,6 +217,10 @@ def test_wake_steering_interpolant():
     temp = 0.25*data[0] + 0.75*data[1]
     base = 0.5*temp[0] + 0.5*temp[1]
     assert np.allclose(interpolated_offset, base)
+
+    # Check extrapolation
+    with pytest.raises(ValueError):
+        _ = yaw_interpolant(200.0, 8.0, 0.06) # min specified wd is 220
 
 
 def test_hysteresis_zones():
