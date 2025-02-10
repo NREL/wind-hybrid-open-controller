@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from floris import FlorisModel, UncertainFlorisModel, WindRose
+from floris import FlorisModel, UncertainFlorisModel, WindRose, WindTIRose
 from floris.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
 from scipy.interpolate import interp1d, RegularGridInterpolator
 
@@ -13,7 +13,9 @@ def build_simple_wake_steering_lookup_table(
     ws_resolution: float = 1,
     ws_min: float = 8,
     ws_max: float = 8,
-    ti: float = 0.06,
+    ti_resolution: float = 0.02,
+    ti_min: float = 0.06,
+    ti_max: float = 0.06,
     minimum_yaw_angle: float = 0.0,
     maximum_yaw_angle: float = 25.0,
 ) -> pd.DataFrame:
@@ -35,7 +37,10 @@ def build_simple_wake_steering_lookup_table(
             Defaults to 1.
         ws_min (float, optional): The minimum wind speed in m/s. Defaults to 8.
         ws_max (float, optional): The maximum wind speed in m/s. Defaults to 8.
-        ti (float, optional): The turbulence intensity for wake steering design. Defaults to 0.06.
+        ti_resolution (float, optional): The resolution of the turbulence intensity as a fraction.
+            Defaults to 0.02.
+        ti_min (float, optional): The minimum turbulence intensity as a fraction. Defaults to 0.06.
+        ti_max (float, optional): The maximum turbulence intensity as a fraction. Defaults to 0.06.
         minimum_yaw_angle (float, optional): The minimum allowable misalignment in degrees.
             Defaults to 0.0.
         maximum_yaw_angle (float, optional): The maximum allowable misalignment in degrees.
@@ -51,7 +56,9 @@ def build_simple_wake_steering_lookup_table(
         ws_resolution=ws_resolution,
         ws_min=ws_min,
         ws_max=ws_max,
-        ti=ti,
+        ti_resolution=ti_resolution,
+        ti_min=ti_min,
+        ti_max=ti_max,
     )
 
     fmodel.set(wind_data=wind_rose)
@@ -74,7 +81,9 @@ def build_uncertain_wake_steering_lookup_table(
     ws_resolution: float = 1,
     ws_min: float = 8,
     ws_max: float = 8,
-    ti: float = 0.06,
+    ti_resolution: float = 0.02,
+    ti_min: float = 0.06,
+    ti_max: float = 0.06,
     minimum_yaw_angle: float = 0.0,
     maximum_yaw_angle: float = 25.0,
     kwargs_UncertainFlorisModel: dict = {},
@@ -98,7 +107,10 @@ def build_uncertain_wake_steering_lookup_table(
             Defaults to 1.
         ws_min (float, optional): The minimum wind speed in m/s. Defaults to 8.
         ws_max (float, optional): The maximum wind speed in m/s. Defaults to 8.
-        ti (float, optional): The turbulence intensity for wake steering design. Defaults to 0.06.
+        ti_resolution (float, optional): The resolution of the turbulence intensity as a fraction.
+            Defaults to 0.02.
+        ti_min (float, optional): The minimum turbulence intensity as a fraction. Defaults to 0.06.
+        ti_max (float, optional): The maximum turbulence intensity as a fraction. Defaults to 0.06.
         minimum_yaw_angle (float, optional): The minimum allowable misalignment in degrees.
             Defaults to 0.0.
         maximum_yaw_angle (float, optional): The maximum allowable misalignment in degrees.
@@ -116,7 +128,9 @@ def build_uncertain_wake_steering_lookup_table(
         ws_resolution=ws_resolution,
         ws_min=ws_min,
         ws_max=ws_max,
-        ti=ti,
+        ti_resolution=ti_resolution,
+        ti_min=ti_min,
+        ti_max=ti_max,
     )
 
     fmodel.set(wind_data=wind_rose)
@@ -553,7 +567,9 @@ def create_uniform_wind_rose(
     ws_resolution: float = 1,
     ws_min: float = 8,
     ws_max: float = 8,
-    ti: float = 0.06,
+    ti_resolution: float = 0.02,
+    ti_min: float = 0.06,
+    ti_max: float = 0.06,
 ):
 
     if wd_min == 0 and wd_max == 360:
@@ -562,11 +578,20 @@ def create_uniform_wind_rose(
     
     wind_speeds = np.arange(ws_min, ws_max+0.001, ws_resolution)
 
-    return WindRose(
-        wind_speeds=wind_speeds,
-        wind_directions=wind_directions,
-        ti_table=ti,
-    )
+    if ti_min == ti_max:
+        return WindRose(
+            wind_speeds=wind_speeds,
+            wind_directions=wind_directions,
+            ti_table=ti_min,
+        )
+    else:
+        turbulence_intensities = np.arange(ti_min, ti_max+0.0001, ti_resolution)
+
+        return WindTIRose(
+            wind_speeds=wind_speeds,
+            wind_directions=wind_directions,
+            turbulence_intensities=turbulence_intensities,
+        )
 
 def check_df_opt_ordering(df_opt):
     """
