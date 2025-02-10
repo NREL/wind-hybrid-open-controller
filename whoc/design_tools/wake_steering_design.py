@@ -154,7 +154,7 @@ def apply_static_rate_limits(
     df_opt: pd.DataFrame,
     wd_rate_limit: float = 5,
     ws_rate_limit: float = 10,
-    ti_rate_limit: float = 1
+    ti_rate_limit: float = 500,
 ) -> pd.DataFrame:
     """
     Apply static rate limits to a yaw offset lookup table.
@@ -166,7 +166,7 @@ def apply_static_rate_limits(
         ws_rate_limit (float, optional): The maximum rate of change in yaw offset per change in
             wind speed [deg / m/s]. Defaults to 10.
         ti_rate_limit (float, optional): The maximum rate of change in yaw offset per change in
-            turbulence intensity [deg / -]. Defaults to 1.
+            turbulence intensity [deg / -]. Defaults to 500.
     
     Returns:
         pd.DataFrame: A yaw offset lookup table with rate limits applied.

@@ -24,6 +24,9 @@ def generic_df_opt(
         ws_resolution=0.5,
         ws_min=8.0,
         ws_max=10.0,
+        ti_resolution=0.02,
+        ti_min=0.06,
+        ti_max=0.08,
         minimum_yaw_angle=-20,
         maximum_yaw_angle=20,
         wd_std=None,
@@ -41,6 +44,9 @@ def generic_df_opt(
             ws_resolution=ws_resolution,
             ws_min=ws_min,
             ws_max=ws_max,
+            ti_resolution=ti_resolution,
+            ti_min=ti_min,
+            ti_max=ti_max,
             minimum_yaw_angle=minimum_yaw_angle,
             maximum_yaw_angle=maximum_yaw_angle,
         )
@@ -54,6 +60,9 @@ def generic_df_opt(
             ws_resolution=ws_resolution,
             ws_min=ws_min,
             ws_max=ws_max,
+            ti_resolution=ti_resolution,
+            ti_min=ti_min,
+            ti_max=ti_max,
             kwargs_UncertainFlorisModel=kwargs_UncertainFlorisModel,
         )
 
@@ -66,6 +75,9 @@ def test_build_simple_wake_steering_lookup_table():
     ws_resolution = 0.5
     ws_min = 8.0
     ws_max = 10.0
+    ti_resolution = 0.02
+    ti_min = 0.06
+    ti_max = 0.08
     minimum_yaw_angle = -20
     maximum_yaw_angle = 20
     df_opt = generic_df_opt(
@@ -75,6 +87,9 @@ def test_build_simple_wake_steering_lookup_table():
         ws_resolution=ws_resolution,
         ws_min=ws_min,
         ws_max=ws_max,
+        ti_resolution=ti_resolution,
+        ti_min=ti_min,
+        ti_max=ti_max,
     )
 
 
@@ -82,7 +97,11 @@ def test_build_simple_wake_steering_lookup_table():
 
     opt_yaw_angles = np.vstack(df_opt["yaw_angles_opt"])
 
-    n_conditions = ((ws_max-ws_min)//ws_resolution+1) * ((wd_max-wd_min)//wd_resolution+1)
+    n_conditions = (
+        ((ws_max-ws_min)//ws_resolution+1)
+        * ((wd_max-wd_min)//wd_resolution+1)
+        * ((ti_max-ti_min)//ti_resolution+1)
+    )
 
     assert opt_yaw_angles.shape == (n_conditions, 2)
     assert (opt_yaw_angles >= minimum_yaw_angle).all()
@@ -101,11 +120,18 @@ def test_build_simple_wake_steering_lookup_table():
         ws_max=ws_max,
         minimum_yaw_angle=minimum_yaw_angle,
         maximum_yaw_angle=maximum_yaw_angle,
+        ti_resolution=ti_resolution,
+        ti_min=ti_min,
+        ti_max=ti_max,
     )
 
     opt_yaw_angles = np.vstack(df_opt["yaw_angles_opt"])
 
-    n_conditions = ((ws_max-ws_min)//ws_resolution+1) * ((wd_max-wd_min)//wd_resolution)
+    n_conditions = (
+        ((ws_max-ws_min)//ws_resolution+1)
+        * ((wd_max-wd_min)//wd_resolution)
+        * ((ti_max-ti_min)//ti_resolution+1)
+    )
 
     assert opt_yaw_angles.shape == (n_conditions, 2)
     assert (opt_yaw_angles >= minimum_yaw_angle).all()
@@ -142,27 +168,48 @@ def test_build_uncertain_wake_steering_lookup_table():
     assert not np.allclose(df_opt_uncertain.farm_power_opt, df_opt_uncertain_fixed.farm_power_opt)
 
 def test_apply_static_rate_limits():
+    eps = 1e-4
 
     wd_resolution = 4
     ws_resolution = 0.5
-    df_opt = generic_df_opt(wd_resolution=wd_resolution, ws_resolution=ws_resolution)
+    ti_resolution = 0.01
+    df_opt = generic_df_opt(
+        wd_resolution=wd_resolution,
+        ws_resolution=ws_resolution,
+        ti_resolution=ti_resolution
+    )
 
     wd_rate_limit = 4
-    ws_rate_limit = 8
-    df_opt_rate_limited = apply_static_rate_limits(df_opt, wd_rate_limit, ws_rate_limit)
+    ws_rate_limit = 4
+    ti_rate_limit = 200
+    df_opt_rate_limited = apply_static_rate_limits(
+        df_opt,
+        wd_rate_limit,
+        ws_rate_limit,
+        ti_rate_limit
+    )
 
     # Check that the rate limits are applied
     offsets = np.vstack(df_opt_rate_limited.yaw_angles_opt.values).reshape(
-        len(np.unique(df_opt.wind_direction)), len(np.unique(df_opt.wind_speed)), 2
+        len(np.unique(df_opt.wind_direction)),
+        len(np.unique(df_opt.wind_speed)),
+        len(np.unique(df_opt.turbulence_intensity)),
+        2
     )
-    assert (np.diff(offsets, axis=0) <= wd_rate_limit*wd_resolution).all()
-    assert (np.diff(offsets, axis=1) <= ws_rate_limit*ws_resolution).all()
+    assert (np.abs(np.diff(offsets, axis=0)) <= wd_rate_limit*wd_resolution+eps).all()
+    assert (np.abs(np.diff(offsets, axis=1)) <= ws_rate_limit*ws_resolution+eps).all()
+    assert (np.abs(np.diff(offsets, axis=2)) <= ti_rate_limit*ti_resolution+eps).all()
 
     # Check wd test would have failed before rate limits applied
     offsets_unlimited = np.vstack(df_opt.yaw_angles_opt.values).reshape(
-        len(np.unique(df_opt.wind_direction)), len(np.unique(df_opt.wind_speed)), 2
+        len(np.unique(df_opt.wind_direction)),
+        len(np.unique(df_opt.wind_speed)),
+        len(np.unique(df_opt.turbulence_intensity)),
+        2
     )
-    assert not (np.diff(offsets_unlimited, axis=0) <= wd_rate_limit*wd_resolution).all()
+    assert not (np.abs(np.diff(offsets_unlimited, axis=0)) <= wd_rate_limit*wd_resolution).all()
+    assert not (np.abs(np.diff(offsets_unlimited, axis=1)) <= ws_rate_limit*ws_resolution).all()
+    assert not (np.abs(np.diff(offsets_unlimited, axis=2)) <= ti_rate_limit*ti_resolution).all()
 
 def test_apply_wind_speed_ramps():
 
@@ -219,14 +266,17 @@ def test_wake_steering_interpolant():
     assert np.allclose(offsets_interp, np.vstack(df_opt.yaw_angles_opt.values))
 
     # Check interpolation at a specific point
-    interpolated_offset = yaw_interpolant(271, 8.25, 0.06) # Data at wd (268, 272) ws (8.0, 8.5)
+    # (data at wd (268, 272) ws (8.0, 8.5) ti (0.06, 0.08))
+    interpolated_offset = yaw_interpolant(271, 8.25, 0.06) 
     data = np.vstack(df_opt[
         (df_opt.wind_direction >= 268)
         & (df_opt.wind_direction <= 272)
         & (df_opt.wind_speed >= 8.0)
-        & (df_opt.wind_speed <= 8.5)].yaw_angles_opt.values).reshape(2,2,2)
-    temp = 0.25*data[0] + 0.75*data[1]
-    base = 0.5*temp[0] + 0.5*temp[1]
+        & (df_opt.wind_speed <= 8.5)
+    ].yaw_angles_opt.values).reshape(2,2,2,2)
+    temp = 0.25*data[0,:,:,:] + 0.75*data[1,:,:,:] # wd interp
+    temp = 0.5*temp[0,:,:] + 0.5*temp[1,:,:] # ws interp
+    base = 1.0*temp[0,:] + 0.0*temp[1,:] # ti interp
     assert np.allclose(interpolated_offset, base)
 
     # Check extrapolation
