@@ -4,8 +4,6 @@ import pandas as pd
 
 df = pd.read_csv("outputs/hercules_output.csv")
 
-print(df.columns)
-
 n_turbines = 2
 wf_str = "hercules_comms.amr_wind.wind_farm_0."
 pow_cols = [wf_str+"turbine_powers.{0:03d}".format(t) for t in range(n_turbines)]
