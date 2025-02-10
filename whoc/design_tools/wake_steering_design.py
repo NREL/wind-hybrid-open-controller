@@ -168,8 +168,8 @@ def apply_static_rate_limits(
     ws_step = ws_array[1] - ws_array[0]
     ti_step = ti_array[1] - ti_array[0] if len(ti_array) > 1 else 1
 
-    # 4D array, with dimensions: (turbine, wd, ws, ti)
-    # TODO: will this ordering always work? Or not?
+    check_df_opt_ordering(df_opt)
+    # 4D array, with dimensions: (wd, ws, ti, turbines)
     offsets_array = offsets_all.reshape(
         (len(wd_array), len(ws_array), len(ti_array), offsets_all.shape[-1])
     )
@@ -255,6 +255,7 @@ def compute_hysteresis_zones(
     """
 
     # Extract yaw offsets, wind directions
+    check_df_opt_ordering(df_opt)
     offsets_stacked = np.vstack(df_opt.yaw_angles_opt.to_numpy())
     wind_directions = np.unique(df_opt.wind_direction)
     offsets = offsets_stacked.reshape(
@@ -349,6 +350,7 @@ def apply_wind_speed_ramps(
         pd.DataFrame: A yaw offset lookup table for all wind speeds between ws_min and ws_max
             with wind speed ramps applied.
     """
+    check_df_opt_ordering(df_opt)
 
     # Check valid ordering of wind speeds
     if (ws_wake_steering_cut_in
@@ -455,6 +457,7 @@ def get_yaw_angles_interpolant(df_opt):
             dimensions, and returns the yaw angles for all turbines. This function
             incorporates the ramp-up and ramp-down regions.
     """
+    check_df_opt_ordering(df_opt)
 
     # Extract points and values
     wind_directions = np.unique(df_opt["wind_direction"])
@@ -464,8 +467,6 @@ def get_yaw_angles_interpolant(df_opt):
 
     # Store for possible use if no turbulence intensity is provided
     ti_ref = float(np.median(turbulence_intensities))
-
-    # TODO: check ordering in df_opt is correct
 
     # Reshape the yaw offsets to match the wind direction, wind speed, and turbulence intensity
     yaw_offsets = yaw_offsets.reshape(
@@ -566,3 +567,39 @@ def create_uniform_wind_rose(
         wind_directions=wind_directions,
         ti_table=ti,
     )
+
+def check_df_opt_ordering(df_opt):
+    """
+    Check that the ordering of inputs is first wind direction, then wind speed,
+    then turbulence intensity.
+
+    Raises an error if this is found not to be the case.
+
+    Args:
+        df_opt (pd.DataFrame): A yaw offset lookup table.
+    """
+
+    inputs_all = df_opt[["wind_direction", "wind_speed", "turbulence_intensity"]].to_numpy()
+    wd_unique = np.unique(df_opt["wind_direction"])
+    ws_unique = np.unique(df_opt["wind_speed"])
+    ti_unique = np.unique(df_opt["turbulence_intensity"])
+
+    # Check full
+    if not inputs_all.shape[0] == len(wd_unique)*len(ws_unique)*len(ti_unique):
+        raise ValueError(
+            "All combinations of wind direction, wind speed, and turbulence intensity "
+            "must be specified."
+        )
+
+    # Check order is correct
+    wds_reshaped = inputs_all[:,0].reshape((len(wd_unique), len(ws_unique), len(ti_unique)))
+    wss_reshaped = inputs_all[:,1].reshape((len(wd_unique), len(ws_unique), len(ti_unique)))
+    tis_reshaped = inputs_all[:,2].reshape((len(wd_unique), len(ws_unique), len(ti_unique)))
+
+    if (not np.all(wds_reshaped == wd_unique[:,None,None])
+        or not np.all(wss_reshaped == ws_unique[None,:,None])
+        or not np.all(tis_reshaped == ti_unique[None,None,:])):
+        raise ValueError(
+            "df_opt must be ordered first by wind direction, then by wind speed,"
+            "then by turbulence intensity."
+        )

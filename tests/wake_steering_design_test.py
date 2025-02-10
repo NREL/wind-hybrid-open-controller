@@ -8,6 +8,7 @@ from whoc.design_tools.wake_steering_design import (
     apply_wind_speed_ramps,
     build_simple_wake_steering_lookup_table,
     build_uncertain_wake_steering_lookup_table,
+    check_df_opt_ordering,
     compute_hysteresis_zones,
     create_uniform_wind_rose,
     get_yaw_angles_interpolant,
@@ -281,3 +282,20 @@ def test_create_uniform_wind_rose():
     wind_rose = create_uniform_wind_rose()
     frequencies = wind_rose.unpack_freq()
     assert (frequencies == frequencies[0]).all()
+
+def test_check_df_opt_ordering():
+
+    # Pass tests
+    df_opt = generic_df_opt()
+    check_df_opt_ordering(df_opt)
+
+    # Remove a row so that not all data is present
+    with pytest.raises(ValueError):
+        check_df_opt_ordering(df_opt.drop(0))
+
+    # Artificially create bad ordering by swapping columns
+    df_opt_2 = df_opt.copy()
+    df_opt_2.wind_speed = df_opt_2.wind_direction
+    df_opt_2.wind_direction = df_opt.wind_speed
+    with pytest.raises(ValueError):
+        check_df_opt_ordering(df_opt_2)
