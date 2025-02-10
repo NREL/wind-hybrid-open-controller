@@ -158,7 +158,7 @@ def apply_static_rate_limits(
         pd.DataFrame: A yaw offset lookup table with rate limits applied.
     """
 
-    offsets_all = np.vstack(df_opt.yaw_angles_opt.to_numpy()).transpose()
+    offsets_all = np.vstack(df_opt.yaw_angles_opt.to_numpy())
 
     wd_array = np.unique(df_opt.wind_direction)
     ws_array = np.unique(df_opt.wind_speed)
@@ -166,57 +166,57 @@ def apply_static_rate_limits(
 
     wd_step = wd_array[1] - wd_array[0]
     ws_step = ws_array[1] - ws_array[0]
+    ti_step = ti_array[1] - ti_array[0] if len(ti_array) > 1 else 1
 
     # 4D array, with dimensions: (turbine, wd, ws, ti)
     # TODO: will this ordering always work? Or not?
     offsets_array = offsets_all.reshape(
-        (offsets_all.shape[0], len(wd_array), len(ws_array), len(ti_array))
+        (len(wd_array), len(ws_array), len(ti_array), offsets_all.shape[-1])
     )
 
     # Apply wd rate limits
     offsets_limited_lr = offsets_array.copy()
     for i in range(1, len(wd_array)):
-        delta_yaw = offsets_limited_lr[:, i, :, :] - offsets_limited_lr[:, i-1, :, :]
+        delta_yaw = offsets_limited_lr[i, :, :, :] - offsets_limited_lr[i-1, :, :, :]
         delta_yaw = np.clip(delta_yaw, -wd_rate_limit*wd_step, wd_rate_limit*wd_step)
-        offsets_limited_lr[:, i, :, :] = offsets_limited_lr[:, i-1, :, :] + delta_yaw
+        offsets_limited_lr[i, :, :, :] = offsets_limited_lr[i-1, :, :, :] + delta_yaw
     offsets_limited_rl = offsets_array.copy()
     for i in range(len(wd_array)-2, -1, -1):
-        delta_yaw = offsets_limited_rl[:, i, :, :] - offsets_limited_rl[:, i+1, :, :]
+        delta_yaw = offsets_limited_rl[i, :, :, :] - offsets_limited_rl[i+1, :, :, :]
         delta_yaw = np.clip(delta_yaw, -wd_rate_limit*wd_step, wd_rate_limit*wd_step)
-        offsets_limited_rl[:, i, :, :] = offsets_limited_rl[:, i+1, :, :] + delta_yaw
+        offsets_limited_rl[i, :, :, :] = offsets_limited_rl[i+1, :, :, :] + delta_yaw
     offsets_array = (offsets_limited_lr + offsets_limited_rl) / 2
 
     # Apply ws rate limits
     offsets_limited_lr = offsets_array.copy()
     for j in range(1, len(ws_array)):
-        delta_yaw = offsets_limited_lr[:, :, j, :] - offsets_limited_lr[:, :, j-1, :]
+        delta_yaw = offsets_limited_lr[:, j, :, :] - offsets_limited_lr[:, j-1, :, :]
         delta_yaw = np.clip(delta_yaw, -ws_rate_limit*ws_step, ws_rate_limit*ws_step)
-        offsets_limited_lr[:, :, j, :] = offsets_limited_lr[:, :, j-1, :] + delta_yaw
+        offsets_limited_lr[:, j, :, :] = offsets_limited_lr[:, j-1, :, :] + delta_yaw
     offsets_limited_rl = offsets_array.copy()
     for j in range(len(ws_array)-2, -1, -1):
-        delta_yaw = offsets_limited_rl[:, :, j, :] - offsets_limited_rl[:, :, j+1, :]
+        delta_yaw = offsets_limited_rl[:, j, :, :] - offsets_limited_rl[:, j+1, :, :]
         delta_yaw = np.clip(delta_yaw, -ws_rate_limit*ws_step, ws_rate_limit*ws_step)
-        offsets_limited_rl[:, :, j, :] = offsets_limited_rl[:, :, j+1, :] + delta_yaw
+        offsets_limited_rl[:, j, :, :] = offsets_limited_rl[:, j+1, :, :] + delta_yaw
     offsets_array = (offsets_limited_lr + offsets_limited_rl) / 2
 
     # Apply ti rate limits
     offsets_limited_lr = offsets_array.copy()
     for k in range(1, len(ti_array)):
-        delta_yaw = offsets_limited_lr[:, :, :, k] - offsets_limited_lr[:, :, :, k-1]
-        delta_yaw = np.clip(delta_yaw, -ti_rate_limit, ti_rate_limit)
-        offsets_limited_lr[:, :, :, k] = offsets_limited_lr[:, :, :, k-1] + delta_yaw
+        delta_yaw = offsets_limited_lr[:, :, k, :] - offsets_limited_lr[:, :, k-1, :]
+        delta_yaw = np.clip(delta_yaw, -ti_rate_limit*ti_step, ti_rate_limit*ti_step)
+        offsets_limited_lr[:, :, k, :] = offsets_limited_lr[:, :, k-1, :] + delta_yaw
     offsets_limited_rl = offsets_array.copy()
     for k in range(len(ti_array)-2, -1, -1):
-        delta_yaw = offsets_limited_rl[:, :, :, k] - offsets_limited_rl[:, :, :, k+1]
-        delta_yaw = np.clip(delta_yaw, -ti_rate_limit, ti_rate_limit)
-        offsets_limited_rl[:, :, :, k] = offsets_limited_rl[:, :, :, k+1] + delta_yaw
+        delta_yaw = offsets_limited_rl[:, :, k, :] - offsets_limited_rl[:, :, k+1, :]
+        delta_yaw = np.clip(delta_yaw, -ti_rate_limit*ti_step, ti_rate_limit*ti_step)
+        offsets_limited_rl[:, :, k, :] = offsets_limited_rl[:, :, k+1, :] + delta_yaw
     offsets_array = (offsets_limited_lr + offsets_limited_rl) / 2
 
     # Flatten array back into 2D array for dataframe
-    offsets_shape = offsets_array.shape
     offsets_all_limited = offsets_array.reshape(
-        (offsets_shape[0], offsets_shape[1]*offsets_shape[2]*offsets_shape[3])
-    ).transpose()
+        (len(wd_array)*len(ws_array)*len(ti_array), offsets_all.shape[-1])
+    )
     df_opt_rate_limited = df_opt.copy()
     df_opt_rate_limited["yaw_angles_opt"] = [*offsets_all_limited]
 
