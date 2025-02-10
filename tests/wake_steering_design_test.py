@@ -222,6 +222,16 @@ def test_wake_steering_interpolant():
     with pytest.raises(ValueError):
         _ = yaw_interpolant(200.0, 8.0, 0.06) # min specified wd is 220
 
+    # Check wrapping works
+    df_0_270 = generic_df_opt(wd_min=0.0, wd_max=270.0, wd_resolution=10.0) # Includes 0 degree WD
+    yaw_interpolant = get_yaw_angles_interpolant(df_0_270)
+    _ = yaw_interpolant(0.0, 8.0, 0.06)
+    _ = yaw_interpolant(355.0, 8.0, 0.06)
+    _ = yaw_interpolant(360.0, 8.0, 0.06)
+    with pytest.raises(ValueError):
+        _ = yaw_interpolant(-1.0, 8.0, 0.06)
+    with pytest.raises(ValueError):
+        _ = yaw_interpolant(361.0, 8.0, 0.06)
 
 def test_hysteresis_zones():
 
