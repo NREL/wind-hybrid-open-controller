@@ -140,8 +140,6 @@ def plot_offsets_wd(
 
     if not hasattr(ws_plot, "__len__"):
         ws_plot = [ws_plot]
-    elif len(ti_plot) > 1:
-        raise ValueError("ti_plot must be scalar if ws_plot is a list or tuple.")
 
     if len(ws_plot) > 1 and label is not None:
         label = None
