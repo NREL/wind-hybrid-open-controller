@@ -14,12 +14,12 @@ def plot_offsets_wswd_heatmap(df_opt, turb_id, ax=None):
        - yaw_angles_opt
 
     Produces a heat map of the offsets for all wind directions and
-    wind speeds for turbine specified by turb_id. Dataframe is assumed
-    to contain individual turbine offsets in distinct columns (unlike
-    the yaw_angles_opt column from FLORIS.
+    wind speeds for turbine specified by turb_id. df_opt is assumed
+    to be in the form produced by FLORIS yaw optimization routines (or
+    functions in WHOC's wake_steering_design module).
 
     Args:
-        df_offsets (pd.DataFrame): dataframe with offsets
+        df_opt (pd.DataFrame): dataframe with offsets
         turb_id (int or str): turbine id or column name
         ax (matplotlib.axes.Axes): axis to plot on.  If None, a new figure is created.
             Default is None.

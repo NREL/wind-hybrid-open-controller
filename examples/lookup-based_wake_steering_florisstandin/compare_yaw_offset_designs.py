@@ -194,7 +194,7 @@ if __name__ == "__main__":
     _, cbar = wsv.plot_offsets_wswd_heatmap(df_opt_rate_limited, plot_turbine, ax=ax[1,0])
     ax[1,0].set_title("Rate limited")
     _, cbar = wsv.plot_offsets_wswd_heatmap(df_opt_ws_ramps, plot_turbine, ax=ax[1,1])
-    ax[1,1].set_title("Wind speed heuristic")
+    ax[1,1].set_title("Single wind speed heuristic")
 
     for ax_ in ax[:,0]:
         ax_.set_ylabel("Wind speed [m/s]")

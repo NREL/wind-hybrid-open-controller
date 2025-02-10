@@ -22,7 +22,7 @@ def build_simple_wake_steering_lookup_table(
     method.
 
     Args:
-        fm (FlorisModel): An instantiated FlorisModel object.
+        fmodel (FlorisModel): An instantiated FlorisModel object.
         wd_resolution (float, optional): The resolution of the wind direction in degrees.
             Defaults to 5.
         wd_min (float, optional): The minimum wind direction in degrees. Defaults to 0.
@@ -79,7 +79,8 @@ def build_uncertain_wake_steering_lookup_table(
     method, with uncertainty in the wind direction.
 
     Args:
-        fm (FlorisModel): An instantiated FlorisModel object.
+        fmodel (FlorisModel): An instantiated FlorisModel object.
+        wd_std (float): Wind direction standard deviation in degrees.
         wd_resolution (float, optional): The resolution of the wind direction in degrees.
             Defaults to 5.
         wd_min (float, optional): The minimum wind direction in degrees. Defaults to 0.
@@ -450,10 +451,10 @@ def get_yaw_angles_interpolant(df_opt):
         points = np.vstack([points, points_copied])
         values = np.vstack([values, values_copied])
 
-    # Now create a linear interpolant for the yaw angles
+    # Linear interpolant for the yaw angles
     interpolant = LinearNDInterpolator(points=points, values=values, fill_value=np.nan)
 
-    # Now create a wrapper function with ramp-up and ramp-down
+    # Create a wrapper function to return
     def yaw_angle_interpolant(wd_array, ws_array, ti_array=None):
         # Deal with missing ti_array
         if ti_array is None:

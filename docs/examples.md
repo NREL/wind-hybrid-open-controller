@@ -15,14 +15,16 @@ examples/lookup-based_wake_steering_florisstandin folder and then run
 ```
 bash run_script.sh
 ```
-You will need to have and up-to-date Hercules (possibly on the develop branch) in your conda environment to run this. You may also need to changed permissions to run bash_script.sh as an executable (`chmod +x run_script.sh`).
+You will need to have an up-to-date Hercules installation (possibly on the develop branch) in your
+conda environment to run this. You may also need to change permissions to run bash_script.sh as
+an executable (`chmod +x run_script.sh`).
 
 Running the script performs several steps:
 
 1. It first executes construct_yaw_offsets.py, a python script for generating an
 optimized set of yaw offsets.
 
-2. It then uses the constructed yaw offsets to instantiate an run the wake 
+2. It then uses the constructed yaw offsets to instantiate and run the wake 
 steering simulation.
 
 3. The time series output is plotted in plot_output_data.py
