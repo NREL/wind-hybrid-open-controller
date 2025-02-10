@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from floris import FlorisModel, UncertainFlorisModel, WindRose
 from floris.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
-from scipy.interpolate import interp1d, LinearNDInterpolator
+from scipy.interpolate import interp1d, RegularGridInterpolator
 
 
 def build_simple_wake_steering_lookup_table(
@@ -412,60 +412,84 @@ def get_yaw_angles_interpolant(df_opt):
     Minimum and maximum yaw angles should be specified during the design optimization,
     while ramping with wind speed is now handled by apply_wind_speed_ramps.
 
+    Wind speeds and turbulence intensities are extended to include all reasonable values
+    by copying the first and last values. Wind directions are extended to handle wind directions
+    up to 360 degrees only if the first value is 0 degrees. 
+
+    A fill value of 0 is specified for extrapolation.
+
     Args:
         df_opt (pd.DataFrame): Dataframe containing the rows 'wind_direction',
             'wind_speed', 'turbulence_intensity', and 'yaw_angles_opt'.
 
     Returns:
-        LinearNDInterpolator: An interpolant function which takes the inputs
+        RegularGridInterpolator: An interpolant function which takes the inputs
             (wind_directions, wind_speeds, turbulence_intensities), all of equal
             dimensions, and returns the yaw angles for all turbines. This function
             incorporates the ramp-up and ramp-down regions.
     """
 
-    # Load data and set up a linear interpolant
-    points = df_opt[["wind_direction", "wind_speed", "turbulence_intensity"]]
-    values = np.vstack(df_opt["yaw_angles_opt"])
+    # Extract points and values
+    wind_directions = np.unique(df_opt["wind_direction"])
+    wind_speeds = np.unique(df_opt["wind_speed"])
+    turbulence_intensities = np.unique(df_opt["turbulence_intensity"])
+    yaw_offsets = np.vstack(df_opt["yaw_angles_opt"])
+
+    # Store for possible use if no turbulence intensity is provided
+    ti_ref = float(np.median(turbulence_intensities))
+
+    # TODO: check ordering in df_opt is correct
+
+    # Reshape the yaw offsets to match the wind direction, wind speed, and turbulence intensity
+    yaw_offsets = yaw_offsets.reshape(
+        len(wind_directions),
+        len(wind_speeds),
+        len(turbulence_intensities),
+        yaw_offsets.shape[1],
+    )
 
     # Expand wind direction range to cover 0 deg to 360 deg
-    points_copied = points[points["wind_direction"] == 0.0].copy()
-    points_copied.loc[points_copied.index, "wind_direction"] = 360.0
-    values_copied = values[points["wind_direction"] == 0.0, :]
-    points = np.vstack([points, points_copied])
-    values = np.vstack([values, values_copied])
+    if wind_directions[0] == 0.0:
+        wind_directions = np.concatenate([wind_directions, [360.0]])
+        yaw_offsets = np.concatenate([yaw_offsets, yaw_offsets[0:1, :, :, :]], axis=0)
+    else:
+        print(
+            "0 degree wind direction not found in data. "
+            "Wind directions will not be wrapped around 0/360 degree point."
+        )
 
-    # Copy lowest wind speed / TI solutions to -1.0 to create lower bound
-    for col in [1, 2]:
-        ids_to_copy_lb = points[:, col] == np.min(points[:, col])
-        points_copied = np.array(points[ids_to_copy_lb, :], copy=True)
-        values_copied = np.array(values[ids_to_copy_lb, :], copy=True)
-        points_copied[:, col] = -1.0  # Lower bound
-        points = np.vstack([points, points_copied])
-        values = np.vstack([values, values_copied])
-
-        # Copy highest wind speed / TI solutions to 999.0
-        ids_to_copy_ub = points[:, col] == np.max(points[:, col])
-        points_copied = np.array(points[ids_to_copy_ub, :], copy=True)
-        values_copied = np.array(values[ids_to_copy_ub, :], copy=True)
-        points_copied[:, col] = 999.0  # Upper bound
-        points = np.vstack([points, points_copied])
-        values = np.vstack([values, values_copied])
+    # Create lower and upper wind speed and turbulence intensity bounds
+    wind_speeds = np.concatenate([[-1.0], wind_speeds, [999.0]])
+    yaw_offsets = np.concatenate(
+        [yaw_offsets[:, 0:1, :, :], yaw_offsets, yaw_offsets[:, -1:, :, :]],
+        axis=1
+    )
+    turbulence_intensities = np.concatenate([[-1.0], turbulence_intensities, [999.0]])
+    yaw_offsets = np.concatenate(
+        [yaw_offsets[:, :, 0:1, :], yaw_offsets, yaw_offsets[:, :, -1:, :]],
+        axis=2
+    )
 
     # Linear interpolant for the yaw angles
-    interpolant = LinearNDInterpolator(points=points, values=values, fill_value=np.nan)
+    interpolant = RegularGridInterpolator(
+        points=(wind_directions, wind_speeds, turbulence_intensities),
+        values=yaw_offsets,
+        fill_value=0.0,
+    )
 
     # Create a wrapper function to return
     def yaw_angle_interpolant(wd_array, ws_array, ti_array=None):
         # Deal with missing ti_array
         if ti_array is None:
-            ti_ref = float(np.median(interpolant.points[:, 2]))
             ti_array = np.ones(np.shape(wd_array), dtype=float) * ti_ref
 
         # Format inputs
         wd_array = np.array(wd_array, dtype=float)
         ws_array = np.array(ws_array, dtype=float)
         ti_array = np.array(ti_array, dtype=float)
-        return np.array(interpolant(wd_array, ws_array, ti_array), dtype=float)
+
+        interpolation_points = np.column_stack((wd_array, ws_array, ti_array))
+        return np.array(interpolant(interpolation_points), dtype=float)
 
     return yaw_angle_interpolant
 
