@@ -21,6 +21,10 @@ def build_simple_wake_steering_lookup_table(
     Build a simple wake steering lookup table for a given FlorisModel using the Serial Refine
     method.
 
+    This is mainly intended for demonstration purposes. Users that want more control over the
+    optimization process should use FLORIS's YawOptimizationSR procedure directly to produce
+    the output df_opt.
+
     Args:
         fmodel (FlorisModel): An instantiated FlorisModel object.
         wd_resolution (float, optional): The resolution of the wind direction in degrees.
@@ -78,6 +82,10 @@ def build_uncertain_wake_steering_lookup_table(
     """
     Build a simple wake steering lookup table for a given FlorisModel using the Serial Refine
     method, with uncertainty in the wind direction.
+
+    This is mainly intended for demonstration purposes. Users that want more control over the
+    optimization process should use FLORIS's YawOptimizationSR procedure directly to produce
+    the output df_opt.
 
     Args:
         fmodel (FlorisModel): An instantiated FlorisModel object.
