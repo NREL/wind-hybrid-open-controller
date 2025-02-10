@@ -69,12 +69,16 @@ if __name__ == "__main__":
     ws_resolution = 1.0
     ws_min = 2.0
     ws_max = 17.0
+    ti_resolution = 0.02
+    ti_min = 0.06
+    ti_max = 0.08
     minimum_yaw_angle = -25.0
     maximum_yaw_angle = 25.0
     wd_std = 3.0
     ws_main = 8.0
     wd_rate_limit = 3.0
     ws_rate_limit = 100.0 # No rate limit on wind speed
+    ti_rate_limit = 1e3 # No rate limit on turbulence intensity
     plot_turbine = 0
     plot_wd_lims = (240, 300)
 
@@ -93,6 +97,9 @@ if __name__ == "__main__":
         ws_resolution=ws_resolution,
         ws_min=ws_min,
         ws_max=ws_max,
+        ti_resolution=ti_resolution,
+        ti_min=ti_min,
+        ti_max=ti_max,
         minimum_yaw_angle=minimum_yaw_angle,
         maximum_yaw_angle=maximum_yaw_angle,
     )
@@ -105,6 +112,9 @@ if __name__ == "__main__":
         ws_resolution=ws_resolution,
         ws_min=ws_min,
         ws_max=ws_max,
+        ti_resolution=ti_resolution,
+        ti_min=ti_min,
+        ti_max=ti_max,
         minimum_yaw_angle=minimum_yaw_angle,
         maximum_yaw_angle=maximum_yaw_angle,
     )
@@ -114,6 +124,7 @@ if __name__ == "__main__":
         df_opt_simple,
         wd_rate_limit=wd_rate_limit,
         ws_rate_limit=ws_rate_limit,
+        ti_rate_limit=ti_rate_limit,
     )
 
     print("\nGenerating offsets using single wind speed.")
@@ -123,6 +134,9 @@ if __name__ == "__main__":
         ws_resolution=ws_resolution,
         ws_min=ws_main,
         ws_max=ws_main,
+        ti_resolution=ti_resolution,
+        ti_min=ti_min,
+        ti_max=ti_max,
         minimum_yaw_angle=minimum_yaw_angle,
         maximum_yaw_angle=maximum_yaw_angle,
     )
@@ -145,6 +159,7 @@ if __name__ == "__main__":
         df_opt_simple,
         plot_turbine,
         ws_plot=ws_main,
+        ti_plot=ti_min,
         color=col_simple,
         label="Simple",
         ax=ax
@@ -154,6 +169,7 @@ if __name__ == "__main__":
         df_opt_unc,
         plot_turbine,
         ws_plot=ws_main,
+        ti_plot=ti_min,
         color=col_unc,
         label="Uncertain",
         ax=ax
@@ -163,6 +179,7 @@ if __name__ == "__main__":
         df_opt_rate_limited,
         plot_turbine,
         ws_plot=ws_main,
+        ti_plot=ti_min,
         color=col_rate_limited,
         label="Rate limited",
         ax=ax
@@ -172,6 +189,7 @@ if __name__ == "__main__":
         df_opt_ws_ramps,
         plot_turbine,
         ws_plot=ws_main,
+        ti_plot=ti_min,
         color=col_ws_ramps,
         label="Single wind speed",
         linestyle="dotted",
@@ -187,20 +205,51 @@ if __name__ == "__main__":
 
     # Also, plot heatmap of offsets for Simple design
     fig, ax = plt.subplots(2, 2, sharex=True, sharey=True, figsize=(10,10))
-    _, cbar = wsv.plot_offsets_wswd_heatmap(df_opt_simple, plot_turbine, ax=ax[0,0])
+    _, cbar = wsv.plot_offsets_wswd_heatmap(
+        df_opt_simple,
+        plot_turbine,
+        ti_plot=ti_min,
+        vmax=maximum_yaw_angle,
+        vmin=minimum_yaw_angle,
+        ax=ax[0,0]
+    )
+    cbar.set_label("Yaw offset [deg]")
     ax[0,0].set_title("Simple")
-    _, cbar = wsv.plot_offsets_wswd_heatmap(df_opt_unc, plot_turbine, ax=ax[0,1])
+    _, cbar = wsv.plot_offsets_wswd_heatmap(
+        df_opt_unc,
+        plot_turbine,
+        ti_plot=ti_min,
+        vmax=maximum_yaw_angle,
+        vmin=minimum_yaw_angle,
+        ax=ax[0,1]
+    )
+    cbar.set_label("Yaw offset [deg]")
     ax[0,1].set_title("Uncertain")
-    _, cbar = wsv.plot_offsets_wswd_heatmap(df_opt_rate_limited, plot_turbine, ax=ax[1,0])
+    _, cbar = wsv.plot_offsets_wswd_heatmap(
+        df_opt_rate_limited,
+        plot_turbine,
+        ti_plot=ti_min,
+        vmax=maximum_yaw_angle,
+        vmin=minimum_yaw_angle,
+        ax=ax[1,0]
+    )
+    cbar.set_label("Yaw offset [deg]")
     ax[1,0].set_title("Rate limited")
-    _, cbar = wsv.plot_offsets_wswd_heatmap(df_opt_ws_ramps, plot_turbine, ax=ax[1,1])
+    _, cbar = wsv.plot_offsets_wswd_heatmap(
+        df_opt_ws_ramps,
+        plot_turbine,
+        ti_plot=ti_min,
+        vmax=maximum_yaw_angle,
+        vmin=minimum_yaw_angle,
+        ax=ax[1,1]
+    )
+    cbar.set_label("Yaw offset [deg]")
     ax[1,1].set_title("Single wind speed heuristic")
 
     for ax_ in ax[:,0]:
         ax_.set_ylabel("Wind speed [m/s]")
     for ax_ in ax[-1,:]:
         ax_.set_xlabel("Wind direction [deg]")
-    cbar.set_label("Yaw offset [deg]")
     ax[0,0].set_xlim(plot_wd_lims)
 
     plt.show()
