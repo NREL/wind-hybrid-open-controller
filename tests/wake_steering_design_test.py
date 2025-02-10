@@ -26,6 +26,7 @@ def generic_df_opt(
         minimum_yaw_angle=-20,
         maximum_yaw_angle=20,
         wd_std=None,
+        kwargs_UncertainFlorisModel = {},
     ):
 
     fmodel_test = FlorisModel(YAML_INPUT)
@@ -52,6 +53,7 @@ def generic_df_opt(
             ws_resolution=ws_resolution,
             ws_min=ws_min,
             ws_max=ws_max,
+            kwargs_UncertainFlorisModel=kwargs_UncertainFlorisModel,
         )
 
 def test_build_simple_wake_steering_lookup_table():
@@ -129,6 +131,14 @@ def test_build_uncertain_wake_steering_lookup_table():
     max_offset_simple = df_opt_simple.yaw_angles_opt.apply(lambda x: np.max(x)).max()
     max_offset_uncertain = df_opt_uncertain.yaw_angles_opt.apply(lambda x: np.max(x)).max()
     assert max_offset_simple > max_offset_uncertain
+
+    # Check that kwargs are passed correctly (results not identical)
+    df_opt_uncertain_fixed = generic_df_opt(
+        wd_std=3.0,
+        maximum_yaw_angle=max_yaw_angle,
+        kwargs_UncertainFlorisModel={"fix_yaw_to_nominal_direction": True}
+    )
+    assert not np.allclose(df_opt_uncertain.farm_power_opt, df_opt_uncertain_fixed.farm_power_opt)
 
 def test_apply_static_rate_limits():
 

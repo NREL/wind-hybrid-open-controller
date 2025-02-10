@@ -73,6 +73,7 @@ def build_uncertain_wake_steering_lookup_table(
     ti: float = 0.06,
     minimum_yaw_angle: float = 0.0,
     maximum_yaw_angle: float = 25.0,
+    kwargs_UncertainFlorisModel: dict = {},
 ) -> pd.DataFrame:
     """
     Build a simple wake steering lookup table for a given FlorisModel using the Serial Refine
@@ -94,6 +95,8 @@ def build_uncertain_wake_steering_lookup_table(
             Defaults to 0.0.
         maximum_yaw_angle (float, optional): The maximum allowable misalignment in degrees.
             Defaults to 25.0.
+        kwargs_UncertainFlorisModel (dict, optional): Additional keyword arguments for the
+            instantiation of the UncertainFlorisModel. Defaults to an empty dictionary.
 
     Returns:
         pd.DataFrame: A yaw offset lookup table.
@@ -113,6 +116,7 @@ def build_uncertain_wake_steering_lookup_table(
     ufmodel = UncertainFlorisModel(
         configuration=fmodel.core.as_dict(),
         wd_std=wd_std,
+        **kwargs_UncertainFlorisModel,
     )
 
     yaw_opt = YawOptimizationSR(
