@@ -8,7 +8,6 @@ import os
 import datetime
 import yaml
 from functools import partial
-from mysql.connector import connect as sql_connect
 
 # import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor
@@ -36,7 +35,9 @@ import numpy as np
 import pandas as pd
 import polars as pl
 import polars.selectors as cs
+from scipy.stats import multivariate_normal as mvn
 
+from mysql.connector import connect as sql_connect
 from optuna import create_study
 from optuna.storages import JournalStorage, RDBStorage
 from optuna.storages.journal import JournalFileBackend
@@ -344,11 +345,154 @@ class PreviewForecast(WindForecast):
             assert (historic_measurements["time"] == current_time).any()
         elif isinstance(historic_measurements, pl.DataFrame):
             assert historic_measurements.select((pl.col("time") == current_time).any()).item()
+        # TODO for each turbine, compute the weighted average of wind directions to find which direction is upstream
+        
+        
+        PreviewForecast.full_farm_directional_weighted_average(historic_measurements,
+                                                               )
+        
         # TODO
         # last_measurement = historic_measurements.filter(pl.col("time") == current_time)
         # return pl.concat([pl.DataFrame({"time": pred_slice}), 
         #                   last_measurement.select(pl.exclude("time").repeat_by(len(pred_slice)).explode())], 
-        #                  how="horizontal") 
+        #                  how="horizontal")
+    
+    
+    def full_farm_directional_weighted_average(
+        self,
+        data_in,
+        measurement_layout,
+        wind_directions,
+        shift_distance,
+        # is_circular=False,
+        # is_bearing=False,
+    ):
+        """_summary_
+        QUESTION
+        Args:
+            data_in (pd.DataFrame): num_columns = n_turbines, and indices corresponding to time
+            measurement_layout (np.ndarray): 0th dim = n_turbines, 1st dim = x,y coords
+            wind_directions (np.ndarray): array of wind direction estimations for each turbine
+            shift_distance (float): distance from turbine at which to estimate wind direction
+
+        Returns:
+            _type_: _description_
+        """
+
+        # nTurbs = len(data_in.columns)
+        turbine_list = np.arange(0, self.n_turbines)
+
+        # QUESTION is this the turbines to consider in the spatial filtering for the estimation of the wind direction at each turbine
+        cluster_turbines = {i: turbine_list for i in range(self.n_turbines)}
+
+        # if is_bearing:  # Convert to RH CCW angle
+        #     wd_mean = PreviewForecast.bearing2angle(wd_mean)
+        #     data_in = data_in.applymap(PreviewForecast.bearing2angle)
+
+        weights = self.neighbor_weights_directional_gaussian(
+            measurement_layout, cluster_turbines, wind_directions, shift_distance
+        )
+
+        data_out = data_in.copy()
+        for k in range(len(data_in)):  # Time step
+            for t in range(len(data_in.columns)):  # Turbine
+                idx = cluster_turbines[t]
+                # if is_circular:
+                #     data_out.iloc[k, t] = PreviewForecast.weighted_circular_mean3(
+                #         data_in.iloc[k, idx], weights[t]
+                #     )
+                # else:
+                data_out.iloc[k, t] = np.array(data_in.iloc[k, idx]) @ np.array(
+                    weights[t]
+                )
+
+        # if is_bearing:  # Convert back to bearing
+        #     data_out = data_out.applymap(PreviewForecast.angle2bearing)
+
+        return data_out
+
+    def neighbor_weights_directional_gaussian(
+        self, measurement_layout, cluster_turbines, wind_directions, shift_distance=0
+    ):
+        """
+        wd_mean should be in radians, CCW
+        mu = 0: no preview
+        sigma = None: will default to using the standard deviation of turbine distances.
+        """
+
+        weights = dict()
+        # n_turbines = np.shape(measurement_layout)[0]
+
+        for i in range(self.n_turbines):
+            idx = cluster_turbines[i]
+            cluster_layout = measurement_layout[idx, :]
+            
+            center_point = measurement_layout[i, :] + np.array(
+                [
+                    -shift_distance * np.cos(np.pi + wind_directions[idx]),
+                    shift_distance * np.sin(np.pi + wind_directions[idx]),
+                ]
+            )
+
+            covariance = np.var(
+                np.linalg.norm(cluster_layout - center_point, axis=1)
+            ) * np.identity(2)
+
+            f = mvn.pdf(cluster_layout, mean=center_point, cov=covariance)
+            weights[i] = f / np.sum(f)
+
+        return weights
+
+    @staticmethod
+    def bearing2angle(bearing):
+        """
+        Convert bearing angle in degrees to CCW positive angle in radians.
+        """
+        return PreviewForecast.wrap_angle(np.pi / 180 * (90 - bearing), -np.pi, np.pi)
+    
+    @staticmethod
+    def angle2bearing(angle):
+        return PreviewForecast.wrap_angle(90 - 180 / np.pi * angle, 0.0, 360.0)
+
+    @staticmethod
+    def wrap_angle(x, low, high):
+        """
+        Wrap to x to interval [low, high)
+        """
+        x = float(x)
+        step = high - low
+
+        while x >= high:
+            x = x - step
+        while x < low:
+            x = x + step
+
+        return x
+
+    @staticmethod
+    def weighted_circular_mean3(x, weights):
+        """
+        Find weighted mean value of x after shifting all values to
+        [low, high) (method 3).
+
+        Inputs:
+            x - data for mean (list, Series, or 1D array)
+            weights - weights for mean (list, Series, or 1D array) (same
+                    size as x)
+        Outputs:
+            (x_mean) - scalar circular mean of x
+        """
+
+        # Convert list, series to array
+        if type(x) == np.ndarray:
+            x = np.e ** (1j * x)
+            complex_mean = list(x @ np.array(weights))
+        else:
+            x = np.array([np.e ** (1j * x[i]) for i in range(len(x))])
+            complex_mean = x @ np.array(weights)
+
+        return np.angle(complex_mean)
+ 
 
 @dataclass
 class GaussianForecast(WindForecast):
