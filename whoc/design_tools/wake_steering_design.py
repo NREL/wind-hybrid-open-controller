@@ -600,6 +600,6 @@ def check_df_opt_ordering(df_opt):
         or not np.all(wss_reshaped == ws_unique[None,:,None])
         or not np.all(tis_reshaped == ti_unique[None,None,:])):
         raise ValueError(
-            "df_opt must be ordered first by wind direction, then by wind speed,"
+            "df_opt must be ordered first by wind direction, then by wind speed, "
             "then by turbulence intensity."
         )
