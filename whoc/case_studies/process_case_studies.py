@@ -73,6 +73,16 @@ def plot_wind_farm(floris_input_files, lut_paths, save_dir):
 
         fig.savefig(os.path.join(save_dir, f"wind_farm_plot_{fmodel.n_turbines}.png"))
         # plt.close(fig)
+        
+        fig, ax = plt.subplots(1, 1)
+        fmodel.set_operation(yaw_angles=np.zeros_like(lut_angles))
+        horizontal_plane = fmodel.calculate_horizontal_plane(height=90.0)
+        visualize_cut_plane(horizontal_plane, ax=ax, min_speed=MIN_WS, max_speed=MAX_WS, color_bar=True)
+        layoutviz.plot_turbine_rotors(fmodel, ax=ax, yaw_angles=np.zeros_like(lut_angles))
+        ax.set(xlabel="$x$ [m]")
+        ax.set(ylabel="$y$ [m]")
+        plt.tight_layout()
+        fig.savefig(os.path.join(save_dir, f"wind_farm_plot_{fmodel.n_turbines}_greedy.png"))
 
 def read_case_family_agg_data(case_family, save_dir):
     all_agg_df_path = os.path.join(save_dir, case_family, "agg_results_all.csv")

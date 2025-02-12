@@ -1073,7 +1073,7 @@ class MPC(ControllerBase):
 				print("Bad wind direction measurement received, reverting to previous measurement.")
 
 		# TODO MISHA this is a patch up for AMR wind initialization problem, also in Greedy/LUT
-		elif (abs(self.current_time % self.dt) == 0.0) or (np.all(self.controls_dict["yaw_angles"] == self.yaw_IC) and (self.current_time == self.simulation_dt * 2)):
+		elif (abs(self.current_time % self.dt) == 0.0): # or (np.all(self.controls_dict["yaw_angles"] == self.yaw_IC) and (self.current_time == self.simulation_dt * 2)):
 			if self.verbose:
 				print(f"unfiltered wind directions = {current_wind_direction}")
 			if self.current_time > 0.0:

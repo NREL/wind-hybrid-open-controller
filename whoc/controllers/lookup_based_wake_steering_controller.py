@@ -176,7 +176,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 			if self.verbose:
 				print("Bad wind direction measurement received, reverting to previous measurement.")
 		
-		elif (abs(self.current_time % self.simulation_dt) == 0.0) or (np.all(self.controls_dict["yaw_angles"] == self.yaw_IC) and self.current_time == self.simulation_dt * 2):
+		elif (abs(self.current_time % self.simulation_dt) == 0.0): # or (np.all(self.controls_dict["yaw_angles"] == self.yaw_IC) and self.current_time == self.simulation_dt * 2):
 			# if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
 			if self.verbose:
 				print(f"unfiltered wind direction = {current_wind_direction}")

@@ -51,8 +51,6 @@ def simulate_controller(controller_class, input_dict, **kwargs):
     turbine_wind_dir_ts = []
     turbine_offline_status_ts = []
 
-    greedy_turbine_powers_ts = []
-
     convergence_time_ts = []
     # opt_codes_ts = []
 
@@ -86,8 +84,8 @@ def simulate_controller(controller_class, input_dict, **kwargs):
                             seed=k)
         
         ctrl.current_freestream_measurements = [
-                kwargs["wind_mag_ts"][k] * np.sin((kwargs["wind_dir_ts"][k] - 180.) * (np.pi / 180.)),
-                kwargs["wind_mag_ts"][k] * np.cos((kwargs["wind_dir_ts"][k] - 180.) * (np.pi / 180.))
+                kwargs["wind_mag_ts"][k] * np.sin((kwargs["wind_dir_ts"][k]) * (np.pi / 180.)),
+                kwargs["wind_mag_ts"][k] * np.cos((kwargs["wind_dir_ts"][k]) * (np.pi / 180.))
         ]
         
         start_time = perf_counter()

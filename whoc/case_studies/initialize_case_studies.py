@@ -37,6 +37,7 @@ case_studies = {
                                 "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
                                 "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
                                 "use_filtered_wind_dir": {"group": 1, "vals": [True, True]},
+                                "use_lut_filtered_wind_dir": {"group": 1, "vals": [True, True]},
                                 "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_{9}.yaml")]},
                                 "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 

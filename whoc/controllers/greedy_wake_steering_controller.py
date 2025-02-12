@@ -91,7 +91,7 @@ class GreedyController(ControllerBase):
 			if self.verbose:
 				print("Bad wind direction measurement received, reverting to previous measurement.")
 		
-		elif (abs(self.current_time % self.simulation_dt) == 0.0) or (np.all(self.controls_dict["yaw_angles"] == self.yaw_IC) and self.current_time == self.simulation_dt * 2):
+		elif (abs(self.current_time % self.simulation_dt) == 0.0): # or (np.all(self.controls_dict["yaw_angles"] == self.yaw_IC) and self.current_time == self.simulation_dt * 2):
 			# current_wind_directions = np.broadcast_to(self.wind_dir_ts[int(self.current_time // self.simulation_dt)], (self.n_turbines,))
 			current_wind_directions = self.measurements_dict["wind_directions"]
 
