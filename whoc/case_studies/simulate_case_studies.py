@@ -71,6 +71,9 @@ def simulate_controller(controller_class, input_dict, **kwargs):
     t = 0
     k = 0
     
+    ws_horz = kwargs["wind_mag_ts"] * np.sin((kwargs["wind_dir_ts"] - 180.0) * (np.pi / 180.)), 
+    ws_vert = kwargs["wind_mag_ts"] * np.cos((kwargs["wind_dir_ts"] - 180.0) * (np.pi / 180.)), 
+    
     while t < input_dict["hercules_comms"]["helics"]["config"]["stoptime"]:
 
         # recompute controls and step floris forward by ctrl.dt
@@ -84,8 +87,8 @@ def simulate_controller(controller_class, input_dict, **kwargs):
                             seed=k)
         
         ctrl.current_freestream_measurements = [
-                kwargs["wind_mag_ts"][k] * np.sin((kwargs["wind_dir_ts"][k]) * (np.pi / 180.)),
-                kwargs["wind_mag_ts"][k] * np.cos((kwargs["wind_dir_ts"][k]) * (np.pi / 180.))
+                ws_horz[k],
+                ws_vert[k]
         ]
         
         start_time = perf_counter()
