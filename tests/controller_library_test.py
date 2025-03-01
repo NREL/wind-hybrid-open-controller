@@ -4,6 +4,7 @@ import pytest
 
 # import pandas as pd
 from whoc.controllers import (
+    BatteryController,
     BatteryPassthroughController,
     HybridSupervisoryControllerBaseline,
     LookupBasedWakeSteeringController,
@@ -76,6 +77,7 @@ def test_controller_instantiation():
     )
     _ = SolarPassthroughController(interface=test_interface, input_dict=test_hercules_dict)
     _ = BatteryPassthroughController(interface=test_interface, input_dict=test_hercules_dict)
+    _ = BatteryController(interface=test_interface, input_dict=test_hercules_dict)
 
 
 def test_LookupBasedWakeSteeringController():
@@ -406,4 +408,6 @@ def test_SolarPassthroughController():
     test_controller.measurements_dict["solar_power_reference"] = power_ref
     test_controller.compute_controls()
     assert test_controller.controls_dict["power_setpoint"] == power_ref
-    
+
+def test_BatteryController():
+    pass
