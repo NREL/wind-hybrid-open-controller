@@ -444,7 +444,10 @@ def test_BatteryController():
     test_controller.measurements_dict["battery_power"] = power_ref # No current error
     test_controller._e_prev = 200
     test_controller.compute_controls()
-    assert test_controller.controls_dict["battery_power_setpoint"] == -2 * (0-200)/test_hercules_dict["dt"] + power_ref
+    assert (
+        test_controller.controls_dict["battery_power_setpoint"]
+        == -2 * (0-200)/test_hercules_dict["dt"] + power_ref
+    )
 
     # More complex test for smoothing capabilities
     power_refs_in = np.tile(np.array([1000.0, -1000.0]), 5)
@@ -453,13 +456,13 @@ def test_BatteryController():
     test_controller = BatteryController(test_interface, test_hercules_dict, k_p=0.5, k_d=0)
 
     battery_power = 0
-    for pr_in, pr_out in zip(power_refs_in, power_refs_out):
+    for i, pr_in in enumerate(power_refs_in):
         test_hercules_dict["external_signals"]["plant_power_reference"] = pr_in
         test_hercules_dict["battery_power"] = battery_power
         test_hercules_dict["time"] += 1
         out = test_controller.step(test_hercules_dict)
         battery_power = out["py_sims"]["inputs"]["battery_signal"]
-        pr_out = battery_power
+        power_refs_out[i] = battery_power
 
     assert (power_refs_out > -1000.0).all()
     assert (power_refs_out < 1000.0).all()
@@ -468,13 +471,13 @@ def test_BatteryController():
     test_controller = BatteryController(test_interface, test_hercules_dict, k_p=1, k_d=1)
     battery_power = 0
 
-    for pr_in, pr_out in zip(power_refs_in, power_refs_out):
+    for i, pr_in in enumerate(power_refs_in):
         test_hercules_dict["external_signals"]["plant_power_reference"] = pr_in
         test_hercules_dict["battery_power"] = battery_power
         test_hercules_dict["time"] += 1
         out = test_controller.step(test_hercules_dict)
         battery_power = out["py_sims"]["inputs"]["battery_signal"]
-        pr_out = battery_power
+        power_refs_out[i] = battery_power
 
     assert (power_refs_out > -1000.0).all()
     assert (power_refs_out < 1000.0).all()
