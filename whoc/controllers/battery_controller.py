@@ -46,7 +46,7 @@ class BatteryController(ControllerBase):
         # self._e_prev_1 = 0
 
     def compute_controls(self):
-        reference_power = self.measurements_dict["battery_power_reference"]
+        reference_power = self.measurements_dict["power_reference"]
         # TODO: is the actual power output important? Should I just be smoothing
         # the power reference? Not clear.
         current_power = self.measurements_dict["battery_power"]
@@ -56,10 +56,18 @@ class BatteryController(ControllerBase):
 
         u = self.k_p * e - (self.k_d) * e_dot
 
+        # Could also have SOC-dependent throttling logic here.
+        # if SOC > 0.9 and u > 0
+        #   u = 0.5 * u
+        # elif SOC < 0.1 and u < 0
+        #   u = 0.5 * u
+        # else
+        #   pass 
+
         # If I _add_ something that is proportional to the miss, that's essentially
         # adding integral action. Not sure that's what I want? Only if I add it 
         # to the existing reference?
-        self.controls_dict["power_setpoint"] = current_power + u
+        self.controls_dict["battery_power_setpoint"] = current_power + u
 
 
 class BatteryPassthroughController(ControllerBase):
@@ -71,4 +79,4 @@ class BatteryPassthroughController(ControllerBase):
 
     def compute_controls(self):
         reference_power = self.measurements_dict["battery_power_reference"]
-        self.controls_dict["power_setpoint"] = reference_power
+        self.controls_dict["battery_power_setpoint"] = reference_power

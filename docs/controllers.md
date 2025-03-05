@@ -62,3 +62,17 @@ and/or a battery. At least one of the wind or solar components must be present,
 with the battery component optional. Upon instantiation, the user may set
 `wind_controller`, `solar_controller`, and/or `battery_controller` to `None` if
 no wind, solar, and/or battery component is available, respectively.
+
+(controllers_battery)=
+### BatteryController
+
+Controller to trade of battery demand response with battery degradation. Responds
+to the error between the battery power setpoint and the current power output. 
+Generally speaking, the proportional gain `k_p` should be set to 1 to achieve
+basic behavior matching the passthrough controller (simply pass the battery 
+power reference down to the battery). However, setting `k_p` less than 1 will
+slow down the battery response. Moreover, setting `k_d` to a nonzero value will
+add (negative) derivative action to slow the controller response when the battery
+power tracking has a non-zero error, which helps to prevent power
+oscillations/battery cycling. Depending on battery chemistries, this can help to
+reduce damage
