@@ -97,7 +97,7 @@ class BatteryController(ControllerBase):
         # to the existing reference?
 
         # Add a cycle count based on day
-        self.controls_dict["battery_power_setpoint"] = current_power + u
+        self.controls_dict["power_setpoint"] = current_power + u
 
 
 class BatteryPassthroughController(ControllerBase):
@@ -109,4 +109,4 @@ class BatteryPassthroughController(ControllerBase):
 
     def compute_controls(self):
         reference_power = self.measurements_dict["battery_power_reference"]
-        self.controls_dict["battery_power_setpoint"] = reference_power
+        self.controls_dict["power_setpoint"] = reference_power

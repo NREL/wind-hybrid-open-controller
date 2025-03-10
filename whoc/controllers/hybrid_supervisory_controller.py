@@ -75,7 +75,7 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
             self.battery_controller.measurements_dict["battery_power_reference"] = battery_reference
             self.battery_controller.compute_controls()
             self.controls_dict["battery_power_setpoint"] = (
-                self.battery_controller.controls_dict["battery_power_setpoint"]
+                self.battery_controller.controls_dict["power_setpoint"]
             )
 
         return None
@@ -106,7 +106,7 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
             battery_power = 0
             battery_soc = 0
 
-        plant_power_reference = self.measurements_dict["power_reference"]
+        plant_power_reference = self.measurements_dict["plant_power_reference"]
 
         # Filter the wind and solar power measurements to reduce noise and improve closed-loop
         # controller damping

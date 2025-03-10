@@ -108,7 +108,7 @@ def test_HerculesHybridADInterface():
         == test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["wind_speed"]
     )
     assert (
-        measurements["power_reference"]
+        measurements["plant_power_reference"]
         == test_hercules_dict["external_signals"]["wind_power_reference"]
     )
     assert (

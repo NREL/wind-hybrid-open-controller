@@ -41,7 +41,7 @@ class HerculesHybridADInterface(InterfaceBase):
             plant_power_reference = POWER_SETPOINT_DEFAULT
         measurements = {
             "time": time,
-            "power_reference": plant_power_reference,
+            "plant_power_reference": plant_power_reference,
         } 
 
         if self._has_wind_component:
@@ -74,11 +74,9 @@ class HerculesHybridADInterface(InterfaceBase):
         available_controls = [
             "wind_power_setpoints",
             "solar_power_setpoint",
-            "battery_power_setpoint",
+            "battery_power_setpoint"
         ]
 
-        # TODO: some intermediate handling here to accept 'power_setpoint' from 
-        # midlevel controllers; convert to xx_power_setpoint
         for k in controls_dict.keys():
             if k not in available_controls:
                 raise ValueError("Setpoint " + k + " is not available in this configuration.")
