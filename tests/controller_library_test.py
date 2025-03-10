@@ -15,6 +15,7 @@ from whoc.controllers import (
 from whoc.controllers.wind_farm_power_tracking_controller import POWER_SETPOINT_DEFAULT
 from whoc.interfaces import (
     HerculesADInterface,
+    HerculesBatteryInterface,
     HerculesHybridADInterface,
 )
 from whoc.interfaces.interface_base import InterfaceBase
@@ -410,42 +411,42 @@ def test_SolarPassthroughController():
     assert test_controller.controls_dict["power_setpoint"] == power_ref
 
 def test_BatteryController():
-    test_interface = HerculesHybridADInterface(test_hercules_dict)
+    test_interface = HerculesBatteryInterface(test_hercules_dict)
     test_controller = BatteryController(test_interface, test_hercules_dict, k_p=1, k_d=0)
 
+    # Test when starting with 0 power output
     power_ref = 1000
-    test_controller.measurements_dict["battery_power"] = 0
-    test_controller.measurements_dict["power_reference"] = power_ref
-    test_controller.compute_controls()
-    assert test_controller.controls_dict["battery_power_setpoint"] == power_ref
+    test_hercules_dict["py_sims"]["test_battery"]["outputs"] = {
+        "power": 0, "soc": 0.3
+    }
+    test_hercules_dict["external_signals"]["plant_power_reference"] = power_ref
+    test_controller.step(test_hercules_dict)
+    assert test_controller.controls_dict["power_setpoint"] == power_ref
 
-    test_controller.measurements_dict["battery_power"] = 200
-    test_controller.measurements_dict["power_reference"] = power_ref
-    test_controller.compute_controls()
-    assert test_controller.controls_dict["battery_power_setpoint"] == power_ref
+    # Test when starting with nonzero power output
+    test_hercules_dict["py_sims"]["test_battery"]["outputs"]["power"] = 200
+    test_controller.step(test_hercules_dict)
+    assert test_controller.controls_dict["power_setpoint"] == power_ref
 
     # k_p = 2 (fast control)
     test_controller = BatteryController(test_interface, test_hercules_dict, k_p=2, k_d=0)
-    test_controller.measurements_dict["battery_power"] = 200
-    test_controller.measurements_dict["power_reference"] = power_ref
-    test_controller.compute_controls()
-    assert test_controller.controls_dict["battery_power_setpoint"] == 2 * (power_ref - 200) + 200
+    test_controller.step(test_hercules_dict)
+    assert test_controller.controls_dict["power_setpoint"] == 2 * (power_ref - 200) + 200
 
     # k_p = 0.3 (slow control)
     test_controller = BatteryController(test_interface, test_hercules_dict, k_p=0.3, k_d=0)
-    test_controller.measurements_dict["battery_power"] = 200
-    test_controller.measurements_dict["power_reference"] = power_ref
-    test_controller.compute_controls()
-    assert test_controller.controls_dict["battery_power_setpoint"] == 0.3 * (power_ref - 200) + 200
+    test_controller.step(test_hercules_dict)
+    assert test_controller.controls_dict["power_setpoint"] == 0.3 * (power_ref - 200) + 200
 
     # Test derivative action
     test_controller = BatteryController(test_interface, test_hercules_dict, k_p=1, k_d=2)
-    test_controller.measurements_dict["power_reference"] = power_ref
-    test_controller.measurements_dict["battery_power"] = power_ref # No current error
-    test_controller._e_prev = 200
-    test_controller.compute_controls()
+    test_controller._e_prev = 200 # Write previous error for testing
+    test_hercules_dict["py_sims"]["test_battery"]["outputs"] = {
+        "power": power_ref, "soc": 0.3 # power = power_ref ensures no current error (e = 0)
+    }
+    test_controller.step(test_hercules_dict)
     assert (
-        test_controller.controls_dict["battery_power_setpoint"]
+        test_controller.controls_dict["power_setpoint"]
         == -2 * (0-200)/test_hercules_dict["dt"] + power_ref
     )
 
@@ -458,7 +459,7 @@ def test_BatteryController():
     battery_power = 0
     for i, pr_in in enumerate(power_refs_in):
         test_hercules_dict["external_signals"]["plant_power_reference"] = pr_in
-        test_hercules_dict["battery_power"] = battery_power
+        test_hercules_dict["py_sims"]["test_battery"]["outputs"]["power"] = battery_power
         test_hercules_dict["time"] += 1
         out = test_controller.step(test_hercules_dict)
         battery_power = out["py_sims"]["inputs"]["battery_signal"]
@@ -468,12 +469,12 @@ def test_BatteryController():
     assert (power_refs_out < 1000.0).all()
 
     # Can the same sort of thing be achieved with k_p=1 and some derivative action?
-    test_controller = BatteryController(test_interface, test_hercules_dict, k_p=1, k_d=1)
+    test_controller = BatteryController(test_interface, test_hercules_dict, k_p=1, k_d=0.5)
     battery_power = 0
 
     for i, pr_in in enumerate(power_refs_in):
         test_hercules_dict["external_signals"]["plant_power_reference"] = pr_in
-        test_hercules_dict["battery_power"] = battery_power
+        test_hercules_dict["py_sims"]["test_battery"]["outputs"]["power"] = battery_power
         test_hercules_dict["time"] += 1
         out = test_controller.step(test_hercules_dict)
         battery_power = out["py_sims"]["inputs"]["battery_signal"]

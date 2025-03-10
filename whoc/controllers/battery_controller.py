@@ -1,3 +1,5 @@
+import numpy as np
+
 from whoc.controllers.controller_base import ControllerBase
 
 
@@ -54,14 +56,15 @@ class BatteryController(ControllerBase):
         # TODO: is the actual power output important? Should I just be smoothing
         # the power reference? Not clear.
         current_power = self.measurements_dict["battery_power"]
+        soc = self.measurements_dict["battery_soc"]
 
-        partial_cycle_count_limit = 1 # TODO: allow this to be user specified
-        accumulated_cycle_count_limit = 1 # TODO: allow this to be user specified
+        partial_cycle_count_limit = np.inf # TODO: allow this to be user specified
+        accumulated_cycle_count_limit = np.inf # TODO: allow this to be user specified
         cycle_count_unit_time = 24*60*60 # 24 hours in seconds (allow user spec)
         cycle_count_midnight_offset = 0 # 0 seconds after midnight (allow user spec)
-        soc_throttling_upper_limit = 0.9 # 90% SOC
-        soc_throttling_lower_limit = 0.1 # 10% SOC
-        soc_throttling_value = 0.5 # 50% of control signal
+        soc_throttling_upper_limit = 1.0 # TODO: allow user spec.
+        soc_throttling_lower_limit = 0.0 # TODO: allow user spec.
+        soc_throttling_value = 0.5 # 50% of control signal TODO allow user spec.
 
         time = self.measurements_dict["time"]
         if (time-cycle_count_midnight_offset) % cycle_count_unit_time == 0:
@@ -71,7 +74,7 @@ class BatteryController(ControllerBase):
         # Check if there is a sign change in battery_power
         if self._battery_power_prev * current_power < 0: # How will this work with 0?
             self._partial_cycle_count += 0.5
-        self._accumulated_cycles += np.abs(current_power)
+        self._accumulated_cycles += np.abs(current_power) # TODO: Divide by rating
 
         e = reference_power - current_power
         e_dot = (e - self._e_prev)/self.dt # Or do I want the second derivative?
@@ -85,9 +88,9 @@ class BatteryController(ControllerBase):
 
         # Could also have SOC-dependent throttling logic here.
         # TODO: Should throttling apply even when "exiting" the danger region?
-        if SOC > soc_throttling_upper_limit and u > 0:
+        if soc > soc_throttling_upper_limit and u > 0:
           u = soc_throttling_value * u
-        elif SOC < soc_throttling_lower_limit and u < 0:
+        elif soc < soc_throttling_lower_limit and u < 0:
           u = soc_throttling_value * u
         else:
           pass 
@@ -96,7 +99,6 @@ class BatteryController(ControllerBase):
         # adding integral action. Not sure that's what I want? Only if I add it 
         # to the existing reference?
 
-        # Add a cycle count based on day
         self.controls_dict["power_setpoint"] = current_power + u
 
 
