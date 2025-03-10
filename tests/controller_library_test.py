@@ -53,7 +53,7 @@ test_hercules_dict = {
         }
     },
     "py_sims": {
-        "test_battery": {"outputs": {"power": 10.0, "soc": 0.3}, "charge_rate":20},
+        "test_battery": {"outputs": {"power": 10.0, "soc": 0.3}, "charge_rate":20, "discharge_rate":20},
         "test_solar": {"outputs": {"power_mw": 1.0, "dni": 1000.0, "aoi": 30.0}},
         "inputs": {},
     },
@@ -412,7 +412,7 @@ def test_SolarPassthroughController():
 
 def test_BatteryController():
     test_interface = HerculesBatteryInterface(test_hercules_dict)
-    test_controller = BatteryController(test_interface, test_hercules_dict, k_p=1, k_d=0)
+    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_p":1, "k_d":0})
 
     # Test when starting with 0 power output
     power_ref = 1000
@@ -429,17 +429,17 @@ def test_BatteryController():
     assert test_controller.controls_dict["power_setpoint"] == power_ref
 
     # k_p = 2 (fast control)
-    test_controller = BatteryController(test_interface, test_hercules_dict, k_p=2, k_d=0)
+    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_p":2, "k_d":0})
     test_controller.step(test_hercules_dict)
     assert test_controller.controls_dict["power_setpoint"] == 2 * (power_ref - 200) + 200
 
     # k_p = 0.3 (slow control)
-    test_controller = BatteryController(test_interface, test_hercules_dict, k_p=0.3, k_d=0)
+    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_p":0.3, "k_d":0})
     test_controller.step(test_hercules_dict)
     assert test_controller.controls_dict["power_setpoint"] == 0.3 * (power_ref - 200) + 200
 
     # Test derivative action
-    test_controller = BatteryController(test_interface, test_hercules_dict, k_p=1, k_d=2)
+    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_p":1, "k_d":2})
     test_controller._e_prev = 200 # Write previous error for testing
     test_hercules_dict["py_sims"]["test_battery"]["outputs"] = {
         "power": power_ref, "soc": 0.3 # power = power_ref ensures no current error (e = 0)
@@ -454,7 +454,7 @@ def test_BatteryController():
     power_refs_in = np.tile(np.array([1000.0, -1000.0]), 5)
     power_refs_out = np.zeros_like(power_refs_in)
 
-    test_controller = BatteryController(test_interface, test_hercules_dict, k_p=0.5, k_d=0)
+    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_p":0.5, "k_d":0})
 
     battery_power = 0
     for i, pr_in in enumerate(power_refs_in):
@@ -469,7 +469,7 @@ def test_BatteryController():
     assert (power_refs_out < 1000.0).all()
 
     # Can the same sort of thing be achieved with k_p=1 and some derivative action?
-    test_controller = BatteryController(test_interface, test_hercules_dict, k_p=1, k_d=0.5)
+    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_p":1, "k_d":0.5})
     battery_power = 0
 
     for i, pr_in in enumerate(power_refs_in):
