@@ -50,7 +50,6 @@ class WindFarmPowerDistributingController(ControllerBase):
 
         return None
 
-
 class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
     """
     Based on controller developed under A2e2g project. Proportional control only---
