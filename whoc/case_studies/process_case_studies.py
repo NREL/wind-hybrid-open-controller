@@ -3,6 +3,7 @@ import yaml
 import re
 from itertools import cycle
 import warnings
+import pickle
 
 import numpy as np
 import pandas as pd
@@ -487,7 +488,7 @@ def plot_yaw_power_distribution(data_df, save_path):
 
 #     return result_summary_df
 
-def aggregate_time_series_data(time_series_df, yaml_path, n_seeds):
+def aggregate_time_series_data(time_series_df, input_dict_path, n_seeds):
     """_summary_
     Process csv data (all wind seeds) for single case name and single case family, from single diretory in floris_case_studies
     Args:
@@ -510,10 +511,10 @@ def aggregate_time_series_data(time_series_df, yaml_path, n_seeds):
        print(f"NOT aggregating data for {case_family}={case_name} due to insufficient seed simulations.")
        return None
 
-    with open(yaml_path, 'r') as fp:
-        input_config = yaml.safe_load(fp)
+    with open(input_dict_path, 'rb') as fp:
+        input_config = pickle.load(fp)
 
-    if len(pd.unique(time)) != int(input_config["hercules_comms"]["helics"]["config"]["stoptime"] // input_config["dt"]):
+    if len(pd.unique(time)) != int(input_config["hercules_comms"]["helics"]["config"]["stoptime"] // input_config["simulation_dt"]):
        print(f"NOT aggregating data for {case_family}={case_name} due to insufficient time steps.")
        return None
    

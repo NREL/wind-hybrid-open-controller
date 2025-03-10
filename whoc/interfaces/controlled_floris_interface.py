@@ -72,13 +72,15 @@ class ControlledFlorisModel(InterfaceBase):
         mag = np.mean(mag.reshape(*mag.shape[:1], -1), axis=1)
         direction = np.tile(self.env.core.flow_field.wind_directions[time_step], (self.n_turbines,))
         offline_mask = np.isclose(self.env.core.farm.power_setpoints[time_step, :], 0, atol=1e-3)
-        
+         
         measurements = {
             "time": self.time,
             "amr_wind_speed": self.env.core.flow_field.wind_speeds[time_step],
             "amr_wind_direction": self.env.core.flow_field.wind_directions[time_step],
             "wind_directions": direction,
             "wind_speeds": mag, # self.env.turbine_average_velocities,
+            # "predicted_wind_speeds_horz": None,
+            # "predicted_wind_speeds_vert": None,
             "turbine_powers": np.ma.masked_array(self.env.get_turbine_powers()[time_step], offline_mask).filled(0.0),
             "yaw_angles": self.current_yaw_setpoints[-1, :]
         }
@@ -211,15 +213,6 @@ if __name__ == '__main__':
     # 0 yaw angle points to west, positive yaw angle points to southwest, negative yaw angle points to northwest
     fi_greedy.env.core.farm.yaw_angles
     fi_greedy.env.get_turbine_powers()
-    # for yaw=-20 or 270 - wd, wind_dir=250:
-    # array([[[5000006.24431751, 5000006.24431751, 5000006.24431751,
-    #          5000006.24431403, 5000006.24431402, 5000006.24431402,
-    #          5000006.24431403, 5000002.68691173, 5000002.68691173]]])
-    # for yaw=0, wind_dir=250:
-    # array([[[4999989.56317222, 4999989.56317222, 4999989.56317222,
-    #          4999989.56323679, 4999989.5632368, 4999989.5632368,
-    #          4999989.56323679, 4999998.55748623, 4999998.55748623]]])
-    
     fi_greedy.get_measurements(None)
     
     # plot horizontal plane

@@ -618,14 +618,14 @@ class MPC(ControllerBase):
 					
 					# compute freestream wind direction angle from above, clockwise from north
 					direction = np.arctan2(current_freestream_measurements[1], current_freestream_measurements[0])
-					direction = (270.0 - (direction * (180 / np.pi))) % 360.0
+					direction = (180.0 + (direction * (180 / np.pi))) % 360.0
 
 					wind_preview_data[f"FreestreamWindDir"][:, 0] = [direction] * n_samples
 
 					mag_vals = np.linalg.norm(uv_combs, axis=2)
 					# compute directions
 					dir_vals = np.arctan2(uv_combs[:, :, 1], uv_combs[:, :, 0])
-					dir_vals = (270.0 - (dir_vals * (180 / np.pi))) % 360.0
+					dir_vals = (180.0 + (dir_vals * (180 / np.pi))) % 360.0
 
 					wind_preview_probs = (norm.pdf(uv_combs[:, :, 0], loc=distribution_params[0], scale=std_u) \
 					 	* norm.pdf(uv_combs[:, :, 1], loc=distribution_params[1], scale=std_v))

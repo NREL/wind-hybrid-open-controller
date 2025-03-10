@@ -437,7 +437,7 @@ def generate_wind_ts(wf, from_gaussian, case_idx, save_dir, save_name="", init_s
     dir_preview = np.arctan2(freestream_wind_speed_v, freestream_wind_speed_u)
 
     # compute freestream wind direction angle from above, clockwise from north
-    dir_preview = (270.0 - (dir_preview * (180.0 / np.pi))) % 360.0
+    dir_preview = (180.0 + (dir_preview * (180.0 / np.pi))) % 360.0
     mag_preview = np.linalg.norm(np.dstack([freestream_wind_speed_u, freestream_wind_speed_v]), axis=2)
     
     # save case raw_data as dataframe
@@ -482,7 +482,7 @@ def generate_wind_preview(wf, current_freestream_measurements, simulation_time_s
         # compute directions
         # compute freestream wind direction angle from above, clockwise from north
         dir_preview = np.arctan2(v_preview, u_preview)
-        dir_preview = (270.0 - (dir_preview * (180.0 / np.pi))) % 360.0
+        dir_preview = (180.0 + (dir_preview * (180.0 / np.pi))) % 360.0
         wind_preview_data = {"FreestreamWindMag": mag_preview, 
                              "FreestreamWindDir": dir_preview}
         if include_uv:
@@ -517,7 +517,7 @@ def generate_wind_preview_ts(config, case_idx, wind_field_data):
         mag = np.linalg.norm(np.vstack([u_preview, v_preview]), axis=0)
         
         direction = np.arctan2(v_preview, u_preview)
-        direction = (270.0 - (direction * (180.0 / np.pi))) % 360.0
+        direction = (180.0 + (direction * (180.0 / np.pi))) % 360.0
         
         for i in range(config["n_preview_steps"]):
             wind_preview_data[f"FreestreamWindSpeedU_{i}"].append(u_preview[i])

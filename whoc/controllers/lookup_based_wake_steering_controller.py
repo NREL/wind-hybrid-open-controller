@@ -28,6 +28,9 @@ from scipy.signal import lfilter
 from floris.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
 from floris.optimization.yaw_optimization.yaw_optimizer_scipy import YawOptimizationScipy
 
+import logging 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 class LookupBasedWakeSteeringController(ControllerBase):
     def __init__(self, interface, wind_forecast, input_dict, verbose=False, **kwargs):
         super().__init__(interface, verbose=verbose)
@@ -37,7 +40,8 @@ class LookupBasedWakeSteeringController(ControllerBase):
         self.dt = input_dict["controller"]["controller_dt"]  # Won't be needed here, but generally good to have
         self.n_turbines = interface.n_turbines #input_dict["controller"]["num_turbines"]
         self.turbines = range(self.n_turbines)
-        self.historic_measurements = pd.DataFrame(columns=["time"] + [f"ws_horz_{tid}" for tid in range(self.n_turbines)] + [f"ws_vert_{tid}" for tid in range(self.n_turbines)], dtype=pd.Float64Dtype())
+        self.historic_measurements = pd.DataFrame(columns=["time"] + [f"ws_horz_{tid + 1}" for tid in range(self.n_turbines)] 
+                                                  + [f"ws_vert_{tid + 1}" for tid in range(self.n_turbines)], dtype=pd.Float64Dtype())
         # self.filtered_measurements = pd.DataFrame(columns=["time"] + [f"ws_horz_{tid}" for tid in range(self.n_turbines)] + [f"ws_vert_{tid}" for tid in range(self.n_turbines)], dtype=pd.Float64Dtype())
         # self.ws_lpf_alpha = np.exp(-input_dict["controller"]["ws_lpf_omega_c"] * input_dict["controller"]["lpf_T"])
         self.use_filt = input_dict["controller"]["use_lut_filtered_wind_dir"]
@@ -163,38 +167,39 @@ class LookupBasedWakeSteeringController(ControllerBase):
             return
 
         if self.verbose:
-            print(f"self._last_measured_time == {self._last_measured_time}")
-            print(f"self.measurements_dict['time'] == {self.measurements_dict['time']}")
+            logging.info(f"self._last_measured_time == {self._last_measured_time}")
+            logging.info(f"self.measurements_dict['time'] == {self.measurements_dict['time']}")
 
         self._last_measured_time = self.measurements_dict["time"]
 
         self.current_time = self.measurements_dict["time"]
 
-        if self.verbose:
-            print(f"self.current_time == {self.current_time}")
-
+        current_wind_directions = self.measurements_dict["wind_directions"]
         current_wind_direction = self.measurements_dict["amr_wind_direction"]
         current_wind_speed = self.measurements_dict["amr_wind_speed"]
         
         if len(self.measurements_dict["wind_directions"]) == 0 or np.all(np.isclose(self.measurements_dict["wind_directions"], 0)):
             # yaw angles will be set to initial values
             if self.verbose:
-                print("Bad wind direction measurement received, reverting to previous measurement.")
+                logging.info("Bad wind direction measurement received, reverting to previous measurement.")
         
         elif (abs((self.current_time - self.init_time).total_seconds() % self.simulation_dt) == 0.0):
             # if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
             if self.verbose:
-                print(f"unfiltered wind direction = {current_wind_direction}")
+                logging.info(f"unfiltered wind directions = {current_wind_directions}")
             
             # current_wind_directions = self.measurements_dict["wind_directions"]
-            current_ws_horz = self.measurements_dict["wind_speeds"] * np.sin(self.measurements_dict["wind_directions"] * (np.pi / 180.)) 
-            current_ws_vert = self.measurements_dict["wind_speeds"] * np.cos(self.measurements_dict["wind_directions"] * (np.pi / 180.)) 
+            # TODO HIGH wind speeds/dirs should be different for different turbines
+            current_ws_horz = self.measurements_dict["wind_speeds"] * np.sin((self.measurements_dict["wind_directions"] - 180.0) * (np.pi / 180.)) 
+            current_ws_vert = self.measurements_dict["wind_speeds"] * np.cos((self.measurements_dict["wind_directions"] - 180.0) * (np.pi / 180.)) 
             
             current_measurements = pd.DataFrame(data={
                     "ws_horz": current_ws_horz,
                     "ws_vert": current_ws_vert
             })
             current_measurements = current_measurements.unstack().to_frame().reset_index(names=["data", "turbine_id"])
+            current_measurements["turbine_id"] += 1 # Change from zero index to one index NOTE assumes that outputs of wind forecast will have suffixex = integers 1-index for each turbines 
+            
             current_measurements = current_measurements\
                 .assign(data=current_measurements["data"] + "_" + current_measurements["turbine_id"].astype(str), index=0)\
                         .pivot(index="index", columns="data", values=0)
@@ -204,16 +209,18 @@ class LookupBasedWakeSteeringController(ControllerBase):
                 
             # need current measurements for filter or for wind forecast
             if self.use_filt or self.wind_forecast:
-                self.historic_measurements = pd.concat([self.historic_measurements, current_measurements], axis=0).iloc[-int((self.lpf_time_const // self.simulation_dt) * 1e3):]
+                self.historic_measurements = pd.concat([self.historic_measurements, current_measurements], axis=0).iloc[-int(np.ceil(self.lpf_time_const // self.simulation_dt) * 1e3):]
 
             if self.wind_forecast:
                 forecasted_wind_field = self.wind_forecast.predict_point(self.historic_measurements, self.current_time)
 
             if self.current_time < self.lpf_start_time or not self.use_filt:
-                wind = forecasted_wind_field if self.wind_forecast else current_measurements
-                wind_dirs = np.arctan2(wind.iloc[-1][sorted([col for col in wind.columns if col.startswith("ws_horz")])].values.astype(float), 
-                                        wind.iloc[-1][sorted([col for col in wind.columns if col.startswith("ws_vert")])].values.astype(float)) * (180.0 / np.pi)
-                wind_mags = (wind.iloc[-1][sorted([col for col in wind.columns if col.startswith("ws_horz")])].values.astype(float)**2 + wind.iloc[-1][sorted([col for col in wind.columns if col.startswith("ws_vert")])].values.astype(float)**2)**0.5
+                wind = forecasted_wind_field.iloc[-1] if self.wind_forecast else current_measurements
+                wind_dirs = 180.0 + (np.arctan2(
+                    wind[[col for col in wind.index if "ws_horz_" in col]].values.astype(float), 
+                    wind[[col for col in wind.index if "ws_vert_" in col]].values.astype(float)) * (180.0 / np.pi))
+                wind_mags = (wind[[col for col in wind.index if "ws_horz_" in col]].values.astype(float)**2 
+                             + wind[[col for col in wind.index if "ws_vert_" in col]].values.astype(float)**2)**0.5
             else:
                 # use filtered wind direction and speed, NOTE historic_measurments includes controller_dt steps into the future such that we can run simulation in time batches
                 # wind_dir = np.array([self._first_ord_filter(self.historic_measurements["wind_directions"],
@@ -222,24 +229,26 @@ class LookupBasedWakeSteeringController(ControllerBase):
                 # wind_dir = wind_dir[0, -1]
                 # wind_speed = current_wind_speed
                 wind = pd.concat([self.historic_measurements, 
-                                       forecasted_wind_field], axis=0)[
+                                       forecasted_wind_field.iloc[-1:]], axis=0)[
                                            [col for col in forecasted_wind_field.columns if col.startswith("ws")]] \
                                                if self.wind_forecast else self.historic_measurements
-                wind_dirs = np.arctan2(wind[sorted([col for col in wind.columns if col.startswith("ws_horz")])].values.astype(float), 
-                                        wind[sorted([col for col in wind.columns if col.startswith("ws_vert")])].values.astype(float)) * (180.0 / np.pi)
+                wind_dirs = 180.0 + (np.arctan2(
+                    wind[[col for col in wind.columns if "ws_horz_" in col]].values.astype(float), 
+                    wind[[col for col in wind.columns if "ws_vert_" in col]].values.astype(float)) * (180.0 / np.pi))
                 wind_dirs = np.array([self._first_ord_filter(wind_dirs[:, i])
                                                 for i in range(self.n_turbines)]).T[-int(self.dt // self.simulation_dt), :]
-                wind_mags = (wind.iloc[-1][sorted([col for col in wind.columns if col.startswith("ws_horz")])].values.astype(float)**2 + wind.iloc[-1][sorted([col for col in wind.columns if col.startswith("ws_vert")])].values.astype(float)**2)**0.5
+                wind_mags = (wind.iloc[-1][[col for col in wind.columns if "ws_horz_" in col]].values.astype(float)**2 
+                             + wind.iloc[-1][[col for col in wind.columns if "ws_vert_" in col]].values.astype(float)**2)**0.5
                 # wind_speeds = 8.0
             
             if self.verbose:
-                print(f"{'filtered' if self.use_filt else 'unfiltered'} wind direction = {wind_dirs}")
+                logging.info(f"{'filtered' if self.use_filt else 'unfiltered'} wind direction = {wind_dirs}")
             
             current_yaw_setpoints = self.controls_dict["yaw_angles"]
             
             # flip the boolean value of those turbines which were actively yawing towards a previous setpoint, but now have reached that setpoint
             if self.verbose and any(self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints)):
-                print(f"LUT Controller turbines {np.where(self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints))[0]} have reached their target setpoint at time {self.current_time}")
+                logging.info(f"LUT Controller turbines {np.where(self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints))[0]} have reached their target setpoint at time {self.current_time}")
             
             self.is_yawing[self.is_yawing & (current_yaw_setpoints == self.previous_target_yaw_setpoints)] = False
 
@@ -252,13 +261,13 @@ class LookupBasedWakeSteeringController(ControllerBase):
             is_target_changing = (np.abs(target_yaw_setpoints - current_yaw_setpoints) > self.deadband_thr) & ~self.is_yawing
 
             if self.verbose and any(is_target_changing):
-                print(f"LUT Controller starting to yaw turbines {np.where(is_target_changing)[0]} from {current_yaw_setpoints[is_target_changing]} to {target_yaw_setpoints[is_target_changing]} at time {self.current_time}")
+                logging.info(f"LUT Controller starting to yaw turbines {np.where(is_target_changing)[0]} from {current_yaw_setpoints[is_target_changing]} to {target_yaw_setpoints[is_target_changing]} at time {self.current_time}")
             
             if self.verbose and any(self.is_yawing):
-                print(f"LUT Controller continuing to yaw turbines {np.where(self.is_yawing)[0]} from {current_yaw_setpoints[self.is_yawing]} to {self.previous_target_yaw_setpoints[self.is_yawing]} at time {self.current_time}")
+                logging.info(f"LUT Controller continuing to yaw turbines {np.where(self.is_yawing)[0]} from {current_yaw_setpoints[self.is_yawing]} to {self.previous_target_yaw_setpoints[self.is_yawing]} at time {self.current_time}")
             
             # else:
-            # 	print(f"LUT Controller current_setpoints = {current_yaw_setpoints}, \n previous_target_yaw_setpoints = {self.previous_target_yaw_setpoints}, \n target_setpoints={target_yaw_setpoints}")
+            # 	logging.info(f"LUT Controller current_setpoints = {current_yaw_setpoints}, \n previous_target_yaw_setpoints = {self.previous_target_yaw_setpoints}, \n target_setpoints={target_yaw_setpoints}")
             
             new_yaw_setpoints[is_target_changing] = target_yaw_setpoints[is_target_changing]
             new_yaw_setpoints[self.is_yawing] = self.previous_target_yaw_setpoints[self.is_yawing].copy()
@@ -271,16 +280,23 @@ class LookupBasedWakeSteeringController(ControllerBase):
             constrained_yaw_setpoints = np.clip(new_yaw_setpoints, current_yaw_setpoints - self.simulation_dt * self.yaw_rate, current_yaw_setpoints + self.simulation_dt * self.yaw_rate)
             
             # if np.all(np.diff(constrained_yaw_setpoints) == 0) and not np.all(np.diff(new_yaw_setpoints) == 0):
-            # 	print(f"Note: all yaw angles have been constrained by the yaw rate equally at time {self.current_time}")
+            # 	logging.info(f"Note: all yaw angles have been constrained by the yaw rate equally at time {self.current_time}")
             
             # if not len(is_target_changing):
-            # 	print(f"Note: no yaw angle setpoints surpass the deadband threshold at time {self.current_time}")
+            # 	logging.info(f"Note: no yaw angle setpoints surpass the deadband threshold at time {self.current_time}")
 
             constrained_yaw_setpoints = np.rint(constrained_yaw_setpoints / self.yaw_increment) * self.yaw_increment
             self.init_sol = {"states": list(constrained_yaw_setpoints / self.yaw_norm_const)}
             self.init_sol["control_inputs"] = (constrained_yaw_setpoints - self.controls_dict["yaw_angles"]) * (self.yaw_norm_const / (self.yaw_rate * self.dt))
             
-            self.controls_dict = {"yaw_angles": list(constrained_yaw_setpoints)}
+            if self.wind_forecast:
+                self.controls_dict = {"yaw_angles": list(np.clip(constrained_yaw_setpoints, *reversed([current_wind_directions - yl for yl in self.yaw_limits]))), 
+                                      "predicted_wind_speeds_horz": forecasted_wind_field.iloc[-1][[col for col in forecasted_wind_field.columns if col.startswith("ws_horz")]].values,
+                                      "predicted_wind_speeds_vert": forecasted_wind_field.iloc[-1][[col for col in forecasted_wind_field.columns if col.startswith("ws_vert")]].values
+                                      }
+            else:
+                {"yaw_angles": list(np.clip(constrained_yaw_setpoints, *reversed([current_wind_directions - yl for yl in self.yaw_limits])))} 
+
             
         return None
 
@@ -389,172 +405,3 @@ def get_yaw_angles_interpolant(df_opt, ramp_up_ws=[4, 5], ramp_down_ws=[10, 12],
         return np.clip(yaw_angles, yaw_lb, yaw_ub)
 
     return interpolant_with_ramps
-
-
-# if __name__ == "__main__":
-    
-#     # # Clear old log files for clarity
-#     # rm loghercules logfloris
-#     # # Set up the helics broker
-#     # helics_broker -t zmq  -f 2 --loglevel="debug" --local_port=$HELICS_PORT &
-#     # python3 hercules_runscript.py hercules_input_000.yaml >> loghercules 2>&1 & # Start the controller center and pass in input file
-#     # python3 floris_runscript.py amr_input.inp amr_standin_data.csv >> logfloris 2>&1
-    
-#     with open(os.path.join(os.path.dirname(whoc.__file__), "wind_field", "wind_field_config.yaml")) as fp:
-#         wind_field_config = yaml.safe_load(fp)
-
-#     # Parallel options
-#     max_workers = 16
-
-#     # input_dict = load_yaml(sys.argv[1])
-#     input_dict = load_yaml("../../examples/hercules_input_001.yaml")
-#     interface = HerculesADInterface(input_dict)
-#     controller = LookupBasedWakeSteeringController(interface, input_dict, max_workers=max_workers)
-#     py_sims = PySims(input_dict)
-    
-#     emulator = Emulator(controller, py_sims, input_dict)
-#     emulator.run_helics_setup()
-#     emulator.enter_execution(function_targets=[], function_arguments=[[]])
-    
-#     amr_input_file = "amr_input.inp"
-#     amr_standin_data_file = "amr_standin_data.csv"
-#     launch_floris(amr_input_file, amr_standin_data_file)
-
-    
-#     # results wind field options
-#     wind_directions_tgt = np.arange(0.0, 360.0, 1.0)
-#     wind_speeds_tgt = np.arange(1.0, 25.0, 1.0)
-    
-#     # Load a dataframe containing the wind rose information
-#     df_windrose, windrose_interpolant \
-#         = ControlledFlorisModel.load_windrose(
-#         windrose_path='/Users/aoifework/Documents/toolboxes/floris/examples/inputs/wind_rose.csv')
-    
-#     ## First, get baseline AEP, without wake steering
-    
-#     # Load a FLORIS object for AEP calculations
-#     fi_noyaw = ControlledFlorisModel(max_workers=max_workers, yaw_limits=input_dict["controller"]["yaw_limits"],
-#                                          dt=input_dict["dt"],
-#                                          yaw_rate=input_dict["controller"]["yaw_rate"]) \
-#         .load_floris(config_path=input_dict["controller"]["floris_input_file"])
-#     fi_noyaw.env.reinitialize(
-#         wind_directions=wind_directions_tgt,
-#         wind_speeds=wind_speeds_tgt        # turbulence_intensity=0.08  # Assume 8% turbulence intensity
-#     )
-    
-#     # Pour this into a parallel computing interface
-#     fi_noyaw.parallelize()
-    
-#     ctrl_noyaw = NoYawController(fi_noyaw, input_dict=input_dict)
-    
-#     farm_power_noyaw, farm_aep_noyaw, farm_energy_noyaw = ControlledFlorisModel.compute_aep(fi_noyaw, ctrl_noyaw,
-#                                                                                                 windrose_interpolant,
-#                                                                                                 wind_directions_tgt,
-#                                                                                                 wind_speeds_tgt)
-    
-#     # instantiate interface
-#     fi_lut = ControlledFlorisModel(max_workers=max_workers, yaw_limits=input_dict["controller"]["yaw_limits"],
-#                                        dt=input_dict["dt"],
-#                                        yaw_rate=input_dict["controller"]["yaw_rate"]) \
-#         .load_floris(config_path=input_dict["controller"]["floris_input_file"])
-    
-#     # instantiate controller, and load lut from csv if it exists
-#     input_dict["controller"]["floris_input_file"] = input_dict["controller"]["floris_input_file"]
-#     ctrl_lut = LookupBasedWakeSteeringController(fi_lut, input_dict=input_dict)
-    
-#     farm_power_lut, farm_aep_lut, farm_energy_lut = ControlledFlorisModel.compute_aep(fi_lut, ctrl_lut,
-#                                                                                           windrose_interpolant,
-#                                                                                           wind_directions_tgt,
-#                                                                                           wind_speeds_tgt)
-#     aep_uplift = 100.0 * (farm_aep_lut / farm_aep_noyaw - 1)
-    
-#     print(" ")
-#     print("===========================================================")
-#     print("Calculating optimized annual energy production (AEP)...")
-#     print(f"Optimized AEP: {farm_aep_lut / 1.0e9:.3f} GWh.")
-#     print(f"Relative AEP uplift by wake steering: {aep_uplift:.3f} %.")
-#     print("===========================================================")
-#     print(" ")
-    
-#     # Now calculate helpful variables and then plot wind rose information
-#     wd_grid, ws_grid = np.meshgrid(wind_directions_tgt, wind_speeds_tgt, indexing="ij")
-#     freq_grid = windrose_interpolant(wd_grid, ws_grid)
-#     freq_grid = freq_grid / np.sum(freq_grid)
-#     df = pd.DataFrame({
-#         "wd": wd_grid.flatten(),
-#         "ws": ws_grid.flatten(),
-#         "freq_val": freq_grid.flatten(),
-#         "farm_power_baseline": farm_power_noyaw.flatten(),
-#         "farm_power_opt": farm_power_lut.flatten(),
-#         "farm_power_relative": farm_power_lut.flatten() / farm_power_noyaw.flatten(),
-#         "farm_energy_baseline": farm_energy_noyaw.flatten(),
-#         "farm_energy_opt": farm_energy_lut.flatten(),
-#         "energy_uplift": (farm_energy_lut - farm_energy_noyaw).flatten(),
-#         "rel_energy_uplift": farm_energy_lut.flatten() / np.sum(farm_energy_noyaw)
-#     })
-    
-#     plot_power_vs_speed(df)
-#     plot_yaw_vs_dir(ctrl_lut.wake_steering_interpolant, ctrl_lut.n_turbines)
-#     plot_power_vs_dir(df, fi_lut.env.floris.flow_field.wind_directions)
-    
-#     ## Simulate wind farm with interface and controller
-#     # instantiate wind field if files don't already exist
-#     wind_field_filenames = glob(f"{wind_field_config['data_save_dir']}/case_*.csv")
-#     if not len(wind_field_filenames):
-#         generate_multi_wind_ts(wind_field_config)
-#         wind_field_filenames = [f"case_{i}.csv" for i in range(wind_field_config["n_wind_field_cases"])]
-    
-#     # if wind field data exists, get it
-#     wind_field_data = []
-#     if os.path.exists(wind_field_config["data_save_dir"]):
-#         for fn in wind_field_filenames:
-#             wind_field_data.append(pd.read_csv(os.path.join(wind_field_config["data_save_dir"], fn)))
-    
-#     # select wind field case
-#     case_idx = 0
-#     time_ts = wind_field_data[case_idx]["Time"].to_numpy()
-#     wind_mag_ts = wind_field_data[case_idx]["FreestreamWindMag"].to_numpy()
-#     wind_dir_ts = wind_field_data[case_idx]["FreestreamWindDir"].to_numpy()
-#     turbulence_intensity_ts = [0.08] * int(wind_field_config["simulation_max_time"] // input_dict["dt"])
-#     yaw_angles_ts = []
-#     fi_lut.reset(disturbances={"wind_speeds": [wind_mag_ts[0]],
-#                                "wind_directions": [wind_dir_ts[0]],
-#                                "turbulence_intensity": turbulence_intensity_ts[0]})
-#     for k, t in enumerate(np.arange(0, wind_field_config["simulation_max_time"] - input_dict["dt"], input_dict["dt"])):
-#         print(f'Time = {t}')
-        
-#         # feed interface with new disturbances
-#         fi_lut.step(disturbances={"wind_speeds": [wind_mag_ts[k]],
-#                                   "wind_directions": [wind_dir_ts[k]],
-#                                   "turbulence_intensity": turbulence_intensity_ts[k]})
-        
-#         # receive measurements from interface, compute control actions, and send to interface
-#         ctrl_lut.step()
-        
-#         print(f"Time = {ctrl_lut.measurements_dict['time']}",
-#               f"Freestream Wind Direction = {wind_dir_ts[k]}",
-#               f"Freestream Wind Magnitude = {wind_mag_ts[k]}",
-#               f"Turbine Wind Directions = {ctrl_lut.measurements_dict['wind_directions']}",
-#               f"Turbine Wind Magnitudes = {ctrl_lut.measurements_dict['wind_speeds']}",
-#               f"Turbine Powers = {ctrl_lut.measurements_dict['powers']}",
-#               f"Yaw Angles = {ctrl_lut.measurements_dict['yaw_angles']}",
-#               sep='\n')
-#         yaw_angles_ts.append(ctrl_lut.measurements_dict['yaw_angles'])
-    
-#     yaw_angles_ts = np.vstack(yaw_angles_ts)
-    
-#     filt_wind_dir_ts = ctrl_lut._first_ord_filter(wind_dir_ts, ctrl_lut.wd_lpf_alpha)
-#     filt_wind_speed_ts = ctrl_lut._first_ord_filter(wind_mag_ts, ctrl_lut.ws_lpf_alpha)
-#     fig, ax = plt.subplots(3, 1)
-#     ax[0].plot(time_ts[:int(wind_field_config["simulation_max_time"] // input_dict["dt"])], wind_dir_ts[:int(wind_field_config["simulation_max_time"] // input_dict["dt"])], label='raw')
-#     ax[0].plot(time_ts[50:int(wind_field_config["simulation_max_time"] // input_dict["dt"])], filt_wind_dir_ts[50:int(wind_field_config["simulation_max_time"] // input_dict["dt"])], '--',
-#                label='filtered')
-#     ax[0].set(title='Wind Direction [deg]', xlabel='Time')
-#     ax[1].plot(time_ts[:int(wind_field_config["simulation_max_time"] // input_dict["dt"])], wind_mag_ts[:int(wind_field_config["simulation_max_time"] // input_dict["dt"])], label='raw')
-#     ax[1].plot(time_ts[50:int(wind_field_config["simulation_max_time"] // input_dict["dt"])], filt_wind_speed_ts[50:int(wind_field_config["simulation_max_time"] // input_dict["dt"])], '--',
-#                label='filtered')
-#     ax[1].set(title='Wind Speed [m/s]', xlabel='Time [s]')
-#     # ax.set_xlim((time_ts[1], time_ts[-1]))
-#     ax[0].legend()
-#     ax[2].plot(time_ts[:int(wind_field_config["simulation_max_time"] // input_dict["dt"]) - 1], yaw_angles_ts)
-#     fig.show()

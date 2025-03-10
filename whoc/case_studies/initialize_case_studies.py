@@ -31,20 +31,21 @@ elif sys.platform == "darwin":
 
 # sequential_pyopt is best solver, stochastic is best preview type
 case_studies = {
-    "baseline_controllers_preview_flasc": {"controller_dt": {"group": 1, "vals": [60, 60]},
-                                    "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
+    "baseline_controllers_preview_flasc": {"controller_dt": {"group": 1, "vals": [120, 120]},
+                                    # "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
                                     "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
                                     "use_filtered_wind_dir": {"group": 1, "vals": [True, True]},
                                     "use_lut_filtered_wind_dir": {"group": 1, "vals": [True, True]},
+                                    # "group": 1, "vals": [120]},
+                                    # "case_names": {"group": 1, "vals": ["LUT"]},
+                                    # "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController"]},
+                                    # "use_filtered_wind_dir": {"group": 1, "vals": [True]},
+                                    # "use_lut_filtered_wind_dir": {"group": 1, "vals": [True]},
                                     "simulation_dt": {"group": 0, "vals": [60]},
-                                    "floris_input_file": {"group": 0, "vals": [
-                                        "../../examples/inputs/smarteole_farm.yaml"
-                                                                            ]},
-                                    "lut_path": {"group": 0, "vals": [
-                                        "../../examples/inputs/smarteole_farm_lut.csv"
-                                    ]},
-                                    "wind_forecast_class": {"group": 3, "vals": ["PersistentForecast", "PerfectForecast"]},
-                                    "prediction_timedelta": {"group": 4, "vals": [120]},
+                                    "floris_input_file": {"group": 0, "vals": ["../../examples/inputs/smarteole_farm.yaml"]},
+                                    "lut_path": {"group": 0, "vals": ["../../examples/inputs/smarteole_farm_lut.csv"]},
+                                    "wind_forecast_class": {"group": 3, "vals": ["PreviewForecast"]}, #, "KalmanFilterForecast", "PerfectForecast", "PersistentForecast"]},
+                                    "prediction_timedelta": {"group": 4, "vals": [60]},
                                     "yaw_limits": {"group": 0, "vals": [15]}
                                     },
     "baseline_controllers_preview_awaken": {"controller_dt": {"group": 1, "vals": [5, 5]},
@@ -339,7 +340,8 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
     with open(os.path.join(os.path.dirname(whoc_file), "../examples/hercules_input_001.yaml"), 'r') as file:
         input_dict  = yaml.safe_load(file)
     
-    input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = stoptime
+    if stoptime != "auto": 
+        input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = stoptime = int(stoptime)
     
     if "slsqp_solver_sweep" not in case_studies or "controller_dt" not in case_studies["slsqp_solver_sweep"]:
         max_controller_dt = input_dict["controller"]["controller_dt"]
@@ -441,12 +443,22 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                                                     / norm_scale[c] 
                                                     for c, col in enumerate(norm_min_cols)])\
                                          .collect().partition_by("continuity_group")]
-        wind_field_ts = [df for df in wind_field_ts if (df["time"].max() - df["time"].min()).total_seconds() >= stoptime]
-        wind_field_ts = wind_field_ts[:n_seeds]
-        # n_seeds = len(wind_field_ts) 
-        wind_field_config = {} 
         
-                                    
+        wind_field_ts = sorted(wind_field_ts, reverse=True, key=lambda df: df["time"].iloc[-1] - df["time"].iloc[0])
+        wind_field_ts = wind_field_ts[:n_seeds]
+        
+        # if stoptime != "auto":
+        #     # wind_field_ts = [df for df in wind_field_ts if (df["time"].iloc[-1] - df["time"].iloc[0]).total_seconds() >= stoptime]
+        # wind_field_ts = [df.loc[(df["time"] - df["time"].iloc[0]).dt.total_seconds() <= stoptime] for df in wind_field_ts]
+            
+        # n_seeds = len(wind_field_ts) 
+        wind_field_config = {}
+        
+        if stoptime == "auto": 
+            durations = [df["time"].iloc[-1] - df["time"].iloc[0] for df in wind_field_ts]
+            input_dict["hercules_comms"]["helics"]["config"]["stoptime"] = stoptime = min([d.total_seconds() for d in durations])
+     
+
     # regenerate floris lookup tables for all wind farms included
     if regenerate_lut:
         lut_input_dict = dict(input_dict)
@@ -462,7 +474,6 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
             ctrl_lut = LookupBasedWakeSteeringController(fi, lut_input_dict, wind_mag_ts=wind_mag_ts[0], wind_dir_ts=wind_dir_ts[0])
 
         input_dict["controller"]["generate_lut"] = False
-
     
     input_dicts = []
     case_lists = []
@@ -508,23 +519,38 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
             
             input_dicts[start_case_idx + c]["wind_forecast"] \
                 = {**{
-                    "measurements_dt": wind_field_ts[0]["time"].iloc[1] - wind_field_ts[0]["time"].iloc[0],
+                    "measurements_timedelta": wind_field_ts[0]["time"].iloc[1] - wind_field_ts[0]["time"].iloc[0],
                     "context_timedelta": pd.Timedelta(seconds=input_dicts[start_case_idx + c]["wind_forecast"]["context_timedelta"]),
-                    "prediction_timedelta": pd.Timedelta(seconds=input_dicts[start_case_idx + c]["wind_forecast"]["prediction_timedelta"])
+                    "prediction_timedelta": pd.Timedelta(seconds=input_dicts[start_case_idx + c]["wind_forecast"]["prediction_timedelta"]),
+                    "controller_timedelta": pd.Timedelta(seconds=input_dicts[start_case_idx + c]["controller"]["controller_dt"])
                     }, 
                    **input_dicts[start_case_idx + c]["wind_forecast"].setdefault(input_dicts[start_case_idx + c]["controller"]["wind_forecast_class"], {})}
             
             assert input_dicts[start_case_idx + c]["controller"]["controller_dt"] >= input_dicts[start_case_idx + c]["simulation_dt"]
              
-            fn = f'input_config_case_{"_".join([f"{key}_{val if (isinstance(val, str) or isinstance(val, np.str_) or isinstance(val, bool)) else np.round(val, 6)}" for key, val in case.items() if key not in ["wind_case_idx", "seed", "floris_input_file", "lut_path"]]) if "case_names" not in case else case["case_names"]}.yaml'.replace("/", "_")
+            fn = f'input_config_case_{"_".join(
+                [f"{key}_{val if (isinstance(val, str) or isinstance(val, np.str_) or isinstance(val, bool)) else np.round(val, 6)}" for key, val in case.items() \
+                    if key not in ["controller_dt", "simulation_dt", "use_filtered_wind_dir", "use_lut_filtered_wind_dir", "yaw_limits", "wind_case_idx", "seed", "floris_input_file", "lut_path"]]) \
+                    if "case_names" not in case else case["case_names"]}.pkl'.replace("/", "_")
             
-            with io.open(os.path.join(results_dir, fn), 'w', encoding='utf8') as fp:
-                yaml.dump(input_dicts[start_case_idx + c], fp, default_flow_style=False, allow_unicode=True)
+            # with io.open(os.path.join(results_dir, fn), 'w', encoding='utf8') as fp:
+                # yaml.dump(input_dicts[start_case_idx + c], fp, default_flow_style=False, allow_unicode=True)
+            # write_input_dict = dict(input_dicts[start_case_idx + c])
+            with open(os.path.join(results_dir, fn), 'wb') as fp:
+                pickle.dump(input_dicts[start_case_idx + c], fp)
 
+    prediction_timedelta = max(inp["wind_forecast"]["prediction_timedelta"] for inp in input_dicts if inp["controller"]["wind_forecast_class"]).total_seconds() \
+            if any(inp["controller"]["wind_forecast_class"] for inp in input_dicts) else 0
+    stoptime -= prediction_timedelta 
+    for inp in input_dicts:
+        inp["hercules_comms"]["helics"]["config"]["stoptime"] = stoptime
     
+    assert all([(df["time"].iloc[-1] - df["time"].iloc[0]).total_seconds() >= stoptime + prediction_timedelta for df in wind_field_ts])
+    wind_field_ts = [df.loc[(df["time"] - df["time"].iloc[0]).dt.total_seconds() 
+                        <= stoptime + prediction_timedelta] 
+                    for df in wind_field_ts]
     
     # instantiate controller and run_simulations simulation
-    
     with open(os.path.join(save_dir, "init_simulations.pkl"), "wb") as fp:
         pickle.dump({"case_lists": case_lists, "case_name_lists": case_name_lists, "input_dicts": input_dicts, "wind_field_config": wind_field_config,
                     "wind_field_ts": wind_field_ts}, fp)

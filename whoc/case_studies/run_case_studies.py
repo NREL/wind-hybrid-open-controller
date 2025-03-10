@@ -9,6 +9,7 @@ from mpi4py.futures import MPICommExecutor
 import numpy as np
 import pandas as pd
 import yaml
+import pickle
 
 import whoc
 try:
@@ -39,7 +40,7 @@ if __name__ == "__main__":
     parser.add_argument("-ps", "--postprocess_simulations", action="store_true")
     parser.add_argument("-rps", "--reprocess_simulations", action="store_true")
     parser.add_argument("-ras", "--reaggregate_simulations", action="store_true")
-    parser.add_argument("-st", "--stoptime", type=float, default=3600)
+    parser.add_argument("-st", "--stoptime", default="auto")
     parser.add_argument("-ns", "--n_seeds", type=int, default=6)
     parser.add_argument("-m", "--multiprocessor", type=str, choices=["mpi", "cf"])
     parser.add_argument("-sd", "--save_dir", type=str)
@@ -93,7 +94,7 @@ if __name__ == "__main__":
                                                 wind_forecast_class=globals()[case_lists[c]["wind_forecast_class"]] if case_lists[c]["wind_forecast_class"] else None,
                                                 input_dict=d, 
                                                 wind_case_idx=case_lists[c]["wind_case_idx"], wind_field_ts=wind_field_ts[case_lists[c]["wind_case_idx"]],
-                                                case_name="_".join([f"{key}_{val if (isinstance(val, str) or isinstance(val, np.str_) or isinstance(val, bool)) else np.round(val, 6)}" for key, val in case_lists[c].items() if key not in ["wind_case_idx", "seed", "lut_path", "floris_input_file"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
+                                                case_name="_".join([f"{key}_{val if (isinstance(val, str) or isinstance(val, np.str_) or isinstance(val, bool)) else np.round(val, 6)}" for key, val in case_lists[c].items() if key not in ["controller_dt", "simulation_dt", "use_filtered_wind_dir", "use_lut_filtered_wind_dir", "yaw_limits", "wind_case_idx", "seed", "floris_input_file", "lut_path"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
                                                 case_family="_".join(case_name_lists[c].split("_")[:-1]), wind_field_config=wind_field_config, verbose=False, save_dir=args.save_dir, rerun_simulations=args.rerun_simulations,
                                                 )
                         for c, d in enumerate(input_dicts)]
@@ -106,7 +107,7 @@ if __name__ == "__main__":
                                     wind_forecast_class=globals()[case_lists[c]["wind_forecast_class"]] if case_lists[c]["wind_forecast_class"] else None, 
                                     input_dict=d, 
                                     wind_case_idx=case_lists[c]["wind_case_idx"], wind_field_ts=wind_field_ts[case_lists[c]["wind_case_idx"]],
-                                    case_name="_".join([f"{key}_{val if (isinstance(val, str) or isinstance(val, np.str_) or isinstance(val, bool)) else np.round(val, 6)}" for key, val in case_lists[c].items() if key not in ["wind_case_idx", "seed", "lut_path", "floris_input_file"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
+                                    case_name="_".join([f"{key}_{val if (isinstance(val, str) or isinstance(val, np.str_) or isinstance(val, bool)) else np.round(val, 6)}" for key, val in case_lists[c].items() if key not in ["controller_dt", "simulation_dt", "use_filtered_wind_dir", "use_lut_filtered_wind_dir", "yaw_limits", "wind_case_idx", "seed", "floris_input_file", "lut_path"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
                                     case_family="_".join(case_name_lists[c].split("_")[:-1]),
                                     wind_field_config=wind_field_config, verbose=True, save_dir=args.save_dir, rerun_simulations=args.rerun_simulations)
     
@@ -239,7 +240,7 @@ if __name__ == "__main__":
                             case_name_df = case_family_df.iloc[case_family_df.index.get_level_values("CaseName") == case_name, :]
                             res = aggregate_time_series_data(
                                                             time_series_df=case_name_df,
-                                                             yaml_path=os.path.join(args.save_dir, case_families[i], f"input_config_case_{case_name}.yaml"),
+                                                             input_dict_path=os.path.join(args.save_dir, case_families[i], f"input_config_case_{case_name}.pkl"),
                                                             # results_path=os.path.join(args.save_dir, case_families[i], f"agg_results_{case_name}.csv"),
                                                             n_seeds=args.n_seeds)
                             if res is not None:
@@ -293,6 +294,91 @@ if __name__ == "__main__":
             agg_df = pd.concat(agg_df)
 
         if RUN_ONCE and PLOT:
+            
+            if((case_families.index("baseline_controllers_preview_flasc") in args.case_ids 
+                or case_families.index("baseline_controllers_preview_awaken") in args.case_ids)):
+                from whoc.wind_forecast.WindForecast import WindForecast
+                from wind_forecasting.preprocessing.data_inspector import DataInspector
+                # import polars as pl
+                # import polars.selectors as cs
+                
+                config_cols = ["controller_class", "wind_forecast_class", "prediction_timedelta"]
+                for (case_family, case_name), _ in time_series_df.iterrows():
+                    # input_fn = [fn for fn in os.listdir(os.path.join(args.save_dir, case_family)) if "input_config" in fn and case_name in fn][0]
+                    input_fn = f"input_config_case_{case_name}.pkl"
+                    with open(os.path.join(args.save_dir, case_family, input_fn), mode='rb') as fp:
+                        input_config = pickle.load(fp)
+                    
+                    for col in config_cols:
+                        if col in input_config["controller"]:
+                            target = input_config["controller"]
+                        elif col in input_config["wind_forecast"]:
+                            target = input_config["wind_forecast"]
+                        else:
+                            target = input_config
+                        time_series_df.loc[(time_series_df.index.get_level_values("CaseFamily") == case_family) & (time_series_df.index.get_level_values("CaseName") == case_name), col] = target[col]
+
+                
+                forecast_wf = time_series_df.iloc[
+                    (time_series_df.index.get_level_values("CaseFamily") == "baseline_controllers_preview_flasc")]\
+                        .reset_index(level=["CaseFamily", "CaseName"], drop=True)[
+                           ["WindSeed", "PredictedTime", "controller_class", "wind_forecast_class", "prediction_timedelta"] 
+                           + [col for col in time_series_df if "PredictedTurbine" in col] 
+                        ].rename(columns={"PredictedTime": "time"})
+                        
+                true_wf = time_series_df.iloc[
+                    (time_series_df.index.get_level_values("CaseFamily") == "baseline_controllers_preview_flasc")]\
+                        .reset_index(level=["CaseFamily", "CaseName"], drop=True)[
+                           ["WindSeed", "Time", "controller_class", "wind_forecast_class", "prediction_timedelta"] 
+                           + [col for col in time_series_df if col.startswith("TurbineWind")] 
+                        ].rename(columns={"Time": "time"})
+                 
+                id_vars = ["WindSeed", "time", "controller_class", "wind_forecast_class", "prediction_timedelta"]
+                value_vars = set([re.match(".*(?=_\\d+)", col).group(0) for col in time_series_df if col.startswith("PredictedTurbine")])
+                # first unpivot makes long on turbine ids, second makes long on feature type, for the purposes of seaborn plot
+                forecast_wf = DataInspector.unpivot_dataframe(forecast_wf, 
+                                                            value_vars=value_vars, 
+                                                            turbine_signature="_(\\d+)$")\
+                                                    .melt(id_vars=["turbine_id"] + id_vars, 
+                                                          value_vars=value_vars, 
+                                                          var_name="feature", value_name="value")
+                forecast_wf = forecast_wf.assign(data_type="Forecast")
+                forecast_wf["time"] = pd.to_datetime(forecast_wf["time"], unit="s")
+                forecast_wf.loc[forecast_wf["feature"] == "PredictedTurbineWindSpeedVert", "feature"] = "ws_vert"
+                forecast_wf.loc[forecast_wf["feature"] == "PredictedTurbineWindSpeedHorz", "feature"] = "ws_horz"
+                forecast_wf.loc[forecast_wf["feature"] == "PredictedTurbineWindDir", "feature"] = "wd"
+                forecast_wf.loc[forecast_wf["feature"] == "PredictedTurbineWindMag", "feature"] = "wm"
+                
+                value_vars = set([re.match(".*(?=_\\d+)", col).group(0) for col in time_series_df if col.startswith("TurbineWind")]) 
+                true_wf = DataInspector.unpivot_dataframe(true_wf, 
+                                                    value_vars=value_vars, 
+                                                turbine_signature="_(\\d+)$")\
+                                                .melt(id_vars=["turbine_id"] + id_vars, 
+                                            value_vars=value_vars, 
+                                            var_name="feature", value_name="value")
+                true_wf = true_wf.assign(data_type="True")
+                true_wf["time"] = pd.to_datetime(true_wf["time"], unit="s")
+                true_wf.loc[true_wf["feature"] == "TurbineWindSpeedVert", "feature"] = "ws_vert"
+                true_wf.loc[true_wf["feature"] == "TurbineWindSpeedHorz", "feature"] = "ws_horz"
+                true_wf.loc[true_wf["feature"] == "TurbineWindDir", "feature"] = "wd"
+                true_wf.loc[true_wf["feature"] == "TurbineWindMag", "feature"] = "wm"
+                # TODO HIGH clean this code up
+                
+                wind_seed = 0
+                wind_forecast_class = "PreviewForecast" # "KalmanFilterForecast"
+                # controller_class = "GreedyController"
+                controller_class = "LookupBasedWakeSteeringController"
+                # TODO WHY DO GREEDY AND LUT LOOK THE SAME, WHY IS ONLY ONE TURBINE VISIBLE
+                WindForecast.plot_forecast(
+                    preview_wf=forecast_wf.loc[
+                        (forecast_wf["WindSeed"] == wind_seed) & (forecast_wf["wind_forecast_class"] == wind_forecast_class) & (forecast_wf["controller_class"] == controller_class), 
+                        ["data_type", "time", "feature", "value", "turbine_id"]],
+                    true_wf=true_wf.loc[
+                        (true_wf["WindSeed"] == wind_seed) & (true_wf["wind_forecast_class"] == wind_forecast_class) & (true_wf["controller_class"] == controller_class), 
+                        ["data_type", "time", "feature", "value", "turbine_id"]]
+                )
+                 
+            
             if ((case_families.index("baseline_controllers") in args.case_ids)):
                 mpc_df = agg_df.iloc[agg_df.index.get_level_values("CaseFamily") != "baseline_controllers"]
                 lut_df = agg_df.iloc[(agg_df.index.get_level_values("CaseFamily") == "baseline_controllers") & (agg_df.index.get_level_values("CaseName") == "LUT")] 
@@ -373,9 +459,9 @@ if __name__ == "__main__":
                 config_cols = ["controller_dt", "n_horizon"]
                 for (case_family, case_name), _ in mpc_df.iterrows():
                     # input_fn = [fn for fn in os.listdir(os.path.join(args.save_dir, case_family)) if "input_config" in fn and case_name in fn][0]
-                    input_fn = f"input_config_case_{case_name}.yaml"
+                    input_fn = f"input_config_case_{case_name}.pkl"
                     with open(os.path.join(args.save_dir, case_family, input_fn), mode='r') as fp:
-                        input_config = yaml.safe_load(fp)
+                        input_config = pickle.load(fp)
                     
                     for col in config_cols:
                         mpc_df.loc[(mpc_df.index.get_level_values("CaseFamily") == case_family) & (mpc_df.index.get_level_values("CaseName") == case_name), col] = input_config["controller"][col]

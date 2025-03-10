@@ -46,11 +46,13 @@ def simulate_controller(controller_class, wind_forecast_class, input_dict, **kwa
     if input_dict["controller"]["initial_conditions"]["yaw"] == "auto":
         u = kwargs["wind_field_ts"].iloc[0][[col for col in kwargs["wind_field_ts"].columns if col.startswith("ws_horz")]].values.astype(float)
         v = kwargs["wind_field_ts"].iloc[0][[col for col in kwargs["wind_field_ts"].columns if col.startswith("ws_vert")]].values.astype(float)
-        direc = (np.arctan2(u, v) * (180. / np.pi))
-        input_dict["controller"]["initial_conditions"]["yaw"] = list(direc)
+        direc = 180.0 + (np.arctan2(u, v) * (180. / np.pi))
+        input_dict["controller"]["initial_conditions"]["yaw"] = list(direc) # TODO HIGH this initialization doesn't make sense if floris assigns general wind farm direction
     
-    # pl.DataFrame(kwargs["wind_field_ts"]) 
-    wind_forecast = wind_forecast_class(true_wind_field=kwargs["wind_field_ts"], 
+    # pl.DataFrame(kwargs["wind_field_ts"])
+    input_dict["wind_forecast"]["measurement_layout"] = np.vstack([fi.env.layout_x, fi.env.layout_y]).T
+    wind_forecast = wind_forecast_class(true_wind_field=kwargs["wind_field_ts"],
+                                        n_turbines=fi.n_turbines, 
                                         **input_dict["wind_forecast"])
     ctrl = controller_class(fi, wind_forecast=wind_forecast, input_dict=input_dict, **kwargs)
     
@@ -61,7 +63,9 @@ def simulate_controller(controller_class, wind_forecast_class, input_dict, **kwa
     turbine_wind_mag_ts = []
     turbine_wind_dir_ts = []
     turbine_offline_status_ts = []
-
+    predicted_turbine_wind_speed_horz_ts = []
+    predicted_turbine_wind_speed_vert_ts = []
+    
     convergence_time_ts = []
 
     opt_cost_ts = []
@@ -75,7 +79,7 @@ def simulate_controller(controller_class, wind_forecast_class, input_dict, **kwa
     mean_u = kwargs["wind_field_ts"][[col for col in kwargs["wind_field_ts"].columns if col.startswith("ws_horz")]].mean(axis=1)
     mean_v = kwargs["wind_field_ts"][[col for col in kwargs["wind_field_ts"].columns if col.startswith("ws_vert")]].mean(axis=1)
     mean_mag = (mean_u**2 + mean_v**2)**0.5
-    mean_dir = (np.arctan2(mean_u, mean_v) * (180. / np.pi))
+    mean_dir = 180.0 + (np.arctan2(mean_u, mean_v) * (180. / np.pi))
     mean_dir[mean_dir < 0] = 360. + mean_dir[mean_dir < 0]
     mean_dir[mean_dir > 360] = np.mod(mean_dir[mean_dir > 360], 360.) 
     
@@ -107,7 +111,7 @@ def simulate_controller(controller_class, wind_forecast_class, input_dict, **kwa
         # only step yaw angles by up to yaw_rate * input_dict["simulation_dt"] for each time-step
         # run this in a loop, in compute_controls, update controls dict every 0.5 seconds, but store and run floris set every 60s in ControllerFlorisInterface
         for tt in np.arange(t, t + ctrl.dt, input_dict["simulation_dt"]):
-            fi.time += pd.Timedelta(seconds=ctrl.dt)
+            
             if tt == (t + ctrl.dt - input_dict["simulation_dt"]):
                 fi.run_floris = True
             
@@ -119,10 +123,15 @@ def simulate_controller(controller_class, wind_forecast_class, input_dict, **kwa
             turbine_powers_ts += [ctrl.measurements_dict["turbine_powers"]]
             turbine_wind_mag_ts += [ctrl.measurements_dict["wind_speeds"]]
             turbine_wind_dir_ts += [ctrl.measurements_dict["wind_directions"]]
+            predicted_turbine_wind_speed_horz_ts += [ctrl.controls_dict["predicted_wind_speeds_horz"]]
+            predicted_turbine_wind_speed_vert_ts += [ctrl.controls_dict["predicted_wind_speeds_vert"]]
             # turbine_offline_status_ts += [fi.offline_status[tt, :]]
             turbine_offline_status_ts += [np.isclose(ctrl.measurements_dict["turbine_powers"], 0, atol=1e-3)]
+            
+            fi.time += pd.Timedelta(seconds=input_dict["simulation_dt"])
         
-        assert np.all(np.vstack(turbine_offline_status_ts)[-int(ctrl.dt // input_dict["simulation_dt"]):, :] == fi.offline_status), "collected turbine_offline_status_ts should be equal to fi.offline_status in simulate_controllers"
+        # zero turbine power could be due to low wind speed as well as formally set offline 
+        # assert np.all(np.vstack(turbine_offline_status_ts)[-int(ctrl.dt // input_dict["simulation_dt"]):, :] == fi.offline_status), "collected turbine_offline_status_ts should be equal to fi.offline_status in simulate_controllers"
 
         end_time = perf_counter()
 
@@ -148,7 +157,7 @@ def simulate_controller(controller_class, wind_forecast_class, input_dict, **kwa
         # add freestream wind mags/dirs provided to controller, yaw angles computed at this time-step, resulting turbine powers, wind mags, wind dirs
 
         print(f"\nTime = {t} of {controller_class.__name__} - {kwargs['case_name']} with wind seed {kwargs['wind_case_idx']}")
-        if ctrl.verbose:
+        if ctrl.verbose and False:
             print(f"Measured Freestream Wind Direction = {mean_dir[k]}",
                 f"Measured Freestream Wind Magnitude = {mean_mag[k]}",
                 f"Measured Turbine Wind Directions = {ctrl.measurements_dict['wind_directions'] if ctrl.measurements_dict['wind_directions'].ndim == 2 else ctrl.measurements_dict['wind_directions']}",
@@ -180,10 +189,14 @@ def simulate_controller(controller_class, wind_forecast_class, input_dict, **kwa
             turbine_powers_ts += [last_measurements["turbine_powers"]]
             turbine_wind_mag_ts += [last_measurements["wind_speeds"]]
             turbine_wind_dir_ts += [last_measurements["wind_directions"]]
+            predicted_turbine_wind_speed_horz_ts += [[np.nan] * fi.n_turbines]
+            predicted_turbine_wind_speed_vert_ts += [[np.nan] * fi.n_turbines]
             turbine_offline_status_ts += [np.isclose(last_measurements["turbine_powers"], 0, atol=1e-3)]
 
         turbine_wind_mag_ts = np.vstack(turbine_wind_mag_ts)[:-(n_future_steps + 1), :]
         turbine_wind_dir_ts = np.vstack(turbine_wind_dir_ts)[:-(n_future_steps + 1), :]
+        predicted_turbine_wind_speed_horz_ts = np.vstack(predicted_turbine_wind_speed_horz_ts)[:-(n_future_steps + 1), :].astype(float)
+        predicted_turbine_wind_speed_vert_ts = np.vstack(predicted_turbine_wind_speed_vert_ts)[:-(n_future_steps + 1), :].astype(float)
         turbine_offline_status_ts = np.vstack(turbine_offline_status_ts)[:-(n_future_steps + 1), :]
 
         yaw_angles_ts = np.vstack(yaw_angles_ts)
@@ -194,6 +207,9 @@ def simulate_controller(controller_class, wind_forecast_class, input_dict, **kwa
         yaw_angles_ts = yaw_angles_ts[:-(n_future_steps + 1), :]
         init_yaw_angles_ts = init_yaw_angles_ts[:-(n_future_steps + 1), :]
         turbine_powers_ts = np.vstack(turbine_powers_ts)[:-(n_future_steps + 1), :]
+        
+        predicted_turbine_wind_mag_ts = np.sqrt(predicted_turbine_wind_speed_horz_ts**2 + predicted_turbine_wind_speed_vert_ts**2)
+        predicted_turbine_wind_dir_ts = 180.0 + (np.arctan2(predicted_turbine_wind_speed_horz_ts, predicted_turbine_wind_speed_vert_ts) * (180.0 / np.pi))
 
     # greedy_turbine_powers_ts = np.vstack(greedy_turbine_powers_ts)
     # opt_cost_terms_ts = np.vstack(opt_cost_terms_ts)
@@ -225,25 +241,43 @@ def simulate_controller(controller_class, wind_forecast_class, input_dict, **kwa
         "FilteredFreestreamWindDir": first_ord_filter(mean_dir[:yaw_angles_ts.shape[0]], 
                                                       alpha=np.exp(-(1 / input_dict["controller"]["lpf_time_const"]) * input_dict["simulation_dt"])),
         **{
-            f"InitTurbineYawAngle_{i}": init_yaw_angles_ts[:, i] for i in range(ctrl.n_turbines)
+            f"InitTurbineYawAngle_{i+1}": init_yaw_angles_ts[:, i] for i in range(ctrl.n_turbines)
         }, 
         **{
-            f"TurbineYawAngle_{i}": yaw_angles_ts[:, i] for i in range(ctrl.n_turbines)
+            f"TurbineYawAngle_{i+1}": yaw_angles_ts[:, i] for i in range(ctrl.n_turbines)
         }, 
         **{
-            f"TurbineYawAngleChange_{i}": yaw_angles_change_ts[:, i] for i in range(ctrl.n_turbines)
+            f"TurbineYawAngleChange_{i+1}": yaw_angles_change_ts[:, i] for i in range(ctrl.n_turbines)
         },
         **{
-            f"TurbinePower_{i}": turbine_powers_ts[:, i] for i in range(ctrl.n_turbines)
+            f"TurbinePower_{i+1}": turbine_powers_ts[:, i] for i in range(ctrl.n_turbines)
         },
         **{
-            f"TurbineWindMag_{i}": turbine_wind_mag_ts[:, i] for i in range(ctrl.n_turbines)
+            f"TurbineWindMag_{i+1}": turbine_wind_mag_ts[:, i] for i in range(ctrl.n_turbines)
         },
         **{
-            f"TurbineWindDir_{i}": turbine_wind_dir_ts[:, i] for i in range(ctrl.n_turbines)
+            f"TurbineWindDir_{i+1}": turbine_wind_dir_ts[:, i] for i in range(ctrl.n_turbines)
         },
         **{
-            f"TurbineOfflineStatus_{i}": turbine_offline_status_ts[:, i] for i in range(ctrl.n_turbines)
+            f"TurbineWindSpeedHorz_{i+1}": turbine_wind_mag_ts[:, i] * np.sin((180+turbine_wind_dir_ts[:, i]) * np.pi/180) for i in range(ctrl.n_turbines)
+        },
+        **{
+            f"TurbineWindSpeedVert_{i+1}": turbine_wind_mag_ts[:, i] * np.cos((180+turbine_wind_dir_ts[:, i]) * np.pi/180) for i in range(ctrl.n_turbines)
+        },
+        **{
+            f"PredictedTurbineWindSpeedHorz_{i+1}": predicted_turbine_wind_speed_horz_ts[:, i] for i in range(ctrl.n_turbines)
+        },
+        **{
+            f"PredictedTurbineWindSpeedVert_{i+1}": predicted_turbine_wind_speed_vert_ts[:, i] for i in range(ctrl.n_turbines)
+        },
+        **{
+            f"PredictedTurbineWindMag_{i+1}": predicted_turbine_wind_mag_ts[:, i] for i in range(ctrl.n_turbines)
+        },
+        **{
+            f"PredictedTurbineWindDir_{i+1}": predicted_turbine_wind_dir_ts[:, i] for i in range(ctrl.n_turbines)
+        },
+        **{
+            f"TurbineOfflineStatus_{i+1}": turbine_offline_status_ts[:, i] for i in range(ctrl.n_turbines)
         },
         "FarmYawAngleChangeAbsSum": np.sum(np.abs(yaw_angles_change_ts), axis=1),
         "RelativeFarmYawAngleChangeAbsSum": (np.sum(np.abs(yaw_angles_change_ts) * ~turbine_offline_status_ts, axis=1)) / (np.sum(~turbine_offline_status_ts, axis=1)),
@@ -259,6 +293,7 @@ def simulate_controller(controller_class, wind_forecast_class, input_dict, **kwa
         },
         "TotalRunningOptimizationCost": np.sum(running_opt_cost_terms_ts, axis=1),
     })
+    results_df["PredictedTime"] = results_df["Time"] + wind_forecast.prediction_timedelta.total_seconds()
 
     results_df.to_csv(os.path.join(results_dir, fn))
     print(f"Saved {fn}")

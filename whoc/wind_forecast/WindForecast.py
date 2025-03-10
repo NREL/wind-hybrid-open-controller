@@ -7,6 +7,7 @@ from collections import defaultdict
 import os
 import datetime
 import yaml
+import re
 from functools import partial
 
 # import multiprocessing as mp
@@ -28,6 +29,7 @@ from pytorch_transformer_ts.spacetimeformer.lightning_module import Spacetimefor
 import pytorch_lightning as L
 
 from wind_forecasting.preprocessing.data_inspector import DataInspector
+from wind_forecasting.preprocessing.data_module import DataModule
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -48,8 +50,7 @@ from sklearn.svm import SVR
 from sklearn.model_selection import cross_val_score
 
 from filterpy.kalman import KalmanFilter
-
-from wind_forecasting.preprocessing.data_module import DataModule
+from floris import FlorisModel
 
 import logging 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -59,8 +60,12 @@ class WindForecast:
     """Wind speed component forecasting module that provides various prediction methods."""
     context_timedelta: datetime.timedelta
     prediction_timedelta: datetime.timedelta
-    measurements_dt: datetime.timedelta
+    measurements_timedelta: datetime.timedelta
+    controller_timedelta: datetime.timedelta
+    n_turbines: int
     true_wind_field: Optional[Union[pd.DataFrame, pl.DataFrame]]
+    measurement_layout: Optional[np.ndarray]
+    # n_targets_per_turbine: int 
     
     # def read_measurements(self):
     #     """_summary_
@@ -69,9 +74,15 @@ class WindForecast:
     #     raise NotImplementedError()
 
     def __post_init__(self):
-        self.n_context = int(self.context_timedelta / self.measurements_dt)
-        self.n_prediction = int(self.prediction_timedelta / self.measurements_dt)
-    
+        assert (self.context_timedelta % self.measurements_timedelta).total_seconds() == 0, "context_timedelta must be a multiple of measurements_timedelta"
+        assert (self.prediction_timedelta % self.measurements_timedelta).total_seconds() == 0, "prediction_timedelta must be a multiple of measurements_timedelta"
+        assert (self.controller_timedelta % self.measurements_timedelta).total_seconds() == 0, "controller_timedelta must be a multiple of measurements_timedelta"
+        self.n_context = int(self.context_timedelta / self.measurements_timedelta) # number of simulation time steps in a context horizon
+        self.n_prediction = int(self.prediction_timedelta / self.measurements_timedelta) # number of simulation time steps in a prediction horizon
+        self.n_controller = int(self.controller_timedelta / self.measurements_timedelta) # number of simulation time steps in a single controller sampling intervals
+        self.n_targets_per_turbine = 2 # horizontal and vertical wind speed
+        self.last_measurement_time = None
+        
     def _get_ws_cols(self, historic_measurements: Union[pl.DataFrame, pd.DataFrame]):
         if isinstance(historic_measurements, pl.DataFrame):
             return historic_measurements.select(cs.starts_with("ws_horz") | cs.starts_with("ws_vert")).columns
@@ -137,8 +148,7 @@ class WindForecast:
                                             scaler=self.scaler[output],
                                             study_name=f"{study_name_root}_{output}",
                                             storage=storage, n_trials=n_trials)
-        
-        
+    
     def set_tuned_params(self, use_rdb, study_name_root):
         for output in self.outputs:
             storage = self.get_storage(use_rdb=use_rdb, study_name=f"{study_name_root}_{output}")
@@ -171,13 +181,26 @@ class WindForecast:
         raise NotImplementedError()
 
     def get_pred_interval(self, current_time):
-        return pl.datetime_range(start=current_time, end=current_time + self.prediction_timedelta, interval=self.measurements_dt, eager=True, closed="right")
+        return pl.datetime_range(start=current_time, end=current_time + self.prediction_timedelta, interval=self.measurements_timedelta, eager=True, closed="right")
 
     @staticmethod
-    def plot_forecast(preview_wf, true_wf, prediction_type="point", per_turbine_target=False):
-        fig, axs = plt.subplots(1, 2, sharex=True)
+    def plot_forecast(preview_wf, true_wf, feature_types=None, prediction_type="point", per_turbine_target=False, turbine_ids="all"):
+        if isinstance(preview_wf, pd.DataFrame):
+            preview_wf = pl.DataFrame(preview_wf)
+            
+        if isinstance(true_wf, pd.DataFrame):
+            true_wf = pl.DataFrame(true_wf)
         
-        for f, feat in enumerate(["ws_horz", "ws_vert"]):
+        if feature_types is None:
+            feature_types = ["ws_horz", "ws_vert"]
+        
+        fig, axs = plt.subplots(1, len(feature_types), sharex=True)
+        
+        if turbine_ids != "all":
+            preview_wf = preview_wf.filter(pl.col("turbine_id").is_in(turbine_ids))
+            true_wf = true_wf.filter(pl.col("turbine_id").is_in(turbine_ids))
+        
+        for f, feat in enumerate(feature_types):
             sns.lineplot(data=true_wf.filter(
                             (pl.col("feature") == feat) & (pl.col("time").is_between(preview_wf.select(pl.col("time").min()).item(), preview_wf.select(pl.col("time").max()).item(), closed="both"))), 
                                  x="time", y="value", ax=axs[f], style="data_type", hue="turbine_id")
@@ -222,7 +245,7 @@ class WindForecast:
                 
                 sns.lineplot(data=preview_wf.filter(pl.col("feature") == feat), x="time", y="value", hue="turbine_id", style="data_type", dashes=[[4, 4]], marker="o", ax=axs[f])
                 
-            axs[f].set(xlabel="Time", ylabel="Wind Speed [m/s]", 
+            axs[f].set(xlabel="Time (s)", ylabel="Wind Speed (m/s)", 
                        xlim=(true_wf.filter((pl.col("time") < pl.lit(preview_wf.select(pl.col("time").min()).item()))).select(pl.col("time").last()).item(), 
                              preview_wf.select(pl.col("time").max()).item()), title=feat)
         
@@ -285,11 +308,11 @@ class PerfectForecast(WindForecast):
         if isinstance(self.true_wind_field, pl.DataFrame):
             sub_df = self.true_wind_field.rename(self.col_mapping) if self.col_mapping else self.true_wind_field
             sub_df = sub_df.filter(pl.col("time").is_between(current_time, current_time + self.prediction_timedelta, closed="right"))
-            assert sub_df.select(pl.len()).item() == int(self.prediction_timedelta / self.measurements_dt)
+            assert sub_df.select(pl.len()).item() == int(self.prediction_timedelta / self.measurements_timedelta)
         elif isinstance(self.true_wind_field, pd.DataFrame):
             sub_df = self.true_wind_field.rename(columns=self.col_mapping) if self.col_mapping else self.true_wind_field
             sub_df = sub_df.loc[(sub_df["time"] > current_time) & (sub_df["time"] <= (current_time + self.prediction_timedelta)), :].reset_index(drop=True)
-            assert len(sub_df.index) == int(self.prediction_timedelta / self.measurements_dt)
+            assert len(sub_df.index) == int(self.prediction_timedelta / self.measurements_timedelta)
         return sub_df
 
 @dataclass
@@ -317,53 +340,49 @@ class PersistentForecast(WindForecast):
                           last_measurement.select(pl.exclude("time").repeat_by(len(pred_slice)).explode())], 
                          how="horizontal")
              
-        
-
 @dataclass
 class PreviewForecast(WindForecast):
     """
     Reads wind speed components from upstream turbines, and computes time of arrival based on taylor's frozen wake hypothesis.
     """
-    def create_preview_mapping(self, historic_measurments):
-        # TODO create a mapping from each turbine id to the turbine id used for preview measurements
-        
-        # rotate turbine coordinates based on most recent wind direction measurement
-		# order turbines based on order of wind incidence
-        layout_x = self.fi.env.layout_x
-        layout_y = self.fi.env.layout_y
-        wd = historic_measurements["FreestreamWindDir"][0, 0]
-        # wd = 250.0
-        layout_x_rot = (
-            np.cos((wd - 270.0) * np.pi / 180.0) * layout_x
-            - np.sin((wd - 270.0) * np.pi / 180.0) * layout_y
-        )
-        turbines_ordered = np.argsort(layout_x_rot)
     
+    def __post_init__(self):
+        super().__post_init__()
+        
     def predict_point(self, historic_measurements: Union[pd.DataFrame, pl.DataFrame], current_time):
         pred_slice = self.get_pred_interval(current_time)
+        pred_slice = pred_slice[-1:] # pred_slice.filter(pred_slice == current_time + self.prediction_timedelta)
+        outputs = self._get_ws_cols(historic_measurements)
+        
+        # multivariate with state matrix containing all horizontal and vertical wind speed measurements
         if isinstance(historic_measurements, pd.DataFrame):
-            assert (historic_measurements["time"] == current_time).any()
-        elif isinstance(historic_measurements, pl.DataFrame):
-            assert historic_measurements.select((pl.col("time") == current_time).any()).item()
-        # TODO for each turbine, compute the weighted average of wind directions to find which direction is upstream
+            historic_measurements = pl.DataFrame(historic_measurements)
+            return_pl = False
+        else:
+            return_pl = True
         
+        new_measurements = historic_measurements.slice(-1, 1)
         
-        PreviewForecast.full_farm_directional_weighted_average(historic_measurements,
-                                                               )
+        pred = self.full_farm_directional_weighted_average(new_measurements)
         
-        # TODO
-        # last_measurement = historic_measurements.filter(pl.col("time") == current_time)
-        # return pl.concat([pl.DataFrame({"time": pred_slice}), 
-        #                   last_measurement.select(pl.exclude("time").repeat_by(len(pred_slice)).explode())], 
-        #                  how="horizontal")
+        # self.last_measurement_time = historic_measurements.select(pl.col("time").last()).item()
+        
+        pred = {output: pred[:, o] for o, output in enumerate(outputs)}
+        pred = pl.DataFrame({"time": pred_slice}).with_columns(**pred)
+        
+        if return_pl:
+            return pred
+        else:
+            return pred.to_pandas()
     
     
     def full_farm_directional_weighted_average(
         self,
-        data_in,
-        measurement_layout,
-        wind_directions,
-        shift_distance,
+        new_measurements: Union[pd.DataFrame, pl.DataFrame]
+        # data_in,
+        # wind_speeds,
+        # wind_directions,
+        # shift_distance,
         # is_circular=False,
         # is_bearing=False,
     ):
@@ -382,37 +401,37 @@ class PreviewForecast(WindForecast):
         # nTurbs = len(data_in.columns)
         turbine_list = np.arange(0, self.n_turbines)
 
-        # QUESTION is this the turbines to consider in the spatial filtering for the estimation of the wind direction at each turbine
+        # the turbines to consider in the spatial filtering for the estimation of the wind direction at each turbine
         cluster_turbines = {i: turbine_list for i in range(self.n_turbines)}
 
         # if is_bearing:  # Convert to RH CCW angle
         #     wd_mean = PreviewForecast.bearing2angle(wd_mean)
         #     data_in = data_in.applymap(PreviewForecast.bearing2angle)
-
-        weights = self.neighbor_weights_directional_gaussian(
-            measurement_layout, cluster_turbines, wind_directions, shift_distance
-        )
-
-        data_out = data_in.copy()
-        for k in range(len(data_in)):  # Time step
-            for t in range(len(data_in.columns)):  # Turbine
-                idx = cluster_turbines[t]
-                # if is_circular:
-                #     data_out.iloc[k, t] = PreviewForecast.weighted_circular_mean3(
-                #         data_in.iloc[k, idx], weights[t]
-                #     )
-                # else:
-                data_out.iloc[k, t] = np.array(data_in.iloc[k, idx]) @ np.array(
-                    weights[t]
-                )
-
-        # if is_bearing:  # Convert back to bearing
-        #     data_out = data_out.applymap(PreviewForecast.angle2bearing)
-
-        return data_out
+        # re.search("(?<=ws_horz_)\\d+", "ws_horz_1")
+        turbine_ids = sorted(set(re.search("(?<=\\w_)\\d+$", col).group(0) for col in new_measurements.select(cs.starts_with("ws_")).columns), key=lambda tid: int(re.search("\\d+", tid).group(0)))
+        ws_horz = new_measurements.select(cs.starts_with("ws_horz_"))\
+                                  .rename(lambda old_col: re.search("(?<=\\w_)\\d+$", old_col).group(0))
+        ws_vert = new_measurements.select(cs.starts_with("ws_vert_"))\
+                                  .rename(lambda old_col: re.search("(?<=\\w_)\\d+$", old_col).group(0))
+        
+        wm = new_measurements.select(**{tid: ((pl.col(f"ws_horz_{tid}")**2 + pl.col(f"ws_vert_{tid}")**2).sqrt()) for tid in turbine_ids})
+        wd = new_measurements.select(**{tid: 180.0 + (pl.arctan2(pl.col(f"ws_horz_{tid}"), pl.col(f"ws_vert_{tid}")) * (180.0 / np.pi)) for tid in turbine_ids})
+        
+        ws_inputs = np.dstack([ws_horz.select(turbine_ids).to_numpy(), ws_vert.select(turbine_ids).to_numpy()])
+        
+        farm_wind_direction = wd.select(pl.mean_horizontal(pl.all())).to_numpy().flatten()
+        weights = self.neighbor_weights_directional_gaussian(cluster_turbines=cluster_turbines, farm_wind_direction=farm_wind_direction, wind_speeds=wm.to_numpy() ) #, shift_distance)
+        
+        pred = np.zeros_like(ws_inputs)
+         
+        for tid in range(self.n_turbines):
+            idx = cluster_turbines[tid]
+            pred[:, tid, :] = np.einsum("ntd,nt->nd", ws_inputs[:, idx, :], weights[tid])
+        
+        return pred.T.reshape((2*self.n_turbines, -1)).T 
 
     def neighbor_weights_directional_gaussian(
-        self, measurement_layout, cluster_turbines, wind_directions, shift_distance=0
+        self, cluster_turbines, farm_wind_direction, wind_speeds, #shift_distance=0
     ):
         """
         wd_mean should be in radians, CCW
@@ -422,24 +441,37 @@ class PreviewForecast(WindForecast):
 
         weights = dict()
         # n_turbines = np.shape(measurement_layout)[0]
-
+        farm_wind_direction = farm_wind_direction * (180. / np.pi) 
         for i in range(self.n_turbines):
             idx = cluster_turbines[i]
-            cluster_layout = measurement_layout[idx, :]
+            cluster_layout = self.measurement_layout[idx, :]
+            # TODO change all uses of cos/sin to compute horizontal and vertical components to this
+            shift_distance = self.prediction_timedelta.total_seconds() * wind_speeds[:, i]
             
-            center_point = measurement_layout[i, :] + np.array(
+            # dimensions (number of time steps, 2)
+            center_point = (self.measurement_layout[i, :] + np.array(
                 [
-                    -shift_distance * np.cos(np.pi + wind_directions[idx]),
-                    shift_distance * np.sin(np.pi + wind_directions[idx]),
+                    -shift_distance * np.cos(np.pi + farm_wind_direction),
+                    shift_distance * np.sin(np.pi + farm_wind_direction),
                 ]
+            ).T)
+
+            # sigma defaults to using the standard deviation of turbine distances.
+            covariance = np.var(
+                np.linalg.norm(cluster_layout[np.newaxis, :, :] - center_point[:, np.newaxis, :], axis=2), axis=1
             )
 
-            covariance = np.var(
-                np.linalg.norm(cluster_layout - center_point, axis=1)
-            ) * np.identity(2)
-
-            f = mvn.pdf(cluster_layout, mean=center_point, cov=covariance)
-            weights[i] = f / np.sum(f)
+            f = []
+            for t in range(center_point.shape[0]):
+                f.append(mvn.pdf(cluster_layout, mean=center_point[t, :], cov=covariance[t] * np.identity(2)))
+            f = np.array(f)
+            
+            fsum = f.sum(axis=1)[:, np.newaxis]
+            weights[i] = np.divide(f, fsum, out=np.zeros_like(f), where=(fsum!=0))
+            
+            if fsum == 0:
+                logging.warning(f"The center point, determined by prediction_timedelta, is too far from turbine {i}'s clusters to have any nonzero weights, assuming persistance for turbine {i}.")
+                weights[i][:, np.where(idx == i)[0]] = 1
 
         return weights
 
@@ -559,8 +591,10 @@ class SVRForecast(WindForecast):
         pass
 
     def predict_point(self, historic_measurements: Union[pd.DataFrame, pl.DataFrame], current_time):
-         # TODO include yaw angles in inputs? 
+         # TODO include yaw angles in inputs?
+         # TODO HIGH change SVR to consider measurements prediction_timedelta apart  
         pred_slice = self.get_pred_interval(current_time)
+        
         # pred = defaultdict(list)
         
         # context_df = historic_measurements.filter(context_expr)
@@ -620,14 +654,14 @@ class SVRForecast(WindForecast):
 class KalmanFilterWrapper(KalmanFilter):
     def __init__(self, dim_x=1, dim_z=1, **kwargs): # TODO need this st cross validation will work in Optuna objective function, ideally clone could capture dim_x, dim_z automatically
         super().__init__(dim_x=dim_x, dim_z=dim_z)
-        self.set_params(**kwargs)
+        
     
     def fit(self, X, y):
         return self
     
-    def predict(self, X=None):
+    def predict(self, X=None, **predict_kwargs):
         if X is None:
-            super().predict()
+            super().predict(**predict_kwargs)
         else:
             pred = []
             self.x = X[:1]
@@ -640,20 +674,6 @@ class KalmanFilterWrapper(KalmanFilter):
                 pred.append(self.x[0])
             return np.array(pred)
     
-    def set_params(self, **kwargs):
-        if "R" in kwargs:
-            self.R = kwargs["R"]
-        if "H" in kwargs:
-            self.H = kwargs["H"]
-        if "Q" in kwargs:
-            self.Q = kwargs["Q"]
-            
-    def get_params(self, deep: bool):
-        return {
-            "R": self.R,
-            "H": self.H,
-            "Q": self.Q
-        }
 
 @dataclass
 class KalmanFilterForecast(WindForecast):
@@ -664,16 +684,37 @@ class KalmanFilterForecast(WindForecast):
     
     def __post_init__(self):
         super().__post_init__()
-        self.model = defaultdict(KalmanFilterForecast.create_model)
-        self.scaler = defaultdict(KalmanFilterForecast.create_scaler)
+        # self.model = defaultdict(KalmanFilterForecast.create_model)
+        # self.scaler = defaultdict(KalmanFilterForecast.create_scaler)
+        dim_x = dim_z = self.n_targets_per_turbine * self.n_turbines
+        self.model = KalmanFilterForecast.create_model(
+            dim_x=dim_x, 
+            dim_z=dim_z,
+            F=np.eye(dim_x), # identity matrix predicts x_t = x_t-1 + Q_t
+            H=np.eye(dim_z) # identity matrix predicts x_t = x_t-1 + Q_t
+        )
+        self.scaler = KalmanFilterForecast.create_scaler()
         
+        # store last context of w_t = x_t - x_(t-1) and v_t = z_t - H_t x_t
+        self.historic_w = np.zeros((0, dim_x))
+        self.historic_v = np.zeros((0, dim_z))
+        self.historic_times = []
+        
+        self.initialized = False
+        
+        # equal to number of n_prediction intervals for the kalman filter
+        self.n_context = int(self.context_timedelta / self.prediction_timedelta)
+        assert self.n_context >= 2, "For KalmanFilterForecaster, context_timedelta must be at least 2 times prediction_timedelta, since prediction_timedelta is the time interval at which it makes new estimates"
+         
     @staticmethod
     def create_scaler():
         return None
     
     @staticmethod
-    def create_model(**kwargs):
-        model = KalmanFilterWrapper(dim_x=1, dim_z=1)
+    def create_model(dim_x, dim_z, **kwargs):
+        model = KalmanFilterWrapper(dim_x=dim_x, dim_z=dim_z)
+        if "F" in kwargs:
+            model.F = kwargs["F"]
         if "R" in kwargs:
             model.R = kwargs["R"]
         if "H" in kwargs:
@@ -689,48 +730,158 @@ class KalmanFilterForecast(WindForecast):
         X_train = historic_measurements[0:-self.n_context, 0]
         y_train = historic_measurements[self.n_context:, 0]
         
-        # X_train = np.vstack([
-        #     historic_measurements[i:i+self.n_context, 0]
-        #     for i in range(historic_measurements.shape[0] - self.n_context)
-        # ])
-        
-        # y_train = historic_measurements[self.n_context:, 0]
-        
         return X_train, y_train
     
     def get_params(self, trial):
         return {
-            "R": np.array([[trial.suggest_float("R", 1e-3, 1e2, log=True)]]),
-            "H": np.array([[trial.suggest_float("H", 1e-3, 1e2, log=True)]]),
-            "Q": np.array([[trial.suggest_float("Q", 1e-3, 1e2, log=True)]])
+            # "n_prediction": np.array([[trial.suggest_float("n_prediction", 1e-3, 1e2, log=True)]]),
+            # "R": np.array([[trial.suggest_float("R", 1e-3, 1e2, log=True)]]),
+            # # "H": np.array([[trial.suggest_float("H", 1e-3, 1e2, log=True)]]),
+            # "Q": np.array([[trial.suggest_float("Q", 1e-3, 1e2, log=True)]])
         }
-       
+    
     def predict_sample(self, n_samples: int):
         pass
-
-    def predict_point(self, historic_measurements: Union[pd.DataFrame, pl.DataFrame], current_time):
+        
+    def _init_covariance(self, historic_noise: np.ndarray):
+        return np.diag((1 / (self.n_context - 1)) * np.sum((historic_noise[-self.n_context:, :] - (1 / self.n_context) * historic_noise[-self.n_context:, :].sum(axis=0))**2, axis=0))
+    
+    def predict_point(self, historic_measurements: Union[pd.DataFrame, pl.DataFrame], current_time, return_var=False):
         pred_slice = self.get_pred_interval(current_time)
-        pred = defaultdict(list)
+        pred_slice = pred_slice[-1:] # pred_slice.filter(pred_slice == current_time + self.prediction_timedelta)
         outputs = self._get_ws_cols(historic_measurements)
         
+        # multivariate with state matrix containing all horizontal and vertical wind speed measurements
         if isinstance(historic_measurements, pd.DataFrame):
-            historic_measurements = pl.DataFrame(pd.DataFrame)
+            historic_measurements = pl.DataFrame(historic_measurements)
+            return_pl = False
+        else:
+            return_pl = True
         
-        executor = ProcessPoolExecutor() 
-        with executor as train_exec:
+        # batch predict and update based on all measurements collected since last control execution
+        if self.last_measurement_time is None:
+            # offset=historic_measurements.select(pl.len()).item() - self.n_controller)
+            zs = historic_measurements.filter(pl.col("time") >= current_time)\
+                                      .gather_every(n=self.n_prediction)
+        else:
+            # collect all the measurments, prediction_timedelta apart, taken in the last n_controller time steps since predict_point was last called
+            zs = historic_measurements.filter(pl.col("time") >= (self.last_measurement_time + self.prediction_timedelta))\
+                                      .gather_every(n=self.n_prediction)
+            assert zs.select(pl.len()).item() == 0 or zs.select(pl.col("time").last()).item() == self.last_measurement_time + self.prediction_timedelta
+        
+        if zs.select(pl.len()).item() == 0:
+            # forecaster is called every n_controller time steps
+            # n_prediction time steps may not have passed since last controller step
+            # in this case, no new measurements will be available, and we can return the last state estimate
+            logging.info(f"No new measurements available for KalmanFilterForecaster at time {current_time}, waiting on time {(self.last_measurement_time + self.prediction_timedelta)} returning last esimated state.")
+            self.last_pred = self.last_pred.with_columns(time=pred_slice)
+            if return_var:
+                self.last_var = self.last_var.with_columns(time=pred_slice)
+        else:
             
-            futures = {output: train_exec.submit(self._train_model, 
-                                                 historic_measurements.select(pl.col(output)), 
-                                                 self.model[output])
-                       for output in outputs}
-            res = {output: futures[output].result() for output in outputs}
-            self.model = {output: res[output][0] for output in outputs}
-            pred = {output: res[output][1] for output in outputs}
+            self.last_measurement_time = zs.select(pl.col("time").last()).item()
+            measurement_times = zs.select(pl.col("time")).to_series() 
+            zs = zs.select(outputs).to_numpy()
             
-        return pl.DataFrame({"time": pred_slice}).with_columns(**pred)
+            logging.info(f"Adding {zs.shape[0]} new measurements to Kalman filter at time {current_time}.")
+            
+            # initialize state
+            if not self.initialized:
+                self.model.x = np.zeros_like(zs[0, :]) # TODO when set to measurements, residual is 0 # this is historical horizontal and vertical wind speed components 
+                self.model.P = np.eye(self.model.dim_x)
+                # Qs = [np.eye(self.model.dim_x) for j in range(self.n_controller)]
+                # Rs = [np.eye(self.model.dim_z) for j in range(self.n_controller)]
+                Qs = [np.eye(self.model.dim_x)*1e-2 for j in range(zs.shape[0])]
+                Rs = [np.eye(self.model.dim_z)*1e-2 for j in range(zs.shape[0])]
+                self.initialized = True
+            else:
+                # update Qt and Rt based on previous value s of process and measurement noise
+                len_w = self.historic_w.shape[0]
+                len_v = self.historic_v.shape[0]
+                Qs = [self._init_covariance(
+                    self.historic_w[len_w - j - self.n_context:len_w - j, :]) for j in range(zs.shape[0]-1, -1, -1)]
+                Rs = [self._init_covariance(
+                    self.historic_v[len_v - j - self.n_context:len_v - j, :]) for j in range(zs.shape[0]-1, -1, -1)]
+            
+            init_x = self.model.x.copy()
+            # use batch_filter to, on each controller sampling time
+            # mean estimates from Kalman Filter
+            means = np.zeros((zs.shape[0], self.model.dim_x)) # after update step
+            means_p = np.zeros((zs.shape[0], self.model.dim_x)) # after predict step
+            
+            # state covariances from Kalman Filter
+            covariances = np.zeros((zs.shape[0], self.model.dim_x, self.model.dim_x))
+            covariances_p = np.zeros((zs.shape[0], self.model.dim_x, self.model.dim_x))
+            
+            # (means, covariances, means_p, covariances_p) = self.model.batch_filter(zs=z, Qs=Qt, Rs=Rt)
+            # use single longer prediction time; by performing predict/update steps at time intervals == prediction_timedelta
+            
+            # for each measurement z at time step t, collected since the last controller step, 
+            # predict the prior state x(t) for that time step based on the previous state x(t-1), 
+            # and update the posterior estimate xhat(t) with the measurement
+            # then the prediction is the persistance of that measurment into the future
+            for i, z in enumerate(zs):
+                self.model.predict(Q=Qs[i]) # outputs new prior/prediction
+                means_p[i, :] = self.model.x
+                covariances_p[i, :, :] = self.model.P
 
+                self.model.update(z, R=Rs[i]) # outputs new posterior
+                means[i, :] = self.model.x
+                covariances[i, :, :] = self.model.P
+            # in historic process (w) and measurment (v) noise, we only need to retain enough vectors to cover all of the measurements (spaced n_prediction apart) found in this interval of n_controller measurments, as well as the context length for each of those 
+            self.historic_times = (self.historic_times + list(measurement_times))[-int(np.ceil(self.n_controller / self.n_prediction)) - self.n_context:]
+            
+            
+            self.historic_v = np.vstack([self.historic_v, np.atleast_2d(zs - np.matmul(means, self.model.H))])[-int(np.ceil(self.n_controller / self.n_prediction)) - self.n_context:, :]
+            means = np.vstack([init_x, means]) # concatenate initial guess of state on top to compute differences
+            self.historic_w = np.vstack([self.historic_w, np.atleast_2d(means[1:, :] - np.matmul(means[:-1, :], self.model.F))])[-int(np.ceil(self.n_controller / self.n_prediction)) - self.n_context:, :]
+            
+            x = means[-1, :]
+            P = covariances[-1, :, :]
+            
+            x = np.dot(self.model.F, x) # predict step outputs new prior (in this case same, due to identity F)
+            P = self.model._alpha_sq * np.dot(np.dot(self.model.F, P), self.model.F.T) + Qs[-1]
+        
+            pred = x 
+            pred = {output: pred[o:o+1] for o, output in enumerate(outputs)}
+            self.last_pred = pl.DataFrame({"time": pred_slice}).with_columns(**pred)
+            
+            if return_var:
+                var = np.diag(P)
+                var = {output: var[o:o+1] for o, output in enumerate(outputs)}
+                self.last_var = pl.DataFrame({"time": pred_slice}).with_columns(**var)
+                
+        if return_var:
+            if return_pl:
+                return self.last_pred, self.last_var
+            else:
+                return self.last_pred.to_pandas(), self.last_var.to_pandas()
+        else:
+            if return_pl:
+                return self.last_pred
+            else:
+                return self.last_pred.to_pandas()
+        
+    def predict_distr(self, historic_measurements: Union[pd.DataFrame, pl.DataFrame], current_time):
+        if isinstance(historic_measurements, pd.DataFrame):
+            historic_measurements = pl.DataFrame(historic_measurements)
+            return_pl = False
+        else:
+            return_pl = True
+        outputs = self._get_ws_cols(historic_measurements)
+        pred, var = self.predict_point(historic_measurements, current_time, return_var=True)
+        var = var.with_columns(**{output: pl.col(output).sqrt() for output in outputs})
+        
+        res = pred.rename({col: f"loc_{col}" for col in outputs}).join(var.rename({col: f"sd_{col}" for col in outputs}), on="time", how="inner")
+        if return_pl:
+            return res
+        else:
+            return res.to_pandas()
+    
     def _train_model(self, historic_measurements, model):
         pred = []
+        # TODO use batch_filter to, on each controller sampling time, 
+        # batch predict and update based on all measurements collected since last control execution
         model.x = historic_measurements.slice(-1, 1).to_numpy().flatten()
         for i in range(historic_measurements.select(pl.len()).item()):
             z = historic_measurements.slice(i, 1).to_numpy().flatten()
@@ -745,9 +896,7 @@ class KalmanFilterForecast(WindForecast):
             pred.append(z[0])
             
         return model, np.array(pred)
-    
-    def predict_distr(self):
-        pass
+
 
 @dataclass
 class MLForecast(WindForecast):
@@ -817,8 +966,8 @@ class MLForecast(WindForecast):
     def _generate_test_data(self, historic_measurements: pl.DataFrame):
         # resample data to frequency model was trained on
             
-        if self.data_module.freq != self.measurements_dt:
-            if self.measurements_dt > self.data_module.freq:
+        if self.data_module.freq != self.measurements_timedelta:
+            if self.measurements_timedelta > self.data_module.freq:
                 historic_measurements = historic_measurements.with_columns(time=pl.col("time").dt.round(self.data_module.freq))\
                                                               .group_by("time").agg(cs.numeric().mean()).sort("time")
             else:
@@ -851,7 +1000,7 @@ class MLForecast(WindForecast):
     
     def predict_sample(self, historic_measurements: Union[pd.DataFrame, pl.DataFrame], current_time, n_samples: int):
         if isinstance(historic_measurements, pd.DataFrame):
-            historic_measurements = pl.DataFrame(pd.DataFrame)
+            historic_measurements = pl.DataFrame(historic_measurements)
             return_pl = False
         else:
             return_pl = True
@@ -892,13 +1041,13 @@ class MLForecast(WindForecast):
                                                     for c, col in enumerate(self.norm_min_cols)])
         
         # check if the data that trained the model differs from the frequency of historic_measurments
-        if self.data_module.freq != self.measurements_dt:
+        if self.data_module.freq != self.measurements_timedelta:
             # resample historic measurements to historic_measurements frequency and return as pandas dataframe
-            if self.measurements_dt < self.data_module.freq:
-                pred_df = pred_df.with_columns(time=pl.col("time").dt.round(self.measurements_dt))\
+            if self.measurements_timedelta < self.data_module.freq:
+                pred_df = pred_df.with_columns(time=pl.col("time").dt.round(self.measurements_timedelta))\
                                                               .group_by("time").agg(cs.numeric().mean()).sort("time")
             else:
-                pred_df = pred_df.upsample(time_column="time", every=self.measurements_dt).fill_null(strategy="forward")
+                pred_df = pred_df.upsample(time_column="time", every=self.measurements_timedelta).fill_null(strategy="forward")
         
         if return_pl: 
             return pred_df
@@ -906,8 +1055,9 @@ class MLForecast(WindForecast):
             return pred_df.to_pandas()
 
     def predict_point(self, historic_measurements: Union[pd.DataFrame, pl.DataFrame], current_time): 
+        # TODO HIGH assume resampling frequency from config, fetch all of these points from historic_measurements
         if isinstance(historic_measurements, pd.DataFrame):
-            historic_measurements = pl.DataFrame(pd.DataFrame)
+            historic_measurements = pl.DataFrame(historic_measurements)
             return_pl = False
         else:
             return_pl = True
@@ -945,13 +1095,13 @@ class MLForecast(WindForecast):
                                                     for c, col in enumerate(self.norm_min_cols)])
         
         # check if the data that trained the model differs from the frequency of historic_measurments
-        if self.data_module.freq != self.measurements_dt:
+        if self.data_module.freq != self.measurements_timedelta:
             # resample historic measurements to historic_measurements frequency and return as pandas dataframe
-            if self.measurements_dt < self.data_module.freq:
-                pred_df = pred_df.with_columns(time=pl.col("time").dt.round(self.measurements_dt))\
+            if self.measurements_timedelta < self.data_module.freq:
+                pred_df = pred_df.with_columns(time=pl.col("time").dt.round(self.measurements_timedelta))\
                                                               .group_by("time").agg(cs.numeric().mean()).sort("time")
             else:
-                pred_df = pred_df.upsample(time_column="time", every=self.measurements_dt).fill_null(strategy="forward")
+                pred_df = pred_df.upsample(time_column="time", every=self.measurements_timedelta).fill_null(strategy="forward")
         
         if return_pl: 
             return pred_df
@@ -962,7 +1112,7 @@ class MLForecast(WindForecast):
     def predict_distr(self, historic_measurements: Union[pd.DataFrame, pl.DataFrame], current_time):
         
         if isinstance(historic_measurements, pd.DataFrame):
-            historic_measurements = pl.DataFrame(pd.DataFrame)
+            historic_measurements = pl.DataFrame(historic_measurements)
             return_pl = False
         else:
             return_pl = True
@@ -1002,13 +1152,13 @@ class MLForecast(WindForecast):
                                                     for c, col in enumerate(self.norm_min_cols)])
         
         # check if the data that trained the model differs from the frequency of historic_measurments
-        if self.data_module.freq != self.measurements_dt:
+        if self.data_module.freq != self.measurements_timedelta:
             # resample historic measurements to historic_measurements frequency and return as pandas dataframe
-            if self.measurements_dt < self.data_module.freq:
-                pred_df = pred_df.with_columns(time=pl.col("time").dt.round(self.measurements_dt))\
+            if self.measurements_timedelta < self.data_module.freq:
+                pred_df = pred_df.with_columns(time=pl.col("time").dt.round(self.measurements_timedelta))\
                                                               .group_by("time").agg(cs.numeric().mean()).sort("time")
             else:
-                pred_df = pred_df.upsample(time_column="time", every=self.measurements_dt).fill_null(strategy="forward")
+                pred_df = pred_df.upsample(time_column="time", every=self.measurements_timedelta).fill_null(strategy="forward")
         
         if return_pl: 
             return pred_df
@@ -1026,8 +1176,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="ModelTuning")
     parser.add_argument("-mcnf", "--model_config", type=str)
     parser.add_argument("-dcnf", "--data_config", type=str)
-    parser.add_argument("-m", "--model", type=str, choices=["perfect", "persistent", "svr", "kf", "informer", "autoformer", "spacetimeformer"], required=True)
+    parser.add_argument("-m", "--model", type=str, choices=["perfect", "persistent", "svr", "kf", "informer", "autoformer", "spacetimeformer", "preview"], required=True)
     parser.add_argument("-pt", "--prediction_type", type=str, choices=["point", "sample", "distribution"], default="point")
+    parser.add_argument("-p", "--plot", action="store_true")
     args = parser.parse_args()
     
     with open(args.model_config, 'r') as file:
@@ -1061,7 +1212,11 @@ if __name__ == "__main__":
     with open(args.data_config, 'r') as file:
         data_config  = yaml.safe_load(file)
     
-    if True:
+    data_config["turbine_signature"] = data_config["turbine_signature"][0] if len(data_config["turbine_signature"]) == 1 else "\\d+"
+    
+    fmodel = FlorisModel(data_config["farm_input_path"])
+    
+    if args.plot:
         true_wf_long = DataInspector.unpivot_dataframe(true_wf, 
                                                     value_vars=["nd_cos", "nd_sin", "ws_horz", "ws_vert"], 
                                                 turbine_signature=data_config["turbine_signature"])
@@ -1070,10 +1225,10 @@ if __name__ == "__main__":
     # plt.savefig(os.path.join(wind_field_config["fig_dir"], "wind_field_ts.png"))
 
     wind_dt = true_wf.select(pl.col("time").diff().shift(-1).first()).item()
+    controller_dt = datetime.timedelta(minutes=3) 
     true_wf = true_wf.with_columns(data_type=pl.lit("True"))
     # true_wf = true_wf.with_columns(pl.col("time").cast(pl.Datetime(time_unit=pred_slice.unit)))
     # true_wf_plot = pd.melt(true_wf, id_vars=["time", "data_type"], value_vars=["ws_horz", "ws_vert"], var_name="wind_component", value_name="wind_speed")
-    
     
     longest_cg = true_wf.select(pl.col("continuity_group")).to_series().value_counts().sort("count", descending=True).select(pl.col("continuity_group").first()).item()
     true_wf = true_wf.filter(pl.col("continuity_group") == longest_cg)
@@ -1094,7 +1249,8 @@ if __name__ == "__main__":
     ## GENERATE PERFECT PREVIEW \
     if args.model == "perfect":
         perfect_forecast = PerfectForecast(
-            measurements_dt=wind_dt,
+            measurements_timedelta=wind_dt,
+            controller_timedelta=controller_dt,
             prediction_timedelta=prediction_timedelta,
             context_timedelta=context_timedelta,
             true_wind_field=true_wf,
@@ -1112,9 +1268,11 @@ if __name__ == "__main__":
      
     ## GENERATE PERSISTENT PREVIEW
     elif args.model == "persistent":
-        persistent_forecast = PersistentForecast(measurements_dt=wind_dt,
+        persistent_forecast = PersistentForecast(measurements_timedelta=wind_dt,
+                                                 controller_timedelta=controller_dt,
                                             prediction_timedelta=prediction_timedelta,
-                                            context_timedelta=context_timedelta)
+                                            context_timedelta=context_timedelta,
+                                            true_wind_field=true_wf,)
         
         persistent_forecast_wf = persistent_forecast.predict_point(historic_measurements, current_time)
         persistent_forecast_wf = persistent_forecast_wf.with_columns(data_type=pl.lit("Forecast"))
@@ -1129,10 +1287,12 @@ if __name__ == "__main__":
     
     ## GENERATE SVR PREVIEW
     elif args.model == "svr":
-        svr_forecast = SVRForecast(measurements_dt=wind_dt,
+        svr_forecast = SVRForecast(measurements_timedelta=wind_dt,
+                                   controller_timedelta=controller_dt,
                                 prediction_timedelta=prediction_timedelta,
                                 context_timedelta=context_timedelta,
-                                svr_kwargs=dict(kernel="rbf", C=1.0, degree=3, gamma="auto", epsilon=0.1, cache_size=200))
+                                svr_kwargs=dict(kernel="rbf", C=1.0, degree=3, gamma="auto", epsilon=0.1, cache_size=200),
+                                true_wind_field=true_wf)
         # TODO set parameters from optuna storage
         
         svr_forecast_wf = svr_forecast.predict_point(historic_measurements, current_time)
@@ -1148,24 +1308,65 @@ if __name__ == "__main__":
     
     ## GENERATE KF PREVIEW 
     elif args.model == "kf":
-        kf_forecast = KalmanFilterForecast(measurements_dt=wind_dt,
-                                        prediction_timedelta=prediction_timedelta,
-                                        context_timedelta=context_timedelta,
-                                        kf_kwargs=dict(H=np.array([1])))
+        # tune this use single, longer, prediction time, since we have only identity state transition matrix, and must use final posterior only prediction
+        kf_forecast = KalmanFilterForecast(measurements_timedelta=wind_dt,
+                                            controller_timedelta=controller_dt,
+                                            prediction_timedelta=prediction_timedelta, 
+                                            context_timedelta=prediction_timedelta*4,
+                                            n_turbines=fmodel.n_turbines,
+                                            true_wind_field=true_wf,
+                                            kf_kwargs={})
         
-        kf_forecast_wf = kf_forecast.predict_point(historic_measurements, current_time)
+        kf_forecast_wf = []
+        for current_row in historic_measurements.select(pl.col("time")).gather_every(kf_forecast.n_controller).iter_rows(named=True):
+            current_time = current_row["time"]
+            kf_forecast_wf.append(kf_forecast.predict_distr(
+                historic_measurements.filter(pl.col("time") <= current_time), 
+                         current_time))
+        
+        kf_forecast_wf = pl.concat(kf_forecast_wf, how="vertical")
         kf_forecast_wf = kf_forecast_wf.with_columns(data_type=pl.lit("Forecast"))
-        id_vars = kf_forecast_wf.select(~(cs.starts_with("ws_horz") | cs.starts_with("ws_vert") | cs.starts_with("nd_cos") | cs.starts_with("nd_sin"))).columns
+        id_vars = kf_forecast_wf.select(~(cs.contains("ws_horz") | cs.contains("ws_vert") | cs.contains("nd_cos") | cs.contains("nd_sin"))).columns # use contains, because we have loc and var columns
         kf_forecast_wf = DataInspector.unpivot_dataframe(kf_forecast_wf, 
+                                                    value_vars=["loc_nd_cos", "loc_nd_sin", "loc_ws_horz", "loc_ws_vert", "sd_nd_cos", "sd_nd_sin", "sd_ws_horz", "sd_ws_vert"], 
+                                                    turbine_signature=data_config["turbine_signature"])\
+                                            .unpivot(index=["turbine_id"] + id_vars, on=["loc_ws_horz", "loc_ws_vert", "sd_ws_horz", "sd_ws_vert"], variable_name="feature", value_name="value")
+    
+        WindForecast.plot_forecast(kf_forecast_wf, true_wf_long, prediction_type="distribution", turbine_ids=["1"])
+    
+    ## GENERATE KF PREVIEW 
+    # TODO HIGH make this uniform across all forecasters?
+    elif args.model == "preview":
+        # tune this use single, longer, prediction time, since we have only identity state transition matrix, and must use final posterior only prediction
+        preview_forecast = PreviewForecast(measurements_timedelta=wind_dt,
+                                            controller_timedelta=controller_dt,
+                                            prediction_timedelta=prediction_timedelta,# prediction_timedelta/20, 
+                                            context_timedelta=context_timedelta,
+                                            n_turbines=fmodel.n_turbines,
+                                            true_wind_field=true_wf,
+                                            measurement_layout=np.vstack([fmodel.layout_x, fmodel.layout_y]).T)
+        
+        preview_forecast_wf = []
+        for current_row in historic_measurements.select(pl.col("time")).gather_every(preview_forecast.n_controller).iter_rows(named=True):
+            current_time = current_row["time"]
+            preview_forecast_wf.append(preview_forecast.predict_point(
+                historic_measurements.filter(pl.col("time") <= current_time), 
+                         current_time))
+        
+        preview_forecast_wf = pl.concat(preview_forecast_wf, how="vertical")
+        preview_forecast_wf = preview_forecast_wf.with_columns(data_type=pl.lit("Forecast"))
+        id_vars = preview_forecast_wf.select(~(cs.contains("ws_horz") | cs.contains("ws_vert") | cs.contains("nd_cos") | cs.contains("nd_sin"))).columns # use contains, because we have loc and var columns
+        preview_forecast_wf = DataInspector.unpivot_dataframe(preview_forecast_wf, 
                                                     value_vars=["nd_cos", "nd_sin", "ws_horz", "ws_vert"], 
                                                     turbine_signature=data_config["turbine_signature"])\
                                             .unpivot(index=["turbine_id"] + id_vars, on=["ws_horz", "ws_vert"], variable_name="feature", value_name="value")
-    
-        WindForecast.plot_forecast(kf_forecast_wf, true_wf_long)
-    
+        # TODO HIGH improve documentation to describe how to use
+        # TODO can I plot a distribution here?
+        WindForecast.plot_forecast(preview_forecast_wf, true_wf_long, prediction_type="point", turbine_ids=["1"])
+     
     ## GENERATE ML PREVIEW
     elif args.model in ["informer", "autoformer", "spacetimeformer", "tactis"]:
-        ml_forecast = MLForecast(measurements_dt=wind_dt,
+        ml_forecast = MLForecast(measurements_timedelta=wind_dt,
                                 prediction_timedelta=prediction_timedelta,
                                 context_timedelta=context_timedelta,
                                 estimator_class=globals()[f"{args.model.capitalize()}Estimator"],
