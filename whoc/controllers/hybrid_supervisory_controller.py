@@ -72,7 +72,12 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
                 self.solar_controller.controls_dict["power_setpoint"]
             )
         if self._has_battery_controller:
-            self.battery_controller.measurements_dict["battery_power_reference"] = battery_reference
+            self.battery_controller.measurements_dict.update({
+                "time": self.measurements_dict["time"],
+                "power_reference": battery_reference,
+                "battery_power": self.measurements_dict["battery_power"],
+                "battery_soc": self.measurements_dict["battery_soc"]
+            })
             self.battery_controller.compute_controls()
             self.controls_dict["battery_power_setpoint"] = (
                 self.battery_controller.controls_dict["power_setpoint"]

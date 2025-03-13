@@ -401,7 +401,7 @@ def test_BatteryPassthroughController():
     test_controller = BatteryPassthroughController(test_interface, test_hercules_dict)
 
     power_ref = 1000
-    test_controller.measurements_dict["battery_power_reference"] = power_ref
+    test_controller.measurements_dict["power_reference"] = power_ref
     test_controller.compute_controls()
     assert test_controller.controls_dict["power_setpoint"] == power_ref
 
@@ -420,9 +420,7 @@ def test_BatteryController():
 
     # Test when starting with 0 power output
     power_ref = 1000
-    test_hercules_dict["py_sims"]["test_battery"]["outputs"] = {
-        "power": 0, "soc": 0.3
-    }
+    test_hercules_dict["py_sims"]["test_battery"]["outputs"] = {"power": 0, "soc": 0.3}
     test_hercules_dict["external_signals"]["plant_power_reference"] = power_ref
     test_controller.step(test_hercules_dict)
     assert test_controller.controls_dict["power_setpoint"] == power_ref
@@ -433,32 +431,20 @@ def test_BatteryController():
     assert test_controller.controls_dict["power_setpoint"] == power_ref
 
     # k_p = 2 (fast control)
-    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_p":2, "k_d":0})
+    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_p_max":2})
     test_controller.step(test_hercules_dict)
     assert test_controller.controls_dict["power_setpoint"] == 2 * (power_ref - 200) + 200
 
     # k_p = 0.3 (slow control)
-    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_p":0.3, "k_d":0})
+    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_p_max":0.3})
     test_controller.step(test_hercules_dict)
     assert test_controller.controls_dict["power_setpoint"] == 0.3 * (power_ref - 200) + 200
-
-    # Test derivative action
-    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_p":1, "k_d":2})
-    test_controller._e_prev = 200 # Write previous error for testing
-    test_hercules_dict["py_sims"]["test_battery"]["outputs"] = {
-        "power": power_ref, "soc": 0.3 # power = power_ref ensures no current error (e = 0)
-    }
-    test_controller.step(test_hercules_dict)
-    assert (
-        test_controller.controls_dict["power_setpoint"]
-        == -2 * (0-200)/test_hercules_dict["dt"] + power_ref
-    )
 
     # More complex test for smoothing capabilities
     power_refs_in = np.tile(np.array([1000.0, -1000.0]), 5)
     power_refs_out = np.zeros_like(power_refs_in)
 
-    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_p":0.5, "k_d":0})
+    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_p_max":0.5})
 
     battery_power = 0
     for i, pr_in in enumerate(power_refs_in):
@@ -472,17 +458,50 @@ def test_BatteryController():
     assert (power_refs_out > -1000.0).all()
     assert (power_refs_out < 1000.0).all()
 
-    # Can the same sort of thing be achieved with k_p=1 and some derivative action?
-    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_p":1, "k_d":0.5})
-    battery_power = 0
+    # Test SOC-based gain scheduling
+    k_p_max = 0.8
+    k_p_min = 0.2
+    socs = np.linspace(0, 1, 11)
+    gains = BatteryController.quadratic_gain_schedule(k_p_max, k_p_min, socs)
+    assert np.isclose(gains[0], k_p_min)
+    assert np.isclose(gains[-1], k_p_min)
+    assert np.isclose(gains[5], k_p_max)
+    assert np.allclose(gains[:6], gains[11:4:-1])
+    assert (np.diff(gains[:6]) > 0).all()
+    assert (np.diff(gains[6:]) < 0).all()
 
-    for i, pr_in in enumerate(power_refs_in):
-        test_hercules_dict["external_signals"]["plant_power_reference"] = pr_in
-        test_hercules_dict["py_sims"]["test_battery"]["outputs"]["power"] = battery_power
-        test_hercules_dict["time"] += 1
-        out = test_controller.step(test_hercules_dict)
-        battery_power = out["py_sims"]["inputs"]["battery_signal"]
-        power_refs_out[i] = battery_power
+    k_p_max = 1.0
+    test_controller = BatteryController(
+        test_interface,
+        test_hercules_dict,
+        {"k_p_max":k_p_max, "k_p_min":k_p_min}
+    )
 
-    assert (power_refs_out > -1000.0).all()
-    assert (power_refs_out < 1000.0).all()
+    pow_ref = 1000
+    test_hercules_dict["py_sims"]["test_battery"]["outputs"] = {"power": 0, "soc": 0.5}
+    test_hercules_dict["external_signals"]["plant_power_reference"] = pow_ref
+    test_controller.step(test_hercules_dict)
+    power_setpoint_mid_soc = test_controller.controls_dict["power_setpoint"]
+    
+    test_hercules_dict["py_sims"]["test_battery"]["outputs"] = {"power": 0, "soc": 0.8}
+    test_controller.step(test_hercules_dict)
+    power_setpoint_midhigh_soc = test_controller.controls_dict["power_setpoint"]
+
+    test_hercules_dict["py_sims"]["test_battery"]["outputs"] = {"power": 0, "soc": 0.2}
+    test_controller.step(test_hercules_dict)
+    power_setpoint_midlow_soc = test_controller.controls_dict["power_setpoint"]
+
+    test_hercules_dict["py_sims"]["test_battery"]["outputs"] = {"power": 0, "soc": 1.0}
+    test_controller.step(test_hercules_dict)
+    power_setpoint_high_soc = test_controller.controls_dict["power_setpoint"]
+
+    test_hercules_dict["py_sims"]["test_battery"]["outputs"] = {"power": 0, "soc": 0.0}
+    test_controller.step(test_hercules_dict)
+    power_setpoint_low_soc = test_controller.controls_dict["power_setpoint"]
+
+    assert power_setpoint_mid_soc == pow_ref
+    assert power_setpoint_midhigh_soc < power_setpoint_mid_soc
+    assert power_setpoint_midlow_soc < power_setpoint_mid_soc
+    assert power_setpoint_midhigh_soc == power_setpoint_midlow_soc
+    assert power_setpoint_high_soc < power_setpoint_midhigh_soc
+    assert power_setpoint_low_soc < power_setpoint_midlow_soc
