@@ -23,7 +23,7 @@ if __name__ == "__main__":
     parser.add_argument("-rt", "--restart_tuning", action="store_true")
     parser.add_argument("-s", "--seed", type=int, help="Seed for random number generator", default=42)
     parser.add_argument("-m", "--model", type=str, choices=["svr", "kf", "preview", "informer", "autoformer", "spacetimeformer"], required=True)
-    parser.add_argument("-md", "--model_idx", type=str, required=False, default=None)
+    parser.add_argument("-md", "--model_idx", type=int, required=False, default=None)
     # pretrained_filename = "/Users/ahenry/Documents/toolboxes/wind_forecasting/examples/logging/wf_forecasting/lznjshyo/checkpoints/epoch=0-step=50.ckpt"
     args = parser.parse_args()
     
