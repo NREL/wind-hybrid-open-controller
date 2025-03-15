@@ -23,6 +23,7 @@ if __name__ == "__main__":
     parser.add_argument("-rt", "--restart_tuning", action="store_true")
     parser.add_argument("-s", "--seed", type=int, help="Seed for random number generator", default=42)
     parser.add_argument("-m", "--model", type=str, choices=["svr", "kf", "preview", "informer", "autoformer", "spacetimeformer"], required=True)
+    parser.add_argument("-md", "--model_idx", type=str, required=False, default=None)
     # pretrained_filename = "/Users/ahenry/Documents/toolboxes/wind_forecasting/examples/logging/wf_forecasting/lznjshyo/checkpoints/epoch=0-step=50.ckpt"
     args = parser.parse_args()
     
@@ -97,14 +98,16 @@ if __name__ == "__main__":
     os.makedirs(model_config["optuna"]["journal_dir"], exist_ok=True)
     
     # %% TUNING MODEL
-    logging.info("Running tune_hyperparameters_multi")   
+    logging.info("Running tune_hyperparameters_multi")
+    # TODO HIGH in run_tuning.sh, run outer loop to represent each SVR 
     model.tune_hyperparameters_multi(historic_measurements=historic_measurements, 
                                      study_name_root=args.study_name,
                                      storage_type=model_config["optuna"]["storage_type"],
                                      n_trials=model_config["optuna"]["n_trials"], 
                                      journal_storage_dir=model_config["optuna"]["journal_dir"],
                                      restart_tuning=args.restart_tuning,
-                                     seed=args.seed)
+                                     seed=args.seed,
+                                     model_idx=args.model_idx)
                                     #  trial_protection_callback=handle_trial_with_oom_protection)
     
     # %% TESTING LOADING HYPERPARAMETERS

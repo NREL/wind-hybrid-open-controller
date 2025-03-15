@@ -117,8 +117,13 @@ class WindForecast:
         # evaluate with cross-validation
         return cross_val_score(model, X_train, y_train, n_jobs=-1, cv=3, scoring="neg_mean_squared_error").mean()
     
-    def tune_hyperparameters_single(self, historic_measurements, scaler, feat_type, tid, study_name, storage, seed, n_trials=1):
+    def tune_hyperparameters_single(self, historic_measurements, scaler, feat_type, tid, study_name, seed, restart_tuning, storage_type, journal_storage_dir, n_trials=1):
         # for case when argument is list of multiple continuous time series AND to only get the training inputs/outputs relevant to this model
+        storage = self.get_storage(storage_type=storage_type, study_name=study_name, journal_storage_dir=journal_storage_dir)
+                    if restart_tuning:
+                        for s in storage.get_all_studies():
+                            storage.delete_study(s._study_id)
+                            
         
         if isinstance(historic_measurements, Iterable):
             X_train = []
@@ -244,41 +249,53 @@ class WindForecast:
             )
         return storage
     
-    def tune_hyperparameters_multi(self, historic_measurements, study_name_root, seed=42, n_trials=1, storage_type="sqlite", journal_storage_dir=None, restart_tuning=False):
+    
+    
+    def tune_hyperparameters_multi(self, historic_measurements, study_name_root, model_idx=None, seed=42, n_trials=1, storage_type="sqlite", journal_storage_dir=None, restart_tuning=False):
         
         # models that need to be tuned e.g. one for each output, or one for all outputs
         if len(self.outputs) > 1:
             best_params = {}
-            for o, output in enumerate(self.outputs):
-                storage = self.get_storage(storage_type=storage_type, study_name=f"{study_name_root}_{output}", journal_storage_dir=journal_storage_dir)
-                if restart_tuning:
-                    for s in storage.get_all_studies():
-                        storage.delete_study(s._study_id)
-                        
-                best_params[output] = self.tune_hyperparameters_single(
-                                                historic_measurements=historic_measurements,
-                                                scaler=self.scaler[output],
-                                                feat_type=re.search(f"\\w+(?=_{self.turbine_signature})", output).group(),
-                                                tid=re.search(self.turbine_signature, output).group(),
-                                                study_name=f"{study_name_root}_{output}",
-                                                storage=storage, 
-                                                seed=seed * o,
-                                                n_trials=n_trials)
-        else:
-            storage = self.get_storage(storage_type=storage_type, study_name=f"{study_name_root}", journal_storage_dir=journal_storage_dir)
-            if restart_tuning:
-                for s in storage.get_all_studies():
-                    storage.delete_study(s._study_id)
+            if model_idx is None:
+                for o, output in enumerate(self.outputs):
                     
+                    best_params[output] = self.tune_hyperparameters_single(
+                                                    historic_measurements=historic_measurements,
+                                                    scaler=self.scaler[output],
+                                                    feat_type=re.search(f"\\w+(?=_{self.turbine_signature})", output).group(),
+                                                    tid=re.search(self.turbine_signature, output).group(),
+                                                    study_name=f"{study_name_root}_{output}",
+                                                    seed=seed * o,
+                                                    storage_type=storage_type, 
+                                                    journal_storage_dir=journal_storage_dir,
+                                                    n_trials=n_trials,
+                                                    restart_tuning=restart_tuning)
+            else:
+                o = model_idx
+                output = self.outputs[o]
+                best_params[output] = self.tune_hyperparameters_single(
+                                                    historic_measurements=historic_measurements,
+                                                    scaler=self.scaler[output],
+                                                    feat_type=re.search(f"\\w+(?=_{self.turbine_signature})", output).group(),
+                                                    tid=re.search(self.turbine_signature, output).group(),
+                                                    study_name=f"{study_name_root}_{output}",
+                                                    seed=seed * o,
+                                                    storage_type=storage_type, 
+                                                    journal_storage_dir=journal_storage_dir,
+                                                    n_trials=n_trials,
+                                                    restart_tuning=restart_tuning)
+        else:
             best_params = self.tune_hyperparameters_single(
                                 historic_measurements=historic_measurements,
                                 scaler=self.scaler,
                                 feat_type=None,
                                 tid=None,
                                 study_name=f"{study_name_root}",
-                                storage=storage, 
                                 seed=seed,
-                                n_trials=n_trials)
+                                storage_type=storage_type, 
+                                journal_storage_dir=journal_storage_dir,
+                                n_trials=n_trials,
+                                restart_tuning=restart_tuning)
 
         return best_params
         
