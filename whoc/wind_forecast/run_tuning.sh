@@ -64,7 +64,7 @@ for i in $(seq 0 $((${SLURM_NTASKS}-1))); do
         # The worker ID (SLURM_PROCID) helps Optuna identify workers
         srun --exclusive -n 1 --export=ALL,CUDA_VISIBLE_DEVICES=$i,SLURM_PROCID=${WORKER_INDEX},WANDB_DIR=${WANDB_DIR} \
              python tuning.py \
-             --model_config $HOME/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/training_inputs_kestrel.yaml \
+             --model_config $HOME/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/training_inputs_kestrel_flasc.yaml \
              --data_config $HOME/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/preprocessing_inputs_kestrel_flasc.yaml \
              --study_name "${1}_tuning" \
              --model $1 \
