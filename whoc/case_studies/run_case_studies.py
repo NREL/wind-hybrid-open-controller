@@ -24,7 +24,7 @@ from whoc.case_studies.process_case_studies import (read_time_series_data, write
                                                     aggregate_time_series_data, read_case_family_agg_data, write_case_family_agg_data, 
                                                     generate_outputs, plot_simulations, plot_wind_farm, plot_breakdown_robustness, plot_horizon_length,
                                                     plot_cost_function_pareto_curve, plot_yaw_offset_wind_direction, plot_parameter_sweep)
-from whoc.wind_forecast.WindForecast import PerfectForecast, PersistentForecast, MLForecast, SVRForecast, KalmanFilterForecast, PreviewForecast
+from whoc.wind_forecast.WindForecast import PerfectForecast, PersistenceForecast, MLForecast, SVRForecast, KalmanFilterForecast, PreviewForecast
 
 # np.seterr("raise")
 
@@ -40,6 +40,7 @@ if __name__ == "__main__":
     parser.add_argument("-ps", "--postprocess_simulations", action="store_true")
     parser.add_argument("-rps", "--reprocess_simulations", action="store_true")
     parser.add_argument("-ras", "--reaggregate_simulations", action="store_true")
+    parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("-st", "--stoptime", default="auto")
     parser.add_argument("-ns", "--n_seeds", type=int, default=6)
     parser.add_argument("-m", "--multiprocessor", type=str, choices=["mpi", "cf"])
@@ -92,10 +93,11 @@ if __name__ == "__main__":
                 futures = [run_simulations_exec.submit(simulate_controller, 
                                                 controller_class=globals()[case_lists[c]["controller_class"]], 
                                                 wind_forecast_class=globals()[case_lists[c]["wind_forecast_class"]] if case_lists[c]["wind_forecast_class"] else None,
-                                                input_dict=d, 
+                                                input_dict=d,
+                                                wf_source=args.wf_source, 
                                                 wind_case_idx=case_lists[c]["wind_case_idx"], wind_field_ts=wind_field_ts[case_lists[c]["wind_case_idx"]],
                                                 case_name="_".join([f"{key}_{val if (isinstance(val, str) or isinstance(val, np.str_) or isinstance(val, bool)) else np.round(val, 6)}" for key, val in case_lists[c].items() if key not in ["controller_dt", "simulation_dt", "use_filtered_wind_dir", "use_lut_filtered_wind_dir", "yaw_limits", "wind_case_idx", "seed", "floris_input_file", "lut_path"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
-                                                case_family="_".join(case_name_lists[c].split("_")[:-1]), wind_field_config=wind_field_config, verbose=False, save_dir=args.save_dir, rerun_simulations=args.rerun_simulations,
+                                                case_family="_".join(case_name_lists[c].split("_")[:-1]), wind_field_config=wind_field_config, verbose=args.verbose, save_dir=args.save_dir, rerun_simulations=args.rerun_simulations,
                                                 )
                         for c, d in enumerate(input_dicts)]
                 
@@ -106,10 +108,11 @@ if __name__ == "__main__":
                 simulate_controller(controller_class=globals()[case_lists[c]["controller_class"]], 
                                     wind_forecast_class=globals()[case_lists[c]["wind_forecast_class"]] if case_lists[c]["wind_forecast_class"] else None, 
                                     input_dict=d, 
+                                    wf_source=args.wf_source,
                                     wind_case_idx=case_lists[c]["wind_case_idx"], wind_field_ts=wind_field_ts[case_lists[c]["wind_case_idx"]],
                                     case_name="_".join([f"{key}_{val if (isinstance(val, str) or isinstance(val, np.str_) or isinstance(val, bool)) else np.round(val, 6)}" for key, val in case_lists[c].items() if key not in ["controller_dt", "simulation_dt", "use_filtered_wind_dir", "use_lut_filtered_wind_dir", "yaw_limits", "wind_case_idx", "seed", "floris_input_file", "lut_path"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
                                     case_family="_".join(case_name_lists[c].split("_")[:-1]),
-                                    wind_field_config=wind_field_config, verbose=True, save_dir=args.save_dir, rerun_simulations=args.rerun_simulations)
+                                    wind_field_config=wind_field_config, verbose=args.verbose, save_dir=args.save_dir, rerun_simulations=args.rerun_simulations)
     
     if args.postprocess_simulations:
         # if (not os.path.exists(os.path.join(args.save_dir, f"time_series_results.csv"))) or (not os.path.exists(os.path.join(args.save_dir, f"agg_results.csv"))):
@@ -174,7 +177,7 @@ if __name__ == "__main__":
                     # if args.reaggregate_simulations is true, or for any case family where doesn't agg_results_all.csv exist, compute the aggregate stats for each case families and case name, over all wind seeds
                     futures = [run_simulations_exec.submit(aggregate_time_series_data,
                                                              time_series_df=time_series_df.iloc[(time_series_df.index.get_level_values("CaseFamily") == case_families[i]) & (time_series_df.index.get_level_values("CaseName") == case_name), :],
-                                                                yaml_path=os.path.join(args.save_dir, case_families[i], f"input_config_case_{case_name}.yaml"),
+                                                                input_dict_path=os.path.join(args.save_dir, case_families[i], f"input_config_case_{case_name}.pkl"),
                                                                 n_seeds=args.n_seeds)
                         for i in args.case_ids
                         for case_name in pd.unique(time_series_df.iloc[(time_series_df.index.get_level_values("CaseFamily") == case_families[i])].index.get_level_values("CaseName"))
@@ -323,18 +326,19 @@ if __name__ == "__main__":
                     (time_series_df.index.get_level_values("CaseFamily") == "baseline_controllers_preview_flasc")]\
                         .reset_index(level=["CaseFamily", "CaseName"], drop=True)[
                            ["WindSeed", "PredictedTime", "controller_class", "wind_forecast_class", "prediction_timedelta"] 
-                           + [col for col in time_series_df if "PredictedTurbine" in col] 
+                           + [col for col in time_series_df.columns if "PredictedTurbine" in col] 
                         ].rename(columns={"PredictedTime": "time"})
                         
                 true_wf = time_series_df.iloc[
                     (time_series_df.index.get_level_values("CaseFamily") == "baseline_controllers_preview_flasc")]\
                         .reset_index(level=["CaseFamily", "CaseName"], drop=True)[
                            ["WindSeed", "Time", "controller_class", "wind_forecast_class", "prediction_timedelta"] 
-                           + [col for col in time_series_df if col.startswith("TurbineWind")] 
+                           + [col for col in time_series_df.columns if col.startswith("TurbineWind")] 
+                           + [col for col in time_series_df.columns if col.startswith("TurbineYawAngle_")] 
                         ].rename(columns={"Time": "time"})
-                 
+                
                 id_vars = ["WindSeed", "time", "controller_class", "wind_forecast_class", "prediction_timedelta"]
-                value_vars = set([re.match(".*(?=_\\d+)", col).group(0) for col in time_series_df if col.startswith("PredictedTurbine")])
+                value_vars = set([re.match(".*(?=_\\d+)", col).group(0) for col in time_series_df.columns if col.startswith("PredictedTurbine")])
                 # first unpivot makes long on turbine ids, second makes long on feature type, for the purposes of seaborn plot
                 forecast_wf = DataInspector.unpivot_dataframe(forecast_wf, 
                                                             value_vars=value_vars, 
@@ -349,7 +353,7 @@ if __name__ == "__main__":
                 forecast_wf.loc[forecast_wf["feature"] == "PredictedTurbineWindDir", "feature"] = "wd"
                 forecast_wf.loc[forecast_wf["feature"] == "PredictedTurbineWindMag", "feature"] = "wm"
                 
-                value_vars = set([re.match(".*(?=_\\d+)", col).group(0) for col in time_series_df if col.startswith("TurbineWind")]) 
+                value_vars = set([re.match(".*(?=_\\d+)", col).group(0) for col in time_series_df.columns if (col.startswith("TurbineWind") or col.startswith("TurbineYawAngle_"))]) 
                 true_wf = DataInspector.unpivot_dataframe(true_wf, 
                                                     value_vars=value_vars, 
                                                 turbine_signature="_(\\d+)$")\
@@ -362,12 +366,13 @@ if __name__ == "__main__":
                 true_wf.loc[true_wf["feature"] == "TurbineWindSpeedHorz", "feature"] = "ws_horz"
                 true_wf.loc[true_wf["feature"] == "TurbineWindDir", "feature"] = "wd"
                 true_wf.loc[true_wf["feature"] == "TurbineWindMag", "feature"] = "wm"
+                true_wf.loc[true_wf["feature"] == "TurbineYawAngle", "feature"] = "nc"
                 # TODO HIGH clean this code up
                 
                 wind_seed = 0
                 wind_forecast_class = "PreviewForecast" # "KalmanFilterForecast"
-                # controller_class = "GreedyController"
-                controller_class = "LookupBasedWakeSteeringController"
+                controller_class = "GreedyController"
+                # controller_class = "LookupBasedWakeSteeringController"
                 # TODO WHY DO GREEDY AND LUT LOOK THE SAME, WHY IS ONLY ONE TURBINE VISIBLE
                 WindForecast.plot_forecast(
                     preview_wf=forecast_wf.loc[
@@ -377,6 +382,17 @@ if __name__ == "__main__":
                         (true_wf["WindSeed"] == wind_seed) & (true_wf["wind_forecast_class"] == wind_forecast_class) & (true_wf["controller_class"] == controller_class), 
                         ["data_type", "time", "feature", "value", "turbine_id"]]
                 )
+                import seaborn as sns
+                import matplotlib.pyplot as plt
+                import polars as pl
+                fig, ax = plt.subplots(1, 1)
+                #  & (true_wf["time"].between(forecast_wf["time"].min(), forecast_wf["time"].max(), closed="both"))
+                sns.lineplot(data=true_wf.loc[
+                        (true_wf["WindSeed"] == wind_seed) & (true_wf["wind_forecast_class"] == wind_forecast_class) & (true_wf["controller_class"] == controller_class), 
+                        ["data_type", "time", "feature", "value", "turbine_id"]]\
+                                        .loc[(true_wf["feature"] == "nc"), :],
+                                 x="time", y="value", ax=ax, style="data_type", hue="turbine_id")
+            
                  
             
             if ((case_families.index("baseline_controllers") in args.case_ids)):

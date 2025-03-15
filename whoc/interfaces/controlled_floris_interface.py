@@ -31,6 +31,7 @@ class ControlledFlorisModel(InterfaceBase):
         self.dt = dt
         self.floris_version = floris_version
         self.offline_probability = offline_probability
+        # self.wf_source = wf_source
         self._load_floris()
 
         self.current_yaw_setpoints = np.zeros((0, self.n_turbines))
@@ -68,11 +69,18 @@ class ControlledFlorisModel(InterfaceBase):
         """ abstract method from Interface class """
         time_step = np.array(((self.time - self.init_time).total_seconds() // self.dt) % self.env.core.flow_field.n_findex, dtype=int)
         # mags = np.sqrt(self.env.core.flow_field.u**2 + self.env.core.flow_field.v**2 + self.env.core.flow_field.w**2)
+        
+        # if self.wf_source == "floris":
         mag = np.sqrt(self.env.core.flow_field.u[time_step, :, :, :]**2)
         mag = np.mean(mag.reshape(*mag.shape[:1], -1), axis=1)
         direction = np.tile(self.env.core.flow_field.wind_directions[time_step], (self.n_turbines,))
+        # else:
+        #     # if scada data
+        #     mag = None
+        #     direction = None
+            
         offline_mask = np.isclose(self.env.core.farm.power_setpoints[time_step, :], 0, atol=1e-3)
-         
+        # TODO HIGH change this to consider scada input 
         measurements = {
             "time": self.time,
             "amr_wind_speed": self.env.core.flow_field.wind_speeds[time_step],

@@ -27,9 +27,8 @@ SIM_MODEL_FLORIS_DIR = os.path.join(FLORIS_DIR, f'examples/inputs/gch.yaml')
 # BASE_MODEL_FLORIS_DIR = os.path.join(FLORIS_DIR, f'examples/inputs/{FARM_LAYOUT}_base_model_floris_input.json')
 
 
-for dir in [DATA_SAVE_DIR, FIG_DIR]:
-	if not os.path.exists(dir):
-		os.makedirs(dir)
+for direc in [DATA_SAVE_DIR, FIG_DIR]:
+	os.makedirs(direc, exist_ok=True)
 
 YAW_CHANGES = [-1, 0, 1]
 YAW_ANGLE_RANGE = [-30.0, 30.0]

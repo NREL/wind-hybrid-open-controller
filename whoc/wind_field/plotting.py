@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
+import numpy as np
 
 def plot_ts(df, fig_dir, include_transformation=False):
     if not include_transformation:
@@ -135,8 +136,8 @@ def plot_distribution_ts(wf, n_preview_steps):
     freestream_wind_mag = (freestream_wind_speed_u ** 2 + freestream_wind_speed_v ** 2) ** 0.5
     
     # # compute directions
-    freestream_wind_dir = np.arctan2(freestream_wind_speed_v, freestream_wind_speed_u)
-    freestream_wind_dir = (270.0 - (freestream_wind_dir * (180 / np.pi))) % 360.0
+    freestream_wind_dir = np.arctan2(freestream_wind_speed_u, freestream_wind_speed_v)
+    freestream_wind_dir = (180.0 + np.rad2deg(freestream_wind_dir)) % 360.0
     
     colors = cm.rainbow(np.linspace(0, 1, n_preview_steps))
     

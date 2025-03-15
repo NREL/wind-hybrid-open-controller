@@ -99,17 +99,15 @@ controller:
 wind_forecast:
   context_timedelta: 1200 # seconds
   prediction_timedelta: 1200 # seconds
-  KalmanFilterForecast:
-    kf_kwargs:
-      H: [[1]]
   SVRForecast:
-    svr_kwargs:
-      kernel: rbf
-      C: 1.0
-      degree: 3
-      gamma: auto
-      epsilon: 0.1
-      cache_size: 200
+    kernel: rbf
+    C: 1.0
+    degree: 3
+    gamma: auto
+    epsilon: 0.1
+    cache_size: 200
+    n_neighboring_turbines: 3
+    max_n_samples:
   MLForecast:
     model: informer
     model_checkpoint_path: /Users/ahenry/Documents/toolboxes/wind_forecasting/examples/checkpoints/lightning_logs/version_0/checkpoints/epoch=0-step=100.ckpt

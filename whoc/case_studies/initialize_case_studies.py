@@ -44,7 +44,7 @@ case_studies = {
                                     "simulation_dt": {"group": 0, "vals": [60]},
                                     "floris_input_file": {"group": 0, "vals": ["../../examples/inputs/smarteole_farm.yaml"]},
                                     "lut_path": {"group": 0, "vals": ["../../examples/inputs/smarteole_farm_lut.csv"]},
-                                    "wind_forecast_class": {"group": 3, "vals": ["PreviewForecast"]}, #, "KalmanFilterForecast", "PerfectForecast", "PersistentForecast"]},
+                                    "wind_forecast_class": {"group": 3, "vals": ["PreviewForecast", "KalmanFilterForecast", "PerfectForecast", "PersistenceForecast", "SVRForecast"]},
                                     "prediction_timedelta": {"group": 4, "vals": [60]},
                                     "yaw_limits": {"group": 0, "vals": [15]}
                                     },
@@ -334,8 +334,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         _type_: _description_
     """
 
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
+    os.makedirs(save_dir, exist_ok=True)
     
     with open(os.path.join(os.path.dirname(whoc_file), "../examples/hercules_input_001.yaml"), 'r') as file:
         input_dict  = yaml.safe_load(file)
@@ -363,8 +362,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         # instantiate wind field if files don't already exist
         wind_field_dir = os.path.join(save_dir, 'wind_field_data/raw_data')
         wind_field_filenames = glob(f"{wind_field_dir}/case_*.csv")
-        if not os.path.exists(wind_field_dir):
-            os.makedirs(wind_field_dir)
+        os.makedirs(wind_field_dir, exist_ok=True)
 
         # wind_field_config["simulation_max_time"] = input_dict["hercules_comms"]["helics"]["config"]["stoptime"]
         wind_field_config["num_turbines"] = input_dict["controller"]["num_turbines"]
@@ -386,8 +384,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
             print("regenerating wind fields")
             wind_field_config["regenerate_distribution_params"] = True # set to True to regenerate from constructed mean and covaraicne
             full_wf = WindField(**wind_field_config)
-            if not os.path.exists(wind_field_dir):
-                os.makedirs(wind_field_dir)
+            os.makedirs(wind_field_dir, exist_ok=True)
             wind_field_data = generate_multi_wind_ts(full_wf, wind_field_dir, init_seeds=[seed + i for i in range(n_seeds)])
             write_abl_velocity_timetable([wfd.df for wfd in wind_field_data], wind_field_dir) # then use these timetables in amr precursor
             # write_abl_velocity_timetable(wind_field_data, wind_field_dir) # then use these timetables in amr precursor
@@ -489,8 +486,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         # make save directory
         results_dir = os.path.join(save_dir, case_study_key)
         
-        if not os.path.exists(results_dir):
-            os.makedirs(results_dir)
+        os.makedirs(results_dir, exist_ok=True)
 
         # Load default settings and make copies
         start_case_idx = len(input_dicts)
@@ -517,6 +513,9 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                 else:
                     input_dicts[start_case_idx + c][property_name] = property_value
             
+            
+            assert input_dicts[start_case_idx + c]["controller"]["controller_dt"] <= stoptime
+             
             input_dicts[start_case_idx + c]["wind_forecast"] \
                 = {**{
                     "measurements_timedelta": wind_field_ts[0]["time"].iloc[1] - wind_field_ts[0]["time"].iloc[0],
@@ -524,8 +523,9 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                     "prediction_timedelta": pd.Timedelta(seconds=input_dicts[start_case_idx + c]["wind_forecast"]["prediction_timedelta"]),
                     "controller_timedelta": pd.Timedelta(seconds=input_dicts[start_case_idx + c]["controller"]["controller_dt"])
                     }, 
-                   **input_dicts[start_case_idx + c]["wind_forecast"].setdefault(input_dicts[start_case_idx + c]["controller"]["wind_forecast_class"], {})}
-            
+                   **input_dicts[start_case_idx + c]["wind_forecast"].setdefault(input_dicts[start_case_idx + c]["controller"]["wind_forecast_class"], {}),
+                   }
+            # **{k: v for k, v in input_dicts[start_case_idx + c]["wind_forecast"].items() if isinstance(k, str) and "_kwargs" in k} 
             assert input_dicts[start_case_idx + c]["controller"]["controller_dt"] >= input_dicts[start_case_idx + c]["simulation_dt"]
              
             fn = f'input_config_case_{"_".join(

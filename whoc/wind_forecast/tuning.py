@@ -1,13 +1,14 @@
-from whoc.wind_preview.WindPreview import SVRPreview, KalmanFilterPreview
+from whoc.wind_forecast.WindForecast import SVRForecast
 import numpy as np
 import polars as pl
 import polars.selectors as cs
 import pandas as pd
-import datetime
 import argparse
 import yaml
 import os
 import logging 
+from floris import FlorisModel
+import gc
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -15,23 +16,37 @@ if __name__ == "__main__":
     
     logging.info("Parsing arguments and configuration yaml.")
     parser = argparse.ArgumentParser(prog="WindFarmForecasting")
-    parser.add_argument("-cnf", "--config", type=str)
+    parser.add_argument("-mcnf", "--model_config", type=str)
+    parser.add_argument("-dcnf", "--data_config", type=str)
     parser.add_argument("-sn", "--study_name", type=str)
-    parser.add_argument("-rs", "--restart_study", action="store_true")
-    parser.add_argument("-m", "--model", type=str, choices=["svr", "kf", "informer", "autoformer", "spacetimeformer"], required=True)
+    parser.add_argument("-rt", "--restart_tuning", action="store_true")
+    parser.add_argument("-m", "--model", type=str, choices=["svr", "kf", "preview", "informer", "autoformer", "spacetimeformer"], required=True)
     # pretrained_filename = "/Users/ahenry/Documents/toolboxes/wind_forecasting/examples/logging/wf_forecasting/lznjshyo/checkpoints/epoch=0-step=50.ckpt"
     args = parser.parse_args()
     
-    with open(args.config, 'r') as file:
-        config  = yaml.safe_load(file)
+    with open(args.model_config, 'r') as file:
+        model_config  = yaml.safe_load(file)
+        
+    assert model_config["optuna"]["storage_type"] in ["sqlite", "mysql", "journal"]
     
-    prediction_timedelta = config["dataset"]["prediction_length"] * pd.Timedelta(config["dataset"]["resample_freq"]).to_pytimedelta()
-    context_timedelta = config["dataset"]["context_length"] * pd.Timedelta(config["dataset"]["resample_freq"]).to_pytimedelta()
-    historic_measurements_limit = datetime.timedelta(minutes=30)
+    with open(args.data_config, 'r') as file:
+        data_config  = yaml.safe_load(file)
+        
+    if len(data_config["turbine_signature"]) == 1:
+        tid2idx_mapping = {str(k): i for i, k in enumerate(data_config["turbine_mapping"][0].keys())}
+    else:
+        tid2idx_mapping = {str(k): i for i, k in enumerate(data_config["turbine_mapping"][0].values())} # if more than one file type was pulled from, all turbine ids will be transformed into common type
+    
+    turbine_signature = data_config["turbine_signature"][0] if len(data_config["turbine_signature"]) == 1 else "\\d+"
+     
+    fmodel = FlorisModel(data_config["farm_input_path"])
+    
+    prediction_timedelta = model_config["dataset"]["prediction_length"] * pd.Timedelta(model_config["dataset"]["resample_freq"]).to_pytimedelta()
+    context_timedelta = model_config["dataset"]["context_length"] * pd.Timedelta(model_config["dataset"]["resample_freq"]).to_pytimedelta()
     
     logging.info("Reading input wind field.") 
-    true_wf = pl.scan_parquet(config["dataset"]["data_path"])
-    true_wf_norm_consts = pd.read_csv(config["dataset"]["normalization_consts_path"], index_col=None)
+    true_wf = pl.scan_parquet(model_config["dataset"]["data_path"])
+    true_wf_norm_consts = pd.read_csv(model_config["dataset"]["normalization_consts_path"], index_col=None)
     norm_min_cols = [col for col in true_wf_norm_consts if "_min" in col]
     norm_max_cols = [col for col in true_wf_norm_consts if "_max" in col]
     data_min = true_wf_norm_consts[norm_min_cols].values.flatten()
@@ -51,29 +66,41 @@ if __name__ == "__main__":
     # true_wf = true_wf.with_columns(pl.col("time").cast(pl.Datetime(time_unit=pred_slice.unit)))
     # true_wf_plot = pd.melt(true_wf, id_vars=["time", "data_type"], value_vars=["ws_horz", "ws_vert"], var_name="wind_component", value_name="wind_speed")
     
-    longest_cg = true_wf.select(pl.col("continuity_group")).to_series().value_counts().sort("count", descending=True).select(pl.col("continuity_group").first()).item()
-    true_wf = true_wf.filter(pl.col("continuity_group") == longest_cg)
-    historic_measurements = true_wf.slice(0, true_wf.select(pl.len()).item() - int(prediction_timedelta / wind_dt))
+    # longest_cg = true_wf.select(pl.col("continuity_group")).to_series().value_counts().sort("count", descending=True).select(pl.col("continuity_group").first()).item()
+    # true_wf = true_wf.filter(pl.col("continuity_group") == longest_cg)
+    true_wf = true_wf.partition_by("continuity_group")
+    historic_measurements = [wf.slice(0, wf.select(pl.len()).item() - int(prediction_timedelta / wind_dt)) for wf in true_wf]
     
     logging.info("Instantiating model.")  
     if args.model == "svr": 
-        model = SVRPreview(freq=wind_dt,
+        model = SVRForecast(measurements_timedelta=wind_dt,
+                            controller_timedelta=None,
                                     prediction_timedelta=prediction_timedelta,
                                     context_timedelta=context_timedelta,
-                                    svr_kwargs=dict(kernel="rbf", C=1.0, degree=3, gamma="auto", epsilon=0.1, cache_size=200))
-    elif args.model == "kf":
-        model = KalmanFilterPreview(freq=wind_dt,
-                                        prediction_timedelta=prediction_timedelta,
-                                        context_timedelta=context_timedelta,
-                                        kf_kwargs=dict(H=np.array([1])))
+                                    fmodel=fmodel,
+                                    true_wind_field=true_wf,
+                                    kwargs=dict(kernel="rbf", C=1.0, degree=3, gamma="auto", epsilon=0.1, cache_size=200,
+                                            n_neighboring_turbines=3, max_n_samples=None),
+                                    tid2idx_mapping=tid2idx_mapping,
+                                    turbine_signature=turbine_signature)
     
-    if not os.path.exists(config["optuna"]["journal_dir"]):
-        os.makedirs(config["optuna"]["journal_dir"]) 
+    os.makedirs(model_config["optuna"]["journal_dir"], exist_ok=True)
+    
+    # Test setting parameters
+    # model.set_tuned_params(storage_type=model_config["optuna"]["storage_type"], study_name_root=args.study_name, 
+    #                        journal_storage_dir=model_config["optuna"]["journal_dir"]) 
     
     logging.info("Running tune_hyperparameters_multi")   
-    model.tune_hyperparameters_multi(historic_measurements, 
+    model.tune_hyperparameters_multi(historic_measurements=historic_measurements, 
                                      study_name_root=args.study_name,
-                                     use_rdb=config["optuna"]["use_rdb"],
-                                     n_trials=config["optuna"]["n_trials"], 
-                                     journal_storage_dir=config["optuna"]["journal_dir"],
-                                     restart_study=args.restart_study)
+                                     storage_type=model_config["optuna"]["storage_type"],
+                                     n_trials=model_config["optuna"]["n_trials"], 
+                                     journal_storage_dir=model_config["optuna"]["journal_dir"],
+                                     restart_tuning=args.restart_tuning)
+                                    #  trial_protection_callback=handle_trial_with_oom_protection)
+    
+    
+    # After training completes
+    # torch.cuda.empty_cache()
+    gc.collect()
+    logging.info("Optuna hyperparameter tuning completed.")

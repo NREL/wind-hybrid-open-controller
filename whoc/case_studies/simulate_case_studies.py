@@ -11,8 +11,7 @@ def simulate_controller(controller_class, wind_forecast_class, input_dict, **kwa
 
     results_dir = os.path.join(kwargs["save_dir"], kwargs['case_family'])
 
-    if not os.path.exists(results_dir):
-        os.makedirs(results_dir)
+    os.makedirs(results_dir, exist_ok=True)
 
     fn = f"time_series_results_case_{kwargs['case_name']}_seed_{kwargs['wind_case_idx']}.csv".replace("/", "_")
     # print(f'rerun_simulations = {kwargs["rerun_simulations"]}')
@@ -46,14 +45,15 @@ def simulate_controller(controller_class, wind_forecast_class, input_dict, **kwa
     if input_dict["controller"]["initial_conditions"]["yaw"] == "auto":
         u = kwargs["wind_field_ts"].iloc[0][[col for col in kwargs["wind_field_ts"].columns if col.startswith("ws_horz")]].values.astype(float)
         v = kwargs["wind_field_ts"].iloc[0][[col for col in kwargs["wind_field_ts"].columns if col.startswith("ws_vert")]].values.astype(float)
-        direc = 180.0 + (np.arctan2(u, v) * (180. / np.pi))
+        direc = 180.0 + np.rad2deg(np.arctan2(u, v))
         input_dict["controller"]["initial_conditions"]["yaw"] = list(direc) # TODO HIGH this initialization doesn't make sense if floris assigns general wind farm direction
-    
+     
     # pl.DataFrame(kwargs["wind_field_ts"])
-    input_dict["wind_forecast"]["measurement_layout"] = np.vstack([fi.env.layout_x, fi.env.layout_y]).T
+    # input_dict["wind_forecast"]["measurement_layout"] = np.vstack([fi.env.layout_x, fi.env.layout_y]).T
     wind_forecast = wind_forecast_class(true_wind_field=kwargs["wind_field_ts"],
-                                        n_turbines=fi.n_turbines, 
-                                        **input_dict["wind_forecast"])
+                                        fmodel=fi.env, 
+                                        **{k: v for k, v in input_dict["wind_forecast"].items() if "timedelta" in k},
+                                        kwargs={k: v for k, v in input_dict["wind_forecast"].items() if "timedelta" not in k})
     ctrl = controller_class(fi, wind_forecast=wind_forecast, input_dict=input_dict, **kwargs)
     
     yaw_angles_ts = []
@@ -79,7 +79,7 @@ def simulate_controller(controller_class, wind_forecast_class, input_dict, **kwa
     mean_u = kwargs["wind_field_ts"][[col for col in kwargs["wind_field_ts"].columns if col.startswith("ws_horz")]].mean(axis=1)
     mean_v = kwargs["wind_field_ts"][[col for col in kwargs["wind_field_ts"].columns if col.startswith("ws_vert")]].mean(axis=1)
     mean_mag = (mean_u**2 + mean_v**2)**0.5
-    mean_dir = 180.0 + (np.arctan2(mean_u, mean_v) * (180. / np.pi))
+    mean_dir = 180.0 + np.rad2deg(np.arctan2(mean_u, mean_v))
     mean_dir[mean_dir < 0] = 360. + mean_dir[mean_dir < 0]
     mean_dir[mean_dir > 360] = np.mod(mean_dir[mean_dir > 360], 360.) 
     
@@ -209,7 +209,7 @@ def simulate_controller(controller_class, wind_forecast_class, input_dict, **kwa
         turbine_powers_ts = np.vstack(turbine_powers_ts)[:-(n_future_steps + 1), :]
         
         predicted_turbine_wind_mag_ts = np.sqrt(predicted_turbine_wind_speed_horz_ts**2 + predicted_turbine_wind_speed_vert_ts**2)
-        predicted_turbine_wind_dir_ts = 180.0 + (np.arctan2(predicted_turbine_wind_speed_horz_ts, predicted_turbine_wind_speed_vert_ts) * (180.0 / np.pi))
+        predicted_turbine_wind_dir_ts = 180.0 + np.rad2deg(np.arctan2(predicted_turbine_wind_speed_horz_ts, predicted_turbine_wind_speed_vert_ts))
 
     # greedy_turbine_powers_ts = np.vstack(greedy_turbine_powers_ts)
     # opt_cost_terms_ts = np.vstack(opt_cost_terms_ts)
@@ -230,12 +230,13 @@ def simulate_controller(controller_class, wind_forecast_class, input_dict, **kwa
     
     running_opt_cost_terms_ts[:, 0] = np.sum(np.stack([-0.5 * (norm_turbine_powers[:, i])**2 * Q for i in range(ctrl.n_turbines)], axis=1), axis=1)
     running_opt_cost_terms_ts[:, 1] = np.sum(np.stack([0.5 * (norm_yaw_angle_changes[:, i])**2 * R for i in range(ctrl.n_turbines)], axis=1), axis=1)
-        
+    
+    # may be longer than following: int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] // input_dict["simulation_dt"]), if controller step goes beyond
     results_df = pd.DataFrame(data={
-        "CaseFamily": [kwargs["case_family"]] *  int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] // input_dict["simulation_dt"]), 
-        "CaseName": [kwargs["case_name"]] *  int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] // input_dict["simulation_dt"]),
-        "WindSeed": [kwargs["wind_case_idx"]] * int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] // input_dict["simulation_dt"]),
-        "Time": np.arange(0, input_dict["hercules_comms"]["helics"]["config"]["stoptime"], input_dict["simulation_dt"]),
+        "CaseFamily": [kwargs["case_family"]] * yaw_angles_ts.shape[0], 
+        "CaseName": [kwargs["case_name"]] *  yaw_angles_ts.shape[0],
+        "WindSeed": [kwargs["wind_case_idx"]] * yaw_angles_ts.shape[0],
+        "Time": np.arange(0, yaw_angles_ts.shape[0]) * input_dict["simulation_dt"],
         "FreestreamWindMag": mean_mag[:yaw_angles_ts.shape[0]],
         "FreestreamWindDir": mean_dir[:yaw_angles_ts.shape[0]],
         "FilteredFreestreamWindDir": first_ord_filter(mean_dir[:yaw_angles_ts.shape[0]], 
@@ -259,10 +260,10 @@ def simulate_controller(controller_class, wind_forecast_class, input_dict, **kwa
             f"TurbineWindDir_{i+1}": turbine_wind_dir_ts[:, i] for i in range(ctrl.n_turbines)
         },
         **{
-            f"TurbineWindSpeedHorz_{i+1}": turbine_wind_mag_ts[:, i] * np.sin((180+turbine_wind_dir_ts[:, i]) * np.pi/180) for i in range(ctrl.n_turbines)
+            f"TurbineWindSpeedHorz_{i+1}": turbine_wind_mag_ts[:, i] * np.sin(np.deg2rad(180+turbine_wind_dir_ts[:, i])) for i in range(ctrl.n_turbines)
         },
         **{
-            f"TurbineWindSpeedVert_{i+1}": turbine_wind_mag_ts[:, i] * np.cos((180+turbine_wind_dir_ts[:, i]) * np.pi/180) for i in range(ctrl.n_turbines)
+            f"TurbineWindSpeedVert_{i+1}": turbine_wind_mag_ts[:, i] * np.cos((np.deg2rad(180+turbine_wind_dir_ts[:, i]))) for i in range(ctrl.n_turbines)
         },
         **{
             f"PredictedTurbineWindSpeedHorz_{i+1}": predicted_turbine_wind_speed_horz_ts[:, i] for i in range(ctrl.n_turbines)

@@ -617,15 +617,15 @@ class MPC(ControllerBase):
 					wind_preview_data[f"FreestreamWindMag"][:, 0] = [mag] * n_samples
 					
 					# compute freestream wind direction angle from above, clockwise from north
-					direction = np.arctan2(current_freestream_measurements[1], current_freestream_measurements[0])
-					direction = (180.0 + (direction * (180 / np.pi))) % 360.0
+					direction = np.arctan2(current_freestream_measurements[0], current_freestream_measurements[1])
+					direction = (180.0 + np.rad2deg(direction)) % 360.0
 
 					wind_preview_data[f"FreestreamWindDir"][:, 0] = [direction] * n_samples
 
 					mag_vals = np.linalg.norm(uv_combs, axis=2)
 					# compute directions
-					dir_vals = np.arctan2(uv_combs[:, :, 1], uv_combs[:, :, 0])
-					dir_vals = (180.0 + (dir_vals * (180 / np.pi))) % 360.0
+					dir_vals = np.arctan2(uv_combs[:, :, 0], uv_combs[:, :, 1])
+					dir_vals = (180.0 + np.rad2deg(dir_vals)) % 360.0
 
 					wind_preview_probs = (norm.pdf(uv_combs[:, :, 0], loc=distribution_params[0], scale=std_u) \
 					 	* norm.pdf(uv_combs[:, :, 1], loc=distribution_params[1], scale=std_v))
@@ -1104,8 +1104,8 @@ class MPC(ControllerBase):
 			current_wind_speed = self.measurements_dict["amr_wind_speed"]
 
 			self.current_freestream_measurements = [
-					current_wind_speed * np.sin((current_wind_direction - 180.) * (np.pi / 180.)),
-					current_wind_speed * np.cos((current_wind_direction - 180.) * (np.pi / 180.))
+					current_wind_speed * np.sin(np.deg2rad(current_wind_direction + 180.)),
+					current_wind_speed * np.cos(np.deg2rad(current_wind_direction + 180.))
 			]
 			
 			# returns n_preview_samples of horizon preview realiztions in the case of stochastic preview type, 
@@ -1520,6 +1520,7 @@ class MPC(ControllerBase):
 		# turbines_ordered_array = []
 		wd = self.wind_preview_samples["FreestreamWindDir"][0, 0]
 		# wd = 250.0
+		# TODO CHECK THIS
 		layout_x_rot = (
 			np.cos((wd - 270.0) * np.pi / 180.0) * layout_x
 			- np.sin((wd - 270.0) * np.pi / 180.0) * layout_y

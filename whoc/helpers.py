@@ -45,6 +45,7 @@ def cluster_turbines(fi, wind_direction=None, wake_slope=0.30, radius_of_influen
 
     # Rotate farm and determine freestream/waked turbines
     is_downstream = [False for _ in range(n_turbs)]
+    # TODO fix this rotation
     x_rot = (
         np.cos((wind_direction - 270.0) * np.pi / 180.0) * x
         - np.sin((wind_direction - 270.0) * np.pi / 180.0) * y
