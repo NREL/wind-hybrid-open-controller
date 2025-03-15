@@ -39,8 +39,8 @@ declare -a WORKER_PIDS=()
 
 mamba activate wind_forecasting
 
-for i in $(seq 1 $SLURM_NTASKS); do
-    for j in $(seq 0 $((${NUM_WORKERS_PER_CPU}))); do
+for i in $(seq 0 $(({$SLURM_NTASKS}-1))); do
+    for j in $(seq 0 $((${NUM_WORKERS_PER_CPU}-1))); do
         # The restart flag should only be set for the very first worker (i=0, j=0)
         if [ $i -eq 0 ] && [ $j -eq 0 ]; then
             RESTART_FLAG="--restart_tuning"
