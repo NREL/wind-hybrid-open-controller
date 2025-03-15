@@ -9,6 +9,7 @@ import os
 import logging 
 from floris import FlorisModel
 import gc
+import random
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -20,6 +21,7 @@ if __name__ == "__main__":
     parser.add_argument("-dcnf", "--data_config", type=str)
     parser.add_argument("-sn", "--study_name", type=str)
     parser.add_argument("-rt", "--restart_tuning", action="store_true")
+    parser.add_argument("--seed", type=int, help="Seed for random number generator", default=42)
     parser.add_argument("-m", "--model", type=str, choices=["svr", "kf", "preview", "informer", "autoformer", "spacetimeformer"], required=True)
     # pretrained_filename = "/Users/ahenry/Documents/toolboxes/wind_forecasting/examples/logging/wf_forecasting/lznjshyo/checkpoints/epoch=0-step=50.ckpt"
     args = parser.parse_args()
@@ -44,6 +46,13 @@ if __name__ == "__main__":
     prediction_timedelta = model_config["dataset"]["prediction_length"] * pd.Timedelta(model_config["dataset"]["resample_freq"]).to_pytimedelta()
     context_timedelta = model_config["dataset"]["context_length"] * pd.Timedelta(model_config["dataset"]["resample_freq"]).to_pytimedelta()
     
+    # %% SETUP SEED
+    logging.info(f"Setting random seed to {args.seed}")
+    # torch.manual_seed(args.seed)
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    
+    # %% READING WIND FIELD TRAINING DATA
     logging.info("Reading input wind field.") 
     true_wf = pl.scan_parquet(model_config["dataset"]["data_path"])
     true_wf_norm_consts = pd.read_csv(model_config["dataset"]["normalization_consts_path"], index_col=None)
@@ -71,6 +80,7 @@ if __name__ == "__main__":
     true_wf = true_wf.partition_by("continuity_group")
     historic_measurements = [wf.slice(0, wf.select(pl.len()).item() - int(prediction_timedelta / wind_dt)) for wf in true_wf]
     
+    # %% INSTANTIATING MODEL
     logging.info("Instantiating model.")  
     if args.model == "svr": 
         model = SVRForecast(measurements_timedelta=wind_dt,
@@ -86,10 +96,7 @@ if __name__ == "__main__":
     
     os.makedirs(model_config["optuna"]["journal_dir"], exist_ok=True)
     
-    # Test setting parameters
-    # model.set_tuned_params(storage_type=model_config["optuna"]["storage_type"], study_name_root=args.study_name, 
-    #                        journal_storage_dir=model_config["optuna"]["journal_dir"]) 
-    
+    # %% TUNING MODEL
     logging.info("Running tune_hyperparameters_multi")   
     model.tune_hyperparameters_multi(historic_measurements=historic_measurements, 
                                      study_name_root=args.study_name,
@@ -99,8 +106,12 @@ if __name__ == "__main__":
                                      restart_tuning=args.restart_tuning)
                                     #  trial_protection_callback=handle_trial_with_oom_protection)
     
+    # %% TESTING LOADING HYPERPARAMETERS
+    # Test setting parameters
+    # model.set_tuned_params(storage_type=model_config["optuna"]["storage_type"], study_name_root=args.study_name, 
+    #                        journal_storage_dir=model_config["optuna"]["journal_dir"]) 
     
-    # After training completes
+    # %% After training completes
     # torch.cuda.empty_cache()
     gc.collect()
     logging.info("Optuna hyperparameter tuning completed.")
