@@ -71,7 +71,7 @@ for m in $(seq 0 $((${NUM_MODELS}-1))); do
                 --study_name "${1}_tuning" \
                 --model $1 \
                 --seed ${WORKER_SEED} \
-                --model_idx $m
+                --model_idx $m \
                 ${RESTART_FLAG} &
 
             
