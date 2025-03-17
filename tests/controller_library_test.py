@@ -426,7 +426,7 @@ def test_BatteryController():
     assert test_controller.controls_dict["power_setpoint"] == power_ref
 
     # Test when starting with nonzero power output
-    test_hercules_dict["py_sims"]["test_battery"]["outputs"]["power"] = 200
+    test_hercules_dict["py_sims"]["test_battery"]["outputs"]["power"] = -200
     test_controller.step(test_hercules_dict)
     assert test_controller.controls_dict["power_setpoint"] == power_ref
 
@@ -449,7 +449,7 @@ def test_BatteryController():
     battery_power = 0
     for i, pr_in in enumerate(power_refs_in):
         test_hercules_dict["external_signals"]["plant_power_reference"] = pr_in
-        test_hercules_dict["py_sims"]["test_battery"]["outputs"]["power"] = battery_power
+        test_hercules_dict["py_sims"]["test_battery"]["outputs"]["power"] = -battery_power
         test_hercules_dict["time"] += 1
         out = test_controller.step(test_hercules_dict)
         battery_power = out["py_sims"]["inputs"]["battery_signal"]

@@ -51,9 +51,9 @@ class BatteryController(ControllerBase):
 
     def compute_controls(self):
         reference_power = self.measurements_dict["power_reference"]
-        # TODO: is the actual power output important? Should I just be smoothing
-        # the power reference? Not clear.
-        current_power = self.measurements_dict["battery_power"]
+        # Note sign change to match battery convention
+        # (positive current_power is discharging / negative battery_power is discharging)
+        current_power = -self.measurements_dict["battery_power"]
         soc = self.measurements_dict["battery_soc"]
 
         e = reference_power - current_power
