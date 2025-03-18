@@ -38,13 +38,8 @@ reference_input_sequence = np.tile(
 
 # Create some functions for simulating for simplicity
 def simulate(soc_0):
-    # Loop over different gains
-    k_p_max = 0.1#, 0.01, 1.0]
-    k_p_min = 0.1#, 0.01, 0.01]
-
-
-    input_dict["controller"]["k_p_max"] = k_p_max
-    input_dict["controller"]["k_p_min"] = k_p_min
+    k_batt = 0.1
+    input_dict["controller"]["k_batt"] = k_batt
     input_dict["py_sims"]["battery"]["initial_conditions"]["SOC"] = soc_0
 
 
@@ -93,7 +88,7 @@ def plot_results(ax, time, power_sequence, soc_sequence):
     # Plot
     #fig, ax = plt.subplots(2, 1, sharex=True)
     ax[0].plot(time, power_sequence,
-               label="Battery output: SOC initial: {:.3f}".format(soc_sequence[0]))
+               label="SOC initial: {:.3f}".format(soc_sequence[0]))
     #ax[0].plot(time, reference_input_sequence, color="black", linestyle="dashed", label="Reference")
     #ax[0].set_ylabel("Power [kW]")
     ax[0].legend()

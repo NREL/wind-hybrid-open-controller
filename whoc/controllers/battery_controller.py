@@ -13,6 +13,9 @@ class BatteryController(ControllerBase):
     def __init__(self, interface, input_dict, controller_parameters={}, verbose=True):
         super().__init__(interface, verbose)
 
+        # Extract global parameters
+        self.dt = input_dict["dt"]
+
         # Check that parameters are not specified both in input file
         # and in controller_parameters
         for cp in controller_parameters.keys():
@@ -23,19 +26,18 @@ class BatteryController(ControllerBase):
                 )
         controller_parameters = {**controller_parameters, **input_dict["controller"]}
         self.set_controller_parameters(**controller_parameters)
-
-        # Extract other needed parameters from input_dict
-        self.dt = input_dict["dt"]
         
         # Assumes one battery!
         battery_name = [k for k in input_dict["py_sims"] if "battery" in k][0]
         self.rated_power_charging = input_dict["py_sims"][battery_name]["charge_rate"] * 1e3
         self.rated_power_discharging = input_dict["py_sims"][battery_name]["discharge_rate"] * 1e3
 
+        # Initialize controller internal state
+        self.x = 0
+
     def set_controller_parameters(
         self,
-        k_p_max=1,
-        k_p_min=None,
+        k_batt=0.1,
         **_ # <- Allows arbitrary additional parameters to be passed, which are ignored
     ):
         """
@@ -45,16 +47,23 @@ class BatteryController(ControllerBase):
             k_p_max: Maximum proportional gain. Defaults to 1.
             k_p_min: Minimum proportional gain. Defaults to None, which is
                a code for matching k_p_max.
-        """
-        if k_p_min is None:
-            k_p_min = k_p_max
-        self.k_p_max = k_p_max
-        self.k_p_min = k_p_min
+        """        
+        zeta = 2
+        omega = 2 * np.pi * k_batt
+
+        # Discrete-time, first-order state-space model of controller
+        p = np.exp(-2 * zeta * omega * self.dt)
+        self.a = p
+        self.b = 1
+        self.c = omega / (2 * zeta) * (1-p)/2 * (p + 1)
+        self.d = omega / (2 * zeta) * (1-p)/2
 
         self.clipper = interpolate.interp1d(
-            [-0.1, 0.1, 0.2, 0.8, 0.9, 1.1],
-            [0, 0, 1, 1, 0, 0],
-            kind="linear"
+            [0.1, 0.2, 0.8, 0.9],
+            [0, 1, 1, 0],
+            kind="linear",
+            fill_value=0,
+            bounds_error=False,
         )
 
     def compute_controls(self):
@@ -64,15 +73,17 @@ class BatteryController(ControllerBase):
         current_power = -self.measurements_dict["battery_power"]
         soc = self.measurements_dict["battery_soc"]
 
+        # Apply reference clipping
         max_allowable = self.clipper(soc) * self.rated_power_charging
         reference_power = np.minimum(reference_power, max_allowable)
 
         e = reference_power - current_power
 
-        # Evaluate gain schedule for proportional gain at the CURRENT soc (?)
-        k_p = self.quadratic_gain_schedule(self.k_p_max, self.k_p_min, soc)
+        # Compute control
+        u = self.c * self.x + self.d * e
 
-        u = k_p * e
+        # Update controller internal state
+        self.x = self.a * self.x + self.b * e
 
         self.controls_dict["power_setpoint"] = current_power + u
 
