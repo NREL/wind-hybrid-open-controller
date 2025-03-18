@@ -125,7 +125,6 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
 
         # Calculate battery reference value
         if self._has_battery_controller:
-            #import ipdb; ipdb.set_trace()
             battery_reference = (wind_power + solar_power) - plant_power_reference
         else:
             battery_reference = 0
