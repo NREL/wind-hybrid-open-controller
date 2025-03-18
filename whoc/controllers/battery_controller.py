@@ -1,4 +1,3 @@
-from scipy import interpolate
 import numpy as np
 from whoc.controllers.controller_base import ControllerBase
 
@@ -59,13 +58,21 @@ class BatteryController(ControllerBase):
         self.c = omega / (2 * zeta) * (1-p)/2 * (p + 1)
         self.d = omega / (2 * zeta) * (1-p)/2
 
-        self.clipper = interpolate.interp1d(
-            clipping_thresholds,
+        self.clipping_thresholds = clipping_thresholds
+
+    def soc_clipping(self, soc, reference_power):
+        clip_fraction = np.interp(
+            soc,
+            self.clipping_thresholds,
             [0, 1, 1, 0],
-            kind="linear",
-            fill_value=0,
-            bounds_error=False,
+            left=0,
+            right=0
         )
+
+        r_charge = clip_fraction * self.rated_power_charging
+        r_discharge = clip_fraction * self.rated_power_discharging
+
+        return np.clip(reference_power, -r_discharge, r_charge)
 
     def compute_controls(self):
         reference_power = self.measurements_dict["power_reference"]
@@ -75,8 +82,7 @@ class BatteryController(ControllerBase):
         soc = self.measurements_dict["battery_soc"]
 
         # Apply reference clipping
-        max_allowable = self.clipper(soc) * self.rated_power_charging
-        reference_power = np.minimum(reference_power, max_allowable)
+        reference_power = self.soc_clipping(soc, reference_power)
 
         e = reference_power - current_power
 
