@@ -1,3 +1,5 @@
+from scipy import interpolate
+import numpy as np
 from whoc.controllers.controller_base import ControllerBase
 
 
@@ -49,12 +51,21 @@ class BatteryController(ControllerBase):
         self.k_p_max = k_p_max
         self.k_p_min = k_p_min
 
+        self.clipper = interpolate.interp1d(
+            [-0.1, 0.1, 0.2, 0.8, 0.9, 1.1],
+            [0, 0, 1, 1, 0, 0],
+            kind="linear"
+        )
+
     def compute_controls(self):
         reference_power = self.measurements_dict["power_reference"]
         # Note sign change to match battery convention
         # (positive current_power is discharging / negative battery_power is discharging)
         current_power = -self.measurements_dict["battery_power"]
         soc = self.measurements_dict["battery_soc"]
+
+        max_allowable = self.clipper(soc) * self.rated_power_charging
+        reference_power = np.minimum(reference_power, max_allowable)
 
         e = reference_power - current_power
 
