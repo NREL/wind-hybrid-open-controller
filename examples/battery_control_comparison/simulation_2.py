@@ -25,6 +25,8 @@ input_dict = {
     }
 }
 
+save_figs = False
+
 # Make reference input sequence
 np.random.seed(0)
 hour = round(3600/dt)
@@ -40,10 +42,10 @@ reference_input_sequence = np.tile(
 
 
 # Create some functions for simulating for simplicity
-def simulate(soc_0):
-    k_batt = 0.1
+def simulate(soc_0, clipping_thresholds, gain):
+    k_batt = gain
     input_dict["controller"]["k_batt"] = k_batt
-    #input_dict["controller"]["clipping_thresholds"] = [0.0, 0.05, 0.95, 1.0]
+    input_dict["controller"]["clipping_thresholds"] = clipping_thresholds
     input_dict["py_sims"]["battery"]["initial_conditions"]["SOC"] = soc_0
 
 
@@ -88,30 +90,70 @@ def simulate(soc_0):
 
     return time, power_sequence, soc_sequence
 
-def plot_results(ax, time, power_sequence, soc_sequence):
+def plot_results_soc(ax, color, time, power_sequence, soc_sequence):
     # Plot
     #fig, ax = plt.subplots(2, 1, sharex=True)
-    ax[0].plot(time, power_sequence,
+    ax[0].plot(time, power_sequence, color=color,
                label="SOC initial: {:.3f}".format(soc_sequence[0]))
-    ax[0].set_ylabel("Power [kW]")
-    ax[0].legend()
-    ax[1].plot(time, soc_sequence, label="SOC")
-    ax[1].set_ylabel("SOC [-]")
-    ax[1].set_xlabel("Time [h]")
-    ax[1].set_xlim([time[0], time[-1]])
-    ax[0].grid()
-    ax[1].grid()
-    #ax[0].set_title("Initial SOC: {:.3f}".format(soc_sequence[0]))
-    ax[0].plot([time[0], time[-1]], [20000, 20000], color="red", linestyle="dotted")
-    ax[0].plot([time[0], time[-1]], [-20000, -20000], color="red", linestyle="dotted")
+    ax[1].plot(time, soc_sequence, color=color, label="SOC")
+
+def plot_results_gain(ax, color, time, power_sequence, soc_sequence, gain):
+    # Plot
+    #fig, ax = plt.subplots(2, 1, sharex=True)
+    ax[0].plot(time, power_sequence, color=color,
+               label="Gain: {:.3f}".format(gain))
+    ax[1].plot(time, soc_sequence, color=color, label="SOC")
 
 starting_socs = [0.15, 0.5, 0.85]
+colors = ["C0", "C1", "C2"]
+
+clipping_thresholds = [0.1, 0.2, 0.8, 0.9]
 
 # Run simulations and plot
 fig, ax = plt.subplots(2,1,sharex=True)
-for soc_0 in starting_socs:
-    time, power_sequence, soc_sequence = simulate(soc_0)
-    plot_results(ax, time, power_sequence, soc_sequence)
-ax[0].plot(time, reference_input_sequence, color="black", linestyle="dashed", label="Reference")
+fig.set_size_inches(10,5)
+for soc_0, col in zip(starting_socs, colors):
+    time, power_sequence, soc_sequence = simulate(soc_0, clipping_thresholds, 0.01)
+    plot_results_soc(ax, col, time/60, power_sequence, soc_sequence)
+
+# Add references and plot aesthetics
+ax[0].plot(time/60, reference_input_sequence, color="black", linestyle="dashed", label="Reference")
+ax[0].set_ylabel("Power [kW]")
+ax[0].legend()
+
+ax[1].set_ylabel("SOC [-]")
+ax[1].set_xlabel("Time [min]")
+ax[1].set_xlim([time[0]/60, time[-1]/60])
+ax[0].grid()
+ax[1].grid()
+ax[0].plot([time[0]/60, time[-1]/60], [20000, 20000], color="black", linestyle="dotted")
+ax[0].plot([time[0]/60, time[-1]/60], [-20000, -20000], color="black", linestyle="dotted")
+if save_figs:
+    fig.savefig("clipping.png", format="png", bbox_inches="tight", dpi=300)
+
+# Demonstrate different gains
+reference_input_sequence = reference_input_sequence[:3*round(hour/(12))]
+gains = [0.001, 0.01, 0.1]
+fig, ax = plt.subplots(2,1,sharex=True)
+fig.set_size_inches(10,5)
+for gain, col in zip(gains, colors):
+    time, power_sequence, soc_sequence = simulate(0.5, clipping_thresholds, gain)
+    plot_results_gain(ax, col, time/60, power_sequence, soc_sequence, gain)
+
+
+# Add references and plot aesthetics
+ax[0].plot(time/60, reference_input_sequence, color="black", linestyle="dashed", label="Reference")
+ax[0].set_ylabel("Power [kW]")
+ax[0].legend()
+
+ax[1].set_ylabel("SOC [-]")
+ax[1].set_xlabel("Time [min]")
+ax[1].set_xlim([time[0]/60, time[-1]/60])
+ax[0].grid()
+ax[1].grid()
+ax[0].plot([time[0]/60, time[-1]/60], [20000, 20000], color="black", linestyle="dotted")
+ax[0].plot([time[0]/60, time[-1]/60], [-20000, -20000], color="black", linestyle="dotted")
+if save_figs:
+    fig.savefig("gains.png", format="png", bbox_inches="tight", dpi=300)
 
 plt.show()
