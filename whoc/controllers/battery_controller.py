@@ -1,4 +1,5 @@
 import numpy as np
+
 from whoc.controllers.controller_base import ControllerBase
 
 

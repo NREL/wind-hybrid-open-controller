@@ -32,8 +32,11 @@ reference_input_sequence = np.concatenate((
     np.repeat(0+10000*np.random.randn(round(hour/(12*60))), (12*60)),
 ))
 reference_input_sequence = np.tile(
-    np.concatenate((20000*np.ones(round(hour/(12))), 0*np.ones(round(hour/(12))))),
-                   8)
+    np.concatenate(
+        (20000*np.ones(round(hour/(12))), 0*np.ones(round(hour/(12))))
+    ),
+    8
+)
 
 
 # Create some functions for simulating for simplicity
@@ -90,8 +93,7 @@ def plot_results(ax, time, power_sequence, soc_sequence):
     #fig, ax = plt.subplots(2, 1, sharex=True)
     ax[0].plot(time, power_sequence,
                label="SOC initial: {:.3f}".format(soc_sequence[0]))
-    #ax[0].plot(time, reference_input_sequence, color="black", linestyle="dashed", label="Reference")
-    #ax[0].set_ylabel("Power [kW]")
+    ax[0].set_ylabel("Power [kW]")
     ax[0].legend()
     ax[1].plot(time, soc_sequence, label="SOC")
     ax[1].set_ylabel("SOC [-]")
