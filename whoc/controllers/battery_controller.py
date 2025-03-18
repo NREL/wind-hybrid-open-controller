@@ -38,6 +38,7 @@ class BatteryController(ControllerBase):
     def set_controller_parameters(
         self,
         k_batt=0.1,
+        clipping_thresholds=[0.1, 0.2, 0.8, 0.9],
         **_ # <- Allows arbitrary additional parameters to be passed, which are ignored
     ):
         """
@@ -59,7 +60,7 @@ class BatteryController(ControllerBase):
         self.d = omega / (2 * zeta) * (1-p)/2
 
         self.clipper = interpolate.interp1d(
-            [0.1, 0.2, 0.8, 0.9],
+            clipping_thresholds,
             [0, 1, 1, 0],
             kind="linear",
             fill_value=0,

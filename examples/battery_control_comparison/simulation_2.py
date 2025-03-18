@@ -40,6 +40,7 @@ reference_input_sequence = np.tile(
 def simulate(soc_0):
     k_batt = 0.1
     input_dict["controller"]["k_batt"] = k_batt
+    #input_dict["controller"]["clipping_thresholds"] = [0.0, 0.05, 0.95, 1.0]
     input_dict["py_sims"]["battery"]["initial_conditions"]["SOC"] = soc_0
 
 
