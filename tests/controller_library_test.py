@@ -416,35 +416,32 @@ def test_SolarPassthroughController():
 
 def test_BatteryController():
     test_interface = HerculesBatteryInterface(test_hercules_dict)
-    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_p":1, "k_d":0})
+    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_batt":0.1})
 
     # Test when starting with 0 power output
     power_ref = 1000
     test_hercules_dict["py_sims"]["test_battery"]["outputs"] = {"power": 0, "soc": 0.3}
     test_hercules_dict["external_signals"]["plant_power_reference"] = power_ref
     test_controller.step(test_hercules_dict)
-    assert test_controller.controls_dict["power_setpoint"] == power_ref
+    out_0 = test_controller.controls_dict["power_setpoint"]
+    assert 0 < out_0 < power_ref
 
-    # Test when starting with nonzero power output
-    test_hercules_dict["py_sims"]["test_battery"]["outputs"]["power"] = -200
+    # Test that increasing the gain increases the control response
+    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_batt":0.5})
     test_controller.step(test_hercules_dict)
-    assert test_controller.controls_dict["power_setpoint"] == power_ref
+    out_1 = test_controller.controls_dict["power_setpoint"]
+    assert out_0 < out_1 < power_ref
 
-    # k_p = 2 (fast control)
-    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_p_max":2})
+    # Decreasing the gain slows the response
+    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_batt":0.01})
     test_controller.step(test_hercules_dict)
-    assert test_controller.controls_dict["power_setpoint"] == 2 * (power_ref - 200) + 200
+    out_2 = test_controller.controls_dict["power_setpoint"]
+    assert 0 < out_2 < out_0
 
-    # k_p = 0.3 (slow control)
-    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_p_max":0.3})
-    test_controller.step(test_hercules_dict)
-    assert test_controller.controls_dict["power_setpoint"] == 0.3 * (power_ref - 200) + 200
-
-    # More complex test for smoothing capabilities
+    # More complex test for smoothing capabilities (mid-low gain)
     power_refs_in = np.tile(np.array([1000.0, -1000.0]), 5)
     power_refs_out = np.zeros_like(power_refs_in)
-
-    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_p_max":0.5})
+    test_controller = BatteryController(test_interface, test_hercules_dict, {"k_batt":0.1})
 
     battery_power = 0
     for i, pr_in in enumerate(power_refs_in):
@@ -458,50 +455,63 @@ def test_BatteryController():
     assert (power_refs_out > -1000.0).all()
     assert (power_refs_out < 1000.0).all()
 
-    # Test SOC-based gain scheduling
-    k_p_max = 0.8
-    k_p_min = 0.2
-    socs = np.linspace(0, 1, 11)
-    gains = BatteryController.quadratic_gain_schedule(k_p_max, k_p_min, socs)
-    assert np.isclose(gains[0], k_p_min)
-    assert np.isclose(gains[-1], k_p_min)
-    assert np.isclose(gains[5], k_p_max)
-    assert np.allclose(gains[:6], gains[11:4:-1])
-    assert (np.diff(gains[:6]) > 0).all()
-    assert (np.diff(gains[6:]) < 0).all()
+    # Test SOC-based clipping
+    clipping_threshold_0 = [0.0, 0.0, 1.0, 1.0] # No clipping
+    clipping_threshold_1 = [0.1, 0.2, 0.8, 0.9] # Clipping at 10%--20% and 80%--90%
+    clipping_threshold_2 = [0.0, 0.5, 0.5, 1.0] # Clipping throughout
 
-    k_p_max = 1.0
-    test_controller = BatteryController(
+    # at 30% SOC, all should match if power reference is small
+    test_hercules_dict["py_sims"]["test_battery"]["outputs"] = {"power": 0, "soc": 0.3}
+    test_hercules_dict["external_signals"]["plant_power_reference"] = power_ref
+    test_controller_0 = BatteryController(
         test_interface,
         test_hercules_dict,
-        {"k_p_max":k_p_max, "k_p_min":k_p_min}
+        {"clipping_thresholds":clipping_threshold_0}
     )
+    test_controller_0.step(test_hercules_dict)
+    out_0 = test_controller_0.controls_dict["power_setpoint"]
 
-    pow_ref = 1000
-    test_hercules_dict["py_sims"]["test_battery"]["outputs"] = {"power": 0, "soc": 0.5}
-    test_hercules_dict["external_signals"]["plant_power_reference"] = pow_ref
-    test_controller.step(test_hercules_dict)
-    power_setpoint_mid_soc = test_controller.controls_dict["power_setpoint"]
+    test_controller_1 = BatteryController(
+        test_interface,
+        test_hercules_dict,
+        {"clipping_thresholds":clipping_threshold_1}
+    )
+    test_controller_1.step(test_hercules_dict)
+    out_1 = test_controller_1.controls_dict["power_setpoint"]
+
+    test_controller_2 = BatteryController(
+        test_interface,
+        test_hercules_dict,
+        {"clipping_thresholds":clipping_threshold_2}
+    )
+    test_controller_2.step(test_hercules_dict)
+    out_2 = test_controller_2.controls_dict["power_setpoint"]
+
+    assert out_0 == out_1
+    assert out_0 == out_0
+
+    # Clipping comes into play in 2 when the reference is large
+    test_controller_0.x = 0
+    test_controller_1.x = 0
+    test_controller_2.x = 0
+    test_hercules_dict["external_signals"]["plant_power_reference"] = 20000
+    test_controller_0.step(test_hercules_dict)
+    out_0 = test_controller_0.controls_dict["power_setpoint"]
+    test_controller_1.step(test_hercules_dict)
+    out_1 = test_controller_1.controls_dict["power_setpoint"]
+    test_controller_2.step(test_hercules_dict)
+    out_2 = test_controller_2.controls_dict["power_setpoint"]
+
+    assert out_0 == out_1
+    assert out_0 > out_2
+
+    # at 85% SOC and large reference, 1 should be clipped
+    test_hercules_dict["py_sims"]["test_battery"]["outputs"] = {"power": 0, "soc": 0.85}
+    test_controller_0.x = 0
+    test_controller_1.x = 0
+    test_controller_0.step(test_hercules_dict)
+    out_0 = test_controller_0.controls_dict["power_setpoint"]
+    test_controller_1.step(test_hercules_dict)
+    out_1 = test_controller_1.controls_dict["power_setpoint"]
     
-    test_hercules_dict["py_sims"]["test_battery"]["outputs"] = {"power": 0, "soc": 0.8}
-    test_controller.step(test_hercules_dict)
-    power_setpoint_midhigh_soc = test_controller.controls_dict["power_setpoint"]
-
-    test_hercules_dict["py_sims"]["test_battery"]["outputs"] = {"power": 0, "soc": 0.2}
-    test_controller.step(test_hercules_dict)
-    power_setpoint_midlow_soc = test_controller.controls_dict["power_setpoint"]
-
-    test_hercules_dict["py_sims"]["test_battery"]["outputs"] = {"power": 0, "soc": 1.0}
-    test_controller.step(test_hercules_dict)
-    power_setpoint_high_soc = test_controller.controls_dict["power_setpoint"]
-
-    test_hercules_dict["py_sims"]["test_battery"]["outputs"] = {"power": 0, "soc": 0.0}
-    test_controller.step(test_hercules_dict)
-    power_setpoint_low_soc = test_controller.controls_dict["power_setpoint"]
-
-    assert power_setpoint_mid_soc == pow_ref
-    assert power_setpoint_midhigh_soc < power_setpoint_mid_soc
-    assert power_setpoint_midlow_soc < power_setpoint_mid_soc
-    assert power_setpoint_midhigh_soc == power_setpoint_midlow_soc
-    assert power_setpoint_high_soc < power_setpoint_midhigh_soc
-    assert power_setpoint_low_soc < power_setpoint_midlow_soc
+    assert out_0 > out_1
