@@ -29,11 +29,18 @@ class GreedyController(ControllerBase):
         self.init_time = interface.init_time
         self.wind_forecast = wind_forecast
         self.wf_source = kwargs["wf_source"]
+        self.target_turbine_indices = input_dict["controller"]["target_turbine_indices"] or "all"
+        self.turbine_signature = kwargs["turbine_signature"]
+        self.tid2idx_mapping = kwargs["tid2idx_mapping"]
+        self.idx2tid_mapping = dict([(i, k) for i, k in enumerate(self.tid2idx_mapping.keys())])
+        self.uncertain = input_dict["controller"]["uncertain"]
         
-        # TODO HIGH this needs to be mapped to turbine ids for wind_forecaster
-        self.turbine_ids = np.arange(self.n_turbines) + 1
-        self.historic_measurements = pd.DataFrame(columns=["time"] + [f"ws_horz_{tid}" for tid in self.turbine_ids] 
-                                                  + [f"ws_vert_{tid}" for tid in self.turbine_ids], dtype=pd.Float64Dtype())
+        # self.turbine_ids = np.arange(self.n_turbines) + 1
+        self.historic_measurements = pd.DataFrame(columns=["time"] 
+                                                  + [f"ws_horz_{tid}" for tid in self.tid2idx_mapping] 
+                                                  + [f"ws_vert_{tid}" for tid in self.tid2idx_mapping]
+                                                  + [f"nd_cos_{tid}" for tid in self.tid2idx_mapping]
+                                                  + [f"nd_sin_{tid}" for tid in self.tid2idx_mapping], dtype=pd.Float64Dtype())
         
         self.lpf_time_const = input_dict["controller"]["lpf_time_const"]
         self.lpf_start_time = self.init_time + pd.Timedelta(seconds=input_dict["controller"]["lpf_start_time"])
@@ -111,27 +118,40 @@ class GreedyController(ControllerBase):
                 current_ws_vert = self.measurements_dict["wind_speeds"] * np.cos(np.deg2rad(current_wind_directions + 180.0))
             else:
                 current_row = self.wind_field_ts.loc[self.wind_field_ts["time"] == self.current_time, :]
-                current_ws_horz = np.hstack([current_row[f"ws_horz_{tid}"].values for tid in self.turbine_ids])
-                current_ws_vert = np.hstack([current_row[f"ws_vert_{tid}"].values for tid in self.turbine_ids])
+                current_ws_horz = np.hstack([current_row[f"ws_horz_{tid}"].values for tid in self.tid2idx_mapping])
+                current_ws_vert = np.hstack([current_row[f"ws_vert_{tid}"].values for tid in self.tid2idx_mapping])
                 current_wind_directions = 180.0 + np.rad2deg(
                     np.arctan2(
                         current_ws_horz, 
                         current_ws_vert
                     )
-                ) 
+                )
             
+            # pass greedy angles to all non target turbines
+            current_nd_cos = np.cos(np.deg2rad(current_wind_directions))
+            current_nd_sin = np.sin(np.deg2rad(current_wind_directions))
+            current_nd_cos[self.target_turbine_indices] = np.cos(np.deg2rad(self.measurements_dict["yaw_angles"]))
+            current_nd_sin[self.target_turbine_indices] = np.sin(np.deg2rad(self.measurements_dict["yaw_angles"]))
+            
+            # TODO HIGH add yaw angles here
             current_measurements = pd.DataFrame(data={
                     "ws_horz": current_ws_horz,
-                    "ws_vert": current_ws_vert
+                    "ws_vert": current_ws_vert,
+                    "nd_cos": current_nd_cos,
+                    "nd_sin": current_nd_sin
             })
             current_measurements = current_measurements.unstack().to_frame().reset_index(names=["data", "turbine_id"])
-            current_measurements["turbine_id"] += 1 # Change from zero index to one index TODO HIGH assumes that outputs of wind forecast will have suffixex = integers 1-index for each turbines 
+            current_measurements["turbine_id"] = current_measurements["turbine_id"].apply(lambda tidx: self.idx2tid_mapping[tidx])
             
             current_measurements = current_measurements\
                 .assign(data=current_measurements["data"] + "_" + current_measurements["turbine_id"].astype(str), index=0)\
                         .pivot(index="index", columns="data", values=0)
                                 # .droplevel(0, axis=0)
             current_measurements = current_measurements.assign(time=self.current_time)
+            
+            # only get wind_dirs corresponding to target_turbine_ids
+            if self.wf_source == "scada" and self.target_turbine_indices != "all":
+                current_wind_directions = current_wind_directions[self.target_turbine_indices]
             
             if self.verbose:
                 logging.info(f"unfiltered wind directions = {current_wind_directions}")
@@ -140,9 +160,13 @@ class GreedyController(ControllerBase):
                 self.historic_measurements = pd.concat([self.historic_measurements, current_measurements], axis=0).iloc[-int(np.ceil(self.lpf_time_const // self.simulation_dt) * 1e3):]
              
             if self.wind_forecast:
-                # TODO HIGH check matching turbine_ids, might be an issue with machine learning models...
-                forecasted_wind_field = self.wind_forecast.predict_point(self.historic_measurements, self.current_time)
-                 
+                # TODO HIGH setup predict_sample and predict_distr for ML, KF
+                if self.uncertain:
+                    forecasted_wind_sample = self.wind_forecast.predict_sample(self.historic_measurements, self.current_time)
+                    forecasted_wind_distr = self.wind_forecast.predict_distr(self.historic_measurements, self.current_time)
+                else:
+                    forecasted_wind_field = self.wind_forecast.predict_point(self.historic_measurements, self.current_time)
+                    
             # if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
             if self.current_time < self.lpf_start_time or not self.use_filt:
                 wind = forecasted_wind_field.iloc[-1] if self.wind_forecast else current_measurements
@@ -160,13 +184,14 @@ class GreedyController(ControllerBase):
                     wind[[col for col in wind.columns if "ws_vert_" in col]].values.astype(float)))
                 
                 wind_dirs = np.array([self._first_ord_filter(wind_dirs[:, i])
-                                                for i in range(self.n_turbines)]).T[-int(self.dt // self.simulation_dt), :]
+                                                for i in range(wind_dirs.shape[1])]).T[-int(self.dt // self.simulation_dt), :]
+                
+            # only get wind_dirs corresponding to target_turbine_ids
+            if self.target_turbine_indices != "all":
+                wind_dirs = wind_dirs[self.target_turbine_indices]
             
             if self.verbose:
                 logging.info(f"{'filtered' if self.use_filt else 'unfiltered'} wind directions = {wind_dirs}")
-                
-            if np.any(np.isnan(wind_dirs)):
-                print("hi")
                 
             current_yaw_setpoints = self.controls_dict["yaw_angles"]
 

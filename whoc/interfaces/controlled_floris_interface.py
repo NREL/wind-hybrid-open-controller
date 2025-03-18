@@ -15,13 +15,15 @@
 from whoc.interfaces.interface_base import InterfaceBase
 import numpy as np
 from floris.floris_model import FlorisModel
+from floris.uncertain_floris_model import UncertainFlorisModel
 import pandas as pd
 from scipy.interpolate import LinearNDInterpolator
 import floris.flow_visualization as wakeviz
 import matplotlib.pyplot as plt
 
 class ControlledFlorisModel(InterfaceBase):
-    def __init__(self, t0, yaw_limits, dt, yaw_rate, config_path, offline_probability=0.0, floris_version='v4'):
+    def __init__(self, t0, yaw_limits, dt, yaw_rate, config_path, turbine_signature, tid2idx_mapping, target_turbine_indices="all",
+                 uncertain=False, offline_probability=0.0, floris_version='v4'):
         super().__init__()
         self.floris_config_path = config_path
         self.yaw_limits = yaw_limits
@@ -31,13 +33,32 @@ class ControlledFlorisModel(InterfaceBase):
         self.dt = dt
         self.floris_version = floris_version
         self.offline_probability = offline_probability
+        self.target_turbine_indices = target_turbine_indices
+        self.turbine_signature = turbine_signature
+        self.tid2idx_mapping = tid2idx_mapping
+        self.uncertain = uncertain
         # self.wf_source = wf_source
         self._load_floris()
 
         self.current_yaw_setpoints = np.zeros((0, self.n_turbines))
     
     def _load_floris(self):
-        self.env = FlorisModel(self.floris_config_path)  # GCH model matched to the default "legacy_gauss" of V2
+        # edit layout, n_turbines, if len(target_turbine_idx) < n_turbines
+        # TODO HIGH need reinitialize method, update wd_std, wd_sample_points for each controller run
+        if self.uncertain:
+            self.env = UncertainFlorisModel(self.floris_config_path,
+                                            wd_resolution=0.5,
+                                            ws_resolution=0.5,
+                                            ti_resolution=0.01,
+                                            yaw_resolution=0.5,
+                                            power_setpoint_resolution=100,
+                                            wd_std=None,
+                                            wd_sample_points=None) 
+        else:
+            self.env = FlorisModel(self.floris_config_path)  # GCH model matched to the default "legacy_gauss" of V2
+        if self.target_turbine_indices != "all":
+            self.env._reinitialize(layout_x=self.env.layout_x[self.target_turbine_indices], 
+                                   layout_y=self.env.layout_y[self.target_turbine_indices])
         self.n_turbines = self.env.core.farm.n_turbines
         
         return self

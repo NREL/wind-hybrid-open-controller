@@ -42,11 +42,6 @@ class LookupBasedWakeSteeringController(ControllerBase):
         self.dt = input_dict["controller"]["controller_dt"]  # Won't be needed here, but generally good to have
         self.n_turbines = interface.n_turbines #input_dict["controller"]["num_turbines"]
         
-        # TODO HIGH this needs to be mapped to turbine ids for wind_forecaster
-        self.turbine_ids = np.arange(self.n_turbines) + 1
-        
-        self.historic_measurements = pd.DataFrame(columns=["time"] + [f"ws_horz_{tid}" for tid in self.turbine_ids] 
-                                                  + [f"ws_vert_{tid}" for tid in self.turbine_ids], dtype=pd.Float64Dtype())
         # self.filtered_measurements = pd.DataFrame(columns=["time"] + [f"ws_horz_{tid}" for tid in range(self.n_turbines)] + [f"ws_vert_{tid}" for tid in range(self.n_turbines)], dtype=pd.Float64Dtype())
         # self.ws_lpf_alpha = np.exp(-input_dict["controller"]["ws_lpf_omega_c"] * input_dict["controller"]["lpf_T"])
         self.use_filt = input_dict["controller"]["use_lut_filtered_wind_dir"]
@@ -62,6 +57,19 @@ class LookupBasedWakeSteeringController(ControllerBase):
         self.rated_turbine_power = input_dict["controller"]["rated_turbine_power"]
         self.wind_field_ts = kwargs["wind_field_ts"]
         self.wf_source = kwargs["wf_source"]
+        self.target_turbine_indices = input_dict["controller"]["target_turbine_indices"] or "all"
+        self.turbine_signature = kwargs["turbine_signature"]
+        self.tid2idx_mapping = kwargs["tid2idx_mapping"]
+        self.idx2tid_mapping = dict([(i, k) for i, k in enumerate(self.tid2idx_mapping.keys())])
+        self.uncertain = input_dict["controller"]["uncertain"]
+         
+        # self.turbine_ids = np.arange(self.n_turbines) + 1
+        self.historic_measurements = pd.DataFrame(columns=["time"] 
+                                                  + [f"ws_horz_{tid}" for tid in self.tid2idx_mapping] 
+                                                  + [f"ws_vert_{tid}" for tid in self.tid2idx_mapping]
+                                                  + [f"nd_cos_{tid}" for tid in self.tid2idx_mapping]
+                                                  + [f"nd_sin_{tid}" for tid in self.tid2idx_mapping], 
+                                                  dtype=pd.Float64Dtype())
 
         self._last_measured_time = None
         self.is_yawing = np.array([False for _ in range(self.n_turbines)])
@@ -72,6 +80,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
         else:
             # optimize, unless passed existing lookup table
             # os.path.abspath(lut_path)
+            # this is generated for new layout if len(target_turbine_ids) < n_turbines
             self._optimize_lookup_table(lut_path=input_dict["controller"]["lut_path"], generate_lut=input_dict["controller"]["generate_lut"])
         
   # Set initial conditions
@@ -116,10 +125,12 @@ class LookupBasedWakeSteeringController(ControllerBase):
             
             ## Get optimized AEP, with wake steering
             
-            # Load a FLORIS object for yaw optimization
-            
+            # Load a FLORIS object for yaw optimization, adapting to target_turbine_ids
             fi_lut = ControlledFlorisModel(t0=self.init_time, yaw_limits=self.yaw_limits, dt=self.dt,
-                                               yaw_rate=self.yaw_rate, floris_version='v4', config_path=self.floris_input_file)
+                                               yaw_rate=self.yaw_rate, floris_version='v4', config_path=self.floris_input_file,
+                                               tid2idx_mapping=self.tid2idx_mapping, 
+                                               target_turbine_indices=self.target_turbine_indices,
+                                               turbine_signature=self.turbine_signature)
             
             wd_grid, ws_grid = np.meshgrid(wind_directions_lut, wind_speeds_lut, indexing="ij")
             fi_lut.env.set(
@@ -127,7 +138,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
                 wind_speeds=ws_grid.flatten(),
                 turbulence_intensities=[fi_lut.env.core.flow_field.turbulence_intensities[0]] * len(ws_grid.flatten())
             )
-            
+            # TODO HIGH, pass uncertain floris model and save under different name if uncertain 
             if True:
                 yaw_opt = YawOptimizationScipy(fi_lut.env, 
                                             minimum_yaw_angle=self.yaw_limits[0],
@@ -186,17 +197,16 @@ class LookupBasedWakeSteeringController(ControllerBase):
             current_ws_horz = self.measurements_dict["wind_speeds"] * np.sin(np.deg2rad(self.measurements_dict["wind_directions"] + 180.0))
             current_ws_vert = self.measurements_dict["wind_speeds"] * np.cos(np.deg2rad(self.measurements_dict["wind_directions"] + 180.0))
         else:
-            # TODO HIGH ensure that columns in wind_field_ts are labeled as 1-indexed turbine numbers
             current_row = self.wind_field_ts.loc[self.wind_field_ts["time"] == self.current_time, :]
-            current_ws_horz = np.hstack([current_row[f"ws_horz_{tid}"].values for tid in self.turbine_ids])
-            current_ws_vert = np.hstack([current_row[f"ws_vert_{tid}"].values for tid in self.turbine_ids])
+            current_ws_horz = np.hstack([current_row[f"ws_horz_{tid}"].values for tid in self.tid2idx_mapping])
+            current_ws_vert = np.hstack([current_row[f"ws_vert_{tid}"].values for tid in self.tid2idx_mapping])
             current_wind_directions = 180.0 + np.rad2deg(
                 np.arctan2(
                     current_ws_horz, 
                     current_ws_vert
                 )
             )
-            
+
             # .select(**{tid: 180.0 + (pl.arctan2(pl.col(f"ws_horz_{tid + 1}"), pl.col(f"ws_vert_{tid + 1}")).degrees()) for tid in range(len(self.turbine_ids))})
         
         if len(self.measurements_dict["wind_directions"]) == 0 or np.all(np.isclose(self.measurements_dict["wind_directions"], 0)):
@@ -206,17 +216,23 @@ class LookupBasedWakeSteeringController(ControllerBase):
         
         elif (abs((self.current_time - self.init_time).total_seconds() % self.simulation_dt) == 0.0):
             # if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
-            if self.verbose:
-                logging.info(f"unfiltered wind directions = {current_wind_directions}")
             
             # current_wind_directions = self.measurements_dict["wind_directions"]
+            # TODO HIGH does this collect all measurements since last controller call if wind_dt < controller_dt?
+            # pass greedy angles to all non target turbines
+            current_nd_cos = np.cos(np.deg2rad(current_wind_directions))
+            current_nd_sin = np.sin(np.deg2rad(current_wind_directions))
+            current_nd_cos[self.target_turbine_indices] = np.cos(np.deg2rad(self.measurements_dict["yaw_angles"]))
+            current_nd_sin[self.target_turbine_indices] = np.sin(np.deg2rad(self.measurements_dict["yaw_angles"]))
             
             current_measurements = pd.DataFrame(data={
                     "ws_horz": current_ws_horz,
-                    "ws_vert": current_ws_vert
+                    "ws_vert": current_ws_vert,
+                    "nd_cos": current_nd_cos,
+                    "nd_sin": current_nd_sin
             })
             current_measurements = current_measurements.unstack().to_frame().reset_index(names=["data", "turbine_id"])
-            current_measurements["turbine_id"] += 1 # Change from zero index to one index TODO HIGH assumes that outputs of wind forecast will have suffixex = integers 1-index for each turbines 
+            current_measurements["turbine_id"] = current_measurements["turbine_id"].apply(lambda tidx: self.idx2tid_mapping[tidx])
             
             current_measurements = current_measurements\
                 .assign(data=current_measurements["data"] + "_" + current_measurements["turbine_id"].astype(str), index=0)\
@@ -224,13 +240,28 @@ class LookupBasedWakeSteeringController(ControllerBase):
                                 # .droplevel(0, axis=0)
             current_measurements = current_measurements.assign(time=self.current_time)
             assert not pd.isna(current_measurements).values.any() 
+            
+            # only get wind_dirs corresponding to target_turbine_ids
+            if self.wf_source == "scada" and self.target_turbine_indices != "all":
+                current_wind_directions = current_wind_directions[self.target_turbine_indices]
+            
+            if self.verbose:
+                logging.info(f"unfiltered wind directions = {current_wind_directions}")
                 
             # need current measurements for filter or for wind forecast
             if self.use_filt or self.wind_forecast:
+                # TODO HIGH add nacelle direction for future here
+                
+                # future_nacelle_directions = []
                 self.historic_measurements = pd.concat([self.historic_measurements, current_measurements], axis=0).iloc[-int(np.ceil(self.lpf_time_const // self.simulation_dt) * 1e3):]
 
             if self.wind_forecast:
-                forecasted_wind_field = self.wind_forecast.predict_point(self.historic_measurements, self.current_time) # TODO HIGH use turbine id to index mapping
+                # TODO HIGH setup predict_sample and predict_distr for ML, KF
+                if self.uncertain:
+                    forecasted_wind_sample = self.wind_forecast.predict_sample(self.historic_measurements, self.current_time)
+                    forecasted_wind_distr = self.wind_forecast.predict_distr(self.historic_measurements, self.current_time)
+                else:
+                    forecasted_wind_field = self.wind_forecast.predict_point(self.historic_measurements, self.current_time)
 
             if self.current_time < self.lpf_start_time or not self.use_filt:
                 wind = forecasted_wind_field.iloc[-1] if self.wind_forecast else current_measurements
@@ -254,11 +285,16 @@ class LookupBasedWakeSteeringController(ControllerBase):
                     wind[[col for col in wind.columns if "ws_horz_" in col]].values.astype(float), 
                     wind[[col for col in wind.columns if "ws_vert_" in col]].values.astype(float)))
                 wind_dirs = np.array([self._first_ord_filter(wind_dirs[:, i])
-                                                for i in range(self.n_turbines)]).T[-int(self.dt // self.simulation_dt), :]
+                                                for i in range(wind_dirs.shape[1])]).T[-int(self.dt // self.simulation_dt), :]
                 wind_mags = (wind.iloc[-1][[col for col in wind.columns if "ws_horz_" in col]].values.astype(float)**2 
                              + wind.iloc[-1][[col for col in wind.columns if "ws_vert_" in col]].values.astype(float)**2)**0.5
                 # wind_speeds = 8.0
-            
+                
+            # only get wind_dirs corresponding to target_turbine_ids
+            if self.target_turbine_indices != "all":
+                wind_dirs = wind_dirs[self.target_turbine_indices]
+                wind_mags = wind_mags[self.target_turbine_indices]
+             
             if self.verbose:
                 logging.info(f"{'filtered' if self.use_filt else 'unfiltered'} wind direction = {wind_dirs}")
             

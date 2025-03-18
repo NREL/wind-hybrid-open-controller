@@ -36,59 +36,58 @@ date +"%Y-%m-%d %H:%M:%S"
 
 # Configure how many workers to run per GPU
 NUM_WORKERS_PER_CPU=1
-NUM_MODELS=$2
+# NUM_MODELS=$2
 
 # Used to track process IDs for all workers
 declare -a WORKER_PIDS=()
 
 mamba activate wind_forecasting
 
-for m in $(seq 0 $((${NUM_MODELS}-1))); do
-    for i in $(seq 0 $((${SLURM_NTASKS}-1))); do
-        for j in $(seq 0 $((${NUM_WORKERS_PER_CPU}-1))); do
-            # The restart flag should only be set for the very first worker (i=0, j=0)
-            if [ $i -eq 0 ] && [ $j -eq 0 ]; then
-                RESTART_FLAG="--restart_tuning"
-            else
-                RESTART_FLAG=""
-            fi
+# for m in $(seq 0 $((${NUM_MODELS}-1))); do
+for i in $(seq 0 $((${SLURM_NTASKS}-1))); do
+    for j in $(seq 0 $((${NUM_WORKERS_PER_CPU}-1))); do
+        # The restart flag should only be set for the very first worker (i=0, j=0)
+        if [ $i -eq 0 ] && [ $j -eq 0 ]; then
+            RESTART_FLAG="--restart_tuning"
+        else
+            RESTART_FLAG=""
+        fi
 
-            # Create a unique seed for each worker to ensure they explore different areas
-            WORKER_SEED=$((42 + i*10 + j))
+        # Create a unique seed for each worker to ensure they explore different areas
+        WORKER_SEED=$((42 + i*10 + j))
 
-            # Calculate worker index for logging
-            WORKER_INDEX=$((i*NUM_WORKERS_PER_CPU + j))
+        # Calculate worker index for logging
+        WORKER_INDEX=$((i*NUM_WORKERS_PER_CPU + j))
 
-            echo "Starting worker ${WORKER_INDEX} on GPU ${i} with seed ${WORKER_SEED}"
-            
-            # Launch worker with environment settings
-            # CUDA_VISIBLE_DEVICES ensures each worker sees only one GPU
-            # The worker ID (SLURM_PROCID) helps Optuna identify workers
-            srun --exclusive -n 1 --export=ALL,CUDA_VISIBLE_DEVICES=$i,SLURM_PROCID=${WORKER_INDEX},WANDB_DIR=${WANDB_DIR} \
-                python tuning.py \
-                --model_config $HOME/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/training_inputs_kestrel_flasc.yaml \
-                --data_config $HOME/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/preprocessing_inputs_kestrel_flasc.yaml \
-                --study_name "${1}_tuning" \
-                --model $1 \
-                --seed ${WORKER_SEED} \
-                --model_idx $m \
-                ${RESTART_FLAG} &
+        echo "Starting worker ${WORKER_INDEX} on GPU ${i} with seed ${WORKER_SEED}"
+        
+        # Launch worker with environment settings
+        # CUDA_VISIBLE_DEVICES ensures each worker sees only one GPU
+        # The worker ID (SLURM_PROCID) helps Optuna identify workers
+        srun --exclusive -n 1 --export=ALL,CUDA_VISIBLE_DEVICES=$i,SLURM_PROCID=${WORKER_INDEX},WANDB_DIR=${WANDB_DIR} \
+            python tuning.py \
+            --model_config $HOME/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/training_inputs_kestrel_flasc.yaml \
+            --data_config $HOME/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/preprocessing_inputs_kestrel_flasc.yaml \
+            --study_name "${1}_tuning" \
+            --model $1 \
+            --seed ${WORKER_SEED} \
+            --model_idx $m \
+            ${RESTART_FLAG} &
 
-            
-            # Store the process ID
-            WORKER_PIDS+=($!)
+        # Store the process ID
+        WORKER_PIDS+=($!)
 
-            # Add a small delay between starting workers on the same GPU
-            # to avoid initialization conflicts
-            sleep 2
-        done
+        # Add a small delay between starting workers on the same GPU
+        # to avoid initialization conflicts
+        sleep 2
     done
-    echo "Started ${#WORKER_PIDS[@]} worker processes for model ${m}"
-    echo "Process IDs: ${WORKER_PIDS[@]}"
-
-    # Wait for all workers to complete
-    wait
 done
+echo "Started ${#WORKER_PIDS[@]} worker processes for model ${m}"
+echo "Process IDs: ${WORKER_PIDS[@]}"
+
+# Wait for all workers to complete
+wait
+# done
 
 date +"%Y-%m-%d %H:%M:%S"
 echo "=== TUNING COMPLETED ==="

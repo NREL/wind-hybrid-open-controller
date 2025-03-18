@@ -1,10 +1,13 @@
 #!/bin/bash
 #SBATCH --job-name=full_floris_case_studies.py
-#SBATCH --time=24:00:00
 #SBATCH --mem=0
 #SBATCH --nodes=4
 #SBATCH --ntasks-per-node=64
+#SBATCH --time=24:00:00
 #SBATCH --partition=amilan
+##SBATCH --time=01:00:00
+##SBATCH --partition=debug
+
 
 # load modules
 module purge

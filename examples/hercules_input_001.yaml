@@ -95,6 +95,10 @@ controller:
   decay_all: False
   clip_value: 30 # yaw offset at which to clip values fed to FLORIS, up to 44
   wind_forecast_class: False
+  uncertain: False
+  target_turbine_indices:
+  - 1
+  - 2
 
 wind_forecast:
   context_timedelta: 1200 # seconds
@@ -109,6 +113,5 @@ wind_forecast:
     n_neighboring_turbines: 3
     max_n_samples:
   MLForecast:
-    model: informer
-    model_checkpoint_path: /Users/ahenry/Documents/toolboxes/wind_forecasting/examples/checkpoints/lightning_logs/version_0/checkpoints/epoch=0-step=100.ckpt
-    model_config_path: /Users/ahenry/Documents/toolboxes/wind_forecasting/examples/inputs/training_inputs_aoifemac_flasc.yaml
+    model_key: informer
+    model_checkpoint: latest

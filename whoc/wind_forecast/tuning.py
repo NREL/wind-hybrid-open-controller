@@ -86,28 +86,28 @@ if __name__ == "__main__":
     if args.model == "svr": 
         model = SVRForecast(measurements_timedelta=wind_dt,
                             controller_timedelta=None,
-                                    prediction_timedelta=prediction_timedelta,
-                                    context_timedelta=context_timedelta,
-                                    fmodel=fmodel,
-                                    true_wind_field=true_wf,
-                                    kwargs=dict(kernel="rbf", C=1.0, degree=3, gamma="auto", epsilon=0.1, cache_size=200,
-                                            n_neighboring_turbines=3, max_n_samples=None),
-                                    tid2idx_mapping=tid2idx_mapping,
-                                    turbine_signature=turbine_signature)
+                            prediction_timedelta=prediction_timedelta,
+                            context_timedelta=context_timedelta,
+                            fmodel=fmodel,
+                            true_wind_field=true_wf,
+                            model_config=model_config,
+                            kwargs=dict(kernel="rbf", C=1.0, degree=3, gamma="auto", epsilon=0.1, cache_size=200,
+                                        n_neighboring_turbines=3, max_n_samples=None),
+                            tid2idx_mapping=tid2idx_mapping,
+                            turbine_signature=turbine_signature,
+                            use_tuned_params=False)
     
     os.makedirs(model_config["optuna"]["journal_dir"], exist_ok=True)
     
     # %% TUNING MODEL
     logging.info("Running tune_hyperparameters_multi")
-    # TODO HIGH in run_tuning.sh, run outer loop to represent each SVR 
     model.tune_hyperparameters_multi(historic_measurements=historic_measurements, 
                                      study_name_root=args.study_name,
                                      storage_type=model_config["optuna"]["storage_type"],
                                      n_trials=model_config["optuna"]["n_trials"], 
                                      journal_storage_dir=model_config["optuna"]["journal_dir"],
                                      restart_tuning=args.restart_tuning,
-                                     seed=args.seed,
-                                     model_idx=args.model_idx)
+                                     seed=args.seed)
                                     #  trial_protection_callback=handle_trial_with_oom_protection)
     
     # %% TESTING LOADING HYPERPARAMETERS
