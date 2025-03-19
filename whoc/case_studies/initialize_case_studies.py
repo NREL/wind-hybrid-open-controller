@@ -31,7 +31,7 @@ elif sys.platform == "darwin":
 
 # sequential_pyopt is best solver, stochastic is best preview type
 case_studies = {
-    "baseline_controllers_preview_flasc": {"controller_dt": {"group": 1, "vals": [120, 120]},
+    "baseline_controllers_preview_flasc_perfect": {"controller_dt": {"group": 1, "vals": [120, 120]},
                                     # "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
                                     "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
                                     "use_filtered_wind_dir": {"group": 1, "vals": [True, True]},
@@ -48,8 +48,7 @@ case_studies = {
                                     "wind_forecast_class": {"group": 3, "vals": ["PerfectForecast"]},
                                     "prediction_timedelta": {"group": 4, "vals": [60]},
                                     "yaw_limits": {"group": 0, "vals": [15]}
-                                    }
-    
+                                    },
     "baseline_controllers_preview_flasc": {"controller_dt": {"group": 1, "vals": [120, 120]},
                                     # "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
                                     "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
