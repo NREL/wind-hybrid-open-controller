@@ -86,6 +86,7 @@ SOCs to
 `clipping_thresholds`, e.g. `clipping_thresholds=[0.1, 0.2, 0.8, 0.9]`.
 The default is to apply the full reference across the full range of SOCs, i.e.
 `clipping_thresholds=[0, 0, 1, 1]`.
+
 ![soc clipping](
     graphics/clipping-schedules.png
 )
