@@ -66,13 +66,26 @@ no wind, solar, and/or battery component is available, respectively.
 (controllers_battery)=
 ### BatteryController
 
-Controller to trade of battery demand response with battery degradation. Responds
-to the error between the battery power setpoint and the current power output. 
-Generally speaking, the proportional gain `k_p` should be set to 1 to achieve
-basic behavior matching the passthrough controller (simply pass the battery 
-power reference down to the battery). However, setting `k_p` less than 1 will
-slow down the battery response. Moreover, setting `k_d` to a nonzero value will
-add (negative) derivative action to slow the controller response when the battery
-power tracking has a non-zero error, which helps to prevent power
-oscillations/battery cycling. Depending on battery chemistries, this can help to
-reduce damage
+Controller to trade off battery demand response with battery degradation. The
+`BatteryController` takes as an input the higher-level battery power reference,
+and produces a modified ("input-shaped") reference with the intention of 
+reducing wear and tear on the battery. Designed to create a second-order closed-loop
+system response to reference inputs.
+Generally speaking, increasing the controller gain `k_batt` increases the natural
+frequency of the second-order system response, and if increased to far, can lead to
+instability. The default value for `k_batt` is 0.1.
+
+The `BatteryController` also enables clipping of the reference to throttled the
+battery at high and low states of charge (SOC). This throttling is applied by specifying
+four SOC thresholds between 0 and 1: below the first threshold, the reference is nullified;
+between the first and second, the output reference is linearly ramped up; between the second
+and third, the full reference is used; between the third and fourth, the output reference is
+linearly ramped down; and above the fourth, the reference is again nullified. Examples of 
+this are shown below. These are specified by passing a four-element list of fractional
+SOCs to 
+`clipping_thresholds`, e.g. `clipping_thresholds=[0.1, 0.2, 0.8, 0.9]`.
+The default is to apply the full reference across the full range of SOCs, i.e.
+`clipping_thresholds=[0, 0, 1, 1]`.
+![soc clipping](
+    graphics/clipping-schedules.png
+)
