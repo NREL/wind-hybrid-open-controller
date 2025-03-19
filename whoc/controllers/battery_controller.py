@@ -38,7 +38,7 @@ class BatteryController(ControllerBase):
     def set_controller_parameters(
         self,
         k_batt=0.1,
-        clipping_thresholds=[0.1, 0.2, 0.8, 0.9],
+        clipping_thresholds=[0, 0, 1, 1],
         **_ # <- Allows arbitrary additional parameters to be passed, which are ignored
     ):
         """
