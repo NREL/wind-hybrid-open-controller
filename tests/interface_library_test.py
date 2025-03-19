@@ -186,7 +186,7 @@ def test_HerculesBatteryInterface():
     measurements = interface.get_measurements(hercules_dict=test_hercules_dict)
     assert (
         measurements["battery_power"]
-        == test_hercules_dict["py_sims"]["test_battery"]["outputs"]["power"]
+        == -test_hercules_dict["py_sims"]["test_battery"]["outputs"]["power"]
     )
     assert (
         measurements["battery_soc"]

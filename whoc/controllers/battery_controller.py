@@ -77,9 +77,7 @@ class BatteryController(ControllerBase):
 
     def compute_controls(self):
         reference_power = self.measurements_dict["power_reference"]
-        # Note sign change to match battery convention
-        # (positive current_power is discharging / negative battery_power is discharging)
-        current_power = -self.measurements_dict["battery_power"]
+        current_power = self.measurements_dict["battery_power"]
         soc = self.measurements_dict["battery_soc"]
 
         # Apply reference clipping
@@ -94,11 +92,6 @@ class BatteryController(ControllerBase):
         self.x = self.a * self.x + self.b * e
 
         self.controls_dict["power_setpoint"] = current_power + u
-
-    @staticmethod
-    def quadratic_gain_schedule(k_p_max, k_p_min, soc):
-        return -4*(k_p_max - k_p_min) * (soc - 0.5)**2 + k_p_max
-
 
 class BatteryPassthroughController(ControllerBase):
     """
