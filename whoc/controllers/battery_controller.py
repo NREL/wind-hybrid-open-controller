@@ -11,6 +11,18 @@ class BatteryController(ControllerBase):
     changes in power reference, which can lead to degradation.
     """
     def __init__(self, interface, input_dict, controller_parameters={}, verbose=True):
+        """
+        Instantiate BatteryController.
+
+        Args:
+            interface (object): Interface object for communicating with simulator.
+            input_dict (dict): Dictionary of input parameters (e.g. from Hercules).
+            controller_parameters (dict): Dictionary of controller parameters k_batt and
+                clipping_thresholds. See set_controller_parameters for more details. If
+                controller parameters are provided both in input_dict and controller_parameters,
+                the latter will take precedence.
+            verbose (bool): If True, print debug information.
+        """
         super().__init__(interface, verbose)
 
         # Extract global parameters
@@ -44,10 +56,22 @@ class BatteryController(ControllerBase):
         """
         Set gains and threshold limits for BatteryController.
 
+        k_batt is the controller gain. The controller will be stable and slow to react for small
+        values of k_batt (e.g. k_batt=0.01), and will be fast to react (and eventually unstable)
+        for large values of k_batt (e.g. k_batt=1).
+
+        clipping_thresholds is a list of four values: [soc_min, soc_min_clip, soc_max_clip,
+        soc_max]. soc_min is the minimum allowable SOC value, below which the controller output
+        reference power will be zero. soc_min_clip is the SOC value below which the controller
+        applies clipping to the reference power (the reference power is clipped linearly between
+        soc_min and soc_min_clip). Similarly, soc_max_clip is the SOC value above which linear
+        clipping is applied, until soc_max, after which the output is zero. Between soc_min_clip
+        and soc_max_clip, the full reference power is used.
+
         Args:
-            k_p_max: Maximum proportional gain. Defaults to 1.
-            k_p_min: Minimum proportional gain. Defaults to None, which is
-               a code for matching k_p_max.
+            k_batt (float): Gain for controller.
+            clipping_thresholds (list): SOC thresholds for clipping reference power. Should be a
+                list of four values: [soc_min, soc_min_clip, soc_max_clip, soc_max].
         """        
         zeta = 2
         omega = 2 * np.pi * k_batt
@@ -62,6 +86,16 @@ class BatteryController(ControllerBase):
         self.clipping_thresholds = clipping_thresholds
 
     def soc_clipping(self, soc, reference_power):
+        """
+        Clip the input reference based on the state of charge and clipping_thresholds.
+
+        Args:
+            soc (float): Current state of charge.
+            reference_power (float): Reference power to be clipped.
+
+        Returns:
+            float: Clipped reference power.
+        """
         clip_fraction = np.interp(
             soc,
             self.clipping_thresholds,
@@ -76,6 +110,9 @@ class BatteryController(ControllerBase):
         return np.clip(reference_power, -r_discharge, r_charge)
 
     def compute_controls(self):
+        """
+        Main compute_controls method for BatteryController.
+        """
         reference_power = self.measurements_dict["power_reference"]
         current_power = self.measurements_dict["battery_power"]
         soc = self.measurements_dict["battery_soc"]
@@ -98,8 +135,14 @@ class BatteryPassthroughController(ControllerBase):
     Simply passes power reference down to (single) battery.
     """
     def __init__(self, interface, input_dict, verbose=True):
+        """"
+        Instantiate BatteryPassthroughController."
+        """
         super().__init__(interface, verbose)
 
     def compute_controls(self):
+        """"
+        Main compute_controls method for BatteryPassthroughController.
+        """
         reference_power = self.measurements_dict["power_reference"]
         self.controls_dict["power_setpoint"] = reference_power
