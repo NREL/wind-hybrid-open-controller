@@ -138,7 +138,7 @@ ax[1].fill_between(time/60, clipping_thresholds[2], clipping_thresholds[3], colo
 ax[1].fill_between(time/60, clipping_thresholds[3], 1, color="black", alpha=0.2, edgecolor=None)
 ax[1].set_ylim([0,1])
 if save_figs:
-    fig.savefig("clipping.png", format="png", bbox_inches="tight", dpi=300)
+    fig.savefig("SOC_clipping.png", format="png", bbox_inches="tight", dpi=300)
 
 # Demonstrate different gains
 reference_input_sequence = reference_input_sequence[:3*round(hour/(12))]
@@ -163,6 +163,6 @@ ax[1].grid()
 ax[0].plot([time[0]/60, time[-1]/60], [20000, 20000], color="black", linestyle="dotted")
 ax[0].plot([time[0]/60, time[-1]/60], [-20000, -20000], color="black", linestyle="dotted")
 if save_figs:
-    fig.savefig("gains.png", format="png", bbox_inches="tight", dpi=300)
+    fig.savefig("varying_gains.png", format="png", bbox_inches="tight", dpi=300)
 
 plt.show()
