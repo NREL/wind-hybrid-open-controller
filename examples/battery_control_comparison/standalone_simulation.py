@@ -19,27 +19,19 @@ input_dict = {
             "initial_conditions": {"SOC": 0.5}
         }
     },
-    "controller": {
-        "k_p_max": 1.0, # These will be overwritten during simulation
-        "k_p_min": 1.0, # These will be overwritten during simulation
-    }
+    "controller": {} # Will be filled in during simulation
 }
 
 save_figs = False
 
 # Make reference input sequence
-np.random.seed(0)
 hour = round(3600/dt)
-reference_input_sequence = np.concatenate((
-    np.repeat(0+10000*np.random.randn(round(hour/(12*60))), (12*60)),
-))
 reference_input_sequence = np.tile(
     np.concatenate(
         (20000*np.ones(round(hour/(12))), 0*np.ones(round(hour/(12))))
     ),
     8
 )
-
 
 # Create some functions for simulating for simplicity
 def simulate(soc_0, clipping_thresholds, gain):
@@ -48,13 +40,12 @@ def simulate(soc_0, clipping_thresholds, gain):
     input_dict["controller"]["clipping_thresholds"] = clipping_thresholds
     input_dict["py_sims"]["battery"]["initial_conditions"]["SOC"] = soc_0
 
-
     # Establish simulation components
     battery=Battery(input_dict["py_sims"]["battery"], dt)
     interface=HerculesBatteryInterface(input_dict)
     controller=BatteryController(interface, input_dict)
 
-
+    # Initialize runtime dictionary
     runtime_dict = {
         "time": 0,
         "external_signals": {"plant_power_reference": 0},
@@ -64,7 +55,7 @@ def simulate(soc_0, clipping_thresholds, gain):
         }
     }
 
-    # Create inputs
+    # Create time vector and initialize output storage
     time = np.arange(0, len(reference_input_sequence)*dt, dt)
     power_sequence = np.zeros_like(reference_input_sequence)
     soc_sequence = np.zeros_like(reference_input_sequence)
@@ -91,25 +82,23 @@ def simulate(soc_0, clipping_thresholds, gain):
     return time, power_sequence, soc_sequence
 
 def plot_results_soc(ax, color, time, power_sequence, soc_sequence):
-    # Plot
-    #fig, ax = plt.subplots(2, 1, sharex=True)
     ax[0].plot(time, power_sequence, color=color,
                label="SOC initial: {:.3f}".format(soc_sequence[0]))
     ax[1].plot(time, soc_sequence, color=color, label="SOC")
 
 def plot_results_gain(ax, color, time, power_sequence, soc_sequence, gain):
-    # Plot
-    #fig, ax = plt.subplots(2, 1, sharex=True)
     ax[0].plot(time, power_sequence, color=color,
                label="Gain: {:.3f}".format(gain))
     ax[1].plot(time, soc_sequence, color=color, label="SOC")
 
+### SOC clipping
+
+# Establish simulation options for demonstrating SOC clipping
 starting_socs = [0.15, 0.5, 0.85]
 colors = ["C0", "C1", "C2"]
-
 clipping_thresholds = [0.1, 0.2, 0.8, 0.9]
 
-# Run simulations and plot
+# Run simulations and create plots for SOC clipping
 fig, ax = plt.subplots(2,1,sharex=True)
 fig.set_size_inches(10,5)
 for soc_0, col in zip(starting_socs, colors):
@@ -143,6 +132,8 @@ if save_figs:
         format="png", bbox_inches="tight", dpi=300
     )
 
+### k_batt gain
+
 # Demonstrate different gains
 reference_input_sequence = reference_input_sequence[:3*round(hour/(12))]
 gains = [0.001, 0.01, 0.1]
@@ -151,7 +142,6 @@ fig.set_size_inches(10,5)
 for gain, col in zip(gains, colors):
     time, power_sequence, soc_sequence = simulate(0.5, clipping_thresholds, gain)
     plot_results_gain(ax, col, time/60, power_sequence, soc_sequence, gain)
-
 
 # Add references and plot aesthetics
 ax[0].plot(time/60, reference_input_sequence, color="black", linestyle="dashed", label="Reference")
