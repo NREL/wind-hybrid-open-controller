@@ -1681,6 +1681,10 @@ if __name__ == "__main__":
     ## GET TRUE WIND FIELD
     # pull ws_horz, ws_vert, nacelle_direction, normalization_consts from awaken data and run for ML, SVR
     true_wf = pl.scan_parquet(model_config["dataset"]["data_path"])
+    longest_cg = true_wf.collect().select(pl.col("continuity_group")).to_series().value_counts().sort("count", descending=True).select(pl.col("continuity_group").first()).item()
+    true_wf = true_wf.filter(pl.col("continuity_group") == longest_cg)
+    # true_wf.collect().write_csv(os.path.join(os.path.dirname(model_config["dataset"]["data_path"]), "sample.csv"), datetime_format="%Y-%m-%d %H:%M:%S")
+    
     true_wf_norm_consts = pd.read_csv(model_config["dataset"]["normalization_consts_path"], index_col=None)
     norm_min_cols = [col for col in true_wf_norm_consts if "_min" in col]
     norm_max_cols = [col for col in true_wf_norm_consts if "_max" in col]
@@ -1740,8 +1744,6 @@ if __name__ == "__main__":
     # true_wf = true_wf.with_columns(pl.col("time").cast(pl.Datetime(time_unit=pred_slice.unit)))
     # true_wf_plot = pd.melt(true_wf, id_vars=["time", "data_type"], value_vars=["ws_horz", "ws_vert"], var_name="wind_component", value_name="wind_speed")
     
-    longest_cg = true_wf.select(pl.col("continuity_group")).to_series().value_counts().sort("count", descending=True).select(pl.col("continuity_group").first()).item()
-    true_wf = true_wf.filter(pl.col("continuity_group") == longest_cg)
     historic_measurements = true_wf.slice(0, true_wf.select(pl.len()).item() - int(prediction_timedelta / wind_dt))
     future_measurements = true_wf.slice(true_wf.select(pl.len()).item() - int(prediction_timedelta / wind_dt), int(prediction_timedelta / wind_dt))
     current_time = historic_measurements.select(pl.col("time").last()).item()

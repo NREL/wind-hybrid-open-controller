@@ -71,7 +71,6 @@ for i in $(seq 0 $((${SLURM_NTASKS}-1))); do
             --study_name "${1}_tuning" \
             --model $1 \
             --seed ${WORKER_SEED} \
-            --model_idx $m \
             ${RESTART_FLAG} &
 
         # Store the process ID
