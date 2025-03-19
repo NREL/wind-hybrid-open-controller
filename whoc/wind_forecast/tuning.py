@@ -94,14 +94,15 @@ if __name__ == "__main__":
                                         n_neighboring_turbines=3, max_n_samples=None),
                             tid2idx_mapping=tid2idx_mapping,
                             turbine_signature=turbine_signature,
-                            use_tuned_params=False)
+                            use_tuned_params=False,
+                            temp_save_dir=data_config["temp_storage_dir"])
     
     os.makedirs(model_config["optuna"]["journal_dir"], exist_ok=True)
     
     # %% TUNING MODEL
     logging.info("Running tune_hyperparameters_multi")
-    model.tune_hyperparameters_multi(historic_measurements=historic_measurements, 
-                                     study_name_root=args.study_name,
+    model.tune_hyperparameters_single(historic_measurements=historic_measurements, 
+                                     study_name=args.study_name,
                                      storage_type=model_config["optuna"]["storage_type"],
                                      n_trials=model_config["optuna"]["n_trials"], 
                                      journal_storage_dir=model_config["optuna"]["journal_dir"],

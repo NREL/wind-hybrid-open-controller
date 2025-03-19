@@ -76,6 +76,7 @@ class WindForecast:
     turbine_signature: str
     use_tuned_params: bool
     model_config: Optional[dict]
+    temp_save_dir: Path
     kwargs: dict
     # n_targets_per_turbine: int 
     
@@ -103,6 +104,10 @@ class WindForecast:
         
         self.idx2tid_mapping = dict([(v, k) for k, v in self.tid2idx_mapping.items()])
         
+        self.outputs = [f"ws_horz_{tid}" for tid in self.tid2idx_mapping] + [f"ws_vert_{tid}" for tid in self.tid2idx_mapping]
+        self.training_data_loaded = {output: False for output in self.outputs}
+        self.training_data_shape = {output: None for output in self.outputs}
+        
     def _get_ws_cols(self, historic_measurements: Union[pl.DataFrame, pd.DataFrame]):
         if isinstance(historic_measurements, pl.DataFrame):
             return historic_measurements.select(cs.starts_with("ws_horz") | cs.starts_with("ws_vert")).columns
@@ -125,7 +130,7 @@ class WindForecast:
             
             # get training data for this output
             logging.info(f"Getting training data for output {output}.")
-            X_train, y_train = self._get_single_output_training_data(historic_measurements, output)
+            X_train, y_train = self._get_output_training_data(historic_measurements, output)
             
             # evaluate with cross-validation
             logging.info(f"Computing score for output {output}.")
@@ -136,7 +141,6 @@ class WindForecast:
     # def tune_hyperparameters_single(self, historic_measurements, scaler, feat_type, tid, study_name, seed, restart_tuning, storage_type, journal_storage_dir, n_trials=1):
     def tune_hyperparameters_single(self, historic_measurements, study_name, seed, restart_tuning, storage_type, journal_storage_dir, n_trials=1):
         # for case when argument is list of multiple continuous time series AND to only get the training inputs/outputs relevant to this model
-        # TODO HIGH assume that scaler is dictionary for each output, no tid or feat_type, single study_name for SVR model
         storage = self.get_storage(storage_type=storage_type, study_name=study_name, journal_storage_dir=journal_storage_dir)
         if restart_tuning:
             for s in storage.get_all_studies():
@@ -164,39 +168,6 @@ class WindForecast:
         n_trials_per_worker = max(1, n_trials // int(os.environ.get('SLURM_NTASKS', '1')))
         logging.info(f"Worker {worker_id} will run {n_trials_per_worker} trials")
         
-        # for output in self.outputs:
-            
-        #     feat_type = re.search(f"\\w+(?=_{self.turbine_signature})", output).group(),
-        #     tid = re.search(self.turbine_signature, output).group(),
-            
-        #     if isinstance(historic_measurements, Iterable):
-        #         X_train = []
-        #         y_train = []
-        #         for hm in historic_measurements:
-        #             # don't scale for single dataset, scale for all of them
-        #             if hm.shape[0] < self.n_context + self.n_prediction:
-        #                 logging.warning(f"measurements with continuity groups {list(hm["continuity_group"].unique())} have insufficient length!")
-        #                 continue
-        #             # X, y = self._get_training_data(hm, scaler, feat_type, tid, scale=False)
-        #             X, y = self._get_training_data(hm, scaler[output], feat_type, tid, scale=False)
-        #             X_train.append(X)
-        #             y_train.append(y)
-                
-        #         X_train = np.vstack(X_train)
-        #         y_train = np.concatenate(y_train)
-        #         X_train = scaler[output].fit_transform(X_train)
-        #         input_turbine_indices = self.cluster_turbines[self.tid2idx_mapping[tid]]
-        #         output_idx = input_turbine_indices.index(self.tid2idx_mapping[tid])
-        #         y_train = (y_train * scaler.scale_[output_idx]) + scaler.min_[output_idx]
-                
-        #     else:
-        #         X_train, y_train = self._get_training_data(historic_measurements, scaler[output], feat_type, tid, scale=True)
-
-        # else:
-        #     for output in self.outputs:
-        #         feat_type = re.search(f"\\w+(?=_{self.turbine_signature})", output).group(),
-        #         tid = re.search(self.turbine_signature, output).group(),
-        
         logging.info(f"Worker {worker_id}: Optimizing Optuna study {study_name}.")
         
         for hm in historic_measurements:
@@ -223,6 +194,9 @@ class WindForecast:
             logging.info("  Params: ")
             for key, value in trial.params.items():
                 logging.info("    {}: {}".format(key, value))
+        
+        for output in self.outputs:
+            os.remove(os.path.join(self.temp_save_dir, f"Xy_train_{output}.dat"))
         
         return study.best_params
     
@@ -283,85 +257,47 @@ class WindForecast:
                 JournalFileBackend(journal_file)
             )
         return storage
-    
-    
-    
-    def tune_hyperparameters_multi(self, historic_measurements, study_name_root, seed=42, n_trials=1, storage_type="sqlite", journal_storage_dir=None, restart_tuning=False):
-        
-        # models that need to be tuned e.g. one for each output, or one for all outputs
-        # if len(self.outputs) > 1:
-        #     best_params = {}
-            # if model_idx is None:
-                # for o, output in enumerate(self.outputs):
-                    
-        best_params = self.tune_hyperparameters_single(
-                                        historic_measurements=historic_measurements,
-                                        # scaler=self.scaler[output],
-                                        # scaler=self.scaler,
-                                        # feat_type=re.search(f"\\w+(?=_{self.turbine_signature})", output).group(),
-                                        # tid=re.search(self.turbine_signature, output).group(),
-                                        # study_name=f"{study_name_root}_{output}",
-                                        study_name=f"{study_name_root}",
-                                        # seed=seed * o,
-                                        seed=seed,
-                                        storage_type=storage_type, 
-                                        journal_storage_dir=journal_storage_dir,
-                                        n_trials=n_trials,
-                                        restart_tuning=restart_tuning)
-            # else:
-            #     o = model_idx
-            #     output = self.outputs[o]
-            #     best_params[output] = self.tune_hyperparameters_single(
-            #                                         historic_measurements=historic_measurements,
-            #                                         scaler=self.scaler[output],
-            #                                         feat_type=re.search(f"\\w+(?=_{self.turbine_signature})", output).group(),
-            #                                         tid=re.search(self.turbine_signature, output).group(),
-            #                                         study_name=f"{study_name_root}_{output}",
-            #                                         seed=seed * o,
-            #                                         storage_type=storage_type, 
-            #                                         journal_storage_dir=journal_storage_dir,
-            #                                         n_trials=n_trials,
-            #                                         restart_tuning=restart_tuning)
-        # else:
-        #     best_params = self.tune_hyperparameters_single(
-        #                         historic_measurements=historic_measurements,
-        #                         scaler=self.scaler,
-        #                         feat_type=None,
-        #                         tid=None,
-        #                         study_name=f"{study_name_root}",
-        #                         seed=seed,
-        #                         storage_type=storage_type, 
-        #                         journal_storage_dir=journal_storage_dir,
-        #                         n_trials=n_trials,
-        #                         restart_tuning=restart_tuning)
-
-        return best_params
-    
-    def _get_single_output_training_data(self, historic_measurements, output):
+     
+    def _get_output_training_data(self, historic_measurements, output):
         feat_type = re.search(f"\\w+(?=_{self.turbine_signature})", output).group()
         tid = re.search(self.turbine_signature, output).group()
         
-        if isinstance(historic_measurements, Iterable):
-            X_train = []
-            y_train = []
-            for hm in historic_measurements:
-                # don't scale for single dataset, scale for all of them
+        if self.training_data_loaded[output]:
+            fp = np.memmap(os.path.join(self.temp_save_dir, f"Xy_train_{output}.dat"), dtype="float32", 
+                           mode="r", shape=self.training_data_shape[output])
+            X_train = fp[:, :-1]
+            y_train = fp[:, -1]
+        else: 
+            if isinstance(historic_measurements, Iterable):
+                X_train = []
+                y_train = []
+                for hm in historic_measurements:
+                    # don't scale for single dataset, scale for all of them
+                    
+                    # X, y = self._get_training_data(hm, scaler, feat_type, tid, scale=False)
+                    X, y = self._get_training_data(hm, self.scaler[output], feat_type, tid, scale=False)
+                    X_train.append(X)
+                    y_train.append(y)
                 
-                # X, y = self._get_training_data(hm, scaler, feat_type, tid, scale=False)
-                X, y = self._get_training_data(hm, self.scaler[output], feat_type, tid, scale=False)
-                X_train.append(X)
-                y_train.append(y)
+                X_train = np.vstack(X_train)
+                y_train = np.concatenate(y_train)
+                X_train = self.scaler[output].fit_transform(X_train)
+                input_turbine_indices = self.cluster_turbines[self.tid2idx_mapping[tid]]
+                output_idx = input_turbine_indices.index(self.tid2idx_mapping[tid])
+                y_train = (y_train * self.scaler[output].scale_[output_idx]) + self.scaler[output].min_[output_idx]
+                
+            else:
+                X_train, y_train = self._get_training_data(historic_measurements, self.scaler[output], feat_type, tid, scale=True)
             
-            X_train = np.vstack(X_train)
-            y_train = np.concatenate(y_train)
-            X_train = self.scaler[output].fit_transform(X_train)
-            input_turbine_indices = self.cluster_turbines[self.tid2idx_mapping[tid]]
-            output_idx = input_turbine_indices.index(self.tid2idx_mapping[tid])
-            y_train = (y_train * self.scaler[output].scale_[output_idx]) + self.scaler[output].min_[output_idx]
+            fp = np.memmap(os.path.join(self.temp_save_dir, f"Xy_train_{output}.dat"), dtype="float32", 
+                           mode="w+", shape=(X_train.shape[0], X_train.shape[1] + 1))
+            self.training_data_shape[output] = (X_train.shape[0], X_train.shape[1] + 1)
+            self.training_data_loaded[output] = True
+            fp[:, :-1] = X_train
+            fp[:, -1] = y_train
+            fp.flush()
             
-        else:
-            X_train, y_train = self._get_training_data(historic_measurements, self.scaler[output], feat_type, tid, scale=True)
-
+        del fp
         return X_train, y_train
     
     def set_tuned_params(self, storage_type, study_name_root, journal_storage_dir):
@@ -870,8 +806,6 @@ class SVRForecast(WindForecast):
         if self.max_n_samples is None:
             self.max_n_samples = (self.n_context + self.n_prediction) * 10
             
-        self.outputs = [f"ws_horz_{tid}" for tid in self.tid2idx_mapping] + [f"ws_vert_{tid}" for tid in self.tid2idx_mapping]
-        
         if self.use_tuned_params and self.model_config is not None:
             try:
                 self.set_tuned_params(storage_type=self.model_config["optuna"]["storage_type"], 
@@ -1777,7 +1711,8 @@ if __name__ == "__main__":
             tid2idx_mapping=tid2idx_mapping,
             turbine_signature=turbine_signature,
             use_tuned_params=False,
-            model_config=None
+            model_config=None,
+            temp_save_dir=data_config["temp_storage_dir"]
         )
                             
         perfect_forecast_wf = []
@@ -1815,7 +1750,8 @@ if __name__ == "__main__":
                                                   tid2idx_mapping=tid2idx_mapping,
                                                   turbine_signature=turbine_signature,
                                                   use_tuned_params=False,
-                                                  model_config=None)
+                                                  model_config=None,
+                                                 temp_save_dir=data_config["temp_storage_dir"])
         
         persistence_forecast_wf = []
         for current_row in historic_measurements.select(pl.col("time")).gather_every(persistence_forecast.n_controller).iter_rows(named=True):
@@ -1856,7 +1792,8 @@ if __name__ == "__main__":
                                    tid2idx_mapping=tid2idx_mapping,
                                    turbine_signature=turbine_signature,
                                    use_tuned_params=True,
-                                   model_config=model_config)
+                                   model_config=model_config,
+                                   temp_save_dir=data_config["temp_storage_dir"])
         
         
         svr_forecast_wf = []
@@ -1896,7 +1833,8 @@ if __name__ == "__main__":
                                             tid2idx_mapping=tid2idx_mapping,
                                             turbine_signature=turbine_signature,
                                             use_tuned_params=False,
-                                            model_config=model_config)
+                                            model_config=model_config,
+                                            temp_save_dir=data_config["temp_storage_dir"])
         
         kf_forecast_wf = []
         for current_row in historic_measurements.select(pl.col("time")).gather_every(kf_forecast.n_controller).iter_rows(named=True):
@@ -1938,7 +1876,8 @@ if __name__ == "__main__":
                                             tid2idx_mapping=tid2idx_mapping,
                                             turbine_signature=turbine_signature,
                                             use_tuned_params=False,
-                                            model_config=model_config)
+                                            model_config=model_config,
+                                            temp_save_dir=data_config["temp_storage_dir"])
         
         preview_forecast_wf = []
         for current_row in historic_measurements.select(pl.col("time")).gather_every(preview_forecast.n_controller).iter_rows(named=True):
@@ -1977,7 +1916,8 @@ if __name__ == "__main__":
                                  use_tuned_params=True,
                                  model_config=model_config,
                                  kwargs=dict(model_key=args.model,
-                                             model_checkpoint=args.checkpoint)
+                                             model_checkpoint=args.checkpoint),
+                                 temp_save_dir=data_config["temp_storage_dir"]
                                  )
         
         ml_forecast_wf = []
