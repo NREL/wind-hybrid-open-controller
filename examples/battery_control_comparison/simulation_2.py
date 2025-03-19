@@ -128,6 +128,15 @@ ax[0].grid()
 ax[1].grid()
 ax[0].plot([time[0]/60, time[-1]/60], [20000, 20000], color="black", linestyle="dotted")
 ax[0].plot([time[0]/60, time[-1]/60], [-20000, -20000], color="black", linestyle="dotted")
+
+# Add shading for the different clipping regions
+ax[1].fill_between(time/60, 0, clipping_thresholds[0], color="black", alpha=0.2, edgecolor=None)
+ax[1].fill_between(time/60, clipping_thresholds[0], clipping_thresholds[1], color="black",
+                   alpha=0.1, edgecolor=None)
+ax[1].fill_between(time/60, clipping_thresholds[2], clipping_thresholds[3], color="black",
+                   alpha=0.1, edgecolor=None)
+ax[1].fill_between(time/60, clipping_thresholds[3], 1, color="black", alpha=0.2, edgecolor=None)
+ax[1].set_ylim([0,1])
 if save_figs:
     fig.savefig("clipping.png", format="png", bbox_inches="tight", dpi=300)
 
