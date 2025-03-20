@@ -28,6 +28,8 @@ if sys.platform == "linux":
 elif sys.platform == "darwin":
     N_COST_FUNC_TUNINGS = 21
     # STORAGE_DIR = "/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/floris_case_studies"
+elif sys.platform == "win32" or sys.platform == "cygwin":  # Add Windows check
+    N_COST_FUNC_TUNINGS = 21
 
 # sequential_pyopt is best solver, stochastic is best preview type
 case_studies = {
@@ -48,7 +50,7 @@ case_studies = {
                                     "wind_forecast_class": {"group": 3, "vals": ["PerfectForecast"]},
                                     "prediction_timedelta": {"group": 4, "vals": [60]},
                                     "yaw_limits": {"group": 0, "vals": [15]}
-                                    },
+                                    },                                    
     "baseline_controllers_preview_flasc": {"controller_dt": {"group": 1, "vals": [120, 120]},
                                     # "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
                                     "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
@@ -597,4 +599,5 @@ case_families = ["baseline_controllers", "solver_type", # 0, 1
                     "gradient_type", "n_wind_preview_samples", # 9, 10
                     "generate_sample_figures", "baseline_controllers_3", # 11, 12
                     "cost_func_tuning_small", "sr_solve", # 13, 14
-                    "baseline_controllers_preview_flasc", "baseline_controllers_preview_awaken"] # 15, 16
+                    "baseline_controllers_preview_flasc", "baseline_controllers_preview_awaken", # 15, 16
+                    "baseline_controllers_preview_flasc_perfect"] #17

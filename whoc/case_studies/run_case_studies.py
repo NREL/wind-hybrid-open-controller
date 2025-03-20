@@ -44,7 +44,7 @@ if __name__ == "__main__":
     parser.add_argument("-st", "--stoptime", default="auto")
     parser.add_argument("-ns", "--n_seeds", type=int, default=6)
     parser.add_argument("-m", "--multiprocessor", type=str, choices=["mpi", "cf"])
-    parser.add_argument("-sd", "--save_dir", type=str)
+    parser.add_argument("-sd", "--save_dir", type=str, default=os.path.join(os.getcwd(), "simulation_results"))
     parser.add_argument("-wf", "--wf_source", type=str, choices=["floris", "scada"], required=True)
     parser.add_argument("-mcnf", "--model_config", type=str, required=False, default="")
     parser.add_argument("-dcnf", "--data_config", type=str, required=False, default="")
