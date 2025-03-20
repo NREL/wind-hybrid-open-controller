@@ -4,8 +4,7 @@ from hercules.emulator import Emulator
 from hercules.py_sims import PySims
 from hercules.utilities import load_yaml
 from whoc.controllers import (
-    BatteryController,
-    #BatteryPassthroughController,
+    BatteryPassthroughController,
     HybridSupervisoryControllerBaseline,
     SolarPassthroughController,
     WindFarmPowerTrackingController,
@@ -35,8 +34,7 @@ solar_controller = (
     else None
 )
 battery_controller = (
-    BatteryController(interface,input_dict,{"clipping_thresholds":[0, 0, 1, 1]}) if include_battery
-    #BatteryPassthroughController(interface, input_dict) if include_battery
+    BatteryPassthroughController(interface, input_dict) if include_battery
     else None
 )
 controller = HybridSupervisoryControllerBaseline(
