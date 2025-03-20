@@ -600,4 +600,8 @@ case_families = ["baseline_controllers", "solver_type", # 0, 1
                     "generate_sample_figures", "baseline_controllers_3", # 11, 12
                     "cost_func_tuning_small", "sr_solve", # 13, 14
                     "baseline_controllers_preview_flasc", "baseline_controllers_preview_awaken", # 15, 16
+<<<<<<< HEAD
                     "baseline_controllers_preview_flasc_perfect"] #17
+=======
+                    "baseline_controllers_preview_flasc_perfect"] # 17
+>>>>>>> 8d8b045791e8597d08720b0c9dff4d56dbb21c1b
