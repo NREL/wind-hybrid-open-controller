@@ -12,6 +12,9 @@ def simulate_controller(controller_class, wind_forecast_class, input_dict, **kwa
     results_dir = os.path.join(kwargs["save_dir"], kwargs['case_family'])
 
     os.makedirs(results_dir, exist_ok=True)
+    
+    temp_storage_dir = os.path.join(results_dir, "temp")
+    os.makedirs(temp_storage_dir)
 
     fn = f"time_series_results_case_{kwargs['case_name']}_seed_{kwargs['wind_case_idx']}.csv".replace("/", "_")
     # print(f'rerun_simulations = {kwargs["rerun_simulations"]}')
@@ -77,7 +80,8 @@ def simulate_controller(controller_class, wind_forecast_class, input_dict, **kwa
                                         use_tuned_params=kwargs["use_tuned_params"],
                                         model_config=kwargs["model_config"],
                                         **{k: v for k, v in input_dict["wind_forecast"].items() if "timedelta" in k},
-                                        kwargs={k: v for k, v in input_dict["wind_forecast"].items() if "timedelta" not in k})
+                                        kwargs={k: v for k, v in input_dict["wind_forecast"].items() if "timedelta" not in k},
+                                        temp_save_dir=temp_storage_dir)
     ctrl = controller_class(fi, wind_forecast=wind_forecast, input_dict=input_dict, **kwargs)
     
     yaw_angles_ts = []

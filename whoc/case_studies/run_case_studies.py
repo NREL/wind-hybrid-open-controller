@@ -113,9 +113,13 @@ if __name__ == "__main__":
                                                 wf_source=args.wf_source, 
                                                 wind_case_idx=case_lists[c]["wind_case_idx"], wind_field_ts=wind_field_ts[case_lists[c]["wind_case_idx"]],
                                                 case_name="_".join([f"{key}_{val if (isinstance(val, str) or isinstance(val, np.str_) or isinstance(val, bool)) else np.round(val, 6)}" for key, val in case_lists[c].items() if key not in ["controller_dt", "simulation_dt", "use_filtered_wind_dir", "use_lut_filtered_wind_dir", "yaw_limits", "wind_case_idx", "seed", "floris_input_file", "lut_path"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
-                                                case_family="_".join(case_name_lists[c].split("_")[:-1]), wind_field_config=wind_field_config, verbose=args.verbose, save_dir=args.save_dir, rerun_simulations=args.rerun_simulations,
+                                                case_family="_".join(case_name_lists[c].split("_")[:-1]), 
+                                                wind_field_config=wind_field_config, 
+                                                verbose=args.verbose, 
+                                                save_dir=args.save_dir, rerun_simulations=args.rerun_simulations,
                                                 turbine_signature=turbine_signature, tid2idx_mapping=tid2idx_mapping,
                                                 use_tuned_params=True, model_config=model_config)
+
                         for c, d in enumerate(input_dicts)]
                 
                 _ = [fut.result() for fut in futures]
