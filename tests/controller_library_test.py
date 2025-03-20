@@ -242,7 +242,7 @@ def test_HybridSupervisoryControllerBaseline():
     wind_solar_current = sum(wind_current)+solar_current
     wind_power_cmd = 20000/2 + sum(wind_current)-(wind_solar_current - power_ref)/2
     solar_power_cmd = 20000/2 + solar_current-(wind_solar_current - power_ref)/2
-    battery_power_cmd = wind_solar_current - power_ref
+    battery_power_cmd = power_ref - wind_solar_current
 
     assert np.allclose(
             supervisory_control_output,
@@ -310,7 +310,7 @@ def test_HybridSupervisoryControllerBaseline_subsets():
 
     wind_power_cmd = 20000 + power_ref
     solar_power_cmd = 0 # No solar controller!
-    battery_power_cmd = sum(wind_current) - power_ref
+    battery_power_cmd = power_ref - sum(wind_current)
 
     assert np.allclose(
         supervisory_control_output,
@@ -333,7 +333,7 @@ def test_HybridSupervisoryControllerBaseline_subsets():
 
     wind_power_cmd = 0 # No wind controller!
     solar_power_cmd = 20000 + power_ref
-    battery_power_cmd = solar_current - power_ref
+    battery_power_cmd = power_ref - solar_current
 
     assert np.allclose(
         supervisory_control_output,

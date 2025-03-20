@@ -115,7 +115,7 @@ def test_HerculesHybridADInterface():
     )
     assert (
         measurements["battery_power"]
-        == test_hercules_dict["py_sims"]["test_battery"]["outputs"]["power"]
+        == -test_hercules_dict["py_sims"]["test_battery"]["outputs"]["power"]
     )
     assert (
         measurements["solar_power"]
@@ -153,7 +153,7 @@ def test_HerculesHybridADInterface():
 
     assert (
         test_hercules_dict_out["py_sims"]["inputs"]["battery_signal"]
-        == controls_dict["battery_power_setpoint"]
+        == -controls_dict["battery_power_setpoint"]
     )
     assert (
         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
@@ -215,7 +215,7 @@ def test_HerculesBatteryInterface():
     )
     assert (
         test_hercules_dict_out["py_sims"]["inputs"]["battery_signal"]
-        == controls_dict["power_setpoint"]
+        == -controls_dict["power_setpoint"]
     )
     # defaults to zero
     test_hercules_dict_out = interface.send_controls(hercules_dict=test_hercules_dict)
