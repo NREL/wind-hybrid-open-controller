@@ -60,7 +60,7 @@ class HerculesHybridADInterface(InterfaceBase):
                 hercules_dict["py_sims"][self.solar_name]["outputs"]["aoi"]
         if self._has_battery_component:
             measurements["battery_power"]= \
-                hercules_dict["py_sims"][self.battery_name]["outputs"]["power"]
+                -hercules_dict["py_sims"][self.battery_name]["outputs"]["power"]
             measurements["battery_soc"]= \
                 hercules_dict["py_sims"][self.battery_name]["outputs"]["soc"]
 
@@ -104,7 +104,7 @@ class HerculesHybridADInterface(InterfaceBase):
             "turbine_power_setpoints"
         ] = wind_power_setpoints
         hercules_dict["py_sims"]["inputs"].update(
-            {"battery_signal": battery_power_setpoint,
+            {"battery_signal": -battery_power_setpoint,
              "solar_setpoint_mw": solar_power_setpoint / 1000} # Convert to MW
         )
 

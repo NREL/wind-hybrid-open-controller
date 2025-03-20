@@ -42,6 +42,6 @@ class HerculesBatteryInterface(InterfaceBase):
 
     def send_controls(self, hercules_dict, power_setpoint=0):
 
-        hercules_dict["py_sims"]["inputs"].update({"battery_signal": power_setpoint})
+        hercules_dict["py_sims"]["inputs"].update({"battery_signal": -power_setpoint})
 
         return hercules_dict

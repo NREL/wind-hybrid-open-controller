@@ -69,9 +69,6 @@ def simulate(soc_0, clipping_thresholds, gain):
         # Run controller
         runtime_dict = controller.step(runtime_dict)
 
-        # Sign switch since battery assumes positive power is charging
-        runtime_dict["py_sims"]["inputs"]["battery_signal"] *= -1
-
         # Run battery simulator
         runtime_dict["py_sims"]["battery"]["outputs"] = battery.step(runtime_dict)
 
