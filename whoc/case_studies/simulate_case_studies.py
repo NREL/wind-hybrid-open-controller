@@ -14,7 +14,7 @@ def simulate_controller(controller_class, wind_forecast_class, input_dict, **kwa
     os.makedirs(results_dir, exist_ok=True)
     
     temp_storage_dir = os.path.join(results_dir, "temp")
-    os.makedirs(temp_storage_dir)
+    os.makedirs(temp_storage_dir, exist_ok=True)
 
     fn = f"time_series_results_case_{kwargs['case_name']}_seed_{kwargs['wind_case_idx']}.csv".replace("/", "_")
     # print(f'rerun_simulations = {kwargs["rerun_simulations"]}')

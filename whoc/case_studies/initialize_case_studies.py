@@ -33,11 +33,18 @@ elif sys.platform == "win32" or sys.platform == "cygwin":  # Add Windows check
 
 # sequential_pyopt is best solver, stochastic is best preview type
 case_studies = {
-    "baseline_controllers_preview_flasc_perfect": {"controller_dt": {"group": 1, "vals": [120, 120]},
+    "baseline_controllers_preview_flasc_perfect": {"controller_dt": {"group": 1, "vals": [60]},
                                     # "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
-                                    "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
-                                    "use_filtered_wind_dir": {"group": 1, "vals": [True, True]},
-                                    "use_lut_filtered_wind_dir": {"group": 1, "vals": [True, True]},
+                                    #"controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
+                                    #"target_turbine_indices": {"group": 1, "vals": [[6,4], [6]]},
+                                    #"use_filtered_wind_dir": {"group": 1, "vals": [True, True]},
+                                    #"use_lut_filtered_wind_dir": {"group": 1, "vals": [True, True]},
+                                    #"group": 1, "vals": [120]},
+                                    #"case_names": {"group": 1, "vals": ["Greedy"]},
+                                    "controller_class": {"group": 1, "vals": ["GreedyController"]},
+                                    "use_filtered_wind_dir": {"group": 1, "vals": [True]},
+                                    "use_lut_filtered_wind_dir": {"group": 1, "vals": [True]},
+                                    "target_turbine_indices": {"group": 1, "vals": ["6"]},
                                     # "group": 1, "vals": [120]},
                                     # "case_names": {"group": 1, "vals": ["LUT"]},
                                     # "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController"]},
@@ -46,9 +53,9 @@ case_studies = {
                                     "simulation_dt": {"group": 0, "vals": [60]},
                                     "floris_input_file": {"group": 0, "vals": ["../../examples/inputs/smarteole_farm.yaml"]},
                                     "lut_path": {"group": 0, "vals": ["../../examples/inputs/smarteole_farm_lut.csv"]},
-                                    "uncertain": {"group": 3, "vals": [False]},
-                                    "wind_forecast_class": {"group": 3, "vals": ["PerfectForecast"]},
-                                    "prediction_timedelta": {"group": 4, "vals": [60]},
+                                    "uncertain": {"group": 3, "vals": [False, False, False, False]},
+                                    "wind_forecast_class": {"group": 3, "vals": ["PerfectForecast", "KalmanFilterForecast", "PersistenceForecast", "SVRForecast"]},
+                                    "prediction_timedelta": {"group": 4, "vals": [90]},
                                     "yaw_limits": {"group": 0, "vals": [15]}
                                     },                                    
     "baseline_controllers_preview_flasc": {"controller_dt": {"group": 1, "vals": [120, 120]},
@@ -540,6 +547,8 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                     input_dicts[start_case_idx + c][property_name] = property_value
                 
             if (input_dicts[start_case_idx + c]["controller"]["target_turbine_indices"] is not None):
+                if isinstance(input_dicts[start_case_idx + c]["controller"]["target_turbine_indices"], str):
+                    input_dicts[start_case_idx + c]["controller"]["target_turbine_indices"] = [int(i) for i in input_dicts[start_case_idx + c]["controller"]["target_turbine_indices"].split(",")]
                 # need to change num_turbines, floris_input_file, lut_path
                 input_dicts[start_case_idx + c]["controller"]["target_turbine_indices"] = sorted(set(input_dicts[start_case_idx + c]["controller"]["target_turbine_indices"]))
                 input_dicts[start_case_idx + c]["controller"]["num_turbines"] = num_target_turbines
@@ -600,8 +609,4 @@ case_families = ["baseline_controllers", "solver_type", # 0, 1
                     "generate_sample_figures", "baseline_controllers_3", # 11, 12
                     "cost_func_tuning_small", "sr_solve", # 13, 14
                     "baseline_controllers_preview_flasc", "baseline_controllers_preview_awaken", # 15, 16
-<<<<<<< HEAD
                     "baseline_controllers_preview_flasc_perfect"] #17
-=======
-                    "baseline_controllers_preview_flasc_perfect"] # 17
->>>>>>> 8d8b045791e8597d08720b0c9dff4d56dbb21c1b
