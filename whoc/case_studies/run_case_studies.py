@@ -26,7 +26,7 @@ from whoc.case_studies.process_case_studies import (read_time_series_data, write
                                                     plot_cost_function_pareto_curve, plot_yaw_offset_wind_direction, plot_parameter_sweep)
 from whoc.wind_forecast.WindForecast import PerfectForecast, PersistenceForecast, MLForecast, SVRForecast, KalmanFilterForecast, PreviewForecast
 
-# np.seterr("raise")
+# np.seterr("raise") test
 
 warnings.simplefilter('error', pd.errors.DtypeWarning)
 if __name__ == "__main__":
