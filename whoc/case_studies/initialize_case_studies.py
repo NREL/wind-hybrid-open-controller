@@ -47,7 +47,7 @@ case_studies = {
                                     "uncertain": {"group": 3, "vals": [False]},
                                     "wind_forecast_class": {"group": 3, "vals": ["PerfectForecast"]},
                                     "prediction_timedelta": {"group": 4, "vals": [60]},
-                                    "yaw_limits": {"group": 0, "vals": [15]}
+                                    "yaw_limits": {"group": 0, "vals": ["-15,15"]}
                                     },
     "baseline_controllers_preview_flasc": {"controller_dt": {"group": 1, "vals": [120, 120]},
                                     # "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
@@ -476,23 +476,6 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         if stoptime == "auto": 
             durations = [df["time"].iloc[-1] - df["time"].iloc[0] for df in wind_field_ts]
             whoc_config["hercules_comms"]["helics"]["config"]["stoptime"] = stoptime = min([d.total_seconds() for d in durations])
-     
-
-    # regenerate floris lookup tables for all wind farms included
-    if regenerate_lut:
-        lut_input_dict = dict(whoc_config)
-        for lut_path, floris_input_file in zip(case_studies["scalability"]["lut_path"]["vals"], 
-                                                        case_studies["scalability"]["floris_input_file"]["vals"]):
-            fi = ControlledFlorisModel(yaw_limits=whoc_config["controller"]["yaw_limits"],
-                                            offline_probability=whoc_config["controller"]["offline_probability"],
-                                            dt=whoc_config["simulation_dt"],
-                                            yaw_rate=whoc_config["controller"]["yaw_rate"],
-                                            config_path=floris_input_file)
-            lut_input_dict["controller"]["lut_path"] = lut_path
-            lut_input_dict["controller"]["generate_lut"] = True
-            ctrl_lut = LookupBasedWakeSteeringController(fi, lut_input_dict, wind_mag_ts=wind_mag_ts[0], wind_dir_ts=wind_dir_ts[0])
-
-        whoc_config["controller"]["generate_lut"] = False
     
     input_dicts = []
     case_lists = []
@@ -569,6 +552,50 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
             # write_input_dict = dict(input_dicts[start_case_idx + c])
             with open(os.path.join(results_dir, fn), 'wb') as fp:
                 pickle.dump(input_dicts[start_case_idx + c], fp)
+                
+        # regenerate floris lookup tables for all wind farms included
+    # TODO HIGH only generate for combinations of lut_path/floris_input_file, yaw_limits, uncertain, and target_turbine_indices that arise together
+    # TODO HIGH for uncertain case, add extra dimension for standard deviation of wind dir
+    if regenerate_lut:
+        lut_input_dict = dict(whoc_config)
+        # for lut_path, floris_input_file in zip(case_studies["scalability"]["lut_path"]["vals"], 
+        #                                                 case_studies["scalability"]["floris_input_file"]["vals"]):
+        all_floris_input_files = set()
+        all_uncertain_flags = set()
+        all_yaw_limits = set()
+        
+        for k in case_study_keys:
+            if "floris_input_file" in case_studies[k] and "lut_path" in case_studies[k]:
+                assert len(case_studies[k]["floris_input_file"]["vals"]) == len(case_studies[k]["lut_path"]["vals"])
+                all_floris_input_files.update([(floris_input_file, lut_path) 
+                                               for floris_input_file, lut_path in zip(case_studies[k]["floris_input_file"]["vals"], case_studies[k]["lut_path"]["vals"])])
+            elif "floris_input_file" in case_studies[k]:
+                all_floris_input_files.update([(floris_input_file, whoc_config["controller"]["lut_path"]) 
+                                               for floris_input_file in case_studies[k]["floris_input_file"]["vals"]])
+            elif "lut_path" in case_studies[k]:
+                all_floris_input_files.update([(whoc_config["controller"]["floris_input_file"], lut_path) 
+                                               for lut_path in case_studies[k]["lut_path"]["vals"]])
+            else:
+                all_floris_input_files.add((whoc_config["controller"]["floris_input_file"], whoc_config["controller"]["lut_path"]))
+                
+            if "uncertain" in case_studies[k]:
+                all_uncertain_flags.update(case_studies[k]["uncertain"]["vals"])
+            else:
+                all_uncertain_flags.add(whoc_config["controller"]["uncertain"])
+                
+            if "yaw_limits" in case_studies[k]:
+                all_yaw_limits.update([tuple(int(vv) for vv in v.split(",")) for v in case_studies[k]["uncertain"]["vals"]])
+            else:
+                all_yaw_limits.add(whoc_config["controller"]["yaw_limits"])
+         
+        for floris_input_file, lut_path in all_floris_input_files:
+            for uncertain_flag in all_uncertain_flags:
+                for yaw_limits in all_yaw_limits:
+                    LookupBasedWakeSteeringController._optimize_lookup_table(
+                        floris_config_path=floris_input_file, uncertain=uncertain_flag, yaw_limits=yaw_limits, 
+                        target_turbine_indices="all", lut_path=lut_path, generate_lut=True)
+
+        whoc_config["controller"]["generate_lut"] = False
 
     prediction_timedelta = max(inp["wind_forecast"]["prediction_timedelta"] for inp in input_dicts if inp["controller"]["wind_forecast_class"]).total_seconds() \
             if any(inp["controller"]["wind_forecast_class"] for inp in input_dicts) else 0

@@ -22,7 +22,8 @@ import polars as pl
 import polars.selectors as cs
 
 from whoc.controllers.controller_base import ControllerBase
-from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
+from floris.floris_model import FlorisModel
+from floris.uncertain_floris_model import UncertainFlorisModel
 
 from scipy.interpolate import LinearNDInterpolator
 from scipy.signal import lfilter
@@ -81,7 +82,13 @@ class LookupBasedWakeSteeringController(ControllerBase):
             # optimize, unless passed existing lookup table
             # os.path.abspath(lut_path)
             # this is generated for new layout if len(target_turbine_ids) < n_turbines
-            self._optimize_lookup_table(lut_path=input_dict["controller"]["lut_path"], generate_lut=input_dict["controller"]["generate_lut"])
+            self.wake_steering_interpolant = LookupBasedWakeSteeringController._optimize_lookup_table(
+                floris_config_path=self.floris_input_file, 
+                lut_path=input_dict["controller"]["lut_path"], 
+                yaw_limits=self.yaw_limits,
+                generate_lut=input_dict["controller"]["generate_lut"],
+                uncertain=self.uncertain, 
+                target_turbine_indices=self.target_turbine_indices)
         
   # Set initial conditions
         if isinstance(input_dict["controller"]["initial_conditions"]["yaw"], (float, list)):
@@ -113,7 +120,8 @@ class LookupBasedWakeSteeringController(ControllerBase):
         return lfilter(b, a, x)
     
     # @profile
-    def _optimize_lookup_table(self, lut_path=None, generate_lut=True):
+    @classmethod
+    def _optimize_lookup_table(floris_config_path, uncertain, yaw_limits, target_turbine_indices="all", lut_path=None, generate_lut=True):
         if not generate_lut and lut_path is not None and os.path.exists(lut_path):
             df_lut = pd.read_csv(lut_path, index_col=0)
             df_lut["yaw_angles_opt"] = df_lut["yaw_angles_opt"].apply(lambda s: np.array(re.findall(r"-*\d+\.\d*", s), dtype=float))
@@ -126,27 +134,37 @@ class LookupBasedWakeSteeringController(ControllerBase):
             ## Get optimized AEP, with wake steering
             
             # Load a FLORIS object for yaw optimization, adapting to target_turbine_ids
-            fi_lut = ControlledFlorisModel(t0=self.init_time, yaw_limits=self.yaw_limits, dt=self.dt,
-                                               yaw_rate=self.yaw_rate, floris_version='v4', config_path=self.floris_input_file,
-                                               tid2idx_mapping=self.tid2idx_mapping, 
-                                               target_turbine_indices=self.target_turbine_indices,
-                                               turbine_signature=self.turbine_signature)
+            if uncertain:
+                fi_lut = UncertainFlorisModel(floris_config_path,
+                                                wd_resolution=0.5,
+                                                ws_resolution=0.5,
+                                                ti_resolution=0.01,
+                                                yaw_resolution=0.5,
+                                                power_setpoint_resolution=100,
+                                                wd_std=None,
+                                                wd_sample_points=None) 
+            else:
+                fi_lut = FlorisModel(floris_config_path)  # GCH model matched to the default "legacy_gauss" of V2
+                
+            if target_turbine_indices != "all":
+                fi_lut._reinitialize(layout_x=fi_lut.layout_x[target_turbine_indices], 
+                                    layout_y=fi_lut.layout_y[target_turbine_indices])
             
             wd_grid, ws_grid = np.meshgrid(wind_directions_lut, wind_speeds_lut, indexing="ij")
-            fi_lut.env.set(
+            fi_lut.set(
                 wind_directions=wd_grid.flatten(),
                 wind_speeds=ws_grid.flatten(),
-                turbulence_intensities=[fi_lut.env.core.flow_field.turbulence_intensities[0]] * len(ws_grid.flatten())
+                turbulence_intensities=[fi_lut.core.flow_field.turbulence_intensities[0]] * len(ws_grid.flatten())
             )
             # TODO HIGH, pass uncertain floris model and save under different name if uncertain 
             if True:
-                yaw_opt = YawOptimizationScipy(fi_lut.env, 
-                                            minimum_yaw_angle=self.yaw_limits[0],
-                                            maximum_yaw_angle=self.yaw_limits[1], parallel=True)
+                yaw_opt = YawOptimizationScipy(fi_lut, 
+                                            minimum_yaw_angle=yaw_limits[0],
+                                            maximum_yaw_angle=yaw_limits[1], parallel=True)
             else:
-                yaw_opt = YawOptimizationSR(fi_lut.env, 
-                                            minimum_yaw_angle=self.yaw_limits[0],
-                                            maximum_yaw_angle=self.yaw_limits[1]) 
+                yaw_opt = YawOptimizationSR(fi_lut, 
+                                            minimum_yaw_angle=yaw_limits[0],
+                                            maximum_yaw_angle=yaw_limits[1])
             df_lut = yaw_opt.optimize()
             
             # Assume linear ramp up at 5-6 m/s and ramp down at 13-14 m/s,
@@ -171,7 +189,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
 
         # pd.unique(df_lut.iloc[np.where(np.any(np.vstack(df_lut["yaw_angles_opt"].array) != 0, axis=1))[0]]["wind_direction"])
         # Derive linear interpolant from solution space
-        self.wake_steering_interpolant = LinearNDInterpolator(
+        return LinearNDInterpolator(
             points=df_lut[["wind_direction", "wind_speed"]].values,
             values=np.vstack(df_lut["yaw_angles_opt"].values),
             fill_value=0.0,
