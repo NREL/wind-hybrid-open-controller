@@ -72,10 +72,10 @@ and produces a modified ("input-shaped") reference with the intention of
 reducing wear and tear on the battery. Designed to create a second-order closed-loop
 system response to reference inputs.
 Generally speaking, increasing the controller gain `k_batt` increases the natural
-frequency of the second-order system response, and if increased to far, can lead to
+frequency of the second-order system response, and if increased too far, can lead to
 instability. The default value for `k_batt` is 0.1.
 
-The `BatteryController` also enables clipping of the reference to throttled the
+The `BatteryController` also enables clipping of the reference to throttle the
 battery at high and low states of charge (SOC). This throttling is applied by specifying
 four SOC thresholds between 0 and 1: below the first threshold, the reference is nullified;
 between the first and second, the output reference is linearly ramped up; between the second
