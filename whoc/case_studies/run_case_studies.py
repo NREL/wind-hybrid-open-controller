@@ -91,8 +91,15 @@ if __name__ == "__main__":
                 data_config = None
                 
             case_lists, case_name_lists, input_dicts, wind_field_config, wind_field_ts \
-                = initialize_simulations([case_families[i] for i in args.case_ids], regenerate_wind_field=args.generate_wind_field, regenerate_lut=args.generate_lut, 
-                                         n_seeds=args.n_seeds, stoptime=args.stoptime, save_dir=args.save_dir, wf_source=args.wf_source, whoc_config=whoc_config, model_config=model_config, data_config=data_config)
+                = initialize_simulations(case_study_keys=[case_families[i] for i in args.case_ids], 
+                                         regenerate_wind_field=args.generate_wind_field, 
+                                         regenerate_lut=args.generate_lut, 
+                                         n_seeds=args.n_seeds, 
+                                         stoptime=args.stoptime, 
+                                         save_dir=args.save_dir, 
+                                         wf_source=args.wf_source,
+                                         multiprocessor=args.multiprocessor, 
+                                         whoc_config=whoc_config, model_config=model_config, data_config=data_config)
         
         if args.multiprocessor is not None:
             if args.multiprocessor == "mpi":
@@ -109,16 +116,19 @@ if __name__ == "__main__":
                 futures = [run_simulations_exec.submit(simulate_controller, 
                                                 controller_class=globals()[case_lists[c]["controller_class"]], 
                                                 wind_forecast_class=globals()[case_lists[c]["wind_forecast_class"]] if case_lists[c]["wind_forecast_class"] else None,
-                                                input_dict=d,
+                                                simulation_input_dict=d,
                                                 wf_source=args.wf_source, 
                                                 wind_case_idx=case_lists[c]["wind_case_idx"], wind_field_ts=wind_field_ts[case_lists[c]["wind_case_idx"]],
                                                 case_name="_".join([f"{key}_{val if (isinstance(val, str) or isinstance(val, np.str_) or isinstance(val, bool)) else np.round(val, 6)}" for key, val in case_lists[c].items() if key not in ["controller_dt", "simulation_dt", "use_filtered_wind_dir", "use_lut_filtered_wind_dir", "yaw_limits", "wind_case_idx", "seed", "floris_input_file", "lut_path"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
                                                 case_family="_".join(case_name_lists[c].split("_")[:-1]), 
-                                                wind_field_config=wind_field_config, 
                                                 verbose=args.verbose, 
-                                                save_dir=args.save_dir, rerun_simulations=args.rerun_simulations,
-                                                turbine_signature=turbine_signature, tid2idx_mapping=tid2idx_mapping,
-                                                use_tuned_params=True, model_config=model_config)
+                                                save_dir=args.save_dir, 
+                                                rerun_simulations=args.rerun_simulations,
+                                                multiprocessor=False, 
+                                                turbine_signature=turbine_signature, 
+                                                tid2idx_mapping=tid2idx_mapping,
+                                                use_tuned_params=True, 
+                                                model_config=model_config, wind_field_config=wind_field_config, )
 
                         for c, d in enumerate(input_dicts)]
                 
@@ -128,11 +138,12 @@ if __name__ == "__main__":
             for c, d in enumerate(input_dicts):
                 simulate_controller(controller_class=globals()[case_lists[c]["controller_class"]], 
                                     wind_forecast_class=globals()[case_lists[c]["wind_forecast_class"]] if case_lists[c]["wind_forecast_class"] else None, 
-                                    input_dict=d, 
+                                    simulation_input_dict=d, 
                                     wf_source=args.wf_source,
                                     wind_case_idx=case_lists[c]["wind_case_idx"], wind_field_ts=wind_field_ts[case_lists[c]["wind_case_idx"]],
                                     case_name="_".join([f"{key}_{val if (isinstance(val, str) or isinstance(val, np.str_) or isinstance(val, bool)) else np.round(val, 6)}" for key, val in case_lists[c].items() if key not in ["controller_dt", "simulation_dt", "use_filtered_wind_dir", "use_lut_filtered_wind_dir", "yaw_limits", "wind_case_idx", "seed", "floris_input_file", "lut_path"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
                                     case_family="_".join(case_name_lists[c].split("_")[:-1]),
+                                    multiprocessor=False, 
                                     wind_field_config=wind_field_config, verbose=args.verbose, save_dir=args.save_dir, rerun_simulations=args.rerun_simulations,
                                     turbine_signature=turbine_signature, tid2idx_mapping=tid2idx_mapping,
                                     use_tuned_params=True, model_config=model_config)

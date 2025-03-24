@@ -30,7 +30,7 @@ class ControlledFlorisModel(InterfaceBase):
         self.yaw_rate = yaw_rate
         self.init_time = t0
         self.time = t0
-        self.dt = dt
+        self.simulation_dt = dt
         self.floris_version = floris_version
         self.offline_probability = offline_probability
         self.target_turbine_indices = target_turbine_indices
@@ -44,21 +44,20 @@ class ControlledFlorisModel(InterfaceBase):
     
     def _load_floris(self):
         # edit layout, n_turbines, if len(target_turbine_idx) < n_turbines
-        # TODO HIGH need reinitialize method, update wd_std, wd_sample_points for each controller run
-        if self.uncertain:
-            self.env = UncertainFlorisModel(self.floris_config_path,
-                                            wd_resolution=0.5,
-                                            ws_resolution=0.5,
-                                            ti_resolution=0.01,
-                                            yaw_resolution=0.5,
-                                            power_setpoint_resolution=100,
-                                            wd_std=None,
-                                            wd_sample_points=None) 
-        else:
-            self.env = FlorisModel(self.floris_config_path)  # GCH model matched to the default "legacy_gauss" of V2
+        # if self.uncertain:
+        #     self.env = UncertainFlorisModel(self.floris_config_path,
+        #                                     wd_resolution=0.5,
+        #                                     ws_resolution=0.5,
+        #                                     ti_resolution=0.01,
+        #                                     yaw_resolution=0.5,
+        #                                     power_setpoint_resolution=100,
+        #                                     wd_std=None,
+        #                                     wd_sample_points=None) 
+        # else:
+        self.env = FlorisModel(self.floris_config_path)  # GCH model matched to the default "legacy_gauss" of V2
         if self.target_turbine_indices != "all":
-            self.env._reinitialize(layout_x=self.env.layout_x[self.target_turbine_indices], 
-                                   layout_y=self.env.layout_y[self.target_turbine_indices])
+            self.env._reinitialize(layout_x=self.env.layout_x[list(self.target_turbine_indices)], 
+                                   layout_y=self.env.layout_y[list(self.target_turbine_indices)])
         self.n_turbines = self.env.core.farm.n_turbines
         
         return self
@@ -88,28 +87,20 @@ class ControlledFlorisModel(InterfaceBase):
     
     def get_measurements(self, hercules_dict=None):
         """ abstract method from Interface class """
-        time_step = np.array(((self.time - self.init_time).total_seconds() // self.dt) % self.env.core.flow_field.n_findex, dtype=int)
+        time_step = np.array(((self.time - self.init_time).total_seconds() // self.simulation_dt) % self.env.core.flow_field.n_findex, dtype=int)
         # mags = np.sqrt(self.env.core.flow_field.u**2 + self.env.core.flow_field.v**2 + self.env.core.flow_field.w**2)
         
-        # if self.wf_source == "floris":
         mag = np.sqrt(self.env.core.flow_field.u[time_step, :, :, :]**2)
         mag = np.mean(mag.reshape(*mag.shape[:1], -1), axis=1)
         direction = np.tile(self.env.core.flow_field.wind_directions[time_step], (self.n_turbines,))
-        # else:
-        #     # if scada data
-        #     mag = None
-        #     direction = None
             
         offline_mask = np.isclose(self.env.core.farm.power_setpoints[time_step, :], 0, atol=1e-3)
-        # TODO HIGH change this to consider scada input 
         measurements = {
             "time": self.time,
             "amr_wind_speed": self.env.core.flow_field.wind_speeds[time_step],
             "amr_wind_direction": self.env.core.flow_field.wind_directions[time_step],
             "wind_directions": direction,
             "wind_speeds": mag, # self.env.turbine_average_velocities,
-            # "predicted_wind_speeds_horz": None,
-            # "predicted_wind_speeds_vert": None,
             "turbine_powers": np.ma.masked_array(self.env.get_turbine_powers()[time_step], offline_mask).filled(0.0),
             "yaw_angles": self.current_yaw_setpoints[-1, :]
         }
@@ -129,6 +120,7 @@ class ControlledFlorisModel(InterfaceBase):
 
         # reinitialize floris
         if ctrl_dict is None:
+            # get most recently set yaw angles
             yaw_offsets = self.env.core.farm.yaw_angles
         else:
             yaw_offsets = (np.array(disturbances["wind_directions"])[:, np.newaxis] - ctrl_dict["yaw_angles"])

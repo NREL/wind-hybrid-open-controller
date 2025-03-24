@@ -33,31 +33,27 @@ elif sys.platform == "win32" or sys.platform == "cygwin":  # Add Windows check
 
 # sequential_pyopt is best solver, stochastic is best preview type
 case_studies = {
-    "baseline_controllers_preview_flasc_perfect": {"controller_dt": {"group": 1, "vals": [60]},
-                                    # "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
-                                    #"controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
-                                    #"target_turbine_indices": {"group": 1, "vals": [[6,4], [6]]},
-                                    #"use_filtered_wind_dir": {"group": 1, "vals": [True, True]},
-                                    #"use_lut_filtered_wind_dir": {"group": 1, "vals": [True, True]},
-                                    #"group": 1, "vals": [120]},
-                                    #"case_names": {"group": 1, "vals": ["Greedy"]},
-                                    "controller_class": {"group": 1, "vals": ["GreedyController"]},
+                                
+    "baseline_controllers_preview_flasc_perfect": {
+                                    # "controller_dt": {"group": 1, "vals": [120, 120]},
+                                    # # "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
+                                    # "target_turbine_indices": {"group": 1, "vals": ["6,4", "6,"]},
+                                    # "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
+                                    # "use_filtered_wind_dir": {"group": 1, "vals": [True, True]},
+                                    # "use_lut_filtered_wind_dir": {"group": 1, "vals": [True, True]},
+                                    "controller_dt": {"group": 1, "vals": [180]},
+                                    "case_names": {"group": 1, "vals": ["LUT"]},
+                                    "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController"]},
                                     "use_filtered_wind_dir": {"group": 1, "vals": [True]},
                                     "use_lut_filtered_wind_dir": {"group": 1, "vals": [True]},
-                                    "target_turbine_indices": {"group": 1, "vals": ["6"]},
-                                    # "group": 1, "vals": [120]},
-                                    # "case_names": {"group": 1, "vals": ["LUT"]},
-                                    # "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController"]},
-                                    # "use_filtered_wind_dir": {"group": 1, "vals": [True]},
-                                    # "use_lut_filtered_wind_dir": {"group": 1, "vals": [True]},
                                     "simulation_dt": {"group": 0, "vals": [60]},
                                     "floris_input_file": {"group": 0, "vals": ["../../examples/inputs/smarteole_farm.yaml"]},
                                     "lut_path": {"group": 0, "vals": ["../../examples/inputs/smarteole_farm_lut.csv"]},
-                                    "uncertain": {"group": 3, "vals": [False, False, False, False]},
-                                    "wind_forecast_class": {"group": 3, "vals": ["PerfectForecast", "KalmanFilterForecast", "PersistenceForecast", "SVRForecast"]},
-                                    "prediction_timedelta": {"group": 4, "vals": [90]},
-                                    "yaw_limits": {"group": 0, "vals": [15]}
-                                    },                                    
+                                    "uncertain": {"group": 3, "vals": [True]},
+                                    "wind_forecast_class": {"group": 3, "vals": ["KalmanFilterForecast"]},
+                                    "prediction_timedelta": {"group": 4, "vals": [60]},
+                                    "yaw_limits": {"group": 0, "vals": ["-15,15"]}
+                                    },
     "baseline_controllers_preview_flasc": {"controller_dt": {"group": 1, "vals": [120, 120]},
                                     # "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
                                     "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
@@ -76,21 +72,27 @@ case_studies = {
                                     "prediction_timedelta": {"group": 4, "vals": [60]},
                                     "yaw_limits": {"group": 0, "vals": [15]}
                                     },
-    "baseline_controllers_preview_awaken": {"controller_dt": {"group": 1, "vals": [5, 5]},
-                                    "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
-                                    "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
-                                    "use_filtered_wind_dir": {"group": 1, "vals": [True, True]},
-                                    "use_lut_filtered_wind_dir": {"group": 1, "vals": [True, True]},
-                                    "simulation_dt": {"group": 0, "vals": [0.5]},
+    "baseline_controllers_preview_awaken": {"controller_dt": {"group": 0, "vals": [5]},
+                                    # "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
+                                    "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "LookupBasedWakeSteeringController", "GreedyController"]},
+                                    "target_turbine_indices": {"group": 1, "vals": ["74,73", "74,73", "4,"]},
+                                    "uncertain": {"group": 1, "vals": [False, True, False]},
+                                    "use_filtered_wind_dir": {"group": 0, "vals": [True]},
+                                    "use_lut_filtered_wind_dir": {"group": 0, "vals": [True]},
+                                    # "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController"]},
+                                    # "target_turbine_indices": {"group": 1, "vals": ["74,73"]},
+                                    # "use_filtered_wind_dir": {"group": 1, "vals": [True]},
+                                    # "use_lut_filtered_wind_dir": {"group": 1, "vals": [True]},
+                                    "simulation_dt": {"group": 0, "vals": [1]},
                                     "floris_input_file": {"group": 0, "vals": [
                                         "../../examples/inputs/gch_KP_v4.yaml"
                                                                             ]},
                                     "lut_path": {"group": 0, "vals": [
                                         "../../examples/inputs/gch_KP_v4_lut.csv",
                                                                     ]},
-                                    "wind_forecast_class": {"group": 3, "vals": ["PersistentForecast", "PerfectForecast"]},
+                                    "wind_forecast_class": {"group": 1, "vals": ["KalmanFilterForecast", "KalmanFilterForecast", "KalmanFilterForecast"]},
                                     "prediction_timedelta": {"group": 4, "vals": [120]},
-                                    "yaw_limits": {"group": 0, "vals": [15]}
+                                    "yaw_limits": {"group": 0, "vals": ["-15,15"]}
                                     },
     "baseline_controllers": { "controller_dt": {"group": 1, "vals": [5, 5]},
                                 "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
@@ -347,7 +349,9 @@ def CaseGen_General(case_inputs, namebase=''):
 
     return case_list, case_name
 
-def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_field, n_seeds, stoptime, save_dir, wf_source, whoc_config, model_config=None, data_config=None):
+def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_field, 
+                           n_seeds, stoptime, save_dir, wf_source, multiprocessor,
+                           whoc_config, model_config=None, data_config=None):
     """_summary_
 
     Args:
@@ -376,12 +380,16 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         max_n_horizon = whoc_config["controller"]["n_horizon"]
     else:
         max_n_horizon = max(case_studies["horizon_length"]["n_horizon"]["vals"])
-        
+    
     if (whoc_config["controller"]["target_turbine_indices"] is not None) and ((num_target_turbines := len(whoc_config["controller"]["target_turbine_indices"])) < whoc_config["controller"]["num_turbines"]):
         # need to change num_turbines, floris_input_file, lut_path
         whoc_config["controller"]["num_turbines"] = num_target_turbines
         whoc_config["controller"]["lut_path"] = os.path.join(os.path.dirname(whoc_config["controller"]["lut_path"]), 
                                                             f"lut_{num_target_turbines}.csv")
+        whoc_config["controller"]["target_turbine_indices"] = tuple(whoc_config["controller"]["target_turbine_indices"])
+        
+    if whoc_config["controller"]["target_turbine_indices"] is None:
+         whoc_config["controller"]["target_turbine_indices"] = "all"
 
     if wf_source == "floris":
         from whoc.wind_field.WindField import plot_ts
@@ -448,7 +456,6 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         # wind_mag_ts = [wind_field_data[case_idx]["FreestreamWindMag"].to_numpy() for case_idx in range(n_seeds)]
         # wind_dir_ts = [wind_field_data[case_idx]["FreestreamWindDir"].to_numpy() for case_idx in range(n_seeds)]
         
-        # TODO convert to ws_horz_... and ws_vert_...
         wind_field_ts = [wind_field_data[case_idx][["FreestreamWindMag", "FreestreamWindDir"]] for case_idx in range(n_seeds)] 
         
         assert np.all([np.isclose(wind_field_data[case_idx]["Time"].iloc[1] - wind_field_data[case_idx]["Time"].iloc[0], whoc_config["simulation_dt"]) for case_idx in range(n_seeds)]), "sampling time of wind field should be equal to simulation sampling time"
@@ -485,31 +492,12 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         if stoptime == "auto": 
             durations = [df["time"].iloc[-1] - df["time"].iloc[0] for df in wind_field_ts]
             whoc_config["hercules_comms"]["helics"]["config"]["stoptime"] = stoptime = min([d.total_seconds() for d in durations])
-     
-
-    # regenerate floris lookup tables for all wind farms included
-    if regenerate_lut:
-        lut_input_dict = dict(whoc_config)
-        for lut_path, floris_input_file in zip(case_studies["scalability"]["lut_path"]["vals"], 
-                                                        case_studies["scalability"]["floris_input_file"]["vals"]):
-            fi = ControlledFlorisModel(yaw_limits=whoc_config["controller"]["yaw_limits"],
-                                            offline_probability=whoc_config["controller"]["offline_probability"],
-                                            dt=whoc_config["simulation_dt"],
-                                            yaw_rate=whoc_config["controller"]["yaw_rate"],
-                                            config_path=floris_input_file)
-            lut_input_dict["controller"]["lut_path"] = lut_path
-            lut_input_dict["controller"]["generate_lut"] = True
-            ctrl_lut = LookupBasedWakeSteeringController(fi, lut_input_dict, wind_mag_ts=wind_mag_ts[0], wind_dir_ts=wind_dir_ts[0])
-
-        whoc_config["controller"]["generate_lut"] = False
     
     input_dicts = []
     case_lists = []
     case_name_lists = []
     n_cases_list = []
     
-    # TODO HIGH edit n_turbines, lut table path (delete existing if clashing names), if len(target_turbine_idx) < n_turbines
-
     for case_study_key in case_study_keys:
         case_list, case_names = CaseGen_General(case_studies[case_study_key], namebase=case_study_key)
         case_lists = case_lists + case_list
@@ -526,6 +514,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         input_dicts = input_dicts + [copy.deepcopy(whoc_config) for i in range(len(case_list))]
 
         # make adjustements based on case study
+        lut_cases = set()
         for c, case in enumerate(case_list):
             for property_name, property_value in case.items():
                 if property_name in input_dicts[start_case_idx + c]["controller"]:
@@ -537,24 +526,29 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                     property_group = None
                 
                 if property_group:
-                    if isinstance(property_value, np.str_):
+                    if property_name == "yaw_limits":
+                        input_dicts[start_case_idx + c][property_group][property_name] = tuple(int(v) for v in property_value.split(","))
+                    elif property_name == "target_turbine_indices":
+                        if property_value != "all":
+                            # need to preserve order, taking first as upstream
+                            target_turbine_indices = np.array([int(v) for v in property_value.split(",") if len(v)])
+                            _, order_idx = np.unique(target_turbine_indices, return_index=True)
+                            target_turbine_indices = target_turbine_indices[np.sort(order_idx)]
+                            input_dicts[start_case_idx + c]["controller"][property_name] = tuple(target_turbine_indices)
+                        else:
+                            input_dicts[start_case_idx + c]["controller"][property_name] = "all"
+                            
+                    elif property_name == "uncertain":
+                        if (controller_class := case.setdefault("controller_class", whoc_config["controller"]["controller_class"])) == "GreedyController":
+                            input_dicts[start_case_idx + c]["controller"]["uncertain"] = False
+                        else:
+                            input_dicts[start_case_idx + c]["controller"]["uncertain"] = property_value
+                    elif isinstance(property_value, np.str_):
                         input_dicts[start_case_idx + c][property_group][property_name] = str(property_value)
-                    elif property_name == "yaw_limits":
-                        input_dicts[start_case_idx + c][property_group][property_name] = (-property_value, property_value)
                     else:
                         input_dicts[start_case_idx + c][property_group][property_name] = property_value
                 else:
                     input_dicts[start_case_idx + c][property_name] = property_value
-                
-            if (input_dicts[start_case_idx + c]["controller"]["target_turbine_indices"] is not None):
-                if isinstance(input_dicts[start_case_idx + c]["controller"]["target_turbine_indices"], str):
-                    input_dicts[start_case_idx + c]["controller"]["target_turbine_indices"] = [int(i) for i in input_dicts[start_case_idx + c]["controller"]["target_turbine_indices"].split(",")]
-                # need to change num_turbines, floris_input_file, lut_path
-                input_dicts[start_case_idx + c]["controller"]["target_turbine_indices"] = sorted(set(input_dicts[start_case_idx + c]["controller"]["target_turbine_indices"]))
-                input_dicts[start_case_idx + c]["controller"]["num_turbines"] = num_target_turbines
-                input_dicts[start_case_idx + c]["controller"]["lut_path"] = os.path.join(
-                    os.path.dirname(input_dicts[start_case_idx + c]["controller"]["lut_path"]), 
-                    f"lut_{num_target_turbines}.csv")
             
             assert input_dicts[start_case_idx + c]["controller"]["controller_dt"] <= stoptime
              
@@ -567,17 +561,48 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                     }, 
                    **input_dicts[start_case_idx + c]["wind_forecast"].setdefault(input_dicts[start_case_idx + c]["controller"]["wind_forecast_class"], {}),
                    }
+                
+            # need to change num_turbines, floris_input_file, lut_path
+            target_turbine_indices = input_dicts[start_case_idx + c]["controller"]["target_turbine_indices"]
+            if target_turbine_indices != "all":
+                num_target_turbines = len(target_turbine_indices)
+                input_dicts[start_case_idx + c]["controller"]["num_turbines"] = num_target_turbines
+                
+            uncertain_flag = input_dicts[start_case_idx + c]["controller"]["uncertain"]
+            lut_path = input_dicts[start_case_idx + c]["controller"]["lut_path"]
+            floris_input_file = os.path.splitext(os.path.basename(input_dicts[start_case_idx + c]["controller"]["floris_input_file"]))[0]
+            input_dicts[start_case_idx + c]["controller"]["lut_path"] = os.path.join(
+                os.path.dirname(lut_path), 
+                f"lut_{floris_input_file}_{target_turbine_indices}_uncertain{uncertain_flag}.csv")
             # **{k: v for k, v in input_dicts[start_case_idx + c]["wind_forecast"].items() if isinstance(k, str) and "_kwargs" in k} 
             assert input_dicts[start_case_idx + c]["controller"]["controller_dt"] >= input_dicts[start_case_idx + c]["simulation_dt"]
              
+            # regenerate floris lookup tables for all wind farms included
+            # generate LUT for combinations of lut_path/floris_input_file, yaw_limits, uncertain, and target_turbine_indices that arise together
+            if regenerate_lut:
+                floris_input_file = input_dicts[start_case_idx + c]["controller"]["floris_input_file"]
+                lut_path = input_dicts[start_case_idx + c]["controller"]["lut_path"] 
+                uncertain_flag = input_dicts[start_case_idx + c]["controller"]["uncertain"] 
+                yaw_limits = input_dicts[start_case_idx + c]["controller"]["yaw_limits"]
+                target_turbine_indices = input_dicts[start_case_idx + c]["controller"]["target_turbine_indices"]
+                if (new_case := tuple([floris_input_file, lut_path, uncertain_flag, yaw_limits, target_turbine_indices])) in lut_cases:
+                    continue
+                
+                LookupBasedWakeSteeringController._optimize_lookup_table(
+                    floris_config_path=floris_input_file, uncertain=uncertain_flag, yaw_limits=yaw_limits, 
+                    parallel=multiprocessor is not None,
+                    target_turbine_indices=target_turbine_indices, lut_path=lut_path, generate_lut=True)
+                
+                lut_cases.add(new_case)
+
+                input_dicts[start_case_idx + c]["controller"]["generate_lut"] = False
+            
+            # TODO rename this by index with only config updates from case inside
             fn = f'input_config_case_{"_".join(
                 [f"{key}_{val if (isinstance(val, str) or isinstance(val, np.str_) or isinstance(val, bool)) else np.round(val, 6)}" for key, val in case.items() \
                     if key not in ["controller_dt", "simulation_dt", "use_filtered_wind_dir", "use_lut_filtered_wind_dir", "yaw_limits", "wind_case_idx", "seed", "floris_input_file", "lut_path"]]) \
                     if "case_names" not in case else case["case_names"]}.pkl'.replace("/", "_")
             
-            # with io.open(os.path.join(results_dir, fn), 'w', encoding='utf8') as fp:
-                # yaml.dump(input_dicts[start_case_idx + c], fp, default_flow_style=False, allow_unicode=True)
-            # write_input_dict = dict(input_dicts[start_case_idx + c])
             with open(os.path.join(results_dir, fn), 'wb') as fp:
                 pickle.dump(input_dicts[start_case_idx + c], fp)
 
