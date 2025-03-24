@@ -94,6 +94,7 @@ controller:
   decay_type: exp
   decay_all: False
   clip_value: 30 # yaw offset at which to clip values fed to FLORIS, up to 44
+  controller_class: GreedyController
   wind_forecast_class: False
   uncertain: False
   target_turbine_indices:
