@@ -50,11 +50,6 @@ class HerculesHybridADInterface(InterfaceBase):
         measurements = {
             "time": time,
             "plant_power_reference": plant_power_reference,
-            "battery_power": hercules_dict["py_sims"][self.battery_name]["outputs"]["power"],
-            "battery_soc": hercules_dict["py_sims"][self.battery_name]["outputs"]["soc"],
-            "solar_power": hercules_dict["py_sims"][self.solar_name]["outputs"]["power_mw"] * 1000,
-            "solar_dni": hercules_dict["py_sims"][self.solar_name]["outputs"]["dni"],
-            "solar_aoi": hercules_dict["py_sims"][self.solar_name]["outputs"]["aoi"],
             "forecast": forecast,
         } 
 
