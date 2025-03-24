@@ -7,7 +7,6 @@ from whoc.controllers import (
     BatteryController,
     BatteryPassthroughController,
     HybridSupervisoryControllerBaseline,
-    HybridSupervisoryControllerBaseline_ForecastDemo,
     LookupBasedWakeSteeringController,
     SolarPassthroughController,
     WindFarmPowerDistributingController,
@@ -249,33 +248,6 @@ def test_HybridSupervisoryControllerBaseline():
             supervisory_control_output,
             [wind_power_cmd, solar_power_cmd, battery_power_cmd]
         ) # To charge battery
-
-def test_HybridSupervisoryControllerBaseline_ForecastDemo():
-    test_interface = HerculesHybridADInterface(test_hercules_dict)
-
-    test_controller = HybridSupervisoryControllerBaseline_ForecastDemo(
-        interface=test_interface, input_dict=test_hercules_dict
-    )
-
-    test_controller.step(test_hercules_dict)
-    # test_hercules_dict doesn't have forecast data, so should return empty dict
-    assert test_controller.return_forecast() == {}
-
-    # Add forecast data to test_hercules_dict
-    test_forecast_dict = {
-        "forecast_ws_mean_0": 8.0,
-        "forecast_ws_mean_1": 8.1,
-        "forecast_ws_std_0": 2.0,
-        "forecast_ws_std_1": 2.1,
-        "ws_median_0": 0.0, # Doesn't contain "forecast", will be ignored
-    }
-    test_hercules_dict["external_signals"] = test_forecast_dict
-    test_controller.step(test_hercules_dict)
-    forecast_dict = test_controller.return_forecast()
-
-    del test_forecast_dict["ws_median_0"]
-
-    assert forecast_dict == test_forecast_dict
 
 def test_HybridSupervisoryControllerBaseline_subsets():
     """

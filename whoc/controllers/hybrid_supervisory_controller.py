@@ -181,17 +181,3 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
         self.battery_reference = battery_reference
 
         return wind_reference, solar_reference, battery_reference
-
-class HybridSupervisoryControllerBaseline_ForecastDemo(HybridSupervisoryControllerBaseline):
-
-    def return_forecast(self):
-        return self.measurements_dict["forecast"]
-
-    def compute_controls(self):
-
-        forecast = self.return_forecast()
-        print("Demo forecast:", forecast) # print statement eventually can be removed
-
-        # Predictive controller code to be put here, and may replace super().compute_controls()
-
-        return super().compute_controls()

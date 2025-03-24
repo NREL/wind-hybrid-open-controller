@@ -1,7 +1,3 @@
-from whoc.controllers.hybrid_supervisory_controller import (
-    HybridSupervisoryControllerBaseline,
-    HybridSupervisoryControllerBaseline_ForecastDemo,
-)
 from whoc.controllers.battery_controller import BatteryController, BatteryPassthroughController
 from whoc.controllers.hybrid_supervisory_controller import HybridSupervisoryControllerBaseline
 from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
