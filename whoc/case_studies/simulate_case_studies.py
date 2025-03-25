@@ -128,7 +128,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
                             "turbulence_intensities": [fi.env.core.flow_field.turbulence_intensities[0]] * (n_future_steps + 1)},
                             ctrl_dict=None if t > 0 else {"yaw_angles": [ctrl.yaw_IC] * ctrl.n_turbines if isinstance(ctrl.yaw_IC, float) else ctrl.yaw_IC},
                             seed=k)
-        
+    print(f'test if it reaches this point')    
         # ctrl.current_freestream_measurements = [simulation_u[k], simulation_v[k]] 
         
         start_time = perf_counter()
