@@ -70,10 +70,12 @@ case_studies = {
                                     "yaw_limits": {"group": 0, "vals": [15]}
                                     },
     "baseline_controllers_preview_awaken": {"controller_dt": {"group": 0, "vals": [5]},
-                                    # "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
                                     "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "LookupBasedWakeSteeringController", "GreedyController"]},
                                     "target_turbine_indices": {"group": 1, "vals": ["74,73", "74,73", "4,"]},
                                     "uncertain": {"group": 1, "vals": [False, True, False]},
+                                    # "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController"]},
+                                    # "target_turbine_indices": {"group": 1, "vals": ["74,73"]},
+                                    # "uncertain": {"group": 1, "vals": [True]}, 
                                     "use_filtered_wind_dir": {"group": 0, "vals": [True]},
                                     "use_lut_filtered_wind_dir": {"group": 0, "vals": [True]},
                                     # "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController"]},
@@ -588,7 +590,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                 LookupBasedWakeSteeringController._optimize_lookup_table(
                     floris_config_path=floris_input_file, uncertain=uncertain_flag, yaw_limits=yaw_limits, 
                     parallel=multiprocessor is not None,
-                    target_turbine_indices=target_turbine_indices, lut_path=lut_path, generate_lut=True)
+                    sorted_target_tids=sorted(target_turbine_indices) if target_turbine_indices != "all" else "all", lut_path=lut_path, generate_lut=True)
                 
                 lut_cases.add(new_case)
 

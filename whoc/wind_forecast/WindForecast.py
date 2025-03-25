@@ -1080,7 +1080,7 @@ class KalmanFilterForecast(WindForecast):
             # forecaster is called every n_controller time steps
             # n_prediction time steps may not have passed since last controller step
             # in this case, no new measurements will be available, and we can return the last state estimate
-            logging.info(f"No new measurements available for KalmanFilterForecaster at time {current_time}, waiting on time {(self.last_measurement_time + self.prediction_timedelta)} returning last esimated state.")
+            # logging.info(f"No new measurements  available for KalmanFilterForecaster at time {current_time}, waiting on time {(self.last_measurement_time + self.prediction_timedelta)} returning last estimated state.")
             self.last_pred = self.last_pred.with_columns(time=pred_slice)
             if return_var:
                 self.last_var = self.last_var.with_columns(time=pred_slice)

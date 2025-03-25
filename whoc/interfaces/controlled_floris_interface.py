@@ -34,6 +34,7 @@ class ControlledFlorisModel(InterfaceBase):
         self.floris_version = floris_version
         self.offline_probability = offline_probability
         self.target_turbine_indices = target_turbine_indices
+        self.sorted_tids = sorted(target_turbine_indices) if target_turbine_indices != "all" else "all" 
         self.turbine_signature = turbine_signature
         self.tid2idx_mapping = tid2idx_mapping
         self.uncertain = uncertain
@@ -44,20 +45,10 @@ class ControlledFlorisModel(InterfaceBase):
     
     def _load_floris(self):
         # edit layout, n_turbines, if len(target_turbine_idx) < n_turbines
-        # if self.uncertain:
-        #     self.env = UncertainFlorisModel(self.floris_config_path,
-        #                                     wd_resolution=0.5,
-        #                                     ws_resolution=0.5,
-        #                                     ti_resolution=0.01,
-        #                                     yaw_resolution=0.5,
-        #                                     power_setpoint_resolution=100,
-        #                                     wd_std=None,
-        #                                     wd_sample_points=None) 
-        # else:
         self.env = FlorisModel(self.floris_config_path)  # GCH model matched to the default "legacy_gauss" of V2
         if self.target_turbine_indices != "all":
-            self.env._reinitialize(layout_x=self.env.layout_x[list(self.target_turbine_indices)], 
-                                   layout_y=self.env.layout_y[list(self.target_turbine_indices)])
+            self.env._reinitialize(layout_x=self.env.layout_x[self.sorted_tids], 
+                                   layout_y=self.env.layout_y[self.sorted_tids])
         self.n_turbines = self.env.core.farm.n_turbines
         
         return self
