@@ -9,7 +9,7 @@ from whoc.wind_field.WindField import first_ord_filter
 
 @profile
 def simulate_controller(controller_class, wind_forecast_class, simulation_input_dict, **kwargs):
-
+    print(f'Entering simulate_controller function')
     results_dir = os.path.join(kwargs["save_dir"], kwargs['case_family'])
     os.makedirs(results_dir, exist_ok=True)
     
@@ -19,6 +19,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
     fn = f"time_series_results_case_{kwargs['case_name']}_seed_{kwargs['wind_case_idx']}.csv".replace("/", "_")
     # print(f'rerun_simulations = {kwargs["rerun_simulations"]}')
     # print(f'does {os.path.join(results_dir, fn)} exist = {os.path.exists(os.path.join(results_dir, fn))}')
+    print(f'reaches the first if statement')
     if not kwargs["rerun_simulations"] and os.path.exists(os.path.join(results_dir, fn)):
         results_df = pd.read_csv(os.path.join(results_dir, fn))
         print(f"Loaded existing {fn} since rerun_simulations argument is false")

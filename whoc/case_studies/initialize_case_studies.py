@@ -350,7 +350,7 @@ def CaseGen_General(case_inputs, namebase=''):
 
     return case_list, case_name
 
-@profile
+#@profile
 def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_field, 
                            n_seeds, stoptime, save_dir, wf_source, multiprocessor,
                            whoc_config, model_config=None, data_config=None):
