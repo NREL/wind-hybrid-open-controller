@@ -40,7 +40,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
                                 uncertain=simulation_input_dict["controller"]["uncertain"],
                                 turbine_signature=kwargs["turbine_signature"],
                                 tid2idx_mapping=kwargs["tid2idx_mapping"])
-    
+    print(f'simulation_input_dict')
     if simulation_input_dict["controller"]["target_turbine_indices"] != "all":
         fi_full = ControlledFlorisModel(t0=kwargs["wind_field_ts"]["time"].iloc[0],
                                yaw_limits=simulation_input_dict["controller"]["yaw_limits"],
@@ -64,7 +64,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
         v = kwargs["wind_field_ts"].iloc[0][[col for col in kwargs["wind_field_ts"].columns if col.startswith("ws_vert")]].values.astype(float)
         direc = 180.0 + np.rad2deg(np.arctan2(u, v))
         simulation_input_dict["controller"]["initial_conditions"]["yaw"] = list(direc[list(simulation_input_dict["controller"]["target_turbine_indices"])])
-     
+    print(f'wind_forecast reached') 
     # pl.DataFrame(kwargs["wind_field_ts"])
     # simulation_input_dict["wind_forecast"]["measurement_layout"] = np.vstack([fi.env.layout_x, fi.env.layout_y]).T
     wind_forecast = wind_forecast_class(true_wind_field=kwargs["wind_field_ts"],
@@ -97,7 +97,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
     
     t = 0
     k = 0
-    
+    print(f'simulation_input_dict reached')
     # input to floris should be from first in target_turbine_indices (most upstream one), or mean over whole farm if no target_turbine_indices
     if simulation_input_dict["controller"]["target_turbine_indices"] == "all":
         simulation_u = kwargs["wind_field_ts"][[col for col in kwargs["wind_field_ts"].columns if col.startswith("ws_horz")]].mean(axis=1)
