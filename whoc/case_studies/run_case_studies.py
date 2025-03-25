@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import yaml
 import pickle
+from memory_profiler import profile
 
 import whoc
 try:
