@@ -58,13 +58,14 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
     kwargs["wind_field_config"]["preview_dt"] = int(simulation_input_dict["controller"]["controller_dt"] / simulation_input_dict["simulation_dt"]) 
     kwargs["wind_field_config"]["n_preview_steps"] = simulation_input_dict["controller"]["n_horizon"] * int(simulation_input_dict["controller"]["controller_dt"] / simulation_input_dict["simulation_dt"])
     kwargs["wind_field_config"]["time_series_dt"] = int(simulation_input_dict["controller"]["controller_dt"] // simulation_input_dict["simulation_dt"])
-    
+    idx2tid_mapping = dict([(v, k) for k, v in kwargs["tid2idx_mapping"].items()])
     if simulation_input_dict["controller"]["initial_conditions"]["yaw"] == "auto":
-        u = kwargs["wind_field_ts"].iloc[0][[col for col in kwargs["wind_field_ts"].columns if col.startswith("ws_horz")]].values.astype(float)
-        v = kwargs["wind_field_ts"].iloc[0][[col for col in kwargs["wind_field_ts"].columns if col.startswith("ws_vert")]].values.astype(float)
-        direc = 180.0 + np.rad2deg(np.arctan2(u, v))
-        simulation_input_dict["controller"]["initial_conditions"]["yaw"] = list(direc[list(simulation_input_dict["controller"]["target_turbine_indices"])])
-    print(f'wind_forecast reached') 
+
+        sorted_tids = sorted(simulation_input_dict["controller"]["target_turbine_indices"])
+        u = kwargs["wind_field_ts"].iloc[0][[f"ws_horz_{idx2tid_mapping[i]}" for i in sorted_tids]].values.astype(float)
+        v = kwargs["wind_field_ts"].iloc[0][[f"ws_vert_{idx2tid_mapping[i]}" for i in sorted_tids]].values.astype(float)
+        simulation_input_dict["controller"]["initial_conditions"]["yaw"] = 180.0 + np.rad2deg(np.arctan2(u, v))
+
     # pl.DataFrame(kwargs["wind_field_ts"])
     # simulation_input_dict["wind_forecast"]["measurement_layout"] = np.vstack([fi.env.layout_x, fi.env.layout_y]).T
     wind_forecast = wind_forecast_class(true_wind_field=kwargs["wind_field_ts"],
@@ -87,6 +88,8 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
     turbine_offline_status_ts = []
     predicted_turbine_wind_speed_horz_ts = []
     predicted_turbine_wind_speed_vert_ts = []
+    stddev_turbine_wind_speed_horz_ts = []
+    stddev_turbine_wind_speed_vert_ts = []
     
     convergence_time_ts = []
 
@@ -100,11 +103,10 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
     print(f'simulation_input_dict reached')
     # input to floris should be from first in target_turbine_indices (most upstream one), or mean over whole farm if no target_turbine_indices
     if simulation_input_dict["controller"]["target_turbine_indices"] == "all":
-        simulation_u = kwargs["wind_field_ts"][[col for col in kwargs["wind_field_ts"].columns if col.startswith("ws_horz")]].mean(axis=1)
-        simulation_v = kwargs["wind_field_ts"][[col for col in kwargs["wind_field_ts"].columns if col.startswith("ws_vert")]].mean(axis=1)
+        simulation_u = kwargs["wind_field_ts"][[f"ws_horz_{idx2tid_mapping[t_idx]}" for t_idx in np.arange(len(idx2tid_mapping))]].mean(axis=1)
+        simulation_v = kwargs["wind_field_ts"][[f"ws_vert_{idx2tid_mapping[t_idx]}" for t_idx in np.arange(len(idx2tid_mapping))]].mean(axis=1)
     else:
         use_upstream_wind = True
-        idx2tid_mapping = dict([(v, k) for k, v in kwargs["tid2idx_mapping"].items()])
         if use_upstream_wind:
             upstream_tidx = simulation_input_dict["controller"]["target_turbine_indices"][0]
             simulation_u = kwargs["wind_field_ts"][f"ws_horz_{idx2tid_mapping[upstream_tidx]}"]
@@ -153,6 +155,12 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
             turbine_wind_dir_ts += [ctrl.measurements_dict["wind_directions"]]
             predicted_turbine_wind_speed_horz_ts += [ctrl.controls_dict["predicted_wind_speeds_horz"]]
             predicted_turbine_wind_speed_vert_ts += [ctrl.controls_dict["predicted_wind_speeds_vert"]]
+            if ctrl.uncertain:
+                stddev_turbine_wind_speed_horz_ts += [ctrl.controls_dict["stddev_wind_speeds_horz"]]
+                stddev_turbine_wind_speed_vert_ts += [ctrl.controls_dict["stddev_wind_speeds_vert"]]
+            else:
+                stddev_turbine_wind_speed_horz_ts += [[np.nan] * fi_full.n_turbines]
+                stddev_turbine_wind_speed_vert_ts += [[np.nan] * fi_full.n_turbines]
             # turbine_offline_status_ts += [fi.offline_status[tt, :]]
             turbine_offline_status_ts += [np.isclose(ctrl.measurements_dict["turbine_powers"], 0, atol=1e-3)]
             
@@ -219,12 +227,16 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
             turbine_wind_dir_ts += [last_measurements["wind_directions"]]
             predicted_turbine_wind_speed_horz_ts += [[np.nan] * fi_full.n_turbines]
             predicted_turbine_wind_speed_vert_ts += [[np.nan] * fi_full.n_turbines]
+            stddev_turbine_wind_speed_horz_ts += [[np.nan] * fi_full.n_turbines]
+            stddev_turbine_wind_speed_vert_ts += [[np.nan] * fi_full.n_turbines]
             turbine_offline_status_ts += [np.isclose(last_measurements["turbine_powers"], 0, atol=1e-3)]
 
         turbine_wind_mag_ts = np.vstack(turbine_wind_mag_ts)[:-(n_future_steps + 1), :]
         turbine_wind_dir_ts = np.vstack(turbine_wind_dir_ts)[:-(n_future_steps + 1), :]
         predicted_turbine_wind_speed_horz_ts = np.vstack(predicted_turbine_wind_speed_horz_ts)[:-(n_future_steps + 1), :].astype(float)
         predicted_turbine_wind_speed_vert_ts = np.vstack(predicted_turbine_wind_speed_vert_ts)[:-(n_future_steps + 1), :].astype(float)
+        stddev_turbine_wind_speed_horz_ts = np.vstack(stddev_turbine_wind_speed_horz_ts)[:-(n_future_steps + 1), :].astype(float)
+        stddev_turbine_wind_speed_vert_ts = np.vstack(stddev_turbine_wind_speed_vert_ts)[:-(n_future_steps + 1), :].astype(float)
         turbine_offline_status_ts = np.vstack(turbine_offline_status_ts)[:-(n_future_steps + 1), :]
 
         yaw_angles_ts = np.vstack(yaw_angles_ts)
@@ -262,7 +274,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
     # may be longer than following: int(simulation_input_dict["hercules_comms"]["helics"]["config"]["stoptime"] // simulation_input_dict["simulation_dt"]), if controller step goes beyond
     results_df = pd.DataFrame(data={
         "CaseFamily": [kwargs["case_family"]] * yaw_angles_ts.shape[0], 
-        "CaseName": [kwargs["case_name"]] *  yaw_angles_ts.shape[0],
+        "CaseName": [kwargs["case_name"]] * yaw_angles_ts.shape[0],
         "WindSeed": [kwargs["wind_case_idx"]] * yaw_angles_ts.shape[0],
         "Time": np.arange(0, yaw_angles_ts.shape[0]) * simulation_input_dict["simulation_dt"],
         "FreestreamWindMag": simulation_mag[:yaw_angles_ts.shape[0]],
@@ -270,43 +282,55 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
         "FilteredFreestreamWindDir": first_ord_filter(simulation_dir[:yaw_angles_ts.shape[0]], 
                                                       alpha=np.exp(-(1 / simulation_input_dict["controller"]["lpf_time_const"]) * simulation_input_dict["simulation_dt"])),
         **{
-            f"InitTurbineYawAngle_{i+1}": init_yaw_angles_ts[:, i] for i in range(ctrl.n_turbines)
+            f"InitTargetTurbineYawAngle_{idx2tid_mapping[i]}": init_yaw_angles_ts[:, i] for i in range(ctrl.n_turbines)
         }, 
         **{
-            f"TurbineYawAngle_{i+1}": yaw_angles_ts[:, i] for i in range(ctrl.n_turbines)
+            f"TargetTurbineYawAngle_{idx2tid_mapping[i]}": yaw_angles_ts[:, i] for i in range(ctrl.n_turbines)
         }, 
         **{
-            f"TurbineYawAngleChange_{i+1}": yaw_angles_change_ts[:, i] for i in range(ctrl.n_turbines)
+            f"TargetTurbineYawAngleChange_{idx2tid_mapping[i]}": yaw_angles_change_ts[:, i] for i in range(ctrl.n_turbines)
         },
         **{
-            f"TurbinePower_{i+1}": turbine_powers_ts[:, i] for i in range(ctrl.n_turbines)
+            f"TargetTurbinePower_{idx2tid_mapping[i]}": turbine_powers_ts[:, i] for i in range(ctrl.n_turbines)
+        },
+        # **{
+        #     f"TargetTurbineWindMag_{idx2tid_mapping[i]}": turbine_wind_mag_ts[:, i] for i in range(ctrl.n_turbines)
+        # },
+        # **{
+        #     f"TargetTurbineWindDir_{idx2tid_mapping[i]}": turbine_wind_dir_ts[:, i] for i in range(ctrl.n_turbines)
+        # },
+        **{
+            f"TargetTurbineWindSpeedHorz_{idx2tid_mapping[i]}": turbine_wind_mag_ts[:, i] * np.sin(np.deg2rad(180+turbine_wind_dir_ts[:, i])) for i in range(ctrl.n_turbines)
         },
         **{
-            f"TurbineWindMag_{i+1}": turbine_wind_mag_ts[:, i] for i in range(ctrl.n_turbines)
+            f"TargetTurbineWindSpeedVert_{idx2tid_mapping[i]}": turbine_wind_mag_ts[:, i] * np.cos((np.deg2rad(180+turbine_wind_dir_ts[:, i]))) for i in range(ctrl.n_turbines)
         },
         **{
-            f"TurbineWindDir_{i+1}": turbine_wind_dir_ts[:, i] for i in range(ctrl.n_turbines)
+            f"TrueTurbineWindSpeedHorz_{idx2tid_mapping[i]}": kwargs["wind_field_ts"][f"ws_horz_{idx2tid_mapping[i]}"].to_numpy()[:yaw_angles_ts.shape[0]] for i in range(fi_full.n_turbines)
         },
         **{
-            f"TurbineWindSpeedHorz_{i+1}": turbine_wind_mag_ts[:, i] * np.sin(np.deg2rad(180+turbine_wind_dir_ts[:, i])) for i in range(ctrl.n_turbines)
+            f"TrueTurbineWindSpeedVert_{idx2tid_mapping[i]}": kwargs["wind_field_ts"][f"ws_vert_{idx2tid_mapping[i]}"].to_numpy()[:yaw_angles_ts.shape[0]] for i in range(fi_full.n_turbines)
         },
         **{
-            f"TurbineWindSpeedVert_{i+1}": turbine_wind_mag_ts[:, i] * np.cos((np.deg2rad(180+turbine_wind_dir_ts[:, i]))) for i in range(ctrl.n_turbines)
+            f"PredictedTurbineWindSpeedHorz_{idx2tid_mapping[i]}": predicted_turbine_wind_speed_horz_ts[:, i] for i in range(fi_full.n_turbines)
         },
         **{
-            f"PredictedTurbineWindSpeedHorz_{i+1}": predicted_turbine_wind_speed_horz_ts[:, i] for i in range(ctrl.n_turbines)
+            f"PredictedTurbineWindSpeedVert_{idx2tid_mapping[i]}": predicted_turbine_wind_speed_vert_ts[:, i] for i in range(fi_full.n_turbines)
         },
         **{
-            f"PredictedTurbineWindSpeedVert_{i+1}": predicted_turbine_wind_speed_vert_ts[:, i] for i in range(ctrl.n_turbines)
+            f"StddevTurbineWindSpeedHorz_{idx2tid_mapping[i]}": stddev_turbine_wind_speed_horz_ts[:, i] for i in range(fi_full.n_turbines)
         },
         **{
-            f"PredictedTurbineWindMag_{i+1}": predicted_turbine_wind_mag_ts[:, i] for i in range(ctrl.n_turbines)
+            f"StddevTurbineWindSpeedVert_{idx2tid_mapping[i]}": stddev_turbine_wind_speed_vert_ts[:, i] for i in range(fi_full.n_turbines)
         },
+        # **{
+        #     f"PredictedTurbineWindMag_{idx2tid_mapping[i]}": predicted_turbine_wind_mag_ts[:, i] for i in range(fi_full.n_turbines)
+        # },
+        # **{
+        #     f"PredictedTurbineWindDir_{idx2tid_mapping[i]}": predicted_turbine_wind_dir_ts[:, i] for i in range(fi_full.n_turbines)
+        # },
         **{
-            f"PredictedTurbineWindDir_{i+1}": predicted_turbine_wind_dir_ts[:, i] for i in range(ctrl.n_turbines)
-        },
-        **{
-            f"TurbineOfflineStatus_{i+1}": turbine_offline_status_ts[:, i] for i in range(ctrl.n_turbines)
+            f"TurbineOfflineStatus_{idx2tid_mapping[i]}": turbine_offline_status_ts[:, i] for i in range(ctrl.n_turbines)
         },
         "FarmYawAngleChangeAbsSum": np.sum(np.abs(yaw_angles_change_ts), axis=1),
         "RelativeFarmYawAngleChangeAbsSum": (np.sum(np.abs(yaw_angles_change_ts) * ~turbine_offline_status_ts, axis=1)) / (np.sum(~turbine_offline_status_ts, axis=1)),

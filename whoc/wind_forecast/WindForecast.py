@@ -1081,7 +1081,7 @@ class KalmanFilterForecast(WindForecast):
             # forecaster is called every n_controller time steps
             # n_prediction time steps may not have passed since last controller step
             # in this case, no new measurements will be available, and we can return the last state estimate
-            logging.info(f"No new measurements available for KalmanFilterForecaster at time {current_time}, waiting on time {(self.last_measurement_time + self.prediction_timedelta)} returning last esimated state.")
+            # logging.info(f"No new measurements  available for KalmanFilterForecaster at time {current_time}, waiting on time {(self.last_measurement_time + self.prediction_timedelta)} returning last estimated state.")
             self.last_pred = self.last_pred.with_columns(time=pred_slice)
             if return_var:
                 self.last_var = self.last_var.with_columns(time=pred_slice)
@@ -1233,6 +1233,8 @@ class MLForecast(WindForecast):
             
         self.model_prediction_timedelta = self.model_config["dataset"]["prediction_length"] \
             * pd.Timedelta(self.model_config["dataset"]["resample_freq"]).to_pytimedelta()
+            
+        assert self.model_prediction_timedelta >= self.prediction_timedelta, "model is tuned for shorter prediction timedelta!"
         # self.context_timedelta = self.model_config["dataset"]["context_length"] \
         #     * pd.Timedelta(self.model_config["dataset"]["resample_freq"]).to_pytimedelta()
 
@@ -1280,8 +1282,8 @@ class MLForecast(WindForecast):
         
         metric = "val_loss_epoch"
         mode = "min"
-        log_dir = os.path.join(self.model_config["trainer"]["default_root_dir"], "lightning_logs")
-        checkpoint_path = get_checkpoint(checkpoint=self.kwargs["model_checkpoint"], metric=metric, mode=mode, log_dir=log_dir)
+        # log_dir = os.path.join(self.model_config["trainer"]["default_root_dir"], "lightning_logs")
+        checkpoint_path = get_checkpoint(checkpoint=self.kwargs["model_checkpoint"], metric=metric, mode=mode, log_dir=self.model_config["trainer"]["default_root_dir"])
         logging.info("Found pretrained model, loading...")
         model = lightning_module.load_from_checkpoint(checkpoint_path)
         transformation = estimator.create_transformation(use_lazyframe=False)
@@ -1309,9 +1311,11 @@ class MLForecast(WindForecast):
         # resample data to frequency model was trained on
             
         if self.data_module.freq != self.measurements_timedelta:
-            if self.measurements_timedelta > self.data_module.freq:
-                historic_measurements = historic_measurements.with_columns(time=pl.col("time").dt.round(self.data_module.freq))\
-                                                              .group_by("time").agg(cs.numeric().mean()).sort("time")
+            if self.measurements_timedelta < self.data_module.freq:
+                historic_measurements = historic_measurements.with_columns(
+                    time=pl.col("time").dt.round(self.data_module.freq)
+                    + pl.duration(seconds=historic_measurements.select(pl.col("time").last().dt.second() % self.data_module.freq.seconds).item()))\
+                    .group_by("time").agg(cs.numeric().mean()).sort("time")
             else:
                 historic_measurements = historic_measurements.upsample(time_column="time", every=self.data_module.freq).fill_null(strategy="forward")
         
@@ -1382,12 +1386,13 @@ class MLForecast(WindForecast):
         pred_df = pred_df.with_columns([(cs.starts_with(col) - self.norm_min[c]) 
                                                     / self.norm_scale[c] 
                                                     for c, col in enumerate(self.norm_min_cols)])
-        
+        pred_df = pred_df.filter(pl.col("time") <= (current_time + self.prediction_timedelta))
         # check if the data that trained the model differs from the frequency of historic_measurments
         if self.data_module.freq != self.measurements_timedelta:
             # resample historic measurements to historic_measurements frequency and return as pandas dataframe
-            if self.measurements_timedelta < self.data_module.freq:
-                pred_df = pred_df.with_columns(time=pl.col("time").dt.round(self.measurements_timedelta))\
+            if self.measurements_timedelta > self.data_module.freq:
+                pred_df = pred_df.with_columns(time=pl.col("time").dt.round(self.measurements_timedelta)
+                                               + pl.duration(seconds=pred_df.select(pl.col("time").last().dt.second() % self.data_module.freq.seconds).item()))\
                                                               .group_by("time").agg(cs.numeric().mean()).sort("time")
             else:
                 pred_df = pred_df.upsample(time_column="time", every=self.measurements_timedelta).fill_null(strategy="forward")
@@ -1437,12 +1442,13 @@ class MLForecast(WindForecast):
         pred_df = pred_df.with_columns([(cs.contains(col) - self.norm_min[c]) 
                                                     / self.norm_scale[c] 
                                                     for c, col in enumerate(self.norm_min_cols)])
-        
+        pred_df = pred_df.filter(pl.col("time") <= (current_time + self.prediction_timedelta))
         # check if the data that trained the model differs from the frequency of historic_measurments
         if self.data_module.freq != self.measurements_timedelta:
             # resample historic measurements to historic_measurements frequency and return as pandas dataframe
-            if self.measurements_timedelta < self.data_module.freq:
-                pred_df = pred_df.with_columns(time=pl.col("time").dt.round(self.measurements_timedelta))\
+            if self.measurements_timedelta > self.data_module.freq:
+                pred_df = pred_df.with_columns(time=pl.col("time").dt.round(self.measurements_timedelta)
+                                               + pl.duration(seconds=pred_df.select(pl.col("time").last().dt.second() % self.data_module.freq.seconds).item()))\
                                                               .group_by("time").agg(cs.numeric().mean()).sort("time")
             else:
                 pred_df = pred_df.upsample(time_column="time", every=self.measurements_timedelta).fill_null(strategy="forward")
@@ -1494,12 +1500,13 @@ class MLForecast(WindForecast):
         pred_df = pred_df.with_columns([(cs.contains(col) - self.norm_min[c]) 
                                                     / self.norm_scale[c] 
                                                     for c, col in enumerate(self.norm_min_cols)])
-        
+        pred_df = pred_df.filter(pl.col("time") <= (current_time + self.prediction_timedelta)) 
         # check if the data that trained the model differs from the frequency of historic_measurments
         if self.data_module.freq != self.measurements_timedelta:
             # resample historic measurements to historic_measurements frequency and return as pandas dataframe
-            if self.measurements_timedelta < self.data_module.freq:
-                pred_df = pred_df.with_columns(time=pl.col("time").dt.round(self.measurements_timedelta))\
+            if self.measurements_timedelta > self.data_module.freq:
+                pred_df = pred_df.with_columns(time=pl.col("time").dt.round(self.measurements_timedelta)
+                                               + pl.duration(seconds=pred_df.select(pl.col("time").last().dt.second() % self.data_module.freq.seconds).item()))\
                                                               .group_by("time").agg(cs.numeric().mean()).sort("time")
             else:
                 pred_df = pred_df.upsample(time_column="time", every=self.measurements_timedelta).fill_null(strategy="forward")

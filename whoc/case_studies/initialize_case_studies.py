@@ -9,6 +9,8 @@ from itertools import product
 from functools import partial
 from memory_profiler import profile
 #from line_profiler import profile
+# from datetime import timedelta
+
 
 import pandas as pd
 import polars as pl
@@ -75,10 +77,26 @@ case_studies = {
                                     "yaw_limits": {"group": 0, "vals": [15]}
                                     },
     "baseline_controllers_preview_awaken": {"controller_dt": {"group": 0, "vals": [5]},
-                                    # "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
-                                    "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "LookupBasedWakeSteeringController", "GreedyController"]},
-                                    "target_turbine_indices": {"group": 1, "vals": ["74,73", "74,73", "4,"]},
-                                    "uncertain": {"group": 1, "vals": [False, True, False]},
+                                    "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "LookupBasedWakeSteeringController", 
+                                                                              "LookupBasedWakeSteeringController", "LookupBasedWakeSteeringController",
+                                                                              "GreedyController", "GreedyController"]},
+                                    "target_turbine_indices": {"group": 1, "vals": ["74,73", "74,73", 
+                                                                                    "74,73", "74,73",
+                                                                                    "4,",  "4,"]},
+                                    "uncertain": {"group": 1, "vals": [True, False, 
+                                                                       True, False, 
+                                                                       False, False]},
+                                    "wind_forecast_class": {"group": 1, "vals": ["MLForecast", "MLForecast",
+                                                                                 "KalmanFilterForecast", "KalmanFilterForecast",
+                                                                                 "MLForecast", "KalmanFilterForecast"]},
+                                    "model_key": {"group": 1, "vals": ["informer", "informer",
+                                                                        None, None,
+                                                                        "informer", None]},
+                                    
+                                    "prediction_timedelta": {"group": 2, "vals": [100]},
+                                    # "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController"]},
+                                    # "target_turbine_indices": {"group": 1, "vals": ["74,73"]},
+                                    # "uncertain": {"group": 1, "vals": [True]}, 
                                     "use_filtered_wind_dir": {"group": 0, "vals": [True]},
                                     "use_lut_filtered_wind_dir": {"group": 0, "vals": [True]},
                                     # "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController"]},
@@ -92,8 +110,6 @@ case_studies = {
                                     "lut_path": {"group": 0, "vals": [
                                         "../../examples/inputs/gch_KP_v4_lut.csv",
                                                                     ]},
-                                    "wind_forecast_class": {"group": 1, "vals": ["KalmanFilterForecast", "KalmanFilterForecast", "KalmanFilterForecast"]},
-                                    "prediction_timedelta": {"group": 4, "vals": [120]},
                                     "yaw_limits": {"group": 0, "vals": ["-15,15"]}
                                     },
     "baseline_controllers": { "controller_dt": {"group": 1, "vals": [5, 5]},
@@ -462,6 +478,10 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         wind_field_ts = [wind_field_data[case_idx][["FreestreamWindMag", "FreestreamWindDir"]] for case_idx in range(n_seeds)] 
         
         assert np.all([np.isclose(wind_field_data[case_idx]["Time"].iloc[1] - wind_field_data[case_idx]["Time"].iloc[0], whoc_config["simulation_dt"]) for case_idx in range(n_seeds)]), "sampling time of wind field should be equal to simulation sampling time"
+        
+        if stoptime == "auto": 
+            durations = [df["Time"].iloc[-1] - df["Time"].iloc[0] for df in wind_field_data]
+            whoc_config["hercules_comms"]["helics"]["config"]["stoptime"] = stoptime = min([d.total_seconds() if hasattr(d, 'total_seconds') else d for d in durations])
 
     elif wf_source == "scada":
         # pull ws_horz, ws_vert, nacelle_direction, normalization_consts from awaken data and run for ML, SVR
@@ -484,7 +504,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         
         wind_field_ts = sorted(wind_field_ts, reverse=True, key=lambda df: df["time"].iloc[-1] - df["time"].iloc[0])
         wind_field_ts = wind_field_ts[:n_seeds]
-        
+        # pl.DataFrame(wind_field_ts[0]).select(180+pl.arctan2(pl.mean_horizontal(cs.starts_with("ws_horz")), pl.mean_horizontal(cs.starts_with("ws_vert"))).degrees()).select(pl.all().mean()) 
         # if stoptime != "auto":
         #     # wind_field_ts = [df for df in wind_field_ts if (df["time"].iloc[-1] - df["time"].iloc[0]).total_seconds() >= stoptime]
         # wind_field_ts = [df.loc[(df["time"] - df["time"].iloc[0]).dt.total_seconds() <= stoptime] for df in wind_field_ts]
@@ -500,6 +520,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
     case_lists = []
     case_name_lists = []
     n_cases_list = []
+    input_filenames = []
     
     for case_study_key in case_study_keys:
         case_list, case_names = CaseGen_General(case_studies[case_study_key], namebase=case_study_key)
@@ -594,7 +615,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                 LookupBasedWakeSteeringController._optimize_lookup_table(
                     floris_config_path=floris_input_file, uncertain=uncertain_flag, yaw_limits=yaw_limits, 
                     parallel=multiprocessor is not None,
-                    target_turbine_indices=target_turbine_indices, lut_path=lut_path, generate_lut=True)
+                    sorted_target_tids=sorted(target_turbine_indices) if target_turbine_indices != "all" else "all", lut_path=lut_path, generate_lut=True)
                 
                 lut_cases.add(new_case)
 
@@ -605,15 +626,18 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                 [f"{key}_{val if (isinstance(val, str) or isinstance(val, np.str_) or isinstance(val, bool)) else np.round(val, 6)}" for key, val in case.items() \
                     if key not in ["controller_dt", "simulation_dt", "use_filtered_wind_dir", "use_lut_filtered_wind_dir", "yaw_limits", "wind_case_idx", "seed", "floris_input_file", "lut_path"]]) \
                     if "case_names" not in case else case["case_names"]}.pkl'.replace("/", "_")
-            
-            with open(os.path.join(results_dir, fn), 'wb') as fp:
-                pickle.dump(input_dicts[start_case_idx + c], fp)
+            input_filenames.append(fn)
+             
 
     prediction_timedelta = max(inp["wind_forecast"]["prediction_timedelta"] for inp in input_dicts if inp["controller"]["wind_forecast_class"]).total_seconds() \
             if any(inp["controller"]["wind_forecast_class"] for inp in input_dicts) else 0
     stoptime -= prediction_timedelta 
-    for inp in input_dicts:
+    assert stoptime > 0, "increase stoptime parameter and/or decresease prediction_timedetla, as stoptime < prediction_timedelta"
+    for inp, fn in zip(input_dicts, input_filenames):
         inp["hercules_comms"]["helics"]["config"]["stoptime"] = stoptime
+        
+        with open(os.path.join(results_dir, fn), 'wb') as fp:
+            pickle.dump(inp, fp)
     
     assert all([(df["time"].iloc[-1] - df["time"].iloc[0]).total_seconds() >= stoptime + prediction_timedelta for df in wind_field_ts])
     wind_field_ts = [df.loc[(df["time"] - df["time"].iloc[0]).dt.total_seconds() 
