@@ -137,6 +137,7 @@ if __name__ == "__main__":
 
         else:
             for c, d in enumerate(input_dicts):
+                print(f"ID of wind_field_ts[case_lists[c]['wind_case_idx']] before simulate_controller: {id(wind_field_ts[case_lists[c]['wind_case_idx']])}")
                 simulate_controller(controller_class=globals()[case_lists[c]["controller_class"]], 
                                     wind_forecast_class=globals()[case_lists[c]["wind_forecast_class"]] if case_lists[c]["wind_forecast_class"] else None, 
                                     simulation_input_dict=d, 

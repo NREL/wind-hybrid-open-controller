@@ -4,7 +4,7 @@
 #SBATCH --nodes=4
 #SBATCH --ntasks-per-node=64
 #SBATCH --time=24:00:00
-#SBATCH --partition=amilan
+#SBATCH --partition=atesting
 ##SBATCH --time=01:00:00
 ##SBATCH --partition=debug
 
@@ -16,7 +16,7 @@ mamba activate wind_forecasting
 #module load gcc/10.3 openmpi
 # module load openmpi/4.1.4
 module load intel/2022.1.2 impi/2021.5.0
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/projects/aohe7145/software/anaconda/envs/whoc/lib
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/projects/stth7454/software/anaconda/envs/whoc/lib
 
 #conda activate whoc
 echo $SLURMP_NTASKS

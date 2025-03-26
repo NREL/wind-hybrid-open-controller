@@ -8,6 +8,7 @@ from glob import glob
 from itertools import product
 from functools import partial
 from memory_profiler import profile
+#from line_profiler import profile
 
 import pandas as pd
 import polars as pl
@@ -50,7 +51,7 @@ case_studies = {
                                     "simulation_dt": {"group": 0, "vals": [60]},
                                     "floris_input_file": {"group": 0, "vals": ["../../examples/inputs/smarteole_farm.yaml"]},
                                     "lut_path": {"group": 0, "vals": ["../../examples/inputs/smarteole_farm_lut.csv"]},
-                                    "uncertain": {"group": 3, "vals": [True]},
+                                    "uncertain": {"group": 3, "vals": [False]},
                                     "wind_forecast_class": {"group": 3, "vals": ["KalmanFilterForecast"]},
                                     "prediction_timedelta": {"group": 4, "vals": [60]},
                                     "yaw_limits": {"group": 0, "vals": ["-15,15"]}
@@ -529,7 +530,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                 
                 if property_group:
                     if property_name == "yaw_limits":
-                        input_dicts[start_case_idx + c][property_group][property_name] = tuple(int(v) for v in property_value.split(","))
+                        input_dicts[start_case_idx + c][property_group][property_name] = tuple(int(v) for v in str(property_value).split(","))
                     elif property_name == "target_turbine_indices":
                         if property_value != "all":
                             # need to preserve order, taking first as upstream
