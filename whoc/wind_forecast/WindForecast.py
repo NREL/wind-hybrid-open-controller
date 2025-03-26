@@ -1279,8 +1279,8 @@ class MLForecast(WindForecast):
         
         metric = "val_loss_epoch"
         mode = "min"
-        log_dir = os.path.join(self.model_config["trainer"]["default_root_dir"], "lightning_logs")
-        checkpoint_path = get_checkpoint(checkpoint=self.kwargs["model_checkpoint"], metric=metric, mode=mode, log_dir=log_dir)
+        # log_dir = os.path.join(self.model_config["trainer"]["default_root_dir"], "lightning_logs")
+        checkpoint_path = get_checkpoint(checkpoint=self.kwargs["model_checkpoint"], metric=metric, mode=mode, log_dir=self.model_config["trainer"]["default_root_dir"])
         logging.info("Found pretrained model, loading...")
         model = lightning_module.load_from_checkpoint(checkpoint_path)
         transformation = estimator.create_transformation(use_lazyframe=False)

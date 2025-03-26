@@ -84,8 +84,8 @@ class LookupBasedWakeSteeringController(ControllerBase):
          
         # self.turbine_ids = np.arange(self.n_turbines) + 1
         self.historic_measurements = pd.DataFrame(columns=["time"] 
-                                                  + self.mean_ws_horz_cols 
-                                                  + self.mean_ws_vert_cols
+                                                  + [f"ws_horz_{self.idx2tid_mapping[t_idx]}" for t_idx in np.arange(len(self.idx2tid_mapping))]
+                                                  + [f"ws_vert_{self.idx2tid_mapping[t_idx]}" for t_idx in np.arange(len(self.idx2tid_mapping))]
                                                   + [f"nd_cos_{tid}" for tid in self.tid2idx_mapping]
                                                   + [f"nd_sin_{tid}" for tid in self.tid2idx_mapping], 
                                                   dtype=pd.Float64Dtype())
@@ -306,7 +306,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
         # need historic measurements for filter or for wind forecast
         if self.use_filt or self.wind_forecast:
             self.historic_measurements = pd.concat([self.historic_measurements, 
-                                                    current_measurements.rename(columns={col:f"loc_{col}" for col in current_measurements if col.startswith("ws_")}) if self.uncertain else current_measurements], axis=0).iloc[-int(np.ceil(self.lpf_time_const // self.simulation_dt) * 1e3):]
+                                                    current_measurements], axis=0).iloc[-int(np.ceil(self.lpf_time_const // self.simulation_dt) * 1e3):]
 
         # if (abs((self.current_time - self.init_time).total_seconds() % self.controller_dt) == 0.0):
         # NOTE: this is run every simulation_dt, not every controller_dt, because the yaw angle may be moving gradually towards the correct setpoint
@@ -326,29 +326,54 @@ class LookupBasedWakeSteeringController(ControllerBase):
                 wind[self.mean_ws_vert_cols].values.astype(float)))
             wind_mags = (wind[self.mean_ws_horz_cols].values.astype(float)**2 + wind[self.mean_ws_vert_cols].values.astype(float)**2)**0.5
             
+            if self.verbose:
+                if self.wind_forecast:
+                    logging.info(f"unfiltered forecasted wind directions = {wind_dirs[self.sorted_tids]}")
+                else:
+                    logging.info(f"unfiltered current wind directions = {current_wind_directions}")
+             
+            
         else:
             # use filtered wind direction and speed, NOTE historic_measurements includes controller_dt steps into the future such that we can run simulation in time batches
-            wind = pd.concat([self.historic_measurements, 
+            # forecasted_wind_field.iloc[-1:].rename(columns={old_col: re.search("(?<=loc_)\\w+", old_col).group(0) for old_col in self.mean_ws_horz_cols+self.mean_ws_vert_cols})
+            if self.wind_forecast:
+                wind = pd.concat([self.historic_measurements.rename(columns={re.search("(?<=loc_)\\w+", new_col).group(0): new_col for new_col in self.mean_ws_horz_cols + self.mean_ws_vert_cols}), 
                                     forecasted_wind_field.iloc[-1:]], axis=0)[
-                                        self.mean_ws_horz_cols+self.mean_ws_vert_cols+self.sd_ws_horz_cols+self.sd_ws_vert_cols] \
-                                            if self.wind_forecast else self.historic_measurements
+                                        self.mean_ws_horz_cols+self.mean_ws_vert_cols]
+            else:
+                wind = self.historic_measurements
+                
             wind_dirs = 180.0 + np.rad2deg(np.arctan2(
                 wind[self.mean_ws_horz_cols].values.astype(float), 
                 wind[self.mean_ws_vert_cols].values.astype(float)))
             
+            if self.verbose:
+                if self.wind_forecast:
+                    logging.info(f"unfiltered forecasted wind directions = {wind_dirs[self.sorted_tids]}")
+                else:
+                    logging.info(f"unfiltered current wind directions = {current_wind_directions}")
+             
             # pass the historic and forecasted values to the low pass filter
             wind_dirs = np.array([self._first_ord_filter(wind_dirs[:, i])
                                             for i in range(wind_dirs.shape[1])]).T[-int(self.controller_dt // self.simulation_dt), :]
+            
+            if self.verbose:
+                if self.wind_forecast:
+                    logging.info(f"filtered forecasted wind directions = {wind_dirs[self.sorted_tids]}")
+                else:
+                    logging.info(f"filtered current wind directions = {wind_dirs[self.sorted_tids]}")
+                    
             # just use the latest forecasted value for the wind magnitude
             wind_mags = (wind.iloc[-1][self.mean_ws_horz_cols].values.astype(float)**2 
                             + wind.iloc[-1][self.mean_ws_vert_cols].values.astype(float)**2)**0.5
             wind = wind.iloc[-1] # just get the last forecasted values
             
         if self.uncertain:
-            ws_horz_stddevs = wind[self.sd_ws_horz_cols].values.astype(float)
-            ws_vert_stddevs = wind[self.sd_ws_vert_cols].values.astype(float)
-            c1 = wind[self.mean_ws_vert_cols].values.astype(float) / (wind[self.mean_ws_horz_cols].values.astype(float)**2 + wind[self.mean_ws_vert_cols].values.astype(float)**2)
-            c2 = -wind[self.mean_ws_horz_cols].values.astype(float) / (wind[self.mean_ws_horz_cols].values.astype(float)**2 + wind[self.mean_ws_vert_cols].values.astype(float)**2)
+            ws_horz_stddevs = forecasted_wind_field.iloc[-1][self.sd_ws_horz_cols].values.astype(float)
+            ws_vert_stddevs = forecasted_wind_field.iloc[-1][self.sd_ws_vert_cols].values.astype(float)
+            forecasted_wind_norm = (forecasted_wind_field.iloc[-1][self.mean_ws_horz_cols].values.astype(float)**2 + forecasted_wind_field.iloc[-1][self.mean_ws_vert_cols].values.astype(float)**2)
+            c1 = forecasted_wind_field.iloc[-1][self.mean_ws_vert_cols].values.astype(float) / forecasted_wind_norm
+            c2 = -forecasted_wind_field.iloc[-1][self.mean_ws_horz_cols].values.astype(float) / forecasted_wind_norm
             wind_dir_stddevs = ((c1 * ws_horz_stddevs)**2 + (c2 * ws_vert_stddevs)**2)**0.5 
             
         # only get wind_dirs corresponding to target_turbine_ids
@@ -359,13 +384,6 @@ class LookupBasedWakeSteeringController(ControllerBase):
             if self.uncertain:
                 wind_dir_stddevs = wind_dir_stddevs[self.sorted_tids]
             
-        if self.verbose:
-            logging.info(f"unfiltered wind directions = {current_wind_directions}")
-            logging.info(f"{'filtered' if self.use_filt else 'unfiltered'} wind direction = {wind_dirs}")
-            if np.any(np.isnan(wind_dirs)):
-                print("oh no")
-        
-        # TODO HIGH make sure that turbines continue to yaw until they reach their setpoint
         current_yaw_setpoints = self.controls_dict["yaw_angles"]
         
         # flip the boolean value of those turbines which were actively yawing towards a previous setpoint, but now have reached that setpoint
@@ -393,18 +411,20 @@ class LookupBasedWakeSteeringController(ControllerBase):
         
             # change the turbine yaw setpoints that have surpassed the threshold difference AND are not already yawing towards a previous setpoint
             setpoint_change = target_yaw_setpoints - current_yaw_setpoints
-            setpoint_change = np.vstack([np.abs(setpoint_change), 360.0 - np.abs(setpoint_change)]) 
-            setpoint_change_idx = np.argmin(setpoint_change, axis=0)
-            setpoint_change = setpoint_change[setpoint_change_idx, np.arange(self.n_turbines)]
-            is_target_changing = (setpoint_change > self.deadband_thr) & ~self.is_yawing
+            abs_setpoint_change = np.vstack([np.abs(setpoint_change), 360.0 - np.abs(setpoint_change)]) 
+            setpoint_change_idx = np.argmin(abs_setpoint_change, axis=0) # if == 0, need to change within 360 deg, otherwise if == 1 faster to cross 360/0 boundary
+            abs_setpoint_change = abs_setpoint_change[setpoint_change_idx, np.arange(self.n_turbines)]
+            is_target_changing = (abs_setpoint_change > self.deadband_thr) & ~self.is_yawing
             
-            setpoint_change[setpoint_change_idx == 0] = setpoint_change[setpoint_change_idx == 0]
-            setpoint_change[(setpoint_change_idx == 1) | (target_yaw_setpoints - current_yaw_setpoints < 0)] = -setpoint_change[(setpoint_change_idx == 1) | (target_yaw_setpoints - current_yaw_setpoints < 0)]
-            new_yaw_setpoints[is_target_changing] = np.mod(new_yaw_setpoints[is_target_changing] + setpoint_change[is_target_changing], 360)
+            # setpoint_change[setpoint_change_idx == 0] = setpoint_change[setpoint_change_idx == 0]
+            # if ((setpoint_change_idx == 1) & ((target_yaw_setpoints - current_yaw_setpoints) > 0))
+            dir_setpoint_change = np.sign(setpoint_change)
+            dir_setpoint_change[setpoint_change_idx == 1] = -dir_setpoint_change[setpoint_change_idx == 1]
+            new_yaw_setpoints[is_target_changing] = new_yaw_setpoints[is_target_changing] + dir_setpoint_change[is_target_changing] * abs_setpoint_change[is_target_changing]
             self.is_yawing[is_target_changing] = True
             
             if self.verbose and any(is_target_changing):
-                logging.info(f"LUT Controller starting to yaw turbines {np.where(is_target_changing)[0]} from {current_yaw_setpoints[is_target_changing]} to {target_yaw_setpoints[is_target_changing]} at time {self.current_time}")
+                logging.info(f"LUT Controller starting to yaw turbines {np.where(is_target_changing)[0]} from {current_yaw_setpoints[is_target_changing]} to {target_yaw_setpoints[is_target_changing]} at time {self.current_time}") 
         else:
             is_target_changing = np.zeros_like(self.is_yawing).astype(bool)
         
@@ -419,7 +439,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
         new_yaw_setpoints[reaching_setpoints_cond] = self.previous_target_yaw_setpoints[reaching_setpoints_cond].copy()
 
         # stores target setpoints from prevoius compute_controls calls, update only those elements which are not already yawing towards a previous setpoint
-        self.previous_target_yaw_setpoints = np.rint(new_yaw_setpoints / self.yaw_increment) * self.yaw_increment
+        self.previous_target_yaw_setpoints = np.mod(np.rint(new_yaw_setpoints / self.yaw_increment) * self.yaw_increment, 360)
         
         lb, ub = current_yaw_setpoints - self.simulation_dt * self.yaw_rate, current_yaw_setpoints + self.simulation_dt * self.yaw_rate
         constrained_yaw_setpoints = np.mod(np.clip(new_yaw_setpoints, lb, ub), 360.0)
