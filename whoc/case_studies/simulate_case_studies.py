@@ -271,7 +271,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
     # may be longer than following: int(simulation_input_dict["hercules_comms"]["helics"]["config"]["stoptime"] // simulation_input_dict["simulation_dt"]), if controller step goes beyond
     results_df = pd.DataFrame(data={
         "CaseFamily": [kwargs["case_family"]] * yaw_angles_ts.shape[0], 
-        "CaseName": [kwargs["case_name"]] *  yaw_angles_ts.shape[0],
+        "CaseName": [kwargs["case_name"]] * yaw_angles_ts.shape[0],
         "WindSeed": [kwargs["wind_case_idx"]] * yaw_angles_ts.shape[0],
         "Time": np.arange(0, yaw_angles_ts.shape[0]) * simulation_input_dict["simulation_dt"],
         "FreestreamWindMag": simulation_mag[:yaw_angles_ts.shape[0]],
@@ -303,10 +303,10 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
             f"TargetTurbineWindSpeedVert_{idx2tid_mapping[i]}": turbine_wind_mag_ts[:, i] * np.cos((np.deg2rad(180+turbine_wind_dir_ts[:, i]))) for i in range(ctrl.n_turbines)
         },
         **{
-            f"TrueTurbineWindSpeedHorz_{idx2tid_mapping[i]}": kwargs["wind_field_ts"][f"ws_horz_{idx2tid_mapping[i]}"] for i in range(fi_full.n_turbines)
+            f"TrueTurbineWindSpeedHorz_{idx2tid_mapping[i]}": kwargs["wind_field_ts"][f"ws_horz_{idx2tid_mapping[i]}"].to_numpy()[:yaw_angles_ts.shape[0]] for i in range(fi_full.n_turbines)
         },
         **{
-            f"TrueTurbineWindSpeedVert_{idx2tid_mapping[i]}": kwargs["wind_field_ts"][f"ws_vert_{idx2tid_mapping[i]}"] for i in range(fi_full.n_turbines)
+            f"TrueTurbineWindSpeedVert_{idx2tid_mapping[i]}": kwargs["wind_field_ts"][f"ws_vert_{idx2tid_mapping[i]}"].to_numpy()[:yaw_angles_ts.shape[0]] for i in range(fi_full.n_turbines)
         },
         **{
             f"PredictedTurbineWindSpeedHorz_{idx2tid_mapping[i]}": predicted_turbine_wind_speed_horz_ts[:, i] for i in range(fi_full.n_turbines)
