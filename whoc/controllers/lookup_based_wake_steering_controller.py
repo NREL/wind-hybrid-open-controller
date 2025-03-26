@@ -295,6 +295,10 @@ class LookupBasedWakeSteeringController(ControllerBase):
             
         # need historic measurements for filter or for wind forecast
         if self.use_filt or self.wind_forecast:
+            print(f"NaN values in self.historic_measurements:\n{self.historic_measurements.isnull().sum()}")
+            print(f"NaN values in current_measurements:\n{current_measurements.isnull().sum()}")
+            print(f"Shape of self.historic_measurements: {self.historic_measurements.shape}")
+            print(f"Shape of current_measurements: {current_measurements.shape}")
             self.historic_measurements = pd.concat([self.historic_measurements, current_measurements], axis=0).iloc[-int(np.ceil(self.lpf_time_const // self.simulation_dt) * 1e3):]
 
         # if (abs((self.current_time - self.init_time).total_seconds() % self.controller_dt) == 0.0):
