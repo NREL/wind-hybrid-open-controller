@@ -440,7 +440,7 @@ def generate_wind_ts(wf, from_gaussian, case_idx, save_dir, save_name="", init_s
     
     # save case raw_data as dataframe
     wind_field_data = {
-        "Time": np.tile(time, wf.n_samples_per_init_seed),
+        "time": np.tile(time, wf.n_samples_per_init_seed),
         "WindSeed": [init_seed] * len(time) * wf.n_samples_per_init_seed,
         "WindSample": np.repeat(np.arange(wf.n_samples_per_init_seed), len(time)),
         "FreestreamWindSpeedU": freestream_wind_speed_u.flatten(),
@@ -550,7 +550,7 @@ def generate_multi_wind_ts(wf, save_dir, save_name="", init_seeds=None, return_p
 
 def write_abl_velocity_timetable(dfs, save_path, boundary_starttime=7200.0):
     for d, df in enumerate(dfs):
-        df = df[["Time", "FreestreamWindMag", "FreestreamWindDir"]]
+        df = df[["time", "FreestreamWindMag", "FreestreamWindDir"]]
         df["FreestreamWindDir"] = (270.0 - df["FreestreamWindDir"]) % 360.0
         # df.loc[df["FreestreamWindDir"] > 180.0, "FreestreamWindDir"] = df.loc[df["FreestreamWindDir"] > 180.0, "FreestreamWindDir"] - 360.0
         # df.loc[df["FreestreamWindDir"] < 0.0, "FreestreamWindDir"] = df.loc[df["FreestreamWindDir"] < 0.0, "FreestreamWindDir"] + 360.0

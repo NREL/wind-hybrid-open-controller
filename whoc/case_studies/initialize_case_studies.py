@@ -470,10 +470,10 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         
         wind_field_ts = [wind_field_data[case_idx][["FreestreamWindMag", "FreestreamWindDir"]] for case_idx in range(n_seeds)] 
         
-        assert np.all([np.isclose(wind_field_data[case_idx]["Time"].iloc[1] - wind_field_data[case_idx]["Time"].iloc[0], whoc_config["simulation_dt"]) for case_idx in range(n_seeds)]), "sampling time of wind field should be equal to simulation sampling time"
+        assert np.all([np.isclose(wind_field_data[case_idx]["time"].iloc[1] - wind_field_data[case_idx]["time"].iloc[0], whoc_config["simulation_dt"]) for case_idx in range(n_seeds)]), "sampling time of wind field should be equal to simulation sampling time"
         
         if stoptime == "auto": 
-            durations = [df["Time"].iloc[-1] - df["Time"].iloc[0] for df in wind_field_data]
+            durations = [df["time"].iloc[-1] - df["time"].iloc[0] for df in wind_field_data]
             whoc_config["hercules_comms"]["helics"]["config"]["stoptime"] = stoptime = min([d.total_seconds() if hasattr(d, 'total_seconds') else d for d in durations])
 
     elif wf_source == "scada":
@@ -568,16 +568,17 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                     input_dicts[start_case_idx + c][property_name] = property_value
             
             assert input_dicts[start_case_idx + c]["controller"]["controller_dt"] <= stoptime
-             
-            input_dicts[start_case_idx + c]["wind_forecast"] \
-                = {**{
-                    "measurements_timedelta": wind_field_ts[0]["time"].iloc[1] - wind_field_ts[0]["time"].iloc[0],
-                    "context_timedelta": pd.Timedelta(seconds=input_dicts[start_case_idx + c]["wind_forecast"]["context_timedelta"]),
-                    "prediction_timedelta": pd.Timedelta(seconds=input_dicts[start_case_idx + c]["wind_forecast"]["prediction_timedelta"]),
-                    "controller_timedelta": pd.Timedelta(seconds=input_dicts[start_case_idx + c]["controller"]["controller_dt"])
-                    }, 
-                   **input_dicts[start_case_idx + c]["wind_forecast"].setdefault(input_dicts[start_case_idx + c]["controller"]["wind_forecast_class"], {}),
-                   }
+            
+            if input_dicts[start_case_idx + c]["controller"]["wind_forecast_class"] or "wind_forecast_class" in case: 
+                input_dicts[start_case_idx + c]["wind_forecast"] \
+                    = {**{
+                        "measurements_timedelta": wind_field_ts[0]["time"].iloc[1] - wind_field_ts[0]["time"].iloc[0],
+                        "context_timedelta": pd.Timedelta(seconds=input_dicts[start_case_idx + c]["wind_forecast"]["context_timedelta"]),
+                        "prediction_timedelta": pd.Timedelta(seconds=input_dicts[start_case_idx + c]["wind_forecast"]["prediction_timedelta"]),
+                        "controller_timedelta": pd.Timedelta(seconds=input_dicts[start_case_idx + c]["controller"]["controller_dt"])
+                        }, 
+                    **input_dicts[start_case_idx + c]["wind_forecast"].setdefault(input_dicts[start_case_idx + c]["controller"]["wind_forecast_class"], {}),
+                    }
                 
             # need to change num_turbines, floris_input_file, lut_path
             target_turbine_indices = input_dicts[start_case_idx + c]["controller"]["target_turbine_indices"]
@@ -600,7 +601,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                 floris_input_file = input_dicts[start_case_idx + c]["controller"]["floris_input_file"]
                 lut_path = input_dicts[start_case_idx + c]["controller"]["lut_path"] 
                 uncertain_flag = input_dicts[start_case_idx + c]["controller"]["uncertain"] 
-                yaw_limits = input_dicts[start_case_idx + c]["controller"]["yaw_limits"]
+                yaw_limits = tuple(input_dicts[start_case_idx + c]["controller"]["yaw_limits"])
                 target_turbine_indices = input_dicts[start_case_idx + c]["controller"]["target_turbine_indices"]
                 if (new_case := tuple([floris_input_file, lut_path, uncertain_flag, yaw_limits, target_turbine_indices])) in lut_cases:
                     continue

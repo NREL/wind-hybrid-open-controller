@@ -339,7 +339,8 @@ class LookupBasedWakeSteeringController(ControllerBase):
             # use filtered wind direction and speed, NOTE historic_measurements includes controller_dt steps into the future such that we can run simulation in time batches
             # forecasted_wind_field.iloc[-1:].rename(columns={old_col: re.search("(?<=loc_)\\w+", old_col).group(0) for old_col in self.mean_ws_horz_cols+self.mean_ws_vert_cols})
             if self.wind_forecast:
-                wind = pd.concat([self.historic_measurements.rename(columns={re.search("(?<=loc_)\\w+", new_col).group(0): new_col for new_col in self.mean_ws_horz_cols + self.mean_ws_vert_cols}), 
+                hist_meas = self.historic_measurements.rename(columns={re.search("(?<=loc_)\\w+", new_col).group(0): new_col for new_col in self.mean_ws_horz_cols + self.mean_ws_vert_cols}) if self.uncertain else self.historic_measurements
+                wind = pd.concat([hist_meas, 
                                     single_forecasted_wind_field[self.mean_ws_horz_cols + self.mean_ws_vert_cols]], axis=0)[
                                         self.mean_ws_horz_cols+self.mean_ws_vert_cols]
             else:
