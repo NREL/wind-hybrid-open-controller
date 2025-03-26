@@ -23,7 +23,13 @@ test_hercules_dict = {
         "test_solar": {"outputs": {"power_mw": 1.0, "dni": 1000.0, "aoi": 30.0}},
         "inputs": {},
     },
-    "external_signals": {"wind_power_reference": 1000.0, "plant_power_reference": 1000.0},
+    "external_signals": {
+        "wind_power_reference": 1000.0,
+        "plant_power_reference": 1000.0,
+        "forecast_ws_mean_0": 8.0,
+        "forecast_ws_mean_1": 8.1,
+        "ws_median_0": 8.1
+    },
 }
 
 
@@ -54,6 +60,10 @@ def test_HerculesADInterface():
         measurements["turbine_powers"]
         == test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"]
     )
+    test_forecast = {
+        k: v for k, v in test_hercules_dict["external_signals"].items() if "forecast" in k
+    }
+    assert measurements["forecast"] == test_forecast
 
     # Test check_controls()
     controls_dict = {"yaw_angles": [270.0, 278.9]}
@@ -127,6 +137,10 @@ def test_HerculesHybridADInterface():
     assert (
         measurements["solar_aoi"] == test_hercules_dict["py_sims"]["test_solar"]["outputs"]["aoi"]
     )
+    test_forecast = {
+        k: v for k, v in test_hercules_dict["external_signals"].items() if "forecast" in k
+    }
+    assert measurements["forecast"] == test_forecast
 
     # Test check_controls()
     controls_dict = {
