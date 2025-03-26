@@ -15,27 +15,40 @@
 from whoc.interfaces.interface_base import InterfaceBase
 import numpy as np
 from floris.floris_model import FlorisModel
+from floris.uncertain_floris_model import UncertainFlorisModel
 import pandas as pd
 from scipy.interpolate import LinearNDInterpolator
 import floris.flow_visualization as wakeviz
 import matplotlib.pyplot as plt
 
 class ControlledFlorisModel(InterfaceBase):
-    def __init__(self, yaw_limits, dt, yaw_rate, config_path, offline_probability=0.0, floris_version='v4'):
+    def __init__(self, t0, yaw_limits, dt, yaw_rate, config_path, turbine_signature, tid2idx_mapping, target_turbine_indices="all",
+                 uncertain=False, offline_probability=0.0, floris_version='v4'):
         super().__init__()
         self.floris_config_path = config_path
         self.yaw_limits = yaw_limits
         self.yaw_rate = yaw_rate
-        self.time = 0
-        self.dt = dt
+        self.init_time = t0
+        self.time = t0
+        self.simulation_dt = dt
         self.floris_version = floris_version
         self.offline_probability = offline_probability
+        self.target_turbine_indices = target_turbine_indices
+        self.sorted_tids = sorted(target_turbine_indices) if target_turbine_indices != "all" else "all" 
+        self.turbine_signature = turbine_signature
+        self.tid2idx_mapping = tid2idx_mapping
+        self.uncertain = uncertain
+        # self.wf_source = wf_source
         self._load_floris()
 
         self.current_yaw_setpoints = np.zeros((0, self.n_turbines))
     
     def _load_floris(self):
+        # edit layout, n_turbines, if len(target_turbine_idx) < n_turbines
         self.env = FlorisModel(self.floris_config_path)  # GCH model matched to the default "legacy_gauss" of V2
+        if self.target_turbine_indices != "all":
+            self.env._reinitialize(layout_x=self.env.layout_x[self.sorted_tids], 
+                                   layout_y=self.env.layout_y[self.sorted_tids])
         self.n_turbines = self.env.core.farm.n_turbines
         
         return self
@@ -65,13 +78,14 @@ class ControlledFlorisModel(InterfaceBase):
     
     def get_measurements(self, hercules_dict=None):
         """ abstract method from Interface class """
-        time_step = np.array((self.time // self.dt) % self.env.core.flow_field.n_findex, dtype=int)
+        time_step = np.array(((self.time - self.init_time).total_seconds() // self.simulation_dt) % self.env.core.flow_field.n_findex, dtype=int)
         # mags = np.sqrt(self.env.core.flow_field.u**2 + self.env.core.flow_field.v**2 + self.env.core.flow_field.w**2)
+        
         mag = np.sqrt(self.env.core.flow_field.u[time_step, :, :, :]**2)
         mag = np.mean(mag.reshape(*mag.shape[:1], -1), axis=1)
         direction = np.tile(self.env.core.flow_field.wind_directions[time_step], (self.n_turbines,))
+            
         offline_mask = np.isclose(self.env.core.farm.power_setpoints[time_step, :], 0, atol=1e-3)
-        
         measurements = {
             "time": self.time,
             "amr_wind_speed": self.env.core.flow_field.wind_speeds[time_step],
@@ -97,6 +111,7 @@ class ControlledFlorisModel(InterfaceBase):
 
         # reinitialize floris
         if ctrl_dict is None:
+            # get most recently set yaw angles
             yaw_offsets = self.env.core.farm.yaw_angles
         else:
             yaw_offsets = (np.array(disturbances["wind_directions"])[:, np.newaxis] - ctrl_dict["yaw_angles"])
@@ -210,15 +225,6 @@ if __name__ == '__main__':
     # 0 yaw angle points to west, positive yaw angle points to southwest, negative yaw angle points to northwest
     fi_greedy.env.core.farm.yaw_angles
     fi_greedy.env.get_turbine_powers()
-    # for yaw=-20 or 270 - wd, wind_dir=250:
-    # array([[[5000006.24431751, 5000006.24431751, 5000006.24431751,
-    #          5000006.24431403, 5000006.24431402, 5000006.24431402,
-    #          5000006.24431403, 5000002.68691173, 5000002.68691173]]])
-    # for yaw=0, wind_dir=250:
-    # array([[[4999989.56317222, 4999989.56317222, 4999989.56317222,
-    #          4999989.56323679, 4999989.5632368, 4999989.5632368,
-    #          4999989.56323679, 4999998.55748623, 4999998.55748623]]])
-    
     fi_greedy.get_measurements(None)
     
     # plot horizontal plane

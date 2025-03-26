@@ -7,7 +7,7 @@ name: example_000
 # Describe this emulator setup
 description: Just a solar plant
 
-dt: 0.5
+simulation_dt: 60 
 
 hercules_comms:
 
@@ -34,7 +34,7 @@ hercules_comms:
         publication_interval: 1
         endpoint_interval: 1
         starttime: 0
-        stoptime: 3600
+        stoptime: 388,800 
         
         Agent: ControlCenter
 
@@ -56,7 +56,7 @@ controller:
   controller_type: SimpleYawController # This may not be needed
   num_turbines: 9 # Should match AMR-Wind! Ideally, would come from AMR-wind
   initial_conditions:
-      yaw: 270.0 # degrees (same for all turbines) (will this work?)
+      yaw: auto # degrees (same for all turbines) (will this work?)
   yaw_limits: [-30, 30] # degrees
   yaw_rate: 0.3 # degrees/sec
   rated_turbine_power: 5000000.0 # W TODO get from floris input file
@@ -64,7 +64,7 @@ controller:
   lpf_start_time: 180.0 # seconds
   lpf_time_const: 35 # sec
   deadband_thr: 8 # degrees
-  dt: 15 # sec
+  controller_dt: 15 # sec
   n_horizon: 24
   alpha: 0.999 # WARNING: if you choose this to be small and set the initial values of the control inputs to 0, solver may get stuck at initial solution
   control_input_domain: continuous
@@ -94,3 +94,25 @@ controller:
   decay_type: exp
   decay_all: False
   clip_value: 30 # yaw offset at which to clip values fed to FLORIS, up to 44
+  controller_class: GreedyController
+  wind_forecast_class: False
+  uncertain: False
+  target_turbine_indices:
+  - 1
+  - 2
+
+wind_forecast:
+  context_timedelta: 1200 # seconds
+  prediction_timedelta: 1200 # seconds
+  SVRForecast:
+    kernel: rbf
+    C: 1.0
+    degree: 3
+    gamma: auto
+    epsilon: 0.1
+    cache_size: 200
+    n_neighboring_turbines: 3
+    max_n_samples:
+  MLForecast:
+    model_key: informer
+    model_checkpoint: latest

@@ -431,7 +431,7 @@ class MPC(ControllerBase):
 	#     # CONMIN(options={"IPRINT": 1, "ITMAX": max_iter})
 	#     # ALPSO(options={}) #"maxOuterIter": 25})
 	#     ]
-	def __init__(self, interface, input_dict, wind_field_config, verbose=False, **kwargs):
+	def __init__(self, interface, wind_forecast, input_dict, wind_field_config, verbose=False, **kwargs):
 		
 		super().__init__(interface, verbose=verbose)
 		
@@ -482,8 +482,7 @@ class MPC(ControllerBase):
 		self.alpha = input_dict["controller"]["alpha"]
 		self.beta = input_dict["controller"]["beta"]
 		self.n_horizon = input_dict["controller"]["n_horizon"]
-		self.wind_mag_ts = kwargs["wind_mag_ts"]
-		self.wind_dir_ts = kwargs["wind_dir_ts"]
+		self.wind_field_ts = kwargs["wind_field_ts"]
 		self._last_yaw_setpoints = None
 		self._last_measured_time = None
 		self.current_time = 0.0
@@ -577,8 +576,6 @@ class MPC(ControllerBase):
 					# elif self.wind_preview_type == "stochastic_interval_elliptical" or self.wind_preview_type == "stochastic_sample":
 					# 	n_samples = ((n_intervals**2 - 1) * (int(n_intervals // 2))) + 1
 					
-
-					
 					std_u = np.sqrt(np.diag(distribution_params[2]))[np.newaxis, :]
 					std_v = np.sqrt(np.diag(distribution_params[3]))[np.newaxis, :]
 					 # creates trajectories over the horizon for each standard deviation from the mean e.g. trajectory for -2 stds from mean for u, v .... to +2 stds from mean for u, v
@@ -611,22 +608,24 @@ class MPC(ControllerBase):
 						uv_combs = np.dstack([u_vals, v_vals])
 					
 					n_samples = uv_combs.shape[0]
-					wind_preview_data = {"FreestreamWindMag": np.zeros((n_samples, self.n_horizon + 1)), 
-							"FreestreamWindDir": np.zeros((n_samples, self.n_horizon + 1))}
+					wind_preview_data = {
+						"FreestreamWindMag": np.zeros((n_samples, self.n_horizon + 1)), 
+						"FreestreamWindDir": np.zeros((n_samples, self.n_horizon + 1))
+					}
 					
 					mag = np.linalg.norm([current_freestream_measurements[0], current_freestream_measurements[1]])
 					wind_preview_data[f"FreestreamWindMag"][:, 0] = [mag] * n_samples
 					
 					# compute freestream wind direction angle from above, clockwise from north
-					direction = np.arctan2(current_freestream_measurements[1], current_freestream_measurements[0])
-					direction = (270.0 - (direction * (180 / np.pi))) % 360.0
+					direction = np.arctan2(current_freestream_measurements[0], current_freestream_measurements[1])
+					direction = (180.0 + np.rad2deg(direction)) % 360.0
 
 					wind_preview_data[f"FreestreamWindDir"][:, 0] = [direction] * n_samples
 
 					mag_vals = np.linalg.norm(uv_combs, axis=2)
 					# compute directions
-					dir_vals = np.arctan2(uv_combs[:, :, 1], uv_combs[:, :, 0])
-					dir_vals = (270.0 - (dir_vals * (180 / np.pi))) % 360.0
+					dir_vals = np.arctan2(uv_combs[:, :, 0], uv_combs[:, :, 1])
+					dir_vals = (180.0 + np.rad2deg(dir_vals)) % 360.0
 
 					wind_preview_probs = (norm.pdf(uv_combs[:, :, 0], loc=distribution_params[0], scale=std_u) \
 					 	* norm.pdf(uv_combs[:, :, 1], loc=distribution_params[1], scale=std_v))
@@ -645,8 +644,8 @@ class MPC(ControllerBase):
 						import pandas as pd
 						
 						df = pd.DataFrame({
-							"Horizontal": uv_combs[:, :, 0].flatten(), 
-							"Vertical": uv_combs[:, :, 1].flatten(), 
+							"Downwind": uv_combs[:, :, 0].flatten(), 
+							"Crosswind": uv_combs[:, :, 1].flatten(), 
 							"Direction": dir_vals.flatten(), 
 							"Magnitude": mag_vals.flatten(), 
 						 	"Time Step": np.tile(np.arange(self.n_horizon) + 1, (uv_combs.shape[0], )).astype(int),
@@ -655,10 +654,10 @@ class MPC(ControllerBase):
 						})
 
 						fig, ax = plt.subplots(1, 2)
-						sns.scatterplot(ax=ax[0], data=df, x="Horizontal", y="Vertical", hue="Time Step")
+						sns.scatterplot(ax=ax[0], data=df, x="Downwind", y="Crosswind", hue="Time Step")
 						sns.scatterplot(ax=ax[1], data=df, x="Direction", y="Magnitude", hue="Time Step")
 						ax[0].legend([], [], frameon=False)
-						ax[0].set(ylabel="Vertical Wind Speed [m/s]", xlabel="Horizontal Wind Speed [m/s]")
+						ax[0].set(ylabel="Crosswind Wind Speed [m/s]", xlabel="Downwind Wind Speed [m/s]")
 						ax[1].set(ylabel="Wind Magnitude [m/s]", xlabel="Wind Direction [$^\\circ$]")
 						sns.move_legend(ax[1], "upper left", bbox_to_anchor=(1, 1))
 						plt.tight_layout(pad=2.0)
@@ -668,13 +667,13 @@ class MPC(ControllerBase):
 						
 						# plot trajectories
 						fig, ax = plt.subplots(2, 2)
-						sns.lineplot(ax=ax[0, 0], data=df, x="Time Step", y="Horizontal", hue="Sample", marker="o")
-						sns.lineplot(ax=ax[1, 0], data=df, x="Time Step", y="Vertical", hue="Sample", marker="o")
+						sns.lineplot(ax=ax[0, 0], data=df, x="Time Step", y="Downwind", hue="Sample", marker="o")
+						sns.lineplot(ax=ax[1, 0], data=df, x="Time Step", y="Crosswind", hue="Sample", marker="o")
 						sns.lineplot(ax=ax[0, 1], data=df, x="Time Step", y="Direction", hue="Sample", marker="o")
 						sns.lineplot(ax=ax[1, 1], data=df, x="Time Step", y="Magnitude", hue="Sample", marker="o")
 						# ax[0, 0].legend([], [], frameon=False)
-						ax[0, 0].set(ylabel="Horizontal Wind Speed [m/s]", xlabel="")
-						ax[1, 0].set(ylabel="Vertical Wind Speed [m/s]", xlabel="Horizon Time Step [-]")
+						ax[0, 0].set(ylabel="Downwind Wind Speed [m/s]", xlabel="")
+						ax[1, 0].set(ylabel="Crosswind Wind Speed [m/s]", xlabel="Horizon Time Step [-]")
 						ax[0, 1].set(ylabel="Wind Direction [$^\\circ$]", xlabel="")
 						ax[1, 1].set(ylabel="Wind Magnitude [m/s]", xlabel="Horizon Time Step [-]")
 						ax[0, 0].legend([], [], frameon=False)
@@ -686,10 +685,10 @@ class MPC(ControllerBase):
 						fig.savefig(f"/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/{self.wind_preview_type}_trajectories_time.png")
 						# df.sort_values(by=["Sample", "Time Step"])
 						fig, ax = plt.subplots(1, 2)
-						sns.lineplot(ax=ax[0], data=df[["Sample", "Time Step", "Horizontal", "Vertical"]].sort_values(by=["Sample", "Time Step"]), x="Horizontal", y="Vertical", hue="Sample", marker="o")
+						sns.lineplot(ax=ax[0], data=df[["Sample", "Time Step", "Downwind", "Crosswind"]].sort_values(by=["Sample", "Time Step"]), x="Downwind", y="Crosswind", hue="Sample", marker="o")
 						sns.lineplot(ax=ax[1], data=df[["Sample", "Time Step", "Direction", "Magnitude"]].sort_values(by=["Sample", "Time Step"]), x="Direction", y="Magnitude", hue="Sample", marker="o")
 						# ax[0, 0].legend([], [], frameon=False)
-						ax[0].set(ylabel="Vertical Wind Speed [m/s]", xlabel="Horizontal Wind Speed [m/s]")
+						ax[0].set(ylabel="Crosswind Wind Speed [m/s]", xlabel="Downwind Wind Speed [m/s]")
 						ax[1].set(ylabel="Wind Magnitude [m/s]", xlabel="Wind Direction [$^\\circ$]")
 						ax[0].legend([], [], frameon=False)
 						sns.move_legend(ax[1], "upper left", bbox_to_anchor=(1, 1))
@@ -699,8 +698,8 @@ class MPC(ControllerBase):
 
 						if self.wind_preview_type == "stochastic_interval_rectangular":
 							df = pd.DataFrame({
-								"Horizontal": u_vals.flatten(), 
-								"Vertical": v_vals.flatten(), 
+								"Downwind": u_vals.flatten(), 
+								"Crosswind": v_vals.flatten(), 
 								# "Direction": dir_vals.flatten(), 
 								# "Magnitude": mag_vals.flatten(), 
 								"Time Step": np.tile(np.arange(self.n_horizon) + 1, (u_vals.shape[0],)).astype(int),
@@ -708,11 +707,11 @@ class MPC(ControllerBase):
 								#  "Sample": np.repeat(np.arange(dev_u.shape[0]), (self.n_horizon, )) 
 							})
 							fig, ax = plt.subplots(1, 2)
-							sns.scatterplot(ax=ax[0], data=df, x="# Standard Deviations", y="Horizontal", hue="Time Step")
-							sns.scatterplot(ax=ax[1], data=df, x="# Standard Deviations", y="Vertical", hue="Time Step")
+							sns.scatterplot(ax=ax[0], data=df, x="# Standard Deviations", y="Downwind", hue="Time Step")
+							sns.scatterplot(ax=ax[1], data=df, x="# Standard Deviations", y="Crosswind", hue="Time Step")
 							ax[0].legend([], [], frameon=False)
-							ax[0].set(ylabel="Horizontal Wind Speed [m/s]")
-							ax[1].set(ylabel="Vertical Wind Speed [m/s]")
+							ax[0].set(ylabel="Downwind Wind Speed [m/s]")
+							ax[1].set(ylabel="Crosswind Wind Speed [m/s]")
 							sns.move_legend(ax[1], "upper left", bbox_to_anchor=(1, 1))
 							plt.tight_layout(pad=2.0)
 							# fig.savefig("/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/stochastic_interval_intervals.png")
@@ -738,8 +737,8 @@ class MPC(ControllerBase):
  								wind_preview_generator=wf._sample_wind_preview, 
 								return_params=False, include_uv=False, seed=seed)
 					wind_preview_probs = None
-
-				if False and self.n_wind_preview_samples == 25 and self.wind_preview_type == "stochastic_sample":
+				# NOTE run this for generate_sample_figures
+				if False and self.n_wind_preview_samples == 500 and self.wind_preview_type == "stochastic_sample":
 						import matplotlib.pyplot as plt
 						import pandas as pd
 						import seaborn as sns
@@ -749,18 +748,18 @@ class MPC(ControllerBase):
 								return_params=False, include_uv=True)
 						
 						df = pd.DataFrame({
-							"Horizontal": wind_preview_data_sample["FreestreamWindSpeedU"][:, 1:].flatten(), 
-							"Vertical": wind_preview_data_sample["FreestreamWindSpeedV"][:, 1:].flatten(), 
+							"Downwind": wind_preview_data_sample["FreestreamWindSpeedU"][:, 1:].flatten(), 
+							"Crosswind": wind_preview_data_sample["FreestreamWindSpeedV"][:, 1:].flatten(), 
 							"Direction": wind_preview_data_sample["FreestreamWindDir"][:, 1:].flatten(), 
 							"Magnitude": wind_preview_data_sample["FreestreamWindMag"][:, 1:].flatten(), 
 						 	"Time Step": np.tile(np.arange(self.n_horizon) + 1, (wind_preview_data_sample["FreestreamWindSpeedU"].shape[0], )).astype(int),
 							 "Sample": np.repeat(np.arange(wind_preview_data_sample["FreestreamWindSpeedU"].shape[0]), (self.n_horizon, )) 
 						})
 						fig, ax = plt.subplots(1, 2)
-						sns.scatterplot(ax=ax[0], data=df, x="Horizontal", y="Vertical", hue="Time Step")
+						sns.scatterplot(ax=ax[0], data=df, x="Downwind", y="Crosswind", hue="Time Step")
 						sns.scatterplot(ax=ax[1], data=df, x="Direction", y="Magnitude", hue="Time Step")
 						ax[0].legend([], [], frameon=False)
-						ax[0].set(ylabel="Vertical Wind Speed [m/s]", xlabel="Horizontal Wind Speed [m/s]")
+						ax[0].set(ylabel="Crosswind Wind Speed [m/s]", xlabel="Downwind Wind Speed [m/s]")
 						ax[1].set(ylabel="Wind Magnitude [m/s]", xlabel="Wind Direction [$^\\circ$]")
 						sns.move_legend(ax[1], "upper left", bbox_to_anchor=(1, 1))
 						plt.tight_layout(pad=2.0)
@@ -769,13 +768,13 @@ class MPC(ControllerBase):
 
 						# plot trajectories
 						fig, ax = plt.subplots(2, 2)
-						sns.lineplot(ax=ax[0, 0], data=df, x="Time Step", y="Horizontal", hue="Sample", marker="o")
-						sns.lineplot(ax=ax[1, 0], data=df, x="Time Step", y="Vertical", hue="Sample", marker="o")
+						sns.lineplot(ax=ax[0, 0], data=df, x="Time Step", y="Downwind", hue="Sample", marker="o")
+						sns.lineplot(ax=ax[1, 0], data=df, x="Time Step", y="Crosswind", hue="Sample", marker="o")
 						sns.lineplot(ax=ax[0, 1], data=df, x="Time Step", y="Direction", hue="Sample", marker="o")
 						sns.lineplot(ax=ax[1, 1], data=df, x="Time Step", y="Magnitude", hue="Sample", marker="o")
 						# ax[0, 0].legend([], [], frameon=False)
-						ax[0, 0].set(ylabel="Horizontal Wind Speed [m/s]", xlabel="")
-						ax[1, 0].set(ylabel="Vertical Wind Speed [m/s]", xlabel="Horizon Time Step [-]")
+						ax[0, 0].set(ylabel="Downwind Wind Speed [m/s]", xlabel="")
+						ax[1, 0].set(ylabel="Crosswind Wind Speed [m/s]", xlabel="Horizon Time Step [-]")
 						ax[0, 1].set(ylabel="Wind Direction [$^\\circ$]", xlabel="")
 						ax[1, 1].set(ylabel="Wind Magnitude [m/s]", xlabel="Horizon Time Step [-]")
 						ax[0, 0].legend([], [], frameon=False)
@@ -787,10 +786,10 @@ class MPC(ControllerBase):
 						fig.savefig("/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/stochastic_sample_trajectories_time.png")	
 
 						fig, ax = plt.subplots(1, 2)
-						sns.lineplot(ax=ax[0], data=df[["Sample", "Time Step", "Horizontal", "Vertical"]].sort_values(by=["Sample", "Time Step"]), x="Horizontal", y="Vertical", hue="Sample", marker="o")
+						sns.lineplot(ax=ax[0], data=df[["Sample", "Time Step", "Downwind", "Crosswind"]].sort_values(by=["Sample", "Time Step"]), x="Downwind", y="Crosswind", hue="Sample", marker="o")
 						sns.lineplot(ax=ax[1], data=df[["Sample", "Time Step", "Direction", "Magnitude"]].sort_values(by=["Sample", "Time Step"]), x="Direction", y="Magnitude", hue="Sample", marker="o")
 						# ax[0, 0].legend([], [], frameon=False)
-						ax[0].set(ylabel="Vertical Wind Speed [m/s]", xlabel="Horizontal Wind Speed [m/s]")
+						ax[0].set(ylabel="Crosswind Wind Speed [m/s]", xlabel="Downwind Wind Speed [m/s]")
 						ax[1].set(ylabel="Wind Magnitude [m/s]", xlabel="Wind Direction [$^\\circ$]")
 						ax[0].legend([], [], frameon=False)
 						sns.move_legend(ax[1], "upper left", bbox_to_anchor=(1, 1))
@@ -817,11 +816,13 @@ class MPC(ControllerBase):
 		
 		elif input_dict["controller"]["wind_preview_type"] == "persistent":
 			def wind_preview_func(current_freestream_measurements, time_step, seed=None, return_interval_values=False, n_intervals=None, max_std_dev=None):
-				wind_preview_data = {"FreestreamWindMag": np.zeros((self.n_wind_preview_samples, self.n_horizon + 1)),
-						 "FreestreamWindDir": np.zeros((self.n_wind_preview_samples, self.n_horizon + 1))}
+				wind_preview_data = {
+					"FreestreamWindMag": np.zeros((self.n_wind_preview_samples, self.n_horizon + 1)),
+					"FreestreamWindDir": np.zeros((self.n_wind_preview_samples, self.n_horizon + 1))
+					}
 				# for j in range(input_dict["controller"]["n_horizon"] + 1):
-				wind_preview_data[f"FreestreamWindMag"] = np.broadcast_to(kwargs["wind_mag_ts"][time_step], wind_preview_data[f"FreestreamWindMag"].shape)
-				wind_preview_data[f"FreestreamWindDir"] = np.broadcast_to(kwargs["wind_dir_ts"][time_step], wind_preview_data[f"FreestreamWindDir"].shape)
+				wind_preview_data[f"FreestreamWindMag"] = np.broadcast_to(kwargs["wind_field_ts"]["FreestreamWindMag"].iloc[time_step], wind_preview_data[f"FreestreamWindMag"].shape)
+				wind_preview_data[f"FreestreamWindDir"] = np.broadcast_to(kwargs["wind_field_ts"]["FreestreamWindDir"].iloc[time_step], wind_preview_data[f"FreestreamWindDir"].shape)
 				
 				if return_interval_values:
 					return wind_preview_data, np.ones((1, self.n_horizon))
@@ -830,11 +831,13 @@ class MPC(ControllerBase):
 		
 		elif input_dict["controller"]["wind_preview_type"] == "perfect":
 			def wind_preview_func(current_freestream_measurements, time_step, seed=None, return_interval_values=False, n_intervals=None, max_std_dev=None):
-				wind_preview_data = {"FreestreamWindMag": np.zeros((self.n_wind_preview_samples, self.n_horizon + 1)), 
-						 "FreestreamWindDir": np.zeros((self.n_wind_preview_samples, self.n_horizon + 1))}
+				wind_preview_data = {
+					"FreestreamWindMag": np.zeros((self.n_wind_preview_samples, self.n_horizon + 1)), 
+					"FreestreamWindDir": np.zeros((self.n_wind_preview_samples, self.n_horizon + 1))
+				}
 				delta_k = slice(0, (input_dict["controller"]["n_horizon"] + 1) * int(input_dict["controller"]["dt"] // input_dict["dt"]), int(input_dict["controller"]["dt"] // input_dict["dt"]))
-				wind_preview_data[f"FreestreamWindMag"] = np.broadcast_to(kwargs["wind_mag_ts"][delta_k], wind_preview_data[f"FreestreamWindMag"].shape)
-				wind_preview_data[f"FreestreamWindDir"] = np.broadcast_to(kwargs["wind_dir_ts"][delta_k], wind_preview_data[f"FreestreamWindDir"].shape)
+				wind_preview_data[f"FreestreamWindMag"] = np.broadcast_to(kwargs["wind_field_ts"]["FreestreamWindMag"].iloc[delta_k], wind_preview_data[f"FreestreamWindMag"].shape)
+				wind_preview_data[f"FreestreamWindDir"] = np.broadcast_to(kwargs["wind_field_ts"]["FreestreamWindDir"].iloc[delta_k], wind_preview_data[f"FreestreamWindDir"].shape)
 				
 				if return_interval_values:
 					return wind_preview_data, np.ones((1, self.n_horizon))
@@ -860,7 +863,7 @@ class MPC(ControllerBase):
 			self.ctrl_lut = LookupBasedWakeSteeringController(self.fi_lut, input_dict=lut_input_dict, 
 													lut_path=input_dict["controller"]["lut_path"], 
 													generate_lut=input_dict["controller"]["generate_lut"], 
-													wind_dir_ts=kwargs["wind_dir_ts"], wind_mag_ts=kwargs["wind_mag_ts"])
+													wind_field_ts=kwargs["wind_field_ts"])
 
 		self.Q = self.alpha
 		self.R = (1 - self.alpha)
@@ -876,7 +879,13 @@ class MPC(ControllerBase):
 		self.dyn_state_jac, self.state_jac = self.con_sens_rules(self.n_solve_turbines)
 		
 		# Set initial conditions
-		self.yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
+		if isinstance(input_dict["controller"]["initial_conditions"]["yaw"], (float, list)):
+			self.yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
+		elif input_dict["controller"]["initial_conditions"]["yaw"] == "auto":
+			self.yaw_IC = None
+		else:
+			raise Exception("must choose float or 'auto' for initial yaw value")
+
 		if hasattr(self.yaw_IC, "__len__"):
 			if len(self.yaw_IC) == self.n_turbines:
 				self.controls_dict = {"yaw_angles": np.array(self.yaw_IC)}
@@ -1095,8 +1104,8 @@ class MPC(ControllerBase):
 			current_wind_speed = self.measurements_dict["amr_wind_speed"]
 
 			self.current_freestream_measurements = [
-					current_wind_speed * np.sin((current_wind_direction - 180.) * (np.pi / 180.)),
-					current_wind_speed * np.cos((current_wind_direction - 180.) * (np.pi / 180.))
+					current_wind_speed * np.sin(np.deg2rad(current_wind_direction + 180.)),
+					current_wind_speed * np.cos(np.deg2rad(current_wind_direction + 180.))
 			]
 			
 			# returns n_preview_samples of horizon preview realiztions in the case of stochastic preview type, 
@@ -1137,8 +1146,8 @@ class MPC(ControllerBase):
 					ax[1].scatter([j], self.wind_preview_intervals[f"FreestreamWindDir"][-1, j], marker="s")
 					ax[0].set(title="FreestreamWindMag")
 					ax[1].set(title="FreestreamWindDir", xlabel="horizon step")
-				ax[0].plot(np.arange(self.n_horizon + 1), self.wind_mag_ts[int(self.measurements_dict["time"] // self.simulation_dt):int(self.measurements_dict["time"] // self.simulation_dt) + int(self.dt // self.simulation_dt) * (self.n_horizon + 1):int(self.dt // self.simulation_dt)])
-				ax[1].plot(np.arange(self.n_horizon + 1), self.wind_dir_ts[int(self.measurements_dict["time"] // self.simulation_dt):int(self.measurements_dict["time"] // self.simulation_dt) + int(self.dt // self.simulation_dt) * (self.n_horizon + 1):int(self.dt // self.simulation_dt)])
+				ax[0].plot(np.arange(self.n_horizon + 1), self.wind_field_ts["FreestreamWindMag"].iloc[int(self.measurements_dict["time"] // self.simulation_dt):int(self.measurements_dict["time"] // self.simulation_dt) + int(self.dt // self.simulation_dt) * (self.n_horizon + 1):int(self.dt // self.simulation_dt)])
+				ax[1].plot(np.arange(self.n_horizon + 1), self.wind_field_ts["FreestreamWindDir"].iloc[int(self.measurements_dict["time"] // self.simulation_dt):int(self.measurements_dict["time"] // self.simulation_dt) + int(self.dt // self.simulation_dt) * (self.n_horizon + 1):int(self.dt // self.simulation_dt)])
 
 			if "slsqp" in self.solver and self.wind_preview_type == "stochastic_sample":
 				# tile twice: once for current_yaw_offsets, once for plus_yaw_offsets
@@ -1511,6 +1520,7 @@ class MPC(ControllerBase):
 		# turbines_ordered_array = []
 		wd = self.wind_preview_samples["FreestreamWindDir"][0, 0]
 		# wd = 250.0
+		# TODO CHECK THIS
 		layout_x_rot = (
 			np.cos((wd - 270.0) * np.pi / 180.0) * layout_x
 			- np.sin((wd - 270.0) * np.pi / 180.0) * layout_y

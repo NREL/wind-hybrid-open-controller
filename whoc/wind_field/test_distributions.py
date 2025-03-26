@@ -113,8 +113,7 @@ if __name__ == "__main__":
         wind_field_filenames = glob(os.path.join(wind_field_dir, "case_*.csv"))
         distribution_params_path = os.path.join(STORAGE_DIR, "wind_field_data", "wind_preview_distribution_params.pkl")    
         
-        if not os.path.exists(wind_field_dir):
-            os.makedirs(wind_field_dir)
+        os.makedirs(wind_field_dir, exist_ok=True)
 
         seed = 0
 

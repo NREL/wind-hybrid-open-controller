@@ -50,7 +50,7 @@ if False:
 
     settled_time, settled_u, settled_v = get_amr_timeseries(amr_case_folders, amr_abl_stats_files)
     settled_speed = (settled_u**2 + settled_v**2)**0.5
-    settled_direction = (360.0 - np.degrees(np.arctan2(settled_u / settled_v))) % 360.0
+    settled_direction = (180.0 + np.rad2deg(np.arctan2(settled_u, settled_v))) % 360.0
     settled_direction = settled_direction[settled_direction > 180.0] - 360.0
 
     if all(os.path.exists(os.path.join(dirname, filename) for dirname, filename in product(amr_case_folders, amr_abl_stats_files))):

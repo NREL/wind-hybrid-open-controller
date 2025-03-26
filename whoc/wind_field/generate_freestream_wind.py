@@ -15,8 +15,7 @@ def generate_freestream_wind(hercules_input_dict, wind_field_config, wind_field_
     wind_field_filenames = glob(os.path.join(f"{wind_field_dir}", "case_*.csv"))
     # distribution_params_path = os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "wind_field_data", "wind_preview_distribution_params.pkl")    
     
-    if not os.path.exists(wind_field_dir):
-        os.makedirs(wind_field_dir)
+    os.makedirs(wind_field_dir, exist_ok=True)
 
     seed = 0
     wind_field_config["num_turbines"] = hercules_input_dict["controller"]["num_turbines"]
