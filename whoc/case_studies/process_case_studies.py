@@ -97,6 +97,8 @@ def read_case_family_time_series_data(case_family, save_dir):
 def write_case_family_time_series_data(case_family, new_time_series_df, save_dir):
     all_ts_df_path = os.path.join(save_dir, case_family, "time_series_results_all.csv") # if reaggregate_simulations, or if the aggregated time series data doesn't exist for this case family, read the csv files for that case family
     print(f"Writing combined case family {case_family} time-series dataframe.")
+    print(f"Directory of time_series_results_all.csv: {os.path.join(save_dir, case_family)}")
+
     new_time_series_df.iloc[new_time_series_df.index.get_level_values("CaseFamily") == case_family].to_csv(all_ts_df_path)
 
 def read_time_series_data(results_path):
