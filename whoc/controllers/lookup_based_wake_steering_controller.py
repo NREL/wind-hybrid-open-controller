@@ -16,10 +16,8 @@ import numpy as np
 import pandas as pd
 import os
 import re
-import polars as pl
 from memory_profiler import profile
 import polars as pl
-import polars.selectors as cs
 
 from whoc.controllers.controller_base import ControllerBase
 from floris.floris_model import FlorisModel

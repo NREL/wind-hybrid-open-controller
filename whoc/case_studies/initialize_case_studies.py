@@ -537,7 +537,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                 if property_name in input_dicts[start_case_idx + c]["controller"]:
                     property_group = "controller"
                 elif ((property_name in input_dicts[start_case_idx + c]["wind_forecast"]) 
-                      or (property_name in input_dicts[start_case_idx + c]["wind_forecast"].setdefault(input_dicts[start_case_idx + c]["controller"]["wind_forecast_class"], {}))):
+                      or (input_dicts[start_case_idx + c]["controller"]["wind_forecast_class"] and property_name in input_dicts[start_case_idx + c]["wind_forecast"].get(input_dicts[start_case_idx + c]["controller"]["wind_forecast_class"], {}))):
                     property_group = "wind_forecast"
                 else:
                     property_group = None
