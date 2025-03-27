@@ -290,9 +290,9 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
         **{
             f"TurbineYawAngleChange_{idx2tid_mapping[i]}": yaw_angles_change_ts[:, i] for i in range(ctrl.n_turbines)
         },
-        # **{
-        #     f"TargetTurbinePower_{idx2tid_mapping[i]}": turbine_powers_ts[:, i] for i in range(ctrl.n_turbines)
-        # },
+        **{
+            f"TurbinePower_{idx2tid_mapping[i]}": turbine_powers_ts[:, i] for i in range(ctrl.n_turbines)
+        },
         # **{
         #     f"TargetTurbineWindMag_{idx2tid_mapping[i]}": turbine_wind_mag_ts[:, i] for i in range(ctrl.n_turbines)
         # },
