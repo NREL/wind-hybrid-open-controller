@@ -293,12 +293,12 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
         **{
             f"TurbinePower_{idx2tid_mapping[i]}": turbine_powers_ts[:, i] for i in range(ctrl.n_turbines)
         },
-        # **{
-        #     f"TargetTurbineWindMag_{idx2tid_mapping[i]}": turbine_wind_mag_ts[:, i] for i in range(ctrl.n_turbines)
-        # },
-        # **{
-        #     f"TargetTurbineWindDir_{idx2tid_mapping[i]}": turbine_wind_dir_ts[:, i] for i in range(ctrl.n_turbines)
-        # },
+        **{
+            f"TurbineWindMag_{idx2tid_mapping[i]}": turbine_wind_mag_ts[:, i] for i in range(ctrl.n_turbines)
+        },
+        **{
+            f"TurbineWindDir_{idx2tid_mapping[i]}": turbine_wind_dir_ts[:, i] for i in range(ctrl.n_turbines)
+        },
         # **{
         #     f"TargetTurbineWindSpeedHorz_{idx2tid_mapping[i]}": turbine_wind_mag_ts[:, i] * np.sin(np.deg2rad(180+turbine_wind_dir_ts[:, i])) for i in range(ctrl.n_turbines)
         # },
