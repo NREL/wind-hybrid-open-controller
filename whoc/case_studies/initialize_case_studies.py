@@ -400,7 +400,6 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         with open(os.path.join(os.path.dirname(whoc_file), "wind_field", "wind_field_config.yaml"), "r") as fp:
             wind_field_config = yaml.safe_load(fp)
 
-        # TODO HIGH make sure enough values are in wind_field_ts to cover horizon length or prediction time_delta
         # instantiate wind field if files don't already exist
         wind_field_dir = os.path.join(save_dir, 'wind_field_data/raw_data')
         wind_field_filenames = glob(f"{wind_field_dir}/case_*.csv")
@@ -613,7 +612,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
             # TODO rename this by index with only config updates from case inside
             fn = f'input_config_case_{"_".join(
                 [f"{key}_{val if (isinstance(val, str) or isinstance(val, np.str_) or isinstance(val, bool)) else np.round(val, 6)}" for key, val in case.items() \
-                    if key not in ["controller_dt", "simulation_dt", "use_filtered_wind_dir", "use_lut_filtered_wind_dir", "yaw_limits", "wind_case_idx", "seed", "floris_input_file", "lut_path"]]) \
+                    if key not in ["simulation_dt", "use_filtered_wind_dir", "use_lut_filtered_wind_dir", "yaw_limits", "wind_case_idx", "seed", "floris_input_file", "lut_path"]]) \
                     if "case_names" not in case else case["case_names"]}.pkl'.replace("/", "_")
             input_filenames.append(fn) 
 
