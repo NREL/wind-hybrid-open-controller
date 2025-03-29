@@ -1,0 +1,124 @@
+12
+Cannot import wind forecast classes in current environment.
+running initialize_simulations for case_ids ['baseline_controllers', 'solver_type', 'wind_preview_type', 'warm_start', 'horizon_length', 'cost_func_tuning', 'yaw_offset_study']
+Cannot import wind forecast classes in current environment.
+Cannot import wind forecast classes in current environment.
+Cannot import wind forecast classes in current environment.
+Cannot import wind forecast classes in current environment.
+Cannot import wind forecast classes in current environment.
+Cannot import wind forecast classes in current environment.
+Cannot import wind forecast classes in current environment.
+Cannot import wind forecast classes in current environment.
+Cannot import wind forecast classes in current environment.
+Cannot import wind forecast classes in current environment.
+Cannot import wind forecast classes in current environment.
+Running instance of LookupBasedWakeSteeringController - LUT with wind seed 0
+Running instance of MPC - Sequential SLSQP with wind seed 0
+Running instance of MPC - Sequential Refine with wind seed 0
+Running instance of MPC - SLSQP with wind seed 0
+Loaded existing time_series_results_case_Greedy_seed_0.csv since rerun_simulations argument is false
+Running instance of MPC - Stochastic Interval Elliptical 11 with wind seed 0
+Running instance of MPC - Stochastic Interval Rectangular 3 with wind seed 0
+Running instance of MPC - Stochastic Interval Elliptical 3 with wind seed 0
+Running instance of MPC - Persistent with wind seed 0
+Running instance of MPC - Stochastic Interval Elliptical 5 with wind seed 0
+Running instance of MPC - Perfect with wind seed 0
+Running instance of MPC - Stochastic Interval Rectangular 5 with wind seed 0
+/projects/aohe7145/toolboxes/whoc_env/wind-hybrid-open-controller/whoc/controllers/lookup_based_wake_steering_controller.py:308: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+  self.historic_measurements = pd.concat([self.historic_measurements,
+
+Time = 0 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 5 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 10 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 15 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 20 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 25 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 30 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 35 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 40 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 45 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 50 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 55 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 60 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 65 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 70 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 75 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 80 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 85 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 90 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 95 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 100 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 105 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 110 of LookupBasedWakeSteeringController - LUT with wind seed 0
+
+Time = 115 of LookupBasedWakeSteeringController - LUT with wind seed 0
+Saved time_series_results_case_LUT_seed_0.csv
+Running instance of MPC - Stochastic Interval Rectangular 11 with wind seed 0
+Warning: nonzero state_con_bools
+Running instance of MPC - Stochastic Sample 25 with wind seed 0
+Running instance of MPC - Stochastic Sample 50 with wind seed 0
+Running instance of MPC - Stochastic Sample 100 with wind seed 0
+Running instance of MPC - Greedy with wind seed 0
+Running instance of MPC - LUT with wind seed 0
+Running instance of MPC - Previous with wind seed 0
+Running instance of MPC - controller_class_MPC_n_horizon_6 with wind seed 0
+Running instance of MPC - controller_class_MPC_n_horizon_12 with wind seed 0
+Running instance of MPC - controller_class_MPC_n_horizon_18 with wind seed 0
+Running instance of MPC - controller_class_MPC_n_horizon_24 with wind seed 0
+Running instance of MPC - controller_class_MPC_n_horizon_6 with wind seed 0
+Running instance of MPC - controller_class_MPC_n_horizon_12 with wind seed 0
+Running instance of MPC - controller_class_MPC_n_horizon_18 with wind seed 0
+Running instance of MPC - controller_class_MPC_n_horizon_24 with wind seed 0
+Running instance of MPC - controller_class_MPC_n_horizon_6 with wind seed 0
+Running instance of MPC - controller_class_MPC_n_horizon_12 with wind seed 0
+Running instance of MPC - controller_class_MPC_n_horizon_18 with wind seed 0
+Running instance of MPC - controller_class_MPC_n_horizon_24 with wind seed 0
+Running instance of MPC - controller_class_MPC_n_horizon_6 with wind seed 0
+Running instance of MPC - controller_class_MPC_n_horizon_12 with wind seed 0
+Running instance of MPC - controller_class_MPC_n_horizon_18 with wind seed 0
+Running instance of MPC - controller_class_MPC_n_horizon_24 with wind seed 0
+Running instance of MPC - alpha_0.0 with wind seed 0
+Running instance of MPC - alpha_0.089 with wind seed 0
+Running instance of MPC - alpha_0.178 with wind seed 0
+Running instance of MPC - alpha_0.267 with wind seed 0
+Running instance of MPC - alpha_0.356 with wind seed 0
+Running instance of MPC - alpha_0.444 with wind seed 0
+Running instance of MPC - alpha_0.533 with wind seed 0
+Running instance of MPC - alpha_0.622 with wind seed 0
+Running instance of MPC - alpha_0.711 with wind seed 0
+Running instance of MPC - alpha_0.8 with wind seed 0
+Running instance of MPC - alpha_1.0 with wind seed 0
+Running instance of MPC - alpha_1.0 with wind seed 0
+Running instance of MPC - alpha_0.999 with wind seed 0
+Running instance of MPC - alpha_0.998 with wind seed 0
+Running instance of MPC - alpha_0.997 with wind seed 0
+Running instance of MPC - alpha_0.994 with wind seed 0
+Running instance of MPC - alpha_0.987 with wind seed 0
+Running instance of MPC - alpha_0.975 with wind seed 0
+Warning: nonzero state_con_bools
+Running instance of MPC - alpha_0.95 with wind seed 0
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+slurmstepd: error: *** JOB 12595397 ON c3cpu-a2-u3-1 CANCELLED AT 2025-03-29T11:44:23 ***
+slurmstepd: error: *** STEP 12595397.0 ON c3cpu-a2-u3-1 CANCELLED AT 2025-03-29T11:44:23 ***

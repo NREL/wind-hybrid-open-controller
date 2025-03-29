@@ -1,0 +1,90 @@
+12
+Cannot import wind forecast classes in current environment.
+Cannot import wind forecast classes in current environment.
+Cannot import wind forecast classes in current environment.
+Cannot import wind forecast classes in current environment.
+Cannot import wind forecast classes in current environment.
+Cannot import wind forecast classes in current environment.
+Cannot import wind forecast classes in current environment.
+Cannot import wind forecast classes in current environment.
+Cannot import wind forecast classes in current environment.
+Cannot import wind forecast classes in current environment.
+Cannot import wind forecast classes in current environment.
+Cannot import wind forecast classes in current environment.
+running initialize_simulations for case_ids ['baseline_controllers', 'solver_type', 'wind_preview_type', 'warm_start', 'horizon_length', 'cost_func_tuning', 'yaw_offset_study']
+regenerating wind fields
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+slurmstepd: error: *** JOB 12595285 ON c3cpu-a2-u3-1 CANCELLED AT 2025-03-29T11:18:57 ***
+slurmstepd: error: *** STEP 12595285.0 ON c3cpu-a2-u3-1 CANCELLED AT 2025-03-29T11:18:57 ***
+
+===================================================================================
+=   BAD TERMINATION OF ONE OF YOUR APPLICATION PROCESSES
+=   RANK 0 PID 1486953 RUNNING AT c3cpu-a2-u3-1
+=   KILLED BY SIGNAL: 15 (Terminated)
+===================================================================================
+
+===================================================================================
+=   BAD TERMINATION OF ONE OF YOUR APPLICATION PROCESSES
+=   RANK 1 PID 1486954 RUNNING AT c3cpu-a2-u3-1
+=   KILLED BY SIGNAL: 15 (Terminated)
+===================================================================================
+
+===================================================================================
+=   BAD TERMINATION OF ONE OF YOUR APPLICATION PROCESSES
+=   RANK 2 PID 1486955 RUNNING AT c3cpu-a2-u3-1
+=   KILLED BY SIGNAL: 15 (Terminated)
+===================================================================================
+
+===================================================================================
+=   BAD TERMINATION OF ONE OF YOUR APPLICATION PROCESSES
+=   RANK 3 PID 1486956 RUNNING AT c3cpu-a2-u3-1
+=   KILLED BY SIGNAL: 15 (Terminated)
+===================================================================================
+
+===================================================================================
+=   BAD TERMINATION OF ONE OF YOUR APPLICATION PROCESSES
+=   RANK 4 PID 1486957 RUNNING AT c3cpu-a2-u3-1
+=   KILLED BY SIGNAL: 15 (Terminated)
+===================================================================================
+
+===================================================================================
+=   BAD TERMINATION OF ONE OF YOUR APPLICATION PROCESSES
+=   RANK 5 PID 1486958 RUNNING AT c3cpu-a2-u3-1
+=   KILLED BY SIGNAL: 15 (Terminated)
+===================================================================================
+
+===================================================================================
+=   BAD TERMINATION OF ONE OF YOUR APPLICATION PROCESSES
+=   RANK 6 PID 1486959 RUNNING AT c3cpu-a2-u3-1
+=   KILLED BY SIGNAL: 15 (Terminated)
+===================================================================================
+
+===================================================================================
+=   BAD TERMINATION OF ONE OF YOUR APPLICATION PROCESSES
+=   RANK 7 PID 1486960 RUNNING AT c3cpu-a2-u3-1
+=   KILLED BY SIGNAL: 15 (Terminated)
+===================================================================================
+
+===================================================================================
+=   BAD TERMINATION OF ONE OF YOUR APPLICATION PROCESSES
+=   RANK 8 PID 1486961 RUNNING AT c3cpu-a2-u3-1
+=   KILLED BY SIGNAL: 15 (Terminated)
+===================================================================================
+
+===================================================================================
+=   BAD TERMINATION OF ONE OF YOUR APPLICATION PROCESSES
+=   RANK 9 PID 1486962 RUNNING AT c3cpu-a2-u3-1
+=   KILLED BY SIGNAL: 15 (Terminated)
+===================================================================================
+
+===================================================================================
+=   BAD TERMINATION OF ONE OF YOUR APPLICATION PROCESSES
+=   RANK 10 PID 1486963 RUNNING AT c3cpu-a2-u3-1
+=   KILLED BY SIGNAL: 15 (Terminated)
+===================================================================================
+
+===================================================================================
+=   BAD TERMINATION OF ONE OF YOUR APPLICATION PROCESSES
+=   RANK 11 PID 1486964 RUNNING AT c3cpu-a2-u3-1
+=   KILLED BY SIGNAL: 15 (Terminated)
+===================================================================================
