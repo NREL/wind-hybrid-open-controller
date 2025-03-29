@@ -131,10 +131,17 @@ class WindForecast:
             # get training data for this output
             logging.info(f"Getting training data for output {output}.")
             X_train, y_train = self._get_output_training_data(output=output, reload=False)
+            model.fit(X_train, y_train)
+            input_turbine_indices = self.cluster_turbines[self.tid2idx_mapping[tid]] 
+            X_pred = np.ascontiguousarray(training_measurements.select([f"{feat_type}_{self.idx2tid_mapping[t]}" for t in input_turbine_indices]).to_numpy()[-self.n_context:, :].flatten()[np.newaxis, :])
+            y_pred = model.predict(X_pred)
             
             # evaluate with cross-validation
             logging.info(f"Computing score for output {output}.")
-            total_score += cross_val_score(model, X_train, y_train, n_jobs=None, cv=3, scoring="neg_mean_squared_error").mean()
+            # TODO joblib.parallel_backend spawn to allow multiprocessing here
+            total_score += cross_val_score(model, X_train, y_train, n_jobs=None, cv=1, scoring="neg_mean_squared_error").mean()
+            
+            # total_score += (-mean_squared_error(y_true, y_pred))
         
         return total_score
     
@@ -963,7 +970,7 @@ class SVRForecast(WindForecast):
         model.fit(X_train, y_train)
         
         input_turbine_indices = self.cluster_turbines[self.tid2idx_mapping[tid]] 
-        output_idx = input_turbine_indices.index(self.tid2idx_mapping[tid]) 
+        # output_idx = input_turbine_indices.index(self.tid2idx_mapping[tid]) 
         X_pred = np.ascontiguousarray(training_measurements.select([f"{feat_type}_{self.idx2tid_mapping[t]}" for t in input_turbine_indices]).to_numpy()[-self.n_context:, :].flatten()[np.newaxis, :])
         y_pred = model.predict(X_pred)
         

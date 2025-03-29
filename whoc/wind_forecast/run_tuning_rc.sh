@@ -30,8 +30,8 @@ echo "=== ENVIRONMENT ==="
 module list
 
 
-# Configure how many workers to run per GPU
-NUM_WORKERS_PER_CPU=1
+
+
 # NUM_MODELS=$2
 
 # Used to track process IDs for all workers
@@ -39,6 +39,13 @@ declare -a WORKER_PIDS=()
 
 export MODEL_CONFIG="/projects/aohe7145/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/training_inputs_rc_flasc.yaml"
 export DATA_CONFIG="/projects/aohe7145/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/preprocessing_inputs_rc_flasc.yaml"
+
+# Configure how many workers to run per CPU
+NTUNERS=3
+export NTASKS_PER_TUNER=$SLURM_NTASKS / $NTUNERS
+NUM_WORKERS_PER_CPU=1
+echo $NTUNERS
+echo $NTASKS_PER_TUNER
 
 # prepare training data first
 echo "=== STARTING DATA PREPARATION ==="
@@ -60,7 +67,7 @@ echo "=== DATA PREPARATION COMPLETE ==="
 echo "=== STARTING TUNING ==="
 date +"%Y-%m-%d %H:%M:%S"
 # for m in $(seq 0 $((${NUM_MODELS}-1))); do
-for i in $(seq 0 $((${SLURM_NTASKS}-1))); do
+for i in $(seq 0 $((${NTUNERS}-1))); do
     for j in $(seq 0 $((${NUM_WORKERS_PER_CPU}-1))); do
         # The restart flag should only be set for the very first worker (i=0, j=0)
         if [ $i -eq 0 ] && [ $j -eq 0 ]; then
@@ -74,6 +81,7 @@ for i in $(seq 0 $((${SLURM_NTASKS}-1))); do
 
         # Calculate worker index for logging
         WORKER_INDEX=$((i*NUM_WORKERS_PER_CPU + j))
+        export SLURM_PROCID=${WORKER_INDEX}
 
         echo "Starting worker ${WORKER_INDEX} on GPU ${i} with seed ${WORKER_SEED}"
         
@@ -84,10 +92,11 @@ for i in $(seq 0 $((${SLURM_NTASKS}-1))); do
         nohup bash -c "
         module purge
         module load miniforge
+        module load intel impi
         # mamba init
         conda init
         conda activate wind_forecasting
-        python tuning.py \
+        mpirun -np $NTASKS_PER_TUNER python tuning.py \
             --model_config $MODEL_CONFIG \
             --data_config $DATA_CONFIG \
             --study_name "${1}_tuning" \
