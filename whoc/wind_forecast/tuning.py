@@ -119,12 +119,12 @@ if __name__ == "__main__":
                                         seed=args.seed)
                                         #  trial_protection_callback=handle_trial_with_oom_protection)
     
-    # %% TESTING LOADING HYPERPARAMETERS
-    # Test setting parameters
-    # model.set_tuned_params(storage_type=model_config["optuna"]["storage_type"], study_name_root=args.study_name, 
-    #                        journal_storage_dir=model_config["optuna"]["journal_dir"]) 
+        # %% TESTING LOADING HYPERPARAMETERS
+        # Test setting parameters
+        # model.set_tuned_params(storage_type=model_config["optuna"]["storage_type"], study_name_root=args.study_name, 
+        #                        journal_storage_dir=model_config["optuna"]["journal_dir"]) 
     
-    # %% After training completes
-    # torch.cuda.empty_cache()
-    gc.collect()
-    logging.info("Optuna hyperparameter tuning completed.")
+        # %% After training completes
+        # torch.cuda.empty_cache()
+        gc.collect()
+        logging.info("Optuna hyperparameter tuning completed.")

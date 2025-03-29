@@ -84,7 +84,8 @@ for i in $(seq 0 $((${SLURM_NTASKS}-1))); do
         nohup bash -c "
         module purge
         module load miniforge
-        conda activate wind_forecasting
+        mamba init
+        mamba activate wind_forecasting
         python tuning.py \
             --model_config $MODEL_CONFIG \
             --data_config $DATA_CONFIG \

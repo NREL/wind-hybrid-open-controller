@@ -298,18 +298,22 @@ class WindForecast:
             else:
                 X_train, y_train = self._get_training_data(historic_measurements, self.scaler[output], feat_type, tid, scale=True)
             
+            training_data_shape = (X_train.shape[0], X_train.shape[1] + 1)
             fp = np.memmap(Xy_path, dtype="float32", 
-                           mode="w+", shape=(X_train.shape[0], X_train.shape[1] + 1))
-            self.training_data_shape[output] = (X_train.shape[0], X_train.shape[1] + 1)
+                           mode="w+", shape=training_data_shape)
+            # self.training_data_shape[output] = (X_train.shape[0], X_train.shape[1] + 1)
             # self.training_data_loaded[output] = True
+            
+            np.save(Xy_path.replace(".dat", "_shape.npy"), training_data_shape)
             fp[:, :-1] = X_train
             fp[:, -1] = y_train
             fp.flush()
             logging.info(f"Saved training data to {Xy_path}")
         else:
             assert os.path.exists(Xy_path), "Must run prepare_training_data before tuning"
+            training_data_shape = tuple(np.load(Xy_path.replace(".dat", "_shape.npy")))
             fp = np.memmap(Xy_path, dtype="float32", 
-                           mode="r", shape=self.training_data_shape[output])
+                           mode="r", shape=training_data_shape)
             X_train = fp[:, :-1]
             y_train = fp[:, -1]
                
