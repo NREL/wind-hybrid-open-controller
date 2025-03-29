@@ -134,7 +134,7 @@ class WindForecast:
             
             # evaluate with cross-validation
             logging.info(f"Computing score for output {output}.")
-            total_score += cross_val_score(model, X_train, y_train, n_jobs=-1, cv=3, scoring="neg_mean_squared_error").mean()
+            total_score += cross_val_score(model, X_train, y_train, n_jobs=None, cv=3, scoring="neg_mean_squared_error").mean()
         
         return total_score
     
