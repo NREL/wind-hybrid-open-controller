@@ -64,8 +64,7 @@ for i in $(seq 0 $((${SLURM_NTASKS}-1))); do
         # srun --exclusive -n 1 --export=ALL,CUDA_VISIBLE_DEVICES=$i,SLURM_PROCID=${WORKER_INDEX},WANDB_DIR=${WANDB_DIR} \
         nohup bash -c "
         module purge
-        module load mamba
-        module load PrgEnv-intel
+        module load miniforge
         mamba activate wind_forecasting
         python tuning.py \
             --model_config /projects/aohe7145/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/training_inputs_rc_flasc.yaml \
