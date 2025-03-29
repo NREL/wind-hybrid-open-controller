@@ -102,6 +102,7 @@ if __name__ == "__main__":
     
     # %% PREPARING DATA FOR TUNING
     if args.prepare_data:
+        logging.info("Preparing data for tuning")
         model.prepare_training_data(historic_measurements=historic_measurements)
     else: 
         # %% TUNING MODEL

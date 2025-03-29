@@ -50,7 +50,7 @@ python tuning.py \
             --prepare_data \
             --model $1 \
             --seed ${WORKER_SEED}
-
+wait
 # for m in $(seq 0 $((${NUM_MODELS}-1))); do
 for i in $(seq 0 $((${SLURM_NTASKS}-1))); do
     for j in $(seq 0 $((${NUM_WORKERS_PER_CPU}-1))); do

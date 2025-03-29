@@ -275,7 +275,7 @@ class WindForecast:
     def _get_output_training_data(self, historic_measurements, output, reload):
         feat_type = re.search(f"\\w+(?=_{self.turbine_signature})", output).group()
         tid = re.search(self.turbine_signature, output).group()
-        
+        Xy_path = os.path.join(self.temp_save_dir, f"Xy_train_{output}.dat")
         if reload: 
             if isinstance(historic_measurements, Iterable):
                 X_train = []
@@ -298,15 +298,15 @@ class WindForecast:
             else:
                 X_train, y_train = self._get_training_data(historic_measurements, self.scaler[output], feat_type, tid, scale=True)
             
-            fp = np.memmap(os.path.join(self.temp_save_dir, f"Xy_train_{output}.dat"), dtype="float32", 
+            fp = np.memmap(Xy_path, dtype="float32", 
                            mode="w+", shape=(X_train.shape[0], X_train.shape[1] + 1))
             self.training_data_shape[output] = (X_train.shape[0], X_train.shape[1] + 1)
             # self.training_data_loaded[output] = True
             fp[:, :-1] = X_train
             fp[:, -1] = y_train
             fp.flush()
+            logging.info(f"Saved training data to {Xy_path}")
         else:
-            Xy_path = os.path.join(self.temp_save_dir, f"Xy_train_{output}.dat")
             assert os.path.exists(Xy_path), "Must run prepare_training_data before tuning"
             fp = np.memmap(Xy_path, dtype="float32", 
                            mode="r", shape=self.training_data_shape[output])
