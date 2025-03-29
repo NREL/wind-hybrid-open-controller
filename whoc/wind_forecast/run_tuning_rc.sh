@@ -14,7 +14,6 @@
 # salloc --account=ssc --job-name=model_tuning  --ntasks=104 --cpus-per-task=1 --time=01:00:00 --partition=debug
 # python tuning.py --config $HOME/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/training_inputs_kestrel.yaml --study_name "svr_tuning" --model "svr"
 
-module purge
 # export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CUDA_HOME/lib64
 
 # Print environment info
@@ -45,7 +44,6 @@ export DATA_CONFIG="/projects/aohe7145/toolboxes/wind_forecasting_env/wind-forec
 echo "=== STARTING DATA PREPARATION ==="
 date +"%Y-%m-%d %H:%M:%S"
 module purge
-module load miniforge
 conda activate wind_forecasting
 python tuning.py \
             --model_config $MODEL_CONFIG \
@@ -83,9 +81,9 @@ for i in $(seq 0 $((${SLURM_NTASKS}-1))); do
         # srun --exclusive -n 1 --export=ALL,CUDA_VISIBLE_DEVICES=$i,SLURM_PROCID=${WORKER_INDEX},WANDB_DIR=${WANDB_DIR} \
         nohup bash -c "
         module purge
-        module load miniforge
-        mamba init
-        mamba activate wind_forecasting
+        # module load miniforge
+        # mamba init
+        conda activate wind_forecasting
         python tuning.py \
             --model_config $MODEL_CONFIG \
             --data_config $DATA_CONFIG \
