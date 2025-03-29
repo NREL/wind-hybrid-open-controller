@@ -44,6 +44,7 @@ export DATA_CONFIG="/projects/aohe7145/toolboxes/wind_forecasting_env/wind-forec
 echo "=== STARTING DATA PREPARATION ==="
 date +"%Y-%m-%d %H:%M:%S"
 module purge
+module load miniforge
 conda init
 conda activate wind_forecasting
 python tuning.py \
@@ -82,7 +83,7 @@ for i in $(seq 0 $((${SLURM_NTASKS}-1))); do
         # srun --exclusive -n 1 --export=ALL,CUDA_VISIBLE_DEVICES=$i,SLURM_PROCID=${WORKER_INDEX},WANDB_DIR=${WANDB_DIR} \
         nohup bash -c "
         module purge
-        # module load miniforge
+        module load miniforge
         # mamba init
         conda init
         conda activate wind_forecasting
