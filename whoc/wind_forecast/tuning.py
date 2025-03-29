@@ -81,6 +81,10 @@ if __name__ == "__main__":
     true_wf = true_wf.partition_by("continuity_group")
     historic_measurements = [wf.slice(0, wf.select(pl.len()).item() - int(prediction_timedelta / wind_dt)) for wf in true_wf]
     
+    # %% PREPARING DIRECTORIES
+    os.makedirs(model_config["optuna"]["journal_dir"], exist_ok=True)
+    os.makedirs(data_config["temp_storage_dir"], exist_ok=True)
+    
     # %% INSTANTIATING MODEL
     logging.info("Instantiating model.")  
     if args.model == "svr": 
@@ -98,7 +102,6 @@ if __name__ == "__main__":
                             use_tuned_params=False,
                             temp_save_dir=data_config["temp_storage_dir"])
     
-    os.makedirs(model_config["optuna"]["journal_dir"], exist_ok=True)
     
     # %% PREPARING DATA FOR TUNING
     if args.prepare_data:
