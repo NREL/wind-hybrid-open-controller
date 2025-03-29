@@ -114,7 +114,7 @@ class WindForecast:
         elif isinstance(historic_measurements, pd.DataFrame):
             return [col for col in historic_measurements.columns if (col.startswith("ws_horz") or col.startswith("ws_vert"))]
      
-    def _tuning_objective(self, trial, historic_measurements):
+    def _tuning_objective(self, trial):
         """
         Objective function to be minimized in Optuna
         """
@@ -130,7 +130,7 @@ class WindForecast:
             
             # get training data for this output
             logging.info(f"Getting training data for output {output}.")
-            X_train, y_train = self._get_output_training_data(historic_measurements, output, reload=False)
+            X_train, y_train = self._get_output_training_data(output=output, reload=False)
             
             # evaluate with cross-validation
             logging.info(f"Computing score for output {output}.")
@@ -148,9 +148,16 @@ class WindForecast:
         Returns:
             None
         """
+        for hm in historic_measurements:
+            if hm.shape[0] < self.n_context + self.n_prediction:
+                logging.warning(f"measurements with continuity groups {list(hm["continuity_group"].unique())} have insufficient length!")
+                continue
+                
+        historic_measurements = [hm for hm in historic_measurements if hm.shape[0] >= self.n_context + self.n_prediction]
+        
         # For each output, prepare the training data
         for output in self.outputs:
-            self._get_output_training_data(historic_measurements, output, reload=True)
+            self._get_output_training_data(historic_measurements=historic_measurements, output=output, reload=True)
      
     # def tune_hyperparameters_single(self, historic_measurements, scaler, feat_type, tid, study_name, seed, restart_tuning, storage_type, journal_storage_dir, n_trials=1):
     def tune_hyperparameters_single(self, historic_measurements, study_name, seed, restart_tuning, storage_type, journal_storage_dir, n_trials=1):
@@ -184,14 +191,7 @@ class WindForecast:
         
         logging.info(f"Worker {worker_id}: Optimizing Optuna study {study_name}.")
         
-        for hm in historic_measurements:
-            if hm.shape[0] < self.n_context + self.n_prediction:
-                logging.warning(f"measurements with continuity groups {list(hm["continuity_group"].unique())} have insufficient length!")
-                continue
-                
-        historic_measurements = [hm for hm in historic_measurements if hm.shape[0] >= self.n_context + self.n_prediction]
-        
-        objective_fn = partial(self._tuning_objective, historic_measurements=historic_measurements)
+        objective_fn = self._tuning_objective
         
         try:
             study.optimize(objective_fn, n_trials=n_trials, show_progress_bar=True)
@@ -272,11 +272,12 @@ class WindForecast:
             )
         return storage
      
-    def _get_output_training_data(self, historic_measurements, output, reload):
+    def _get_output_training_data(self, output, reload, historic_measurements=None):
         feat_type = re.search(f"\\w+(?=_{self.turbine_signature})", output).group()
         tid = re.search(self.turbine_signature, output).group()
         Xy_path = os.path.join(self.temp_save_dir, f"Xy_train_{output}.dat")
         if reload: 
+            assert historic_measurements, "Must provide historic measurements to reload data in _get_output_training_data"
             if isinstance(historic_measurements, Iterable):
                 X_train = []
                 y_train = []
