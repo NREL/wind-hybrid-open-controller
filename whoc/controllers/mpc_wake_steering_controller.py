@@ -1309,9 +1309,9 @@ class MPC(ControllerBase):
             self.target_controls_dict["yaw_angles"] = np.rint(np.mod(self.target_controls_dict["yaw_angles"], 360) / self.yaw_increment) * self.yaw_increment
             
         lower_dyn_bounds = np.array(self.target_controls_dict["yaw_angles"])
-        lower_dyn_bounds[self.dir_setpoint_change >= 0] = -np.infty
+        lower_dyn_bounds[self.dir_setpoint_change >= 0] = -np.inf
         upper_dyn_bounds = np.array(self.target_controls_dict["yaw_angles"])
-        upper_dyn_bounds[self.dir_setpoint_change < 0] = np.infty
+        upper_dyn_bounds[self.dir_setpoint_change < 0] = np.inf
         
         self.controls_dict["yaw_angles"] = np.mod(np.clip(
                             self.controls_dict["yaw_angles"] + (self.yaw_rate * self.simulation_dt * self.dir_setpoint_change),
