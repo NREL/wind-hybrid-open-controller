@@ -29,8 +29,7 @@ echo "SLURM_NTASKS_PER_NODE=${SLURM_NTASKS_PER_NODE}"
 
 echo "=== ENVIRONMENT ==="
 module list
-echo "=== STARTING TUNING ==="
-date +"%Y-%m-%d %H:%M:%S"
+
 
 # Configure how many workers to run per GPU
 NUM_WORKERS_PER_CPU=1
@@ -43,6 +42,8 @@ export MODEL_CONFIG="/projects/aohe7145/toolboxes/wind_forecasting_env/wind-fore
 export DATA_CONFIG="/projects/aohe7145/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/preprocessing_inputs_rc_flasc.yaml"
 
 # prepare training data first
+echo "=== STARTING DATA PREPARATION ==="
+date +"%Y-%m-%d %H:%M:%S"
 module purge
 module load miniforge
 mamba activate wind_forecasting
@@ -54,6 +55,10 @@ python tuning.py \
             --model $1 \
             --seed ${WORKER_SEED}
 wait
+echo "=== DATA PREPARATION COMPLETE ==="
+
+echo "=== STARTING TUNING ==="
+date +"%Y-%m-%d %H:%M:%S"
 # for m in $(seq 0 $((${NUM_MODELS}-1))); do
 for i in $(seq 0 $((${SLURM_NTASKS}-1))); do
     for j in $(seq 0 $((${NUM_WORKERS_PER_CPU}-1))); do
