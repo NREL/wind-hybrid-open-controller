@@ -43,6 +43,9 @@ export MODEL_CONFIG="/projects/aohe7145/toolboxes/wind_forecasting_env/wind-fore
 export DATA_CONFIG="/projects/aohe7145/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/preprocessing_inputs_rc_flasc.yaml"
 
 # prepare training data first
+module purge
+module load miniforge
+mamba activate wind_forecasting
 python tuning.py \
             --model_config $MODEL_CONFIG \
             --data_config $DATA_CONFIG \
