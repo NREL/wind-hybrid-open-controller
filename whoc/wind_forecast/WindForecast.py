@@ -105,7 +105,7 @@ class WindForecast:
         self.idx2tid_mapping = dict([(v, k) for k, v in self.tid2idx_mapping.items()])
         
         self.outputs = [f"ws_horz_{tid}" for tid in self.tid2idx_mapping] + [f"ws_vert_{tid}" for tid in self.tid2idx_mapping]
-        self.training_data_loaded = {output: False for output in self.outputs}
+        # self.training_data_loaded = {output: False for output in self.outputs}
         self.training_data_shape = {output: None for output in self.outputs}
         
     def _get_ws_cols(self, historic_measurements: Union[pl.DataFrame, pd.DataFrame]):
@@ -130,7 +130,7 @@ class WindForecast:
             
             # get training data for this output
             logging.info(f"Getting training data for output {output}.")
-            X_train, y_train = self._get_output_training_data(historic_measurements, output)
+            X_train, y_train = self._get_output_training_data(historic_measurements, output, reload=False)
             
             # evaluate with cross-validation
             logging.info(f"Computing score for output {output}.")
@@ -138,6 +138,20 @@ class WindForecast:
         
         return total_score
     
+    def prepare_training_data(self, historic_measurements):
+        """
+        Prepares the training data for each output based on the historic measurements.
+        
+        Args:
+            historic_measurements (Union[pd.DataFrame, pl.DataFrame]): The historical measurements to use for training.
+        
+        Returns:
+            None
+        """
+        # For each output, prepare the training data
+        for output in self.outputs:
+            self._get_output_training_data(historic_measurements, output, reload=True)
+     
     # def tune_hyperparameters_single(self, historic_measurements, scaler, feat_type, tid, study_name, seed, restart_tuning, storage_type, journal_storage_dir, n_trials=1):
     def tune_hyperparameters_single(self, historic_measurements, study_name, seed, restart_tuning, storage_type, journal_storage_dir, n_trials=1):
         # for case when argument is list of multiple continuous time series AND to only get the training inputs/outputs relevant to this model
@@ -258,16 +272,11 @@ class WindForecast:
             )
         return storage
      
-    def _get_output_training_data(self, historic_measurements, output):
+    def _get_output_training_data(self, historic_measurements, output, reload):
         feat_type = re.search(f"\\w+(?=_{self.turbine_signature})", output).group()
         tid = re.search(self.turbine_signature, output).group()
         
-        if self.training_data_loaded[output]:
-            fp = np.memmap(os.path.join(self.temp_save_dir, f"Xy_train_{output}.dat"), dtype="float32", 
-                           mode="r", shape=self.training_data_shape[output])
-            X_train = fp[:, :-1]
-            y_train = fp[:, -1]
-        else: 
+        if reload: 
             if isinstance(historic_measurements, Iterable):
                 X_train = []
                 y_train = []
@@ -292,11 +301,18 @@ class WindForecast:
             fp = np.memmap(os.path.join(self.temp_save_dir, f"Xy_train_{output}.dat"), dtype="float32", 
                            mode="w+", shape=(X_train.shape[0], X_train.shape[1] + 1))
             self.training_data_shape[output] = (X_train.shape[0], X_train.shape[1] + 1)
-            self.training_data_loaded[output] = True
+            # self.training_data_loaded[output] = True
             fp[:, :-1] = X_train
             fp[:, -1] = y_train
             fp.flush()
-            
+        else:
+            Xy_path = os.path.join(self.temp_save_dir, f"Xy_train_{output}.dat")
+            assert os.path.exists(Xy_path), "Must run prepare_training_data before tuning"
+            fp = np.memmap(Xy_path, dtype="float32", 
+                           mode="r", shape=self.training_data_shape[output])
+            X_train = fp[:, :-1]
+            y_train = fp[:, -1]
+               
         del fp
         return X_train, y_train
     

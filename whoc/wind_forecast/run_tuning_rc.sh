@@ -40,6 +40,17 @@ NUM_WORKERS_PER_CPU=1
 # Used to track process IDs for all workers
 declare -a WORKER_PIDS=()
 
+export MODEL_CONFIG="/projects/aohe7145/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/training_inputs_rc_flasc.yaml"
+export DATA_CONFIG="/projects/aohe7145/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/preprocessing_inputs_rc_flasc.yaml"
+
+# prepare training data first
+python tuning.py \
+            --model_config $MODEL_CONFIG \
+            --data_config $DATA_CONFIG \
+            --study_name "${1}_tuning" \
+            --model $1 \
+            --seed ${WORKER_SEED}
+
 # for m in $(seq 0 $((${NUM_MODELS}-1))); do
 for i in $(seq 0 $((${SLURM_NTASKS}-1))); do
     for j in $(seq 0 $((${NUM_WORKERS_PER_CPU}-1))); do
@@ -67,8 +78,8 @@ for i in $(seq 0 $((${SLURM_NTASKS}-1))); do
         module load miniforge
         mamba activate wind_forecasting
         python tuning.py \
-            --model_config /projects/aohe7145/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/training_inputs_rc_flasc.yaml \
-            --data_config /projects/aohe7145/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/preprocessing_inputs_rc_flasc.yaml \
+            --model_config $MODEL_CONFIG \
+            --data_config $DATA_CONFIG \
             --study_name "${1}_tuning" \
             --model $1 \
             --seed ${WORKER_SEED} \

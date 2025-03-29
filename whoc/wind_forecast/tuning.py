@@ -20,6 +20,7 @@ if __name__ == "__main__":
     parser.add_argument("-mcnf", "--model_config", type=str)
     parser.add_argument("-dcnf", "--data_config", type=str)
     parser.add_argument("-sn", "--study_name", type=str)
+    parser.add_argument("-pd", "--prepare_data", action="store_true")
     parser.add_argument("-rt", "--restart_tuning", action="store_true")
     parser.add_argument("-s", "--seed", type=int, help="Seed for random number generator", default=42)
     parser.add_argument("-m", "--model", type=str, choices=["svr", "kf", "preview", "informer", "autoformer", "spacetimeformer"], required=True)
@@ -99,16 +100,20 @@ if __name__ == "__main__":
     
     os.makedirs(model_config["optuna"]["journal_dir"], exist_ok=True)
     
-    # %% TUNING MODEL
-    logging.info("Running tune_hyperparameters_multi")
-    model.tune_hyperparameters_single(historic_measurements=historic_measurements, 
-                                     study_name=args.study_name,
-                                     storage_type=model_config["optuna"]["storage_type"],
-                                     n_trials=model_config["optuna"]["n_trials"], 
-                                     journal_storage_dir=model_config["optuna"]["journal_dir"],
-                                     restart_tuning=args.restart_tuning,
-                                     seed=args.seed)
-                                    #  trial_protection_callback=handle_trial_with_oom_protection)
+    # %% PREPARING DATA FOR TUNING
+    if args.prepare_data:
+        model.prepare_training_data(historic_measurements=historic_measurements)
+    else: 
+        # %% TUNING MODEL
+        logging.info("Running tune_hyperparameters_multi")
+        model.tune_hyperparameters_single(historic_measurements=historic_measurements, 
+                                        study_name=args.study_name,
+                                        storage_type=model_config["optuna"]["storage_type"],
+                                        n_trials=model_config["optuna"]["n_trials"], 
+                                        journal_storage_dir=model_config["optuna"]["journal_dir"],
+                                        restart_tuning=args.restart_tuning,
+                                        seed=args.seed)
+                                        #  trial_protection_callback=handle_trial_with_oom_protection)
     
     # %% TESTING LOADING HYPERPARAMETERS
     # Test setting parameters
