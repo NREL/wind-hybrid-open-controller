@@ -104,18 +104,8 @@ class GreedyController(ControllerBase):
         #     logging.info(f"self._last_measured_time == {self._last_measured_time}")
         #     logging.info(f"self.measurements_dict['time'] == {self.measurements_dict['time']}")
 
-        self._last_measured_time = self.measurements_dict["time"]
+        self.current_time = self._last_measured_time = self.measurements_dict["time"]
 
-        self.current_time = self.measurements_dict["time"]
-
-        # if current_time < 2 * self.simulation_dt:
-        
-        if len(self.measurements_dict["wind_directions"]) == 0 or np.all(np.isclose(self.measurements_dict["wind_directions"], 0)):
-            # yaw angles will be set to initial values
-            if self.verbose:
-                logging.info("Bad wind direction measurement received, reverting to previous measurement.")
-        
-        # elif (abs((self.current_time - self.init_time).total_seconds() % self.simulation_dt) == 0.0):
         # current_wind_directions = np.broadcast_to(self.wind_dir_ts[int(self.current_time // self.simulation_dt)], (self.n_turbines,))
         if self.wf_source == "floris":
             current_wind_directions = self.measurements_dict["wind_directions"]
@@ -131,6 +121,11 @@ class GreedyController(ControllerBase):
                     current_ws_vert
                 )
             )
+        
+        if len(self.measurements_dict["wind_directions"]) == 0 or np.all(np.isclose(self.measurements_dict["wind_directions"], 0)):
+            # yaw angles will be set to initial values
+            if self.verbose:
+                logging.info("Bad wind direction measurement received, reverting to previous measurement.")
         
         # pass greedy angles to all non target turbines
         current_nd_cos = np.cos(np.deg2rad(current_wind_directions))
@@ -154,11 +149,11 @@ class GreedyController(ControllerBase):
         current_measurements = current_measurements.assign(time=self.current_time)
         
         # only get wind_dirs corresponding to target_turbine_ids
-        if self.wf_source == "scada" and self.target_turbine_indices != "all":
-            current_wind_directions = current_wind_directions[self.sorted_tids]
+        current_wind_directions = current_wind_directions[self.sorted_tids]
         
         if self.use_filt or self.wind_forecast:
-            self.historic_measurements = pd.concat([self.historic_measurements, current_measurements], axis=0).iloc[-int(np.ceil(self.lpf_time_const // self.simulation_dt) * 1e3):]
+            self.historic_measurements = pd.concat([self.historic_measurements, 
+                                                    current_measurements], axis=0).iloc[-int(np.ceil(self.lpf_time_const // self.simulation_dt) * 1e3):]
         
         # NOTE: this is run every simulation_dt, not every controller_dt, because the yaw angle may be moving gradually towards the correct setpoint
         
@@ -167,7 +162,7 @@ class GreedyController(ControllerBase):
          
         # if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
         if self.current_time < self.lpf_start_time or not self.use_filt:
-            wind = forecasted_wind_field.iloc[-1] if self.wind_forecast else current_measurements
+            wind = forecasted_wind_field.iloc[-1] if self.wind_forecast else current_measurements.iloc[0]
             wind_dirs = 180.0 + np.rad2deg(np.arctan2(
                 wind[self.mean_ws_horz_cols].values.astype(float), 
                 wind[self.mean_ws_vert_cols].values.astype(float)))
@@ -205,8 +200,7 @@ class GreedyController(ControllerBase):
                     logging.info(f"filtered current wind directions = {wind_dirs[-1, self.sorted_tids]}")
             
         # only get wind_dirs corresponding to target_turbine_ids
-        if self.target_turbine_indices != "all":
-            wind_dirs = wind_dirs[self.sorted_tids]
+        wind_dirs = wind_dirs[self.sorted_tids]
             
         current_yaw_setpoints = self.controls_dict["yaw_angles"]
 
@@ -219,10 +213,10 @@ class GreedyController(ControllerBase):
 
         new_yaw_setpoints = np.array(current_yaw_setpoints)
 
-        target_yaw_setpoints = np.mod(np.rint(wind_dirs / self.yaw_increment) * self.yaw_increment, 360.0)
-
         if (((self.current_time - self.init_time).total_seconds() % self.controller_dt) == 0.0):
+            
             # change the turbine yaw setpoints that have surpassed the threshold difference AND are not already yawing towards a previous setpoint
+            target_yaw_setpoints = np.mod(np.rint(wind_dirs / self.yaw_increment) * self.yaw_increment, 360.0)
             setpoint_change = target_yaw_setpoints - current_yaw_setpoints
             abs_setpoint_change = np.vstack([np.abs(setpoint_change), 360.0 - np.abs(setpoint_change)]) 
             setpoint_change_idx = np.argmin(abs_setpoint_change, axis=0) # if == 0, need to change within 360 deg, otherwise if == 1 faster to cross 360/0 boundary

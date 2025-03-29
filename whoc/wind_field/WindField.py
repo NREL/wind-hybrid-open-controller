@@ -213,6 +213,8 @@ class WindField:
             # gc.collect(wind_preview_distribution_params[key])
             
         for key in ["cov_u", "cov_v"]:
+            # time_series_dt is the number of simulation_dt time steps in controller_dt
+            # n_preview_steps is the number of simulation_d ttime steps in the horizon length 
             short_wind_preview_distribution_params[key] = np.array(wind_preview_distribution_params[key][:(self.n_preview_steps + self.preview_dt):self.time_series_dt, :(self.n_preview_steps + self.preview_dt):self.time_series_dt])
             # del wind_preview_distribution_params[key]
         
@@ -433,6 +435,7 @@ def generate_wind_ts(wf, from_gaussian, case_idx, save_dir, save_name="", init_s
         freestream_wind_speed_v = np.array(wf._generate_freestream_wind_speed_v_ts())
     
     time = np.arange(freestream_wind_speed_u.shape[1]) * wf.simulation_dt
+    time = pd.to_timedelta(time, unit="s") + pd.to_datetime("2025-01-01")
     # define noise preview
     # compute freestream wind direction angle from above, clockwise from north
     dir_preview = (180.0 + np.rad2deg(np.arctan2(freestream_wind_speed_u, freestream_wind_speed_v))) % 360.0
@@ -440,7 +443,7 @@ def generate_wind_ts(wf, from_gaussian, case_idx, save_dir, save_name="", init_s
     
     # save case raw_data as dataframe
     wind_field_data = {
-        "Time": np.tile(time, wf.n_samples_per_init_seed),
+        "time": np.tile(time, wf.n_samples_per_init_seed),
         "WindSeed": [init_seed] * len(time) * wf.n_samples_per_init_seed,
         "WindSample": np.repeat(np.arange(wf.n_samples_per_init_seed), len(time)),
         "FreestreamWindSpeedU": freestream_wind_speed_u.flatten(),
@@ -696,11 +699,13 @@ if __name__ == '__main__':
 
     input_dict = load_yaml(os.path.join(os.path.dirname(whoc.__file__), "../examples/hercules_input_001.yaml"))
     input_dict["controller"]["n_wind_preview_samples"] = 100
-
+    input_dict["controller"]["controller_dt"] = 15
+    input_dict["controller"]["n_horizon"] = 24
+    
     wind_field_config["simulation_max_time"] = 3600
-    wind_field_config["simulation_sampling_time"] = input_dict["dt"]
-    wind_field_config["n_preview_steps"] = int(input_dict["hercules_comms"]["helics"]["config"]["stoptime"] / input_dict["dt"]) + input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
-    wind_field_config["preview_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"])
+    wind_field_config["simulation_sampling_time"] = input_dict["simulation_dt"]
+    wind_field_config["n_preview_steps"] = int(wind_field_config["simulation_max_time"] / input_dict["simulation_dt"]) + input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["controller_dt"] / input_dict["simulation_dt"])
+    wind_field_config["preview_dt"] = int(input_dict["controller"]["controller_dt"] / input_dict["simulation_dt"])
     wind_field_config["regenerate_distribution_params"] = False
     wind_field_config["distribution_params_path"] = os.path.join(os.path.dirname(whoc.__file__), "..", "examples", "floris_case_studies", "wind_field_data", "wind_preview_distribution_params.pkl")  
 
@@ -715,6 +720,7 @@ if __name__ == '__main__':
     if not len(wind_field_filenames) or regenerate_wind_field:
         # generate_multi_wind_ts(wind_field_config, save_name="short_", seed=seed)
         wind_field_config["regenerate_distribution_params"] = True
+        # wind_field_config["n_preview_steps"] = int(wind_field_config["simulation_max_time"] / input_dict["simulation_dt"]) # TODO remove
         wind_field_config["n_samples_per_init_seed"] = 1
         wind_field_config["time_series_dt"] = 1
         full_wf = WindField(**wind_field_config)
@@ -726,7 +732,7 @@ if __name__ == '__main__':
     wind_field_data = []
     if os.path.exists(wind_field_dir):
         for fn in wind_field_filenames:
-            wind_field_data.append(pd.read_csv(os.path.join(wind_field_dir, fn), index_col=0))
+            wind_field_data.append(pd.read_csv(os.path.join(wind_field_dir, fn), index_col=0, parse_dates=["time"]))
     
     plot_ts(pd.concat(wind_field_data), wind_field_dir)
     # plt.savefig(os.path.join(wind_field_config["fig_dir"], "wind_field_ts.png"))
@@ -737,12 +743,18 @@ if __name__ == '__main__':
     wind_u_ts = wind_field_data[case_idx]["FreestreamWindSpeedU"].to_numpy()
     wind_v_ts = wind_field_data[case_idx]["FreestreamWindSpeedV"].to_numpy()
 
-    wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["dt"] / input_dict["dt"])
-    wind_field_config["time_series_dt"] = int(input_dict["controller"]["dt"] / input_dict["dt"])
+    wind_field_config["n_preview_steps"] = input_dict["controller"]["n_horizon"] * int(input_dict["controller"]["controller_dt"] / input_dict["simulation_dt"])
+    wind_field_config["time_series_dt"] = int(input_dict["controller"]["controller_dt"] / input_dict["simulation_dt"])
     wind_field_config["n_samples_per_init_seed"] = input_dict["controller"]["n_wind_preview_samples"]
     wind_field_config["regenerate_distribution_params"] = False
+    
+    # if False:
     preview_wf = WindField(**wind_field_config)
     stochastic_wind_preview_func = partial(generate_wind_preview, wf=preview_wf, wind_preview_generator=preview_wf._sample_wind_preview)
+    # else:
+    #     wind_field_config["time_series_dt"] = 1
+    #     preview_wf = WindField(**wind_field_config)
+    #     stochastic_wind_preview_func = partial(generate_wind_preview, wf=preview_wf, wind_preview_generator=preview_wf._sample_wind_preview)
             
     def persistent_wind_preview_func(current_freestream_measurements, time_step):
         wind_preview_data = defaultdict(list)
@@ -756,7 +768,7 @@ if __name__ == '__main__':
     def perfect_wind_preview_func(current_freestream_measurements, time_step):
         wind_preview_data = defaultdict(list)
         for j in range(input_dict["controller"]["n_horizon"] + 1):
-            delta_k = j * int(input_dict["controller"]["dt"] // input_dict["dt"])
+            delta_k = j * int(input_dict["controller"]["controller_dt"] // input_dict["simulation_dt"])
             wind_preview_data[f"FreestreamWindMag_{j}"] += [wind_mag_ts[time_step + delta_k]]
             wind_preview_data[f"FreestreamWindDir_{j}"] += [wind_dir_ts[time_step + delta_k]]
             wind_preview_data[f"FreestreamWindSpeedU_{j}"] += [wind_u_ts[time_step + delta_k]]
@@ -769,16 +781,16 @@ if __name__ == '__main__':
         wind_mag_ts[idx] * np.cos(np.deg2rad(wind_dir_ts[idx] + 180.))
     ]
 
-    n_time_steps = (input_dict["controller"]["n_horizon"] + 1) * int(input_dict["controller"]["dt"] // input_dict["dt"])
-    preview_dt = int(input_dict["controller"]["dt"] // input_dict["dt"])
+    n_time_steps = (input_dict["controller"]["n_horizon"] + 1) * int(input_dict["controller"]["controller_dt"] // input_dict["simulation_dt"])
+    preview_dt = int(input_dict["controller"]["controller_dt"] // input_dict["simulation_dt"])
 
     tmp = perfect_wind_preview_func(current_freestream_measurements, idx)
     perfect_preview = {}
     perfect_preview["WindSeed"] = [1] * 2 * n_time_steps
     perfect_preview["Wind Speed"] \
-        = np.concatenate([tmp[f"FreestreamWindSpeedU_{j}"] + [np.nan] * (int((input_dict["controller"]["dt"] - input_dict["dt"]) // input_dict["dt"])) 
+        = np.concatenate([tmp[f"FreestreamWindSpeedU_{j}"] + [np.nan] * (int((input_dict["controller"]["controller_dt"] - input_dict["simulation_dt"]) // input_dict["simulation_dt"])) 
                                   for j in range(input_dict["controller"]["n_horizon"] + 1)] \
-        + [tmp[f"FreestreamWindSpeedV_{j}"] + [np.nan] * (int((input_dict["controller"]["dt"] - input_dict["dt"]) // input_dict["dt"])) 
+        + [tmp[f"FreestreamWindSpeedV_{j}"] + [np.nan] * (int((input_dict["controller"]["controller_dt"] - input_dict["simulation_dt"]) // input_dict["simulation_dt"])) 
                                    for j in range(input_dict["controller"]["n_horizon"] + 1)])
     perfect_preview["Wind Component"] = ["U"] * n_time_steps + ["V"] * n_time_steps
 
@@ -786,12 +798,13 @@ if __name__ == '__main__':
     persistent_preview = {}
     persistent_preview["WindSeed"] = [1] * 2 * n_time_steps
     persistent_preview["Wind Speed"] \
-        = np.concatenate([tmp[f"FreestreamWindSpeedU_{j}"] + [np.nan] * (int((input_dict["controller"]["dt"] - input_dict["dt"]) // input_dict["dt"])) 
+        = np.concatenate([tmp[f"FreestreamWindSpeedU_{j}"] + [np.nan] * (int((input_dict["controller"]["controller_dt"] - input_dict["simulation_dt"]) // input_dict["simulation_dt"])) 
                                   for j in range(input_dict["controller"]["n_horizon"] + 1)] \
-        + [tmp[f"FreestreamWindSpeedV_{j}"] + [np.nan] * (int((input_dict["controller"]["dt"] - input_dict["dt"]) // input_dict["dt"])) 
+        + [tmp[f"FreestreamWindSpeedV_{j}"] + [np.nan] * (int((input_dict["controller"]["controller_dt"] - input_dict["simulation_dt"]) // input_dict["simulation_dt"])) 
                                    for j in range(input_dict["controller"]["n_horizon"] + 1)])
     persistent_preview["Wind Component"] = ["U"] * n_time_steps + ["V"] * n_time_steps
 
+    
     tmp = stochastic_wind_preview_func(current_freestream_measurements=current_freestream_measurements, simulation_time_step=idx, include_uv=True)
     stochastic_preview = {}
     stochastic_preview["WindSeed"] = np.repeat(np.arange(input_dict["controller"]["n_wind_preview_samples"]) + 1, (2 * (n_time_steps),))
@@ -800,17 +813,17 @@ if __name__ == '__main__':
     # stochastic_preview["Wind Speed"] = [tmp[f"FreestreamWindSpeedU_{j}"][m] for m in range(input_dict["controller"]["n_wind_preview_samples"]) for j in range(n_time_steps)] \
     # 	+ [tmp[f"FreestreamWindSpeedV_{j}"][m] for m in range(input_dict["controller"]["n_wind_preview_samples"]) for j in range(n_time_steps)]
     stochastic_preview["Wind Speed"] \
-        = np.concatenate([np.concatenate([[tmp[f"FreestreamWindSpeedU"][m, j]] + [np.nan] * (int((input_dict["controller"]["dt"] - input_dict["dt"]) // input_dict["dt"])) 
+        = np.concatenate([np.concatenate([[tmp[f"FreestreamWindSpeedU"][m, j]] + [np.nan] * (int((input_dict["controller"]["controller_dt"] - input_dict["simulation_dt"]) // input_dict["simulation_dt"])) 
                                    for j in range(input_dict["controller"]["n_horizon"] + 1)] \
-        + [[tmp[f"FreestreamWindSpeedV"][m, j]] + [np.nan] * (int((input_dict["controller"]["dt"] - input_dict["dt"]) // input_dict["dt"])) 
+        + [[tmp[f"FreestreamWindSpeedV"][m, j]] + [np.nan] * (int((input_dict["controller"]["controller_dt"] - input_dict["simulation_dt"]) // input_dict["simulation_dt"])) 
                                      for j in range(input_dict["controller"]["n_horizon"] + 1)]) for m in range(input_dict["controller"]["n_wind_preview_samples"])])
     
     stochastic_preview["Wind Component"] = np.concatenate([["U"] * n_time_steps + ["V"] * n_time_steps for m in range(input_dict["controller"]["n_wind_preview_samples"])])
     # stochastic_preview = pd.DataFrame(stochastic_preview)
 
-    perfect_preview["Time"] = persistent_preview["Time"] = np.tile(np.arange(n_time_steps), (2, )) *  input_dict["dt"]
+    perfect_preview["Time"] = persistent_preview["Time"] = np.tile(np.arange(n_time_steps), (2, )) * input_dict["simulation_dt"]
     
-    stochastic_preview["Time"] = np.tile(np.arange(n_time_steps) * input_dict["dt"], (2 * input_dict["controller"]["n_wind_preview_samples"],))
+    stochastic_preview["Time"] = np.tile(np.arange(n_time_steps) * input_dict["simulation_dt"], (2 * input_dict["controller"]["n_wind_preview_samples"],))
     
     perfect_preview = pd.DataFrame(perfect_preview)
     perfect_preview["Data Type"] = ["Preview"] * len(perfect_preview.index)
@@ -818,9 +831,9 @@ if __name__ == '__main__':
     tmp["Data Type"] = ["True"] * len(tmp.index)
     # tmp["Wind Speed"] = [wind_u_ts[k] for k in range(n_time_steps)] + [wind_v_ts[k] for k in range(n_time_steps)]
     tmp["Wind Speed"] \
-        = np.concatenate([[wind_u_ts[k]] + [np.nan] * (int((input_dict["controller"]["dt"] - input_dict["dt"]) // input_dict["dt"])) 
+        = np.concatenate([[wind_u_ts[k]] + [np.nan] * (int((input_dict["controller"]["controller_dt"] - input_dict["simulation_dt"]) // input_dict["simulation_dt"])) 
                                   for k in range(0, n_time_steps, preview_dt)] \
-        + [[wind_v_ts[k]] + [np.nan] * (int((input_dict["controller"]["dt"] - input_dict["dt"]) // input_dict["dt"])) 
+        + [[wind_v_ts[k]] + [np.nan] * (int((input_dict["controller"]["controller_dt"] - input_dict["simulation_dt"]) // input_dict["simulation_dt"])) 
                                   for k in range(0, n_time_steps, preview_dt)])
     perfect_preview = pd.concat([perfect_preview, tmp])
 
@@ -830,9 +843,9 @@ if __name__ == '__main__':
     tmp["Data Type"] = ["True"] * len(tmp.index)
     # tmp["Wind Speed"] = [wind_u_ts[k] for k in range(n_time_steps)] + [wind_v_ts[k] for k in range(n_time_steps)]
     tmp["Wind Speed"] \
-        = np.concatenate([[wind_u_ts[k]] + [np.nan] * (int((input_dict["controller"]["dt"] - input_dict["dt"]) // input_dict["dt"])) 
+        = np.concatenate([[wind_u_ts[k]] + [np.nan] * (int((input_dict["controller"]["controller_dt"] - input_dict["simulation_dt"]) // input_dict["simulation_dt"])) 
                                   for k in range(0, n_time_steps, preview_dt)] \
-        + [[wind_v_ts[k]] + [np.nan] * (int((input_dict["controller"]["dt"] - input_dict["dt"]) // input_dict["dt"])) 
+        + [[wind_v_ts[k]] + [np.nan] * (int((input_dict["controller"]["controller_dt"] - input_dict["simulation_dt"]) // input_dict["simulation_dt"])) 
                                   for k in range(0, n_time_steps, preview_dt)])
     persistent_preview = pd.concat([persistent_preview, tmp])
 
@@ -842,9 +855,9 @@ if __name__ == '__main__':
     tmp["Data Type"] = ["True"] * len(tmp.index)
     # tmp["Wind Speed"] = [wind_u_ts[k] for k in range(n_time_steps)] + [wind_v_ts[k] for k in range(n_time_steps)]
     tmp["Wind Speed"] \
-        = np.concatenate([[wind_u_ts[k]] + [np.nan] * (int((input_dict["controller"]["dt"] - input_dict["dt"]) // input_dict["dt"])) 
+        = np.concatenate([[wind_u_ts[k]] + [np.nan] * (int((input_dict["controller"]["controller_dt"] - input_dict["simulation_dt"]) // input_dict["simulation_dt"])) 
                                   for k in range(0, n_time_steps, preview_dt)] \
-        + [[wind_v_ts[k]] + [np.nan] * (int((input_dict["controller"]["dt"] - input_dict["dt"]) // input_dict["dt"])) 
+        + [[wind_v_ts[k]] + [np.nan] * (int((input_dict["controller"]["controller_dt"] - input_dict["simulation_dt"]) // input_dict["simulation_dt"])) 
                                   for k in range(0, n_time_steps, preview_dt)])
     
     stochastic_preview = pd.concat([stochastic_preview, tmp])
@@ -867,37 +880,42 @@ if __name__ == '__main__':
 
     # different hues for u vs k, different style for true vs preview
     # TODO
-    fig = plt.figure()
+    fig = plt.figure(figsize=(7.7, 5.86))
     ax = sns.lineplot(data=perfect_preview.loc[perfect_preview["Data Type"] == "True", :], x="Time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[1, 0]])
     ax = sns.lineplot(data=perfect_preview.loc[perfect_preview["Data Type"] == "Preview", :], x="Time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[4, 4]], marker="o")
-    ax.set(xlabel="Time [s]", ylabel="Wind Speed [m/s]", xlim=(0, int(wind_field_config["n_preview_steps"] * input_dict["dt"])))
-    ax.set_xticks(np.arange(0, int(n_time_steps * input_dict["dt"]), int(input_dict["controller"]["dt"])))
+    ax.set(xlabel="Time [s]", ylabel="Wind Speed [m/s]", xlim=(0, int(wind_field_config["n_preview_steps"] * input_dict["simulation_dt"])))
+    ax.set_xticks(np.arange(0, int(n_time_steps * input_dict["simulation_dt"]), int(60)))
     h, l = ax.get_legend_handles_labels()
     ax.legend(h[:5] + h[9:], l[:5] + l[9:])
     fig.savefig(os.path.join(wind_field_dir, f'perfect_preview.png'))
     
     # plt.legend(labels=["Preview, U", "Preview, V", "True, U", "True, V"])
     
-    fig = plt.figure()
+    fig = plt.figure(figsize=(7.7, 5.86))
     ax = sns.lineplot(data=persistent_preview.loc[persistent_preview["Data Type"] == "True", :], x="Time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[1, 0]])
     ax = sns.lineplot(data=persistent_preview.loc[persistent_preview["Data Type"] == "Preview", :], x="Time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[4, 4]], marker="o")
-    ax.set(xlabel="Time [s]", ylabel="Wind Speed [m/s]", xlim=(0, int(wind_field_config["n_preview_steps"] * input_dict["dt"])))
-    ax.set_xticks(np.arange(0, int(n_time_steps * input_dict["dt"]), int(input_dict["controller"]["dt"])))
+    ax.set(xlabel="Time [s]", ylabel="Wind Speed [m/s]", xlim=(0, int(wind_field_config["n_preview_steps"] * input_dict["simulation_dt"])))
+    ax.set_xticks(np.arange(0, int(n_time_steps * input_dict["simulation_dt"]), int(60)))
     h, l = ax.get_legend_handles_labels()
     ax.legend(h[:5] + h[9:], l[:5] + l[9:])
     fig.savefig(os.path.join(wind_field_dir, f'persistent_preview.png'))
     # sns.scatterplot(data=persistent_preview.loc[perfect_preview["Data Type"] == "Preview", :], x="Time", y="Wind Speed", zorder=7)
     # plt.legend(labels=["Preview, U", "Preview, V", "True, U", "True, V"])
 
-
     # stochastic_preview.loc[(stochastic_preview["Data Type"] == "Preview") & (stochastic_preview["Wind Component"] == "U"), "Wind Speed"].dropna()
-    fig = plt.figure()
+    fig = plt.figure(figsize=(7.7, 5.86))
     # sns.lineplot(data=stochastic_preview.loc[stochastic_preview["Sample"] == 1, :], x="Time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[4, 4], [1, 0]])
     ax = sns.lineplot(data=stochastic_preview.loc[stochastic_preview["Data Type"] == "True", :], x="Time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[1, 0]])
     # ax = sns.lineplot(data=stochastic_preview.loc[stochastic_preview["Data Type"] == "Preview", :], x="Time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[4, 4]], marker="o", errorbar= lambda x: (x.min(), x.max()))
+    
     ax = sns.lineplot(data=stochastic_preview.loc[stochastic_preview["Data Type"] == "Preview", :], x="Time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[4, 4]], marker="o", errorbar=("sd", 2))
-    ax.set(xlabel="Time [s]", ylabel="Wind Speed [m/s]", xlim=(0, int(wind_field_config["n_preview_steps"] * input_dict["dt"])))
-    ax.set_xticks(np.arange(0, int(n_time_steps * input_dict["dt"]), int(input_dict["controller"]["dt"])))
+    ax.lines[-6].remove()
+    ax.lines[-6].remove()
+    ax.get_children()[9].set_label("U Preview")
+    ax.get_children()[10].set_label("V Preview")
+    ax.set(xlabel="Time [s]", ylabel="Wind Speed [m/s]", xlim=(0, int(wind_field_config["n_preview_steps"] * input_dict["simulation_dt"])))
+    ax.set_xticks(np.arange(0, int(n_time_steps * input_dict["simulation_dt"]), int(60)))
     h, l = ax.get_legend_handles_labels()
-    ax.legend(h[:5] + h[9:], l[:5] + l[9:])
+    desired_labels = ["Wind Component", "U", "V", "Data Type", "True", "U Preview", "V Preview"]
+    ax.legend(h[:7], l[:7])
     fig.savefig(os.path.join(wind_field_dir, f'stochastic_preview.png'))
