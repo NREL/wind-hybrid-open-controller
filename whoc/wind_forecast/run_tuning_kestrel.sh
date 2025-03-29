@@ -67,8 +67,6 @@ for i in $(seq 0 $((${SLURM_NTASKS}-1))); do
         module load mamba
         module load PrgEnv-intel
         mamba activate wind_forecasting
-        SLURM_NTASKS_PER_NODE=1
-        SLURM_NNODES=1
         python tuning.py \
             --model_config $HOME/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/training_inputs_kestrel_flasc.yaml \
             --data_config $HOME/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/preprocessing_inputs_kestrel_flasc.yaml \
