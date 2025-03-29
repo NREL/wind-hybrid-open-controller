@@ -195,8 +195,8 @@ class WindForecast:
             for key, value in trial.params.items():
                 logging.info("    {}: {}".format(key, value))
         
-        for output in self.outputs:
-            os.remove(os.path.join(self.temp_save_dir, f"Xy_train_{output}.dat"))
+        # for output in self.outputs:
+        #     os.remove(os.path.join(self.temp_save_dir, f"Xy_train_{output}.dat"))
         
         return study.best_params
     
