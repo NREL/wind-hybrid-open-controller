@@ -131,10 +131,10 @@ class WindForecast:
             # get training data for this output
             logging.info(f"Getting training data for output {output}.")
             X_train, y_train = self._get_output_training_data(output=output, reload=False)
-            model.fit(X_train, y_train)
-            input_turbine_indices = self.cluster_turbines[self.tid2idx_mapping[tid]] 
-            X_pred = np.ascontiguousarray(training_measurements.select([f"{feat_type}_{self.idx2tid_mapping[t]}" for t in input_turbine_indices]).to_numpy()[-self.n_context:, :].flatten()[np.newaxis, :])
-            y_pred = model.predict(X_pred)
+            # model.fit(X_train, y_train)
+            # input_turbine_indices = self.cluster_turbines[self.tid2idx_mapping[tid]] 
+            # X_pred = np.ascontiguousarray(training_measurements.select([f"{feat_type}_{self.idx2tid_mapping[t]}" for t in input_turbine_indices]).to_numpy()[-self.n_context:, :].flatten()[np.newaxis, :])
+            # y_pred = model.predict(X_pred)
             
             # evaluate with cross-validation
             logging.info(f"Computing score for output {output}.")
