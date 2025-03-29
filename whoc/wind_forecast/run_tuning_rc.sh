@@ -6,7 +6,7 @@
 ##SBATCH --time=12:00:00
 ##SBATCH --partition=amilan
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=12
+#SBATCH --ntasks-per-node=1
 #SBATCH --time=01:00:00
 #SBATCH --partition=atesting
 
@@ -29,11 +29,6 @@ echo "SLURM_NTASKS_PER_NODE=${SLURM_NTASKS_PER_NODE}"
 echo "=== ENVIRONMENT ==="
 module list
 
-
-
-
-# NUM_MODELS=$2
-
 # Used to track process IDs for all workers
 declare -a WORKER_PIDS=()
 
@@ -41,7 +36,7 @@ export MODEL_CONFIG="/projects/aohe7145/toolboxes/wind_forecasting_env/wind-fore
 export DATA_CONFIG="/projects/aohe7145/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/preprocessing_inputs_rc_flasc.yaml"
 
 # Configure how many workers to run per CPU
-NTUNERS=3
+NTUNERS=1
 export NTASKS_PER_TUNER=$SLURM_NTASKS / $NTUNERS
 NUM_WORKERS_PER_CPU=1
 echo $NTUNERS
@@ -68,19 +63,19 @@ echo "=== STARTING TUNING ==="
 date +"%Y-%m-%d %H:%M:%S"
 # for m in $(seq 0 $((${NUM_MODELS}-1))); do
 for i in $(seq 0 $((${NTUNERS}-1))); do
-    for j in $(seq 0 $((${NUM_WORKERS_PER_CPU}-1))); do
+    # for j in $(seq 0 $((${NUM_WORKERS_PER_CPU}-1))); do
         # The restart flag should only be set for the very first worker (i=0, j=0)
-        if [ $i -eq 0 ] && [ $j -eq 0 ]; then
+        if [ $i -eq 0 ]; then
             export RESTART_FLAG="--restart_tuning"
         else
             export RESTART_FLAG=""
         fi
 
         # Create a unique seed for each worker to ensure they explore different areas
-        export WORKER_SEED=$((42 + i*10 + j))
+        export WORKER_SEED=$((42 + i*10))
 
         # Calculate worker index for logging
-        WORKER_INDEX=$((i*NUM_WORKERS_PER_CPU + j))
+        WORKER_INDEX=$((i))
         export SLURM_PROCID=${WORKER_INDEX}
 
         echo "Starting worker ${WORKER_INDEX} on GPU ${i} with seed ${WORKER_SEED}"
@@ -93,6 +88,7 @@ for i in $(seq 0 $((${NTUNERS}-1))); do
         module purge
         module load miniforge
         module load intel impi
+        module load gcc sqlite
         # mamba init
         conda init
         conda activate wind_forecasting
@@ -110,7 +106,7 @@ for i in $(seq 0 $((${NTUNERS}-1))); do
         # Add a small delay between starting workers on the same GPU
         # to avoid initialization conflicts
         sleep 2
-    done
+    # done
 done
 echo "Started ${#WORKER_PIDS[@]} worker processes for model ${m}"
 echo "Process IDs: ${WORKER_PIDS[@]}"
