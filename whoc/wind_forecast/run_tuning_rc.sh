@@ -47,6 +47,7 @@ python tuning.py \
             --model_config $MODEL_CONFIG \
             --data_config $DATA_CONFIG \
             --study_name "${1}_tuning" \
+            --prepare_data \
             --model $1 \
             --seed ${WORKER_SEED}
 
@@ -75,7 +76,6 @@ for i in $(seq 0 $((${SLURM_NTASKS}-1))); do
         nohup bash -c "
         module purge
         module load miniforge
-        module load sqlite
         mamba activate wind_forecasting
         python tuning.py \
             --model_config $MODEL_CONFIG \
