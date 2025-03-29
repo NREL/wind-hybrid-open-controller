@@ -20,7 +20,7 @@ if __name__ == "__main__":
     parser.add_argument("-mcnf", "--model_config", type=str)
     parser.add_argument("-dcnf", "--data_config", type=str)
     parser.add_argument("-sn", "--study_name", type=str)
-    parser.add_argument("-pd", "--prepare_data", action="store_true")
+    parser.add_argument("-i", "--initialize", action="store_true")
     parser.add_argument("-rt", "--restart_tuning", action="store_true")
     parser.add_argument("-s", "--seed", type=int, help="Seed for random number generator", default=42)
     parser.add_argument("-m", "--model", type=str, choices=["svr", "kf", "preview", "informer", "autoformer", "spacetimeformer"], required=True)
@@ -104,18 +104,24 @@ if __name__ == "__main__":
     
     
     # %% PREPARING DATA FOR TUNING
-    if args.prepare_data:
+    if args.initialize:
         logging.info("Preparing data for tuning")
         model.prepare_training_data(historic_measurements=historic_measurements)
+        
+        logging.info("Reinitializing storage") 
+        if args.restart_tuning:
+            storage = model.get_storage(storage_type=model_config["optuna"]["storage_type"], 
+                            study_name=args.study_name, 
+                            journal_storage_dir=model_config["optuna"]["journal_dir"])
+            for s in storage.get_all_studies():
+                storage.delete_study(s._study_id)
     else: 
         # %% TUNING MODEL
         logging.info("Running tune_hyperparameters_multi")
-        model.tune_hyperparameters_single(historic_measurements=historic_measurements, 
-                                        study_name=args.study_name,
+        model.tune_hyperparameters_single(study_name=args.study_name,
                                         storage_type=model_config["optuna"]["storage_type"],
                                         n_trials=model_config["optuna"]["n_trials"], 
                                         journal_storage_dir=model_config["optuna"]["journal_dir"],
-                                        restart_tuning=args.restart_tuning,
                                         seed=args.seed)
                                         #  trial_protection_callback=handle_trial_with_oom_protection)
     

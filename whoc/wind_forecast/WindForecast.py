@@ -167,13 +167,10 @@ class WindForecast:
             self._get_output_training_data(historic_measurements=historic_measurements, output=output, reload=True)
      
     # def tune_hyperparameters_single(self, historic_measurements, scaler, feat_type, tid, study_name, seed, restart_tuning, storage_type, journal_storage_dir, n_trials=1):
-    def tune_hyperparameters_single(self, historic_measurements, study_name, seed, restart_tuning, storage_type, journal_storage_dir, n_trials=1):
+    def tune_hyperparameters_single(self, study_name, seed, storage_type, journal_storage_dir, n_trials=1):
         # for case when argument is list of multiple continuous time series AND to only get the training inputs/outputs relevant to this model
         storage = self.get_storage(storage_type=storage_type, study_name=study_name, journal_storage_dir=journal_storage_dir)
-        if restart_tuning:
-            for s in storage.get_all_studies():
-                storage.delete_study(s._study_id)
-        
+         
         try:
             logging.info(f"Creating Optuna study {study_name}.") 
             study = create_study(study_name=study_name,
