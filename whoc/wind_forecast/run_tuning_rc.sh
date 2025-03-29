@@ -46,14 +46,14 @@ echo "=== STARTING DATA PREPARATION ==="
 date +"%Y-%m-%d %H:%M:%S"
 module purge
 module load miniforge
-mamba activate wind_forecasting
+conda activate wind_forecasting
 python tuning.py \
             --model_config $MODEL_CONFIG \
             --data_config $DATA_CONFIG \
             --study_name "${1}_tuning" \
             --prepare_data \
             --model $1 \
-            --seed ${WORKER_SEED}
+            --seed 0
 wait
 echo "=== DATA PREPARATION COMPLETE ==="
 
@@ -84,7 +84,7 @@ for i in $(seq 0 $((${SLURM_NTASKS}-1))); do
         nohup bash -c "
         module purge
         module load miniforge
-        mamba activate wind_forecasting
+        conda activate wind_forecasting
         python tuning.py \
             --model_config $MODEL_CONFIG \
             --data_config $DATA_CONFIG \
