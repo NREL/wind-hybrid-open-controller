@@ -41,7 +41,7 @@ declare -a WORKER_PIDS=()
 
 export MODEL_CONFIG="/projects/aohe7145/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/training_inputs_rc_flasc.yaml"
 export DATA_CONFIG="/projects/aohe7145/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/preprocessing_inputs_rc_flasc.yaml"
-export TMPDIR=""
+export TMPDIR="/tmp/scratch/${SLURM_JOB_ID}/"
 
 # prepare training data first
 echo "=== STARTING DATA PREPARATION ==="
