@@ -88,7 +88,7 @@ for i in $(seq 0 $((${NTUNERS}-1))); do
         nohup bash -c "
         module purge
         module load miniforge
-        module load gcc openmpi sqlite
+        module load intel impi
         # mamba init
         conda init
         conda activate wind_forecasting
