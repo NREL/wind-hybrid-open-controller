@@ -37,7 +37,7 @@ export DATA_CONFIG="/projects/aohe7145/toolboxes/wind_forecasting_env/wind-forec
 
 # Configure how many workers to run per CPU
 NTUNERS=6
-export NTASKS_PER_TUNER=$SLURM_NTASKS / $NTUNERS
+export NTASKS_PER_TUNER=$((SLURM_NTASKS / NTUNERS))
 NUM_WORKERS_PER_CPU=1
 echo $NTUNERS
 echo $NTASKS_PER_TUNER
