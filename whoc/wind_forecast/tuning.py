@@ -20,10 +20,11 @@ if __name__ == "__main__":
     parser.add_argument("-mcnf", "--model_config", type=str)
     parser.add_argument("-dcnf", "--data_config", type=str)
     parser.add_argument("-sn", "--study_name", type=str)
+    parser.add_argument("-m", "--multiprocessor", choices=["mpi", "cf"], default="mpi")
     parser.add_argument("-i", "--initialize", action="store_true")
     parser.add_argument("-rt", "--restart_tuning", action="store_true")
     parser.add_argument("-s", "--seed", type=int, help="Seed for random number generator", default=42)
-    parser.add_argument("-m", "--model", type=str, choices=["svr", "kf", "preview", "informer", "autoformer", "spacetimeformer"], required=True)
+    parser.add_argument("-md", "--model", type=str, choices=["svr", "kf", "preview", "informer", "autoformer", "spacetimeformer"], required=True)
     # pretrained_filename = "/Users/ahenry/Documents/toolboxes/wind_forecasting/examples/logging/wf_forecasting/lznjshyo/checkpoints/epoch=0-step=50.ckpt"
     args = parser.parse_args()
     
@@ -100,7 +101,8 @@ if __name__ == "__main__":
                             tid2idx_mapping=tid2idx_mapping,
                             turbine_signature=turbine_signature,
                             use_tuned_params=False,
-                            temp_save_dir=data_config["temp_storage_dir"])
+                            temp_save_dir=data_config["temp_storage_dir"],
+                            multiprocessor=args.multiprocessor)
     
     
     # %% PREPARING DATA FOR TUNING

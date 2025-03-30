@@ -94,12 +94,7 @@ class WindForecast:
 
     def __post_init__(self):
         assert (self.context_timedelta % self.measurements_timedelta).total_seconds() == 0, "context_timedelta must be a multiple of measurements_timedelta"
-        assert (self.prediction_timedelta % self.measurements_timedelta).total_seconds() == 0, "prediction_timedelta must be a multiple of measurements_timedelta"
-        
-        if mpi_exists:
-            self.multiprocessor = "mpi"
-        else:
-            self.multiprocessor = "cf"
+        assert (self.prediction_timedelta % self.measurements_timedelta).total_seconds() == 0, "prediction_timedelta must be a multiple of measurements_timedelta" 
              
         self.n_context = int(self.context_timedelta / self.measurements_timedelta) # number of simulation time steps in a context horizon
         self.n_prediction = int(self.prediction_timedelta / self.measurements_timedelta) # number of simulation time steps in a prediction horizon
@@ -135,9 +130,11 @@ class WindForecast:
         
         # evaluate with cross-validation
         logging.info(f"Computing score for output {output}.")
-        train_split = int(X_train.shape[0] * 0.75)
-        model.fit(X_train[:train_split, :], y_train[:train_split])
-        return (-mean_squared_error(y_true=y_train[train_split:], y_pred=model.predict(X_train[train_split:, :])))
+        train_split = np.random.choice(X_train.shape[0], replace=False, size=int(X_train.shape[0] * 0.75))
+        train_split = np.isin(range(X_train.shape[0]), train_split)
+        test_split = ~train_split
+        model.fit(X_train[train_split, :], y_train[train_split])
+        return (-mean_squared_error(y_true=y_train[test_split], y_pred=model.predict(X_train[test_split, :])))
     
     def _tuning_objective(self, trial):
         """
@@ -821,6 +818,7 @@ class GaussianForecast(WindForecast):
 @dataclass
 class SVRForecast(WindForecast):
     """Wind speed component forecasting using Support Vector Regression."""
+    multiprocessor: str = "mpi"
     
     def __post_init__(self):
         super().__post_init__()

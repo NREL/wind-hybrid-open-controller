@@ -97,6 +97,7 @@ for i in $(seq 0 $((${NTUNERS}-1))); do
             --data_config $DATA_CONFIG \
             --study_name "${1}_tuning" \
             --model $1 \
+            --multiprocessor mpi \
             --seed ${WORKER_SEED} \
             ${RESTART_FLAG}" &
 
