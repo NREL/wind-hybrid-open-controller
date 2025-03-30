@@ -9,15 +9,18 @@ import os
 import datetime
 import yaml
 import re
-import multiprocessing as mp
-try:
-   mp.set_start_method('spawn', force=True)
-#    print("spawned")
-except RuntimeError:
-   pass
+from concurrent.futures import ProcessPoolExecutor
 
-# import multiprocessing as mp
+import multiprocessing as mp
 # from joblib import parallel_backend
+
+mpi_exists = False
+try:
+    from mpi4py import MPI
+    from mpi4py.futures import MPICommExecutor
+    mpi_exists = True
+except:
+    print("No MPI available on system.")
 
 from gluonts.torch.distributions import LowRankMultivariateNormalOutput
 from gluonts.torch.model.estimator import PyTorchLightningEstimator
@@ -116,7 +119,21 @@ class WindForecast:
             return historic_measurements.select(cs.starts_with("ws_horz") | cs.starts_with("ws_vert")).columns
         elif isinstance(historic_measurements, pd.DataFrame):
             return [col for col in historic_measurements.columns if (col.startswith("ws_horz") or col.startswith("ws_vert"))]
-     
+    
+    def _compute_output_score(self, output, params):
+        logging.info(f"Defining model for output {output}.")
+        model = self.__class__.create_model(**{re.search(f"\\w+(?=_{output})", k).group(0): v for k, v in params.items() if k.endswith(f"_{output}")})
+        
+        # get training data for this output
+        logging.info(f"Getting training data for output {output}.")
+        X_train, y_train = self._get_output_training_data(output=output, reload=False)
+        
+        # evaluate with cross-validation
+        logging.info(f"Computing score for output {output}.")
+        train_split = int(X_train.shape[0] * 0.75)
+        model.fit(X_train[:train_split, :], y_train[:train_split])
+        return (-mean_squared_error(y_true=y_train[train_split:], y_pred=model.predict(X_train[train_split:, :])))
+    
     def _tuning_objective(self, trial):
         """
         Objective function to be minimized in Optuna
@@ -125,31 +142,22 @@ class WindForecast:
         params = self.get_params(trial)
          
         # train svr model
-        total_score = 0
-        for output in self.outputs:
+        # total_score = 0
+        # for output in self.outputs:
+        if self.multiprocessor == "mpi" and mpi_exists:
+            executor = MPICommExecutor(MPI.COMM_WORLD, root=0)
+            logging.info(f"🚀 Using MPI executor with {MPI.COMM_WORLD.Get_size()} processes")
+        else:
+            max_workers = mp.cpu_count()
+            executor = ProcessPoolExecutor(max_workers=max_workers,
+                                                mp_context=mp.get_context("spawn"))
+            logging.info(f"🖥️  Using ProcessPoolExecutor with {max_workers} workers")
             
-            logging.info(f"Defining model for output {output}.")
-            model = self.__class__.create_model(**{re.search(f"\\w+(?=_{output})", k).group(0): v for k, v in params.items() if k.endswith(f"_{output}")})
+        with executor as ex:
+            futures = [ex.submit(self._compute_output_score, output=output, params=params) for output in self.outputs]
+            scores = [fut.result() for fut in futures]
             
-            # get training data for this output
-            logging.info(f"Getting training data for output {output}.")
-            X_train, y_train = self._get_output_training_data(output=output, reload=False)
-            # 
-            # input_turbine_indices = self.cluster_turbines[self.tid2idx_mapping[tid]] 
-            # X_pred = np.ascontiguousarray(training_measurements.select([f"{feat_type}_{self.idx2tid_mapping[t]}" for t in input_turbine_indices]).to_numpy()[-self.n_context:, :].flatten()[np.newaxis, :])
-            # y_pred = model.predict(X_pred)
-            
-            # evaluate with cross-validation
-            logging.info(f"Computing score for output {output}.")
-            # use joblib.parallel_backend spawn to allow multiprocessing here
-            # with parallel_backend('multiprocessing', n_jobs=2):
-            # TODO HIGH split the training test data myself and use mean_squared_error, make sure X_train is being formed properly
-            # total_score += cross_val_score(model, X_train, y_train, n_jobs=None, cv=2, scoring="neg_mean_squared_error", verbose=0).mean()
-            train_split = int(X_train.shape[0] * 0.75)
-            model.fit(X_train[:train_split, :], y_train[:train_split])
-            total_score += (-mean_squared_error(y_true=y_train[train_split:], y_pred=model.predict(X_train[train_split:, :])))
-        
-        return total_score
+        return sum(scores)
     
     def prepare_training_data(self, historic_measurements):
         """
