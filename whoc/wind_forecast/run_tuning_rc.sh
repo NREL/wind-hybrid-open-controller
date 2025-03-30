@@ -1,14 +1,14 @@
 #!/bin/bash
 #SBATCH --job-name=model_tuning
 #SBATCH --output=model_tuning_%j.out
-##SBATCH --nodes=4
-##SBATCH --ntasks-per-node=64
-##SBATCH --time=12:00:00
-##SBATCH --partition=amilan
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=12
-#SBATCH --time=01:00:00
-#SBATCH --partition=atesting
+#SBATCH --nodes=4
+#SBATCH --ntasks-per-node=64
+#SBATCH --time=12:00:00
+#SBATCH --partition=amilan
+##SBATCH --nodes=1
+##SBATCH --ntasks-per-node=12
+##SBATCH --time=01:00:00
+##SBATCH --partition=atesting
 
 #  srun -n 1 --exclusive python tuning.py --config $HOME/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/training_inputs_kestrel.yaml --study_name "svr_tuning" --model "svr" &
 # salloc --account=ssc --job-name=model_tuning  --ntasks=104 --cpus-per-task=1 --time=01:00:00 --partition=debug
@@ -17,7 +17,7 @@
 # export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CUDA_HOME/lib64
 
 # Configure how many workers to run per CPU
-export NTASKS_PER_TUNER=6
+export NTASKS_PER_TUNER=16
 NTUNERS=$((SLURM_NTASKS / NTASKS_PER_TUNER))
 # NUM_WORKERS_PER_CPU=1
 
