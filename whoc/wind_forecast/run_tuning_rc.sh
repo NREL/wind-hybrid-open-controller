@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=model_tuning
 #SBATCH --output=model_tuning_%j.out
-#SBATCH --nodes=4
+#SBATCH --nodes=1
 #SBATCH --ntasks-per-node=64
 #SBATCH --time=12:00:00
 #SBATCH --partition=amilan
