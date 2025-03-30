@@ -10,7 +10,6 @@ import logging
 from floris import FlorisModel
 import gc
 import random
-import multiprocessing
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -107,7 +106,6 @@ if __name__ == "__main__":
     # %% PREPARING DATA FOR TUNING
     if args.initialize:
         logging.info("Preparing data for tuning")
-        multiprocessing.set_start_method('spawn')
         model.prepare_training_data(historic_measurements=historic_measurements)
         
         logging.info("Reinitializing storage") 

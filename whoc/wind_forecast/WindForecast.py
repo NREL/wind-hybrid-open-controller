@@ -10,6 +10,7 @@ import datetime
 import yaml
 import re
 from functools import partial
+import multiprocessing as mp
 
 # import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor
@@ -140,6 +141,8 @@ class WindForecast:
             # evaluate with cross-validation
             logging.info(f"Computing score for output {output}.")
             # use joblib.parallel_backend spawn to allow multiprocessing here
+            if mp.get_context()._name == "fork":
+                mp.set_start_method('spawn')
             with parallel_backend('multiprocessing', n_jobs=2):
                 # TODO HIGH split the training test data myself and use mean_squared_error, make sure X_train is being formed properly
                 total_score += cross_val_score(model, X_train, y_train, n_jobs=None, cv=2, scoring="neg_mean_squared_error", verbose=2).mean()
