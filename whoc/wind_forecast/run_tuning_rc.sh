@@ -53,7 +53,7 @@ conda activate wind_forecasting
 python tuning.py \
             --model_config $MODEL_CONFIG \
             --data_config $DATA_CONFIG \
-            --study_name "${1}_tuning" \
+            --study_name "${1}_${flasc}_tuning" \
             --initialize \
             --model $1 \
             --seed 0
@@ -95,7 +95,7 @@ for i in $(seq 0 $((${NTUNERS}-1))); do
         mpirun -np $NTASKS_PER_TUNER python tuning.py \
             --model_config $MODEL_CONFIG \
             --data_config $DATA_CONFIG \
-            --study_name "${1}_tuning" \
+            --study_name "${1}_${2}_tuning" \
             --model $1 \
             --multiprocessor mpi \
             --seed ${WORKER_SEED} \
