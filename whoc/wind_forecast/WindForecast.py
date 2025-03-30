@@ -9,16 +9,14 @@ import os
 import datetime
 import yaml
 import re
-from functools import partial
 import multiprocessing as mp
 try:
    mp.set_start_method('spawn', force=True)
-   print("spawned")
+#    print("spawned")
 except RuntimeError:
    pass
 
 # import multiprocessing as mp
-from concurrent.futures import ProcessPoolExecutor
 from joblib import parallel_backend
 
 from gluonts.torch.distributions import LowRankMultivariateNormalOutput
@@ -64,8 +62,6 @@ from floris import FlorisModel
 from scipy.signal import lfilter
 from wind_forecasting.run_scripts.testing import get_checkpoint
 from wind_forecasting.run_scripts.tuning import get_tuned_params
-
-from whoc import __file__ as whoc_file
 
 import logging 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -199,10 +195,8 @@ class WindForecast:
         worker_id = os.environ.get('SLURM_PROCID', '0')
         
         # Each worker contributes trials to the shared study
-        n_trials_per_worker = max(1, n_trials // int(os.environ.get('SLURM_NTASKS', '1')))
-        logging.info(f"Worker {worker_id} will run {n_trials_per_worker} trials")
-        
-        logging.info(f"Worker {worker_id}: Optimizing Optuna study {study_name}.")
+        n_trials_per_worker = max(1, n_trials // int(os.environ.get('NTASKS_PER_TUNER', '1')))
+        logging.info(f"Worker {worker_id} is optimizing Optuna study {study_name} and will run {n_trials_per_worker} of {n_trials} trials.")
         
         objective_fn = self._tuning_objective
         

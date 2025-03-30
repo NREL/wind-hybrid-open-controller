@@ -47,7 +47,7 @@ echo "=== STARTING DATA PREPARATION ==="
 date +"%Y-%m-%d %H:%M:%S"
 module purge
 module load miniforge
-conda init
+# conda init
 conda activate wind_forecasting
 python tuning.py \
             --model_config $MODEL_CONFIG \
