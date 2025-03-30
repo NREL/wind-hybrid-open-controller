@@ -53,7 +53,7 @@ python tuning.py \
             --model_config $MODEL_CONFIG \
             --data_config $DATA_CONFIG \
             --study_name "${1}_tuning" \
-            --prepare_data \
+            --initialize \
             --model $1 \
             --seed 0
 wait
