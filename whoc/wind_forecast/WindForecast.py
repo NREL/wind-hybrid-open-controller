@@ -48,7 +48,7 @@ import polars as pl
 import polars.selectors as cs
 from scipy.stats import multivariate_normal as mvn
 
-from mysql.connector import connect as sql_connect
+from mysql.connector import Error as SQLError, connect as sql_connect
 from optuna import create_study
 from optuna.samplers import TPESampler
 from optuna.storages import JournalStorage, RDBStorage
@@ -244,16 +244,22 @@ class WindForecast:
             Storage object for Optuna
         """
         if storage_type == "mysql":
-            logging.info(f"Connecting to RDB database {study_name}")
-            try:
-                db = sql_connect(host="localhost", user="root", database=study_name)       
-            except Exception: 
-                db = sql_connect(host="localhost", user="root")
-                cursor = db.cursor()
+            logging.info(f"Connecting to MySQL RDB database {study_name}")
+            conn = sql_connect(host="localhost", user="root")
+            cursor = conn.cursor()
+            cursor.execute("SHOW DATABASES")
+            if study_name in [res[0] for res in cursor]:
+                # connect to existing database
+                conn = sql_connect(host="localhost", user="root", database=study_name)
+            else:
+                # make new database
+                conn = sql_connect(host="localhost", user="root")
+                cursor = conn.cursor()
                 cursor.execute(f"CREATE DATABASE {study_name}") 
-            finally:
-                storage = RDBStorage(url=f"mysql://{db.user}@{db.server_host}:{db.server_port}/{study_name}.db")
+                
+            storage = RDBStorage(url=f"mysql://{conn.user}@{conn.server_host}:{conn.server_port}/{study_name}")
         elif storage_type == "sqlite":
+            logging.info(f"Connecting to SQLite RDB database {study_name}")
             # SQLite with WAL mode - using a simpler URL format
             os.makedirs(journal_storage_dir, exist_ok=True)
             db_path = os.path.join(journal_storage_dir, f"{study_name}.db")
