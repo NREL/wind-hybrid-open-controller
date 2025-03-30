@@ -134,7 +134,7 @@ class WindForecast:
             # get training data for this output
             logging.info(f"Getting training data for output {output}.")
             X_train, y_train = self._get_output_training_data(output=output, reload=False)
-            # model.fit(X_train, y_train)
+            # 
             # input_turbine_indices = self.cluster_turbines[self.tid2idx_mapping[tid]] 
             # X_pred = np.ascontiguousarray(training_measurements.select([f"{feat_type}_{self.idx2tid_mapping[t]}" for t in input_turbine_indices]).to_numpy()[-self.n_context:, :].flatten()[np.newaxis, :])
             # y_pred = model.predict(X_pred)
@@ -144,9 +144,10 @@ class WindForecast:
             # use joblib.parallel_backend spawn to allow multiprocessing here
             # with parallel_backend('multiprocessing', n_jobs=2):
             # TODO HIGH split the training test data myself and use mean_squared_error, make sure X_train is being formed properly
-            total_score += cross_val_score(model, X_train, y_train, n_jobs=None, cv=2, scoring="neg_mean_squared_error", verbose=0).mean()
-            
-            # total_score += (-mean_squared_error(y_true, y_pred))
+            # total_score += cross_val_score(model, X_train, y_train, n_jobs=None, cv=2, scoring="neg_mean_squared_error", verbose=0).mean()
+            train_split = int(X_train.shape[0] * 0.75)
+            model.fit(X_train[:train_split, :], y_train[:train_split])
+            total_score += (-mean_squared_error(y_true=y_train[train_split:], y_pred=model.predict(X_train[train_split:, :])))
         
         return total_score
     
