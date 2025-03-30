@@ -10,6 +10,8 @@ import logging
 from floris import FlorisModel
 import gc
 import random
+import multiprocessing
+multiprocessing.set_start_method('spawn')
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
