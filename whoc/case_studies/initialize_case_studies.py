@@ -506,25 +506,19 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
     case_lists = []
     case_name_lists = []
     n_cases_list = []
-    
+    lut_cases = set()
+    input_filenames = []
     for case_study_key in case_study_keys:
         case_list, case_names = CaseGen_General(case_studies[case_study_key], namebase=case_study_key)
         case_lists = case_lists + case_list
         case_name_lists = case_name_lists + case_names
         n_cases_list.append(len(case_list))
         
-        # make save directory
-        results_dir = os.path.join(save_dir, case_study_key)
-        
-        os.makedirs(results_dir, exist_ok=True)
-
         # Load default settings and make copies
         start_case_idx = len(input_dicts)
         input_dicts = input_dicts + [copy.deepcopy(whoc_config) for i in range(len(case_list))]
 
         # make adjustements based on case study
-        lut_cases = set()
-        input_filenames = []
         for c, case in enumerate(case_list):
             for property_name, property_value in case.items():
                 if property_name in input_dicts[start_case_idx + c]["controller"]:
@@ -614,7 +608,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                 [f"{key}_{val if (isinstance(val, str) or isinstance(val, np.str_) or isinstance(val, bool)) else np.round(val, 6)}" for key, val in case.items() \
                     if key not in ["simulation_dt", "use_filtered_wind_dir", "use_lut_filtered_wind_dir", "yaw_limits", "wind_case_idx", "seed", "floris_input_file", "lut_path"]]) \
                     if "case_names" not in case else case["case_names"]}.pkl'.replace("/", "_")
-            input_filenames.append(fn) 
+            input_filenames.append((case_study_key, fn)) 
 
     prediction_timedelta = max(inp["wind_forecast"]["prediction_timedelta"] for inp in input_dicts if inp["controller"]["wind_forecast_class"]) \
             if any(inp["controller"]["wind_forecast_class"] for inp in input_dicts) else pd.Timedelta(seconds=0)
@@ -628,8 +622,10 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                         <= stoptime + prediction_timedelta.total_seconds() + horizon_timedelta.total_seconds()] 
                     for df in wind_field_ts]
     stoptime = max(min([((df["time"].iloc[-1] - df["time"].iloc[0]) - prediction_timedelta - horizon_timedelta).total_seconds() for df in wind_field_ts]), stoptime)
-    for fn, inp in zip(input_filenames, input_dicts):
+    for (case_study_key, fn), inp in zip(input_filenames, input_dicts):
         inp["hercules_comms"]["helics"]["config"]["stoptime"] = stoptime
+        results_dir = os.path.join(save_dir, case_study_key)
+        os.makedirs(results_dir, exist_ok=True)
         with open(os.path.join(results_dir, fn), 'wb') as fp:
             pickle.dump(inp, fp)
     

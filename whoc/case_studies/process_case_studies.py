@@ -1,5 +1,4 @@
 import os
-import yaml
 import re
 from itertools import cycle
 import warnings
@@ -296,14 +295,15 @@ def plot_simulations(time_series_df, plotting_cases, save_dir, include_power=Tru
             case_name_df = case_family_df.loc[case_family_df.index.get_level_values("CaseName") == case_name, :]
             input_fn = [fn for fn in os.listdir(os.path.join(save_dir, case_family)) if "input_config" in fn and case_name in fn][0]
             
-            with open(os.path.join(save_dir, case_family, input_fn), 'r') as fp:
-                input_config = yaml.safe_load(fp)
+            with open(os.path.join(save_dir, case_family, input_fn), mode='rb') as fp:
+                input_config = pickle.load(fp)
+            
             if single_plot:
                 fig, _ = plot_yaw_power_ts(case_name_df, os.path.join(save_dir, case_family, f"yaw_power_ts_{case_name}.png"), include_power=include_power, legend_loc=legend_loc,
-                                        controller_dt=None, include_filtered_wind_dir=(case_family=="baseline_controllers"), single_plot=single_plot, fig=yaw_power_ts_fig, ax=yaw_power_ts_ax, case_label=case_name)
+                                        controller_dt=None, include_filtered_wind_dir=("baseline_controllers" in case_family), single_plot=single_plot, fig=yaw_power_ts_fig, ax=yaw_power_ts_ax, case_label=case_name)
             else:
                 fig, _ = plot_yaw_power_ts(case_name_df, os.path.join(save_dir, case_family, f"yaw_power_ts_{case_name}.png"), include_power=include_power, legend_loc=legend_loc,
-                                        controller_dt=None, include_filtered_wind_dir=(case_family=="baseline_controllers_3"), single_plot=single_plot)
+                                        controller_dt=None, include_filtered_wind_dir=("baseline_controllers" in case_family), single_plot=single_plot)
                                     #    controller_dt=input_config["controller"]["dt"])
 
     if False:
@@ -831,18 +831,21 @@ def plot_yaw_offset_wind_direction(data_dfs, case_names, case_labels, lut_path, 
     return fig, ax
 
 def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, include_filtered_wind_dir=True, controller_dt=None, legend_loc="best", single_plot=False, fig=None, ax=None, case_label=None):
+    
+    turbine_ws_horz_cols = sorted([col for col in data_df.columns if "TargetTurbineWindSpeedHorz_" in col and not pd.isna(data_df[col]).any()], key=lambda s: int(s.split("_")[-1]))
+    turbine_ws_vert_cols = sorted([col for col in data_df.columns if "TargetTurbineWindSpeedVert_" in col and not pd.isna(data_df[col]).any()], key=lambda s: int(s.split("_")[-1]))
+    turbine_power_cols = sorted([col for col in data_df.columns if "TargetTurbinePower_" in col and not pd.isna(data_df[col]).any()], key=lambda s: int(s.split("_")[-1]))
+    yaw_angle_cols = sorted([col for col in data_df.columns if "TargetTurbineYawAngle_" == col[:len("TargetTurbineYawAngle_")] and not pd.isna(data_df[col]).any()], key=lambda s: int(s.split("_")[-1]))
+    
     #TODO only plot some turbines, not ones with overlapping yaw offsets, eg single column on farm
-    colors = sns.color_palette("Paired")
-    colors = [colors[1], colors[3], colors[5]]
+    colors = cycle(sns.color_palette("Paired"))
+    colors = [col for c, col in zip(range(len(turbine_ws_horz_cols)), colors) if c in range(1, len(turbine_ws_horz_cols), 2)] # [colors[1], colors[3], colors[5]]
 
     if not single_plot:
         fig, ax = plt.subplots(int(include_yaw + include_power), 1, sharex=True)
     
     ax = np.atleast_1d(ax)
     
-    turbine_wind_direction_cols = sorted([col for col in data_df.columns if "TurbineWindDir_" in col and not pd.isna(data_df[col]).any()], key=lambda s: int(s.split("_")[-1]))
-    turbine_power_cols = sorted([col for col in data_df.columns if "TurbinePower_" in col and not pd.isna(data_df[col]).any()], key=lambda s: int(s.split("_")[-1]))
-    yaw_angle_cols = sorted([col for col in data_df.columns if "TurbineYawAngle_" == col[:len("TurbineYawAngle_")] and not pd.isna(data_df[col]).any()], key=lambda s: int(s.split("_")[-1]))
 
     plot_seed = 0
     
@@ -859,7 +862,7 @@ def plot_yaw_power_ts(data_df, save_path, include_yaw=True, include_power=True, 
             
         # Direction
         # for t, (wind_dir_col, power_col, yaw_col) in enumerate(zip(turbine_wind_direction_cols, turbine_power_cols, yaw_angle_cols)):
-        for t, (wind_dir_col, power_col, yaw_col, color) in enumerate(zip(turbine_wind_direction_cols, turbine_power_cols, yaw_angle_cols, cycle(colors))):
+        for t, (power_col, yaw_col, color) in enumerate(zip(turbine_power_cols, yaw_angle_cols, cycle(colors))):
             
             if include_yaw:
                 ax_idx = 0
