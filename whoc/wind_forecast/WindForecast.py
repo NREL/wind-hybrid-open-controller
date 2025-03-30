@@ -121,15 +121,15 @@ class WindForecast:
             return [col for col in historic_measurements.columns if (col.startswith("ws_horz") or col.startswith("ws_vert"))]
     
     def _compute_output_score(self, output, params):
-        logging.info(f"Defining model for output {output}.")
+        # logging.info(f"Defining model for output {output}.")
         model = self.__class__.create_model(**{re.search(f"\\w+(?=_{output})", k).group(0): v for k, v in params.items() if k.endswith(f"_{output}")})
         
         # get training data for this output
-        logging.info(f"Getting training data for output {output}.")
+        # logging.info(f"Getting training data for output {output}.")
         X_train, y_train = self._get_output_training_data(output=output, reload=False)
         
         # evaluate with cross-validation
-        logging.info(f"Computing score for output {output}.")
+        # logging.info(f"Computing score for output {output}.")
         train_split = np.random.choice(X_train.shape[0], replace=False, size=int(X_train.shape[0] * 0.75))
         train_split = np.isin(range(X_train.shape[0]), train_split)
         test_split = ~train_split
@@ -148,12 +148,12 @@ class WindForecast:
         # for output in self.outputs:
         if self.multiprocessor == "mpi" and mpi_exists:
             executor = MPICommExecutor(MPI.COMM_WORLD, root=0)
-            logging.info(f"🚀 Using MPI executor with {MPI.COMM_WORLD.Get_size()} processes")
+            # logging.info(f"🚀 Using MPI executor with {MPI.COMM_WORLD.Get_size()} processes")
         else:
             max_workers = mp.cpu_count()
             executor = ProcessPoolExecutor(max_workers=max_workers,
                                                 mp_context=mp.get_context("spawn"))
-            logging.info(f"🖥️  Using ProcessPoolExecutor with {max_workers} workers")
+            # logging.info(f"🖥️  Using ProcessPoolExecutor with {max_workers} workers")
             
         with executor as ex:
             futures = [ex.submit(self._compute_output_score, output=output, params=params) for output in self.outputs]
