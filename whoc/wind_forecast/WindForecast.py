@@ -96,6 +96,11 @@ class WindForecast:
         assert (self.context_timedelta % self.measurements_timedelta).total_seconds() == 0, "context_timedelta must be a multiple of measurements_timedelta"
         assert (self.prediction_timedelta % self.measurements_timedelta).total_seconds() == 0, "prediction_timedelta must be a multiple of measurements_timedelta"
         
+        if mpi_exists:
+            self.multiprocessor = "mpi"
+        else:
+            self.multiprocessor = "cf"
+             
         self.n_context = int(self.context_timedelta / self.measurements_timedelta) # number of simulation time steps in a context horizon
         self.n_prediction = int(self.prediction_timedelta / self.measurements_timedelta) # number of simulation time steps in a prediction horizon
         
