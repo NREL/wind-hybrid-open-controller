@@ -24,8 +24,10 @@ from whoc.case_studies.process_case_studies import (read_time_series_data, write
                                                     aggregate_time_series_data, read_case_family_agg_data, write_case_family_agg_data, 
                                                     generate_outputs, plot_simulations, plot_wind_farm, plot_breakdown_robustness, plot_horizon_length,
                                                     plot_cost_function_pareto_curve, plot_yaw_offset_wind_direction, plot_parameter_sweep)
-from whoc.wind_forecast.WindForecast import PerfectForecast, PersistenceForecast, MLForecast, SVRForecast, KalmanFilterForecast, PreviewForecast
-
+try:
+    from whoc.wind_forecast.WindForecast import PerfectForecast, PersistenceForecast, MLForecast, SVRForecast, KalmanFilterForecast, PreviewForecast
+except ModuleNotFoundError:
+    print("Cannot import wind forecast classes in current environment.")
 # np.seterr("raise")
 
 warnings.simplefilter('error', pd.errors.DtypeWarning)
@@ -89,6 +91,8 @@ if __name__ == "__main__":
             else:
                 model_config = None
                 data_config = None
+                turbine_signature = None
+                tid2idx_mapping = None
                 
             case_lists, case_name_lists, input_dicts, wind_field_config, wind_field_ts \
                 = initialize_simulations(case_study_keys=[case_families[i] for i in args.case_ids], 
@@ -114,12 +118,12 @@ if __name__ == "__main__":
                 # print(f"run_simulations line 64 with {run_simulations_exec._max_workers} workers")
                 # for MPIPool executor, (waiting as if shutdown() were called with wait set to True)
                 futures = [run_simulations_exec.submit(simulate_controller, 
-                                                controller_class=globals()[case_lists[c]["controller_class"]], 
-                                                wind_forecast_class=globals()[case_lists[c]["wind_forecast_class"]] if case_lists[c]["wind_forecast_class"] else None,
+                                                controller_class=globals()[d["controller"]["controller_class"]], 
+                                                wind_forecast_class=globals()[d["controller"]["wind_forecast_class"]] if d["controller"]["wind_forecast_class"] else None,
                                                 simulation_input_dict=d,
                                                 wf_source=args.wf_source, 
                                                 wind_case_idx=case_lists[c]["wind_case_idx"], wind_field_ts=wind_field_ts[case_lists[c]["wind_case_idx"]],
-                                                case_name="_".join([f"{key}_{val if (isinstance(val, str) or isinstance(val, np.str_) or isinstance(val, bool)) else np.round(val, 6)}" for key, val in case_lists[c].items() if key not in ["controller_dt", "simulation_dt", "use_filtered_wind_dir", "use_lut_filtered_wind_dir", "yaw_limits", "wind_case_idx", "seed", "floris_input_file", "lut_path"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
+                                                case_name="_".join([f"{key}_{val if (isinstance(val, str) or isinstance(val, np.str_) or isinstance(val, bool)) else np.round(val, 6)}" for key, val in case_lists[c].items() if key not in ["simulation_dt", "use_filtered_wind_dir", "use_lut_filtered_wind_dir", "yaw_limits", "wind_case_idx", "seed", "floris_input_file", "lut_path"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
                                                 case_family="_".join(case_name_lists[c].split("_")[:-1]), 
                                                 verbose=args.verbose, 
                                                 save_dir=args.save_dir, 
@@ -136,8 +140,8 @@ if __name__ == "__main__":
 
         else:
             for c, d in enumerate(input_dicts):
-                simulate_controller(controller_class=globals()[case_lists[c]["controller_class"]], 
-                                    wind_forecast_class=globals()[case_lists[c]["wind_forecast_class"]] if case_lists[c]["wind_forecast_class"] else None, 
+                simulate_controller(controller_class=globals()[d["controller"]["controller_class"]], 
+                                    wind_forecast_class=globals()[d["controller"]["wind_forecast_class"]] if d["controller"]["wind_forecast_class"] else None, 
                                     simulation_input_dict=d, 
                                     wf_source=args.wf_source,
                                     wind_case_idx=case_lists[c]["wind_case_idx"], wind_field_ts=wind_field_ts[case_lists[c]["wind_case_idx"]],
@@ -257,7 +261,7 @@ if __name__ == "__main__":
                 for i in args.case_ids:
                     # if reaggregate_simulations, or if the aggregated time series data doesn't exist for this case family, read the csv files for that case family
                     if args.reaggregate_simulations or not os.path.exists(os.path.join(args.save_dir, case_families[i], "time_series_results_all.csv")):
-                        
+                        # TODO HIGH check that we are only reading time series files corresponding to the number of seeds, stop times used
                         for fn in case_family_case_names[case_families[i]]:
                             new_case_family_time_series_df.append(read_time_series_data(results_path=os.path.join(args.save_dir, case_families[i], fn)))
 
@@ -331,7 +335,9 @@ if __name__ == "__main__":
             agg_df = pd.concat(agg_df)
 
         if RUN_ONCE and PLOT:
-            
+            if case_families.index("baseline_controllers_preview_flasc_perfect") in args.case_ids:
+                 pass
+             
             if((case_families.index("baseline_controllers_preview_flasc") in args.case_ids 
                 or case_families.index("baseline_controllers_preview_awaken") in args.case_ids)):
                 from whoc.wind_forecast.WindForecast import WindForecast
@@ -448,6 +454,14 @@ if __name__ == "__main__":
                 100 * (better_than_lut_df.iloc[0]["FarmPowerMean"] - greedy_df.iloc[0]["FarmPowerMean"]) / greedy_df.iloc[0]["FarmPowerMean"]
                 100 * (better_than_lut_df.iloc[0]["YawAngleChangeAbsMean"] - lut_df.iloc[0]["YawAngleChangeAbsMean"]) / lut_df.iloc[0]["YawAngleChangeAbsMean"]
                 100 * (better_than_lut_df.iloc[0]["YawAngleChangeAbsMean"] - greedy_df.iloc[0]["YawAngleChangeAbsMean"]) / greedy_df.iloc[0]["YawAngleChangeAbsMean"]
+                
+                if True:
+                    plotting_cases = [("wind_preview_type", better_than_lut_df.iloc[0]._name),   
+                                        ("baseline_controllers", "LUT"),
+                                        ("baseline_controllers", "Greedy")
+                        ]
+                    plot_simulations(
+                        time_series_df, plotting_cases, args.save_dir, include_power=True, legend_loc="outer", single_plot=False) 
 
             if ((case_families.index("baseline_controllers") in args.case_ids)) and (case_families.index("cost_func_tuning") in args.case_ids):
                 

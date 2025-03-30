@@ -22,7 +22,7 @@ import floris.flow_visualization as wakeviz
 import matplotlib.pyplot as plt
 
 class ControlledFlorisModel(InterfaceBase):
-    def __init__(self, t0, yaw_limits, dt, yaw_rate, config_path, turbine_signature, tid2idx_mapping, target_turbine_indices="all",
+    def __init__(self, t0, yaw_limits, simulation_dt, yaw_rate, config_path, turbine_signature, tid2idx_mapping, target_turbine_indices="all",
                  uncertain=False, offline_probability=0.0, floris_version='v4'):
         super().__init__()
         self.floris_config_path = config_path
@@ -30,17 +30,16 @@ class ControlledFlorisModel(InterfaceBase):
         self.yaw_rate = yaw_rate
         self.init_time = t0
         self.time = t0
-        self.simulation_dt = dt
+        self.simulation_dt = simulation_dt
         self.floris_version = floris_version
         self.offline_probability = offline_probability
         self.target_turbine_indices = target_turbine_indices
         self.sorted_tids = sorted(target_turbine_indices) if target_turbine_indices != "all" else "all" 
         self.turbine_signature = turbine_signature
-        self.tid2idx_mapping = tid2idx_mapping
         self.uncertain = uncertain
         # self.wf_source = wf_source
         self._load_floris()
-
+        self.tid2idx_mapping = tid2idx_mapping or {i: i for i in np.arange(self.n_turbines)}
         self.current_yaw_setpoints = np.zeros((0, self.n_turbines))
     
     def _load_floris(self):

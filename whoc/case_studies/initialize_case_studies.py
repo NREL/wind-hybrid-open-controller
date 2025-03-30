@@ -2,7 +2,6 @@ import os
 import pickle
 import yaml
 import copy
-import re
 import sys
 from glob import glob
 from itertools import product
@@ -17,18 +16,8 @@ import numpy as np
 from whoc import __file__ as whoc_file
 from whoc.case_studies.process_case_studies import plot_wind_field_ts
 from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
-from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 
-if sys.platform == "linux":
-    N_COST_FUNC_TUNINGS = 21
-    # if os.getlogin() == "ahenry":
-    #     # Kestrel
-    #     STORAGE_DIR = "/projects/ssc/ahenry/whoc/floris_case_studies"
-    # elif os.getlogin() == "aohe7145":
-    #     STORAGE_DIR = "/projects/aohe7145/toolboxes/wind-hybrid-open-controller/whoc/floris_case_studies"
-elif sys.platform == "darwin":
-    N_COST_FUNC_TUNINGS = 21
-    # STORAGE_DIR = "/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/floris_case_studies"
+N_COST_FUNC_TUNINGS = 21
 
 # sequential_pyopt is best solver, stochastic is best preview type
 case_studies = {
@@ -110,6 +99,7 @@ case_studies = {
                                 "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
                                 "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
                                 "use_filtered_wind_dir": {"group": 1, "vals": [True, True]},
+                                "use_lut_filtered_wind_dir": {"group": 1, "vals": [True, True]},
                                 "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/floris_gch_{9}.yaml")]},
                                 "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -139,14 +129,15 @@ case_studies = {
                           "lut_path": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
                                                                         f"../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_{9}.csv")]},
                           "case_names": {"group": 1, "vals": [
+                                                            "Perfect", "Persistent",
                                                             "Stochastic Interval Elliptical 3", "Stochastic Interval Elliptical 5", "Stochastic Interval Elliptical 11", 
                                                             "Stochastic Interval Rectangular 3", "Stochastic Interval Rectangular 5", "Stochastic Interval Rectangular 11",
-                                                            "Stochastic Sample 25", "Stochastic Sample 50", "Stochastic Sample 100",
-                                                            "Perfect", "Persistent"]},
-                         "n_wind_preview_samples": {"group": 1, "vals": [3, 5, 11] * 2 + [25, 50, 100] + [1, 1]},
-                         "decay_type": {"group": 1, "vals": ["exp"] * 3 + ["none"] * 3 + ["cosine"] * 3 + [None] * 2},
-                         "max_std_dev": {"group": 1, "vals": [2] * 3 + [2] * 3 + [1] * 3 + [None] * 2},  
-                         "wind_preview_type": {"group": 1, "vals": ["stochastic_interval_elliptical"] * 3 + ["stochastic_interval_rectangular"] * 3 + ["stochastic_sample"] * 3 + ["perfect", "persistent"]}
+                                                            "Stochastic Sample 25", "Stochastic Sample 50", "Stochastic Sample 100"
+                                                            ]},
+                         "n_wind_preview_samples": {"group": 1, "vals": [1, 1] + [3, 5, 11] * 2 + [25, 50, 100]},
+                         "decay_type": {"group": 1, "vals": [None] * 2 + ["exp"] * 3 + ["none"] * 3 + ["cosine"] * 3},
+                         "max_std_dev": {"group": 1, "vals": [None] * 2 + [2] * 3 + [2] * 3 + [1] * 3},  
+                         "wind_preview_type": {"group": 1, "vals": ["perfect", "persistent"] + ["stochastic_interval_elliptical"] * 3 + ["stochastic_interval_rectangular"] * 3 + ["stochastic_sample"] * 3}
                           },
     "warm_start": {"controller_class": {"group": 0, "vals": ["MPC"]},
                     "floris_input_file": {"group": 0, "vals": [os.path.join(os.path.dirname(whoc_file), 
@@ -452,7 +443,10 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         wind_field_data = []
         if os.path.exists(wind_field_dir):
             for f, fn in enumerate(wind_field_filenames):
-                wind_field_data.append(pd.read_csv(fn, index_col=0))
+                wind_field_data.append(pd.read_csv(fn, index_col=0, parse_dates=["time"]))
+                
+                # wind_field_data[f]["time"] = pd.to_timedelta(wind_field_data[-1]["time"], unit="s") + pd.to_datetime("2025-01-01")
+                # wind_field_data[f].to_csv(fn)
                 
                 if WIND_TYPE == "step":
                     # n_rows = len(wind_field_data[-1].index)
@@ -468,12 +462,12 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         # wind_mag_ts = [wind_field_data[case_idx]["FreestreamWindMag"].to_numpy() for case_idx in range(n_seeds)]
         # wind_dir_ts = [wind_field_data[case_idx]["FreestreamWindDir"].to_numpy() for case_idx in range(n_seeds)]
         
-        wind_field_ts = [wind_field_data[case_idx][["FreestreamWindMag", "FreestreamWindDir"]] for case_idx in range(n_seeds)] 
+        wind_field_ts = [wind_field_data[case_idx][["time", "FreestreamWindMag", "FreestreamWindDir"]] for case_idx in range(n_seeds)] 
         
-        assert np.all([np.isclose(wind_field_data[case_idx]["time"].iloc[1] - wind_field_data[case_idx]["time"].iloc[0], whoc_config["simulation_dt"]) for case_idx in range(n_seeds)]), "sampling time of wind field should be equal to simulation sampling time"
+        assert np.all([np.isclose((wind_field_data[case_idx]["time"].iloc[1] - wind_field_data[case_idx]["time"].iloc[0]).total_seconds(), whoc_config["simulation_dt"]) for case_idx in range(n_seeds)]), "sampling time of wind field should be equal to simulation sampling time"
         
         if stoptime == "auto": 
-            durations = [df["time"].iloc[-1] - df["time"].iloc[0] for df in wind_field_data]
+            durations = [(df["time"].iloc[-1] - df["time"].iloc[0]).total_seconds() for df in wind_field_data]
             whoc_config["hercules_comms"]["helics"]["config"]["stoptime"] = stoptime = min([d.total_seconds() if hasattr(d, 'total_seconds') else d for d in durations])
 
     elif wf_source == "scada":
@@ -513,25 +507,19 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
     case_lists = []
     case_name_lists = []
     n_cases_list = []
+    lut_cases = set()
     input_filenames = []
-    
     for case_study_key in case_study_keys:
         case_list, case_names = CaseGen_General(case_studies[case_study_key], namebase=case_study_key)
         case_lists = case_lists + case_list
         case_name_lists = case_name_lists + case_names
         n_cases_list.append(len(case_list))
         
-        # make save directory
-        results_dir = os.path.join(save_dir, case_study_key)
-        
-        os.makedirs(results_dir, exist_ok=True)
-
         # Load default settings and make copies
         start_case_idx = len(input_dicts)
         input_dicts = input_dicts + [copy.deepcopy(whoc_config) for i in range(len(case_list))]
 
         # make adjustements based on case study
-        lut_cases = set()
         for c, case in enumerate(case_list):
             for property_name, property_value in case.items():
                 if property_name in input_dicts[start_case_idx + c]["controller"]:
@@ -581,17 +569,18 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                     }
                 
             # need to change num_turbines, floris_input_file, lut_path
-            target_turbine_indices = input_dicts[start_case_idx + c]["controller"]["target_turbine_indices"]
-            if target_turbine_indices != "all":
+            if (target_turbine_indices := input_dicts[start_case_idx + c]["controller"]["target_turbine_indices"])  != "all":
+                target_turbine_indices = tuple(target_turbine_indices)
                 num_target_turbines = len(target_turbine_indices)
                 input_dicts[start_case_idx + c]["controller"]["num_turbines"] = num_target_turbines
-                
-            uncertain_flag = input_dicts[start_case_idx + c]["controller"]["uncertain"]
-            lut_path = input_dicts[start_case_idx + c]["controller"]["lut_path"]
-            floris_input_file = os.path.splitext(os.path.basename(input_dicts[start_case_idx + c]["controller"]["floris_input_file"]))[0]
-            input_dicts[start_case_idx + c]["controller"]["lut_path"] = os.path.join(
-                os.path.dirname(lut_path), 
-                f"lut_{floris_input_file}_{target_turbine_indices}_uncertain{uncertain_flag}.csv")
+                # NOTE: lut tables should be regenerated for different yaw limits
+                uncertain_flag = input_dicts[start_case_idx + c]["controller"]["uncertain"]
+                lut_path = input_dicts[start_case_idx + c]["controller"]["lut_path"]
+                floris_input_file = os.path.splitext(os.path.basename(input_dicts[start_case_idx + c]["controller"]["floris_input_file"]))[0]
+                yaw_limits = (input_dicts[start_case_idx + c]["controller"]["yaw_limits"])[1]
+                input_dicts[start_case_idx + c]["controller"]["lut_path"] = os.path.join(
+                    os.path.dirname(lut_path), 
+                    f"lut_{floris_input_file}_{target_turbine_indices}_uncertain{uncertain_flag}_yawlimits{yaw_limits}.csv")
             # **{k: v for k, v in input_dicts[start_case_idx + c]["wind_forecast"].items() if isinstance(k, str) and "_kwargs" in k} 
             assert input_dicts[start_case_idx + c]["controller"]["controller_dt"] >= input_dicts[start_case_idx + c]["simulation_dt"]
              
@@ -618,25 +607,29 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
             # TODO rename this by index with only config updates from case inside
             fn = f'input_config_case_{"_".join(
                 [f"{key}_{val if (isinstance(val, str) or isinstance(val, np.str_) or isinstance(val, bool)) else np.round(val, 6)}" for key, val in case.items() \
-                    if key not in ["controller_dt", "simulation_dt", "use_filtered_wind_dir", "use_lut_filtered_wind_dir", "yaw_limits", "wind_case_idx", "seed", "floris_input_file", "lut_path"]]) \
+                    if key not in ["simulation_dt", "use_filtered_wind_dir", "use_lut_filtered_wind_dir", "yaw_limits", "wind_case_idx", "seed", "floris_input_file", "lut_path"]]) \
                     if "case_names" not in case else case["case_names"]}.pkl'.replace("/", "_")
-            input_filenames.append(fn)
-             
 
-    prediction_timedelta = max(inp["wind_forecast"]["prediction_timedelta"] for inp in input_dicts if inp["controller"]["wind_forecast_class"]).total_seconds() \
-            if any(inp["controller"]["wind_forecast_class"] for inp in input_dicts) else 0
-    stoptime -= prediction_timedelta 
-    assert stoptime > 0, "increase stoptime parameter and/or decresease prediction_timedetla, as stoptime < prediction_timedelta"
-    for inp, fn in zip(input_dicts, input_filenames):
+            input_filenames.append((case_study_key, fn)) 
+
+    prediction_timedelta = max(inp["wind_forecast"]["prediction_timedelta"] for inp in input_dicts if inp["controller"]["wind_forecast_class"]) \
+            if any(inp["controller"]["wind_forecast_class"] for inp in input_dicts) else pd.Timedelta(seconds=0)
+    horizon_timedelta = max(pd.Timedelta(seconds=inp["controller"]["n_horizon"] * inp["controller"]["controller_dt"]) for inp in input_dicts if inp["controller"]["n_horizon"]) \
+            if any(inp["controller"]["controller_class"] == "MPC" for inp in input_dicts) else pd.Timedelta(seconds=0)
+    # stoptime -= prediction_timedelta.total_seconds()
+    # assert stoptime > 0, "increase stoptime parameter and/or decresease prediction_timedetla, as stoptime < prediction_timedelta"
+
+    # assert all([(df["time"].iloc[-1] - df["time"].iloc[0]).total_seconds() >= stoptime + prediction_timedelta + horizon_timedelta for df in wind_field_ts])
+    wind_field_ts = [df.loc[(df["time"] - df["time"].iloc[0]).dt.total_seconds() 
+                        <= stoptime + prediction_timedelta.total_seconds() + horizon_timedelta.total_seconds()] 
+                    for df in wind_field_ts]
+    stoptime = max(min([((df["time"].iloc[-1] - df["time"].iloc[0]) - prediction_timedelta - horizon_timedelta).total_seconds() for df in wind_field_ts]), stoptime)
+    for (case_study_key, fn), inp in zip(input_filenames, input_dicts):
         inp["hercules_comms"]["helics"]["config"]["stoptime"] = stoptime
-        
+        results_dir = os.path.join(save_dir, case_study_key)
+        os.makedirs(results_dir, exist_ok=True)
         with open(os.path.join(results_dir, fn), 'wb') as fp:
             pickle.dump(inp, fp)
-    
-    assert all([(df["time"].iloc[-1] - df["time"].iloc[0]).total_seconds() >= stoptime + prediction_timedelta for df in wind_field_ts])
-    wind_field_ts = [df.loc[(df["time"] - df["time"].iloc[0]).dt.total_seconds() 
-                        <= stoptime + prediction_timedelta] 
-                    for df in wind_field_ts]
     
     # instantiate controller and run_simulations simulation
     with open(os.path.join(save_dir, "init_simulations.pkl"), "wb") as fp:
