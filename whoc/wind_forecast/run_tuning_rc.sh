@@ -17,7 +17,7 @@
 # export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CUDA_HOME/lib64
 
 # Configure how many workers to run per CPU
-export NTASKS_PER_TUNER=1
+export NTASKS_PER_TUNER=6
 NTUNERS=$((SLURM_NTASKS / NTASKS_PER_TUNER))
 # NUM_WORKERS_PER_CPU=1
 
@@ -90,7 +90,7 @@ for i in $(seq 0 $((${NTUNERS}-1))); do
         module load miniforge
         module load intel impi
         # mamba init
-        conda init
+        # conda init
         conda activate wind_forecasting
         mpirun -np $NTASKS_PER_TUNER python tuning.py \
             --model_config $MODEL_CONFIG \
