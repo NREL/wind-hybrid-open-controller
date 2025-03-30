@@ -145,7 +145,7 @@ class WindForecast:
                 mp.set_start_method('spawn')
             with parallel_backend('multiprocessing', n_jobs=2):
                 # TODO HIGH split the training test data myself and use mean_squared_error, make sure X_train is being formed properly
-                total_score += cross_val_score(model, X_train, y_train, n_jobs=None, cv=2, scoring="neg_mean_squared_error", verbose=2).mean()
+                total_score += cross_val_score(model, X_train, y_train, n_jobs=None, cv=2, scoring="neg_mean_squared_error", verbose=0).mean()
             
             # total_score += (-mean_squared_error(y_true, y_pred))
         
