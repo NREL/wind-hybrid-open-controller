@@ -9,10 +9,18 @@ import os
 import datetime
 import yaml
 import re
-from functools import partial
-
-# import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor
+
+import multiprocessing as mp
+# from joblib import parallel_backend
+
+mpi_exists = False
+try:
+    from mpi4py import MPI
+    from mpi4py.futures import MPICommExecutor
+    mpi_exists = True
+except:
+    print("No MPI available on system.")
 
 from gluonts.torch.distributions import LowRankMultivariateNormalOutput
 from gluonts.torch.model.estimator import PyTorchLightningEstimator
@@ -40,7 +48,7 @@ import polars as pl
 import polars.selectors as cs
 from scipy.stats import multivariate_normal as mvn
 
-from mysql.connector import connect as sql_connect
+from mysql.connector import Error as SQLError, connect as sql_connect
 from optuna import create_study
 from optuna.samplers import TPESampler
 from optuna.storages import JournalStorage, RDBStorage
@@ -57,8 +65,6 @@ from floris import FlorisModel
 from scipy.signal import lfilter
 from wind_forecasting.run_scripts.testing import get_checkpoint
 from wind_forecasting.run_scripts.tuning import get_tuned_params
-
-from whoc import __file__ as whoc_file
 
 import logging 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -88,8 +94,8 @@ class WindForecast:
 
     def __post_init__(self):
         assert (self.context_timedelta % self.measurements_timedelta).total_seconds() == 0, "context_timedelta must be a multiple of measurements_timedelta"
-        assert (self.prediction_timedelta % self.measurements_timedelta).total_seconds() == 0, "prediction_timedelta must be a multiple of measurements_timedelta"
-        
+        assert (self.prediction_timedelta % self.measurements_timedelta).total_seconds() == 0, "prediction_timedelta must be a multiple of measurements_timedelta" 
+             
         self.n_context = int(self.context_timedelta / self.measurements_timedelta) # number of simulation time steps in a context horizon
         self.n_prediction = int(self.prediction_timedelta / self.measurements_timedelta) # number of simulation time steps in a prediction horizon
         
@@ -105,7 +111,7 @@ class WindForecast:
         self.idx2tid_mapping = dict([(v, k) for k, v in self.tid2idx_mapping.items()])
         
         self.outputs = [f"ws_horz_{tid}" for tid in self.tid2idx_mapping] + [f"ws_vert_{tid}" for tid in self.tid2idx_mapping]
-        self.training_data_loaded = {output: False for output in self.outputs}
+        # self.training_data_loaded = {output: False for output in self.outputs}
         self.training_data_shape = {output: None for output in self.outputs}
         
     def _get_ws_cols(self, historic_measurements: Union[pl.DataFrame, pd.DataFrame]):
@@ -113,8 +119,24 @@ class WindForecast:
             return historic_measurements.select(cs.starts_with("ws_horz") | cs.starts_with("ws_vert")).columns
         elif isinstance(historic_measurements, pd.DataFrame):
             return [col for col in historic_measurements.columns if (col.startswith("ws_horz") or col.startswith("ws_vert"))]
-     
-    def _tuning_objective(self, trial, historic_measurements):
+    
+    def _compute_output_score(self, output, params):
+        # logging.info(f"Defining model for output {output}.")
+        model = self.__class__.create_model(**{re.search(f"\\w+(?=_{output})", k).group(0): v for k, v in params.items() if k.endswith(f"_{output}")})
+        
+        # get training data for this output
+        # logging.info(f"Getting training data for output {output}.")
+        X_train, y_train = self._get_output_training_data(output=output, reload=False)
+        
+        # evaluate with cross-validation
+        # logging.info(f"Computing score for output {output}.")
+        train_split = np.random.choice(X_train.shape[0], replace=False, size=int(X_train.shape[0] * 0.75))
+        train_split = np.isin(range(X_train.shape[0]), train_split)
+        test_split = ~train_split
+        model.fit(X_train[train_split, :], y_train[train_split])
+        return (-mean_squared_error(y_true=y_train[test_split], y_pred=model.predict(X_train[test_split, :])))
+    
+    def _tuning_objective(self, trial):
         """
         Objective function to be minimized in Optuna
         """
@@ -122,30 +144,49 @@ class WindForecast:
         params = self.get_params(trial)
          
         # train svr model
-        total_score = 0
-        for output in self.outputs:
+        # total_score = 0
+        # for output in self.outputs:
+        if self.multiprocessor == "mpi" and mpi_exists:
+            executor = MPICommExecutor(MPI.COMM_WORLD, root=0)
+            # logging.info(f"🚀 Using MPI executor with {MPI.COMM_WORLD.Get_size()} processes")
+        else:
+            max_workers = mp.cpu_count()
+            executor = ProcessPoolExecutor(max_workers=max_workers,
+                                                mp_context=mp.get_context("spawn"))
+            # logging.info(f"🖥️  Using ProcessPoolExecutor with {max_workers} workers")
             
-            logging.info(f"Defining model for output {output}.")
-            model = self.__class__.create_model(**{re.search(f"\\w+(?=_{output})", k).group(0): v for k, v in params.items() if k.endswith(f"_{output}")})
+        with executor as ex:
+            futures = [ex.submit(self._compute_output_score, output=output, params=params) for output in self.outputs]
+            scores = [fut.result() for fut in futures]
             
-            # get training data for this output
-            logging.info(f"Getting training data for output {output}.")
-            X_train, y_train = self._get_output_training_data(historic_measurements, output)
-            
-            # evaluate with cross-validation
-            logging.info(f"Computing score for output {output}.")
-            total_score += cross_val_score(model, X_train, y_train, n_jobs=-1, cv=3, scoring="neg_mean_squared_error").mean()
-        
-        return total_score
+        return sum(scores)
     
+    def prepare_training_data(self, historic_measurements):
+        """
+        Prepares the training data for each output based on the historic measurements.
+        
+        Args:
+            historic_measurements (Union[pd.DataFrame, pl.DataFrame]): The historical measurements to use for training.
+        
+        Returns:
+            None
+        """
+        for hm in historic_measurements:
+            if hm.shape[0] < self.n_context + self.n_prediction:
+                logging.warning(f"measurements with continuity groups {list(hm["continuity_group"].unique())} have insufficient length!")
+                continue
+                
+        historic_measurements = [hm for hm in historic_measurements if hm.shape[0] >= self.n_context + self.n_prediction]
+        
+        # For each output, prepare the training data
+        for output in self.outputs:
+            self._get_output_training_data(historic_measurements=historic_measurements, output=output, reload=True)
+     
     # def tune_hyperparameters_single(self, historic_measurements, scaler, feat_type, tid, study_name, seed, restart_tuning, storage_type, journal_storage_dir, n_trials=1):
-    def tune_hyperparameters_single(self, historic_measurements, study_name, seed, restart_tuning, storage_type, journal_storage_dir, n_trials=1):
+    def tune_hyperparameters_single(self, study_name, seed, storage_type, journal_storage_dir, n_trials=1):
         # for case when argument is list of multiple continuous time series AND to only get the training inputs/outputs relevant to this model
         storage = self.get_storage(storage_type=storage_type, study_name=study_name, journal_storage_dir=journal_storage_dir)
-        if restart_tuning:
-            for s in storage.get_all_studies():
-                storage.delete_study(s._study_id)
-        
+         
         try:
             logging.info(f"Creating Optuna study {study_name}.") 
             study = create_study(study_name=study_name,
@@ -164,20 +205,10 @@ class WindForecast:
         # Get worker ID for logging
         worker_id = os.environ.get('SLURM_PROCID', '0')
         
-        # Each worker contributes trials to the shared study
-        n_trials_per_worker = max(1, n_trials // int(os.environ.get('SLURM_NTASKS', '1')))
-        logging.info(f"Worker {worker_id} will run {n_trials_per_worker} trials")
+        # Each worker contributes the same number of trials to the shared study = n_trials
+        logging.info(f"Worker {worker_id} is optimizing Optuna study {study_name}.")
         
-        logging.info(f"Worker {worker_id}: Optimizing Optuna study {study_name}.")
-        
-        for hm in historic_measurements:
-            if hm.shape[0] < self.n_context + self.n_prediction:
-                logging.warning(f"measurements with continuity groups {list(hm["continuity_group"].unique())} have insufficient length!")
-                continue
-                
-        historic_measurements = [hm for hm in historic_measurements if hm.shape[0] >= self.n_context + self.n_prediction]
-        
-        objective_fn = partial(self._tuning_objective, historic_measurements=historic_measurements)
+        objective_fn = self._tuning_objective
         
         try:
             study.optimize(objective_fn, n_trials=n_trials, show_progress_bar=True)
@@ -195,8 +226,8 @@ class WindForecast:
             for key, value in trial.params.items():
                 logging.info("    {}: {}".format(key, value))
         
-        for output in self.outputs:
-            os.remove(os.path.join(self.temp_save_dir, f"Xy_train_{output}.dat"))
+        # for output in self.outputs:
+        #     os.remove(os.path.join(self.temp_save_dir, f"Xy_train_{output}.dat"))
         
         return study.best_params
     
@@ -213,16 +244,22 @@ class WindForecast:
             Storage object for Optuna
         """
         if storage_type == "mysql":
-            logging.info(f"Connecting to RDB database {study_name}")
-            try:
-                db = sql_connect(host="localhost", user="root", database=study_name)       
-            except Exception: 
-                db = sql_connect(host="localhost", user="root")
-                cursor = db.cursor()
+            logging.info(f"Connecting to MySQL RDB database {study_name}")
+            conn = sql_connect(host="localhost", user="root")
+            cursor = conn.cursor()
+            cursor.execute("SHOW DATABASES")
+            if study_name in [res[0] for res in cursor]:
+                # connect to existing database
+                conn = sql_connect(host="localhost", user="root", database=study_name)
+            else:
+                # make new database
+                conn = sql_connect(host="localhost", user="root")
+                cursor = conn.cursor()
                 cursor.execute(f"CREATE DATABASE {study_name}") 
-            finally:
-                storage = RDBStorage(url=f"mysql://{db.user}@{db.server_host}:{db.server_port}/{study_name}.db")
+                
+            storage = RDBStorage(url=f"mysql://{conn.user}@{conn.server_host}:{conn.server_port}/{study_name}")
         elif storage_type == "sqlite":
+            logging.info(f"Connecting to SQLite RDB database {study_name}")
             # SQLite with WAL mode - using a simpler URL format
             os.makedirs(journal_storage_dir, exist_ok=True)
             db_path = os.path.join(journal_storage_dir, f"{study_name}.db")
@@ -258,16 +295,12 @@ class WindForecast:
             )
         return storage
      
-    def _get_output_training_data(self, historic_measurements, output):
+    def _get_output_training_data(self, output, reload, historic_measurements=None):
         feat_type = re.search(f"\\w+(?=_{self.turbine_signature})", output).group()
         tid = re.search(self.turbine_signature, output).group()
-        
-        if self.training_data_loaded[output]:
-            fp = np.memmap(os.path.join(self.temp_save_dir, f"Xy_train_{output}.dat"), dtype="float32", 
-                           mode="r", shape=self.training_data_shape[output])
-            X_train = fp[:, :-1]
-            y_train = fp[:, -1]
-        else: 
+        Xy_path = os.path.join(self.temp_save_dir, f"Xy_train_{output}.dat")
+        if reload: 
+            assert historic_measurements, "Must provide historic measurements to reload data in _get_output_training_data"
             if isinstance(historic_measurements, Iterable):
                 X_train = []
                 y_train = []
@@ -275,6 +308,7 @@ class WindForecast:
                     # don't scale for single dataset, scale for all of them
                     
                     # X, y = self._get_training_data(hm, scaler, feat_type, tid, scale=False)
+                    hm = hm.gather_every(self.n_prediction_interval)
                     X, y = self._get_training_data(hm, self.scaler[output], feat_type, tid, scale=False)
                     X_train.append(X)
                     y_train.append(y)
@@ -289,14 +323,25 @@ class WindForecast:
             else:
                 X_train, y_train = self._get_training_data(historic_measurements, self.scaler[output], feat_type, tid, scale=True)
             
-            fp = np.memmap(os.path.join(self.temp_save_dir, f"Xy_train_{output}.dat"), dtype="float32", 
-                           mode="w+", shape=(X_train.shape[0], X_train.shape[1] + 1))
-            self.training_data_shape[output] = (X_train.shape[0], X_train.shape[1] + 1)
-            self.training_data_loaded[output] = True
+            training_data_shape = (X_train.shape[0], X_train.shape[1] + 1)
+            fp = np.memmap(Xy_path, dtype="float32", 
+                           mode="w+", shape=training_data_shape)
+            # self.training_data_shape[output] = (X_train.shape[0], X_train.shape[1] + 1)
+            # self.training_data_loaded[output] = True
+            
+            np.save(Xy_path.replace(".dat", "_shape.npy"), training_data_shape)
             fp[:, :-1] = X_train
             fp[:, -1] = y_train
             fp.flush()
-            
+            logging.info(f"Saved training data to {Xy_path}")
+        else:
+            assert os.path.exists(Xy_path), "Must run prepare_training_data before tuning"
+            training_data_shape = tuple(np.load(Xy_path.replace(".dat", "_shape.npy")))
+            fp = np.memmap(Xy_path, dtype="float32", 
+                           mode="r", shape=training_data_shape)
+            X_train = fp[:, :-1]
+            y_train = fp[:, -1]
+               
         del fp
         return X_train, y_train
     
@@ -779,10 +824,12 @@ class GaussianForecast(WindForecast):
 @dataclass
 class SVRForecast(WindForecast):
     """Wind speed component forecasting using Support Vector Regression."""
+    multiprocessor: str = "mpi"
     
     def __post_init__(self):
         super().__post_init__()
         
+        self.n_prediction_interval = self.n_prediction
         self.n_neighboring_turbines = self.kwargs["n_neighboring_turbines"] 
         self.max_n_samples = self.kwargs["max_n_samples"] 
 
@@ -942,7 +989,7 @@ class SVRForecast(WindForecast):
         model.fit(X_train, y_train)
         
         input_turbine_indices = self.cluster_turbines[self.tid2idx_mapping[tid]] 
-        output_idx = input_turbine_indices.index(self.tid2idx_mapping[tid]) 
+        # output_idx = input_turbine_indices.index(self.tid2idx_mapping[tid]) 
         X_pred = np.ascontiguousarray(training_measurements.select([f"{feat_type}_{self.idx2tid_mapping[t]}" for t in input_turbine_indices]).to_numpy()[-self.n_context:, :].flatten()[np.newaxis, :])
         y_pred = model.predict(X_pred)
         
@@ -993,6 +1040,7 @@ class KalmanFilterForecast(WindForecast):
         super().__post_init__()
         # self.model = defaultdict(KalmanFilterForecast.create_model)
         # self.scaler = defaultdict(KalmanFilterForecast.create_scaler)
+        self.n_prediction_interval = self.n_prediction
         self.n_turbines = self.fmodel.n_turbines
         dim_x = dim_z = self.n_targets_per_turbine * self.n_turbines
         self.model = KalmanFilterForecast.create_model(
@@ -1207,6 +1255,7 @@ class MLForecast(WindForecast):
     
     def __post_init__(self):
         super().__post_init__()
+        self.n_prediction_interval = 1
         self.model_key = self.kwargs["model_key"]
         
         # assert isinstance(self.kwargs["estimator_class"], PyTorchLightningEstimator)
@@ -1232,6 +1281,8 @@ class MLForecast(WindForecast):
             
         self.model_prediction_timedelta = self.model_config["dataset"]["prediction_length"] \
             * pd.Timedelta(self.model_config["dataset"]["resample_freq"]).to_pytimedelta()
+            
+        assert self.model_prediction_timedelta >= self.prediction_timedelta, "model is tuned for shorter prediction timedelta!"
         # self.context_timedelta = self.model_config["dataset"]["context_length"] \
         #     * pd.Timedelta(self.model_config["dataset"]["resample_freq"]).to_pytimedelta()
 
@@ -1308,9 +1359,11 @@ class MLForecast(WindForecast):
         # resample data to frequency model was trained on
             
         if self.data_module.freq != self.measurements_timedelta:
-            if self.measurements_timedelta > self.data_module.freq:
-                historic_measurements = historic_measurements.with_columns(time=pl.col("time").dt.round(self.data_module.freq))\
-                                                              .group_by("time").agg(cs.numeric().mean()).sort("time")
+            if self.measurements_timedelta < self.data_module.freq:
+                historic_measurements = historic_measurements.with_columns(
+                    time=pl.col("time").dt.round(self.data_module.freq)
+                    + pl.duration(seconds=historic_measurements.select(pl.col("time").last().dt.second() % self.data_module.freq.seconds).item()))\
+                    .group_by("time").agg(cs.numeric().mean()).sort("time")
             else:
                 historic_measurements = historic_measurements.upsample(time_column="time", every=self.data_module.freq).fill_null(strategy="forward")
         
@@ -1381,12 +1434,13 @@ class MLForecast(WindForecast):
         pred_df = pred_df.with_columns([(cs.starts_with(col) - self.norm_min[c]) 
                                                     / self.norm_scale[c] 
                                                     for c, col in enumerate(self.norm_min_cols)])
-        
+        pred_df = pred_df.filter(pl.col("time") <= (current_time + self.prediction_timedelta))
         # check if the data that trained the model differs from the frequency of historic_measurments
         if self.data_module.freq != self.measurements_timedelta:
             # resample historic measurements to historic_measurements frequency and return as pandas dataframe
-            if self.measurements_timedelta < self.data_module.freq:
-                pred_df = pred_df.with_columns(time=pl.col("time").dt.round(self.measurements_timedelta))\
+            if self.measurements_timedelta > self.data_module.freq:
+                pred_df = pred_df.with_columns(time=pl.col("time").dt.round(self.measurements_timedelta)
+                                               + pl.duration(seconds=pred_df.select(pl.col("time").last().dt.second() % self.data_module.freq.seconds).item()))\
                                                               .group_by("time").agg(cs.numeric().mean()).sort("time")
             else:
                 pred_df = pred_df.upsample(time_column="time", every=self.measurements_timedelta).fill_null(strategy="forward")
@@ -1436,12 +1490,13 @@ class MLForecast(WindForecast):
         pred_df = pred_df.with_columns([(cs.contains(col) - self.norm_min[c]) 
                                                     / self.norm_scale[c] 
                                                     for c, col in enumerate(self.norm_min_cols)])
-        
+        pred_df = pred_df.filter(pl.col("time") <= (current_time + self.prediction_timedelta))
         # check if the data that trained the model differs from the frequency of historic_measurments
         if self.data_module.freq != self.measurements_timedelta:
             # resample historic measurements to historic_measurements frequency and return as pandas dataframe
-            if self.measurements_timedelta < self.data_module.freq:
-                pred_df = pred_df.with_columns(time=pl.col("time").dt.round(self.measurements_timedelta))\
+            if self.measurements_timedelta > self.data_module.freq:
+                pred_df = pred_df.with_columns(time=pl.col("time").dt.round(self.measurements_timedelta)
+                                               + pl.duration(seconds=pred_df.select(pl.col("time").last().dt.second() % self.data_module.freq.seconds).item()))\
                                                               .group_by("time").agg(cs.numeric().mean()).sort("time")
             else:
                 pred_df = pred_df.upsample(time_column="time", every=self.measurements_timedelta).fill_null(strategy="forward")
@@ -1493,12 +1548,13 @@ class MLForecast(WindForecast):
         pred_df = pred_df.with_columns([(cs.contains(col) - self.norm_min[c]) 
                                                     / self.norm_scale[c] 
                                                     for c, col in enumerate(self.norm_min_cols)])
-        
+        pred_df = pred_df.filter(pl.col("time") <= (current_time + self.prediction_timedelta)) 
         # check if the data that trained the model differs from the frequency of historic_measurments
         if self.data_module.freq != self.measurements_timedelta:
             # resample historic measurements to historic_measurements frequency and return as pandas dataframe
-            if self.measurements_timedelta < self.data_module.freq:
-                pred_df = pred_df.with_columns(time=pl.col("time").dt.round(self.measurements_timedelta))\
+            if self.measurements_timedelta > self.data_module.freq:
+                pred_df = pred_df.with_columns(time=pl.col("time").dt.round(self.measurements_timedelta)
+                                               + pl.duration(seconds=pred_df.select(pl.col("time").last().dt.second() % self.data_module.freq.seconds).item()))\
                                                               .group_by("time").agg(cs.numeric().mean()).sort("time")
             else:
                 pred_df = pred_df.upsample(time_column="time", every=self.measurements_timedelta).fill_null(strategy="forward")

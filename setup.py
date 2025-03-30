@@ -35,7 +35,7 @@ REQUIRES_PYTHON = ">=3.6.0"
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    "numpy~=1.20",
+    "numpy~=2.2.4",
     # "flasc",
     # "matplotlib~=3.0",
     # "pandas~=2.0",

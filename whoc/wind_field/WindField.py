@@ -553,7 +553,7 @@ def generate_multi_wind_ts(wf, save_dir, save_name="", init_seeds=None, return_p
 
 def write_abl_velocity_timetable(dfs, save_path, boundary_starttime=7200.0):
     for d, df in enumerate(dfs):
-        df = df[["Time", "FreestreamWindMag", "FreestreamWindDir"]]
+        df = df[["time", "FreestreamWindMag", "FreestreamWindDir"]]
         df["FreestreamWindDir"] = (270.0 - df["FreestreamWindDir"]) % 360.0
         # df.loc[df["FreestreamWindDir"] > 180.0, "FreestreamWindDir"] = df.loc[df["FreestreamWindDir"] > 180.0, "FreestreamWindDir"] - 360.0
         # df.loc[df["FreestreamWindDir"] < 0.0, "FreestreamWindDir"] = df.loc[df["FreestreamWindDir"] < 0.0, "FreestreamWindDir"] + 360.0

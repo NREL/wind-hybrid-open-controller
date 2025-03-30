@@ -6,6 +6,7 @@ import sys
 from glob import glob
 from itertools import product
 from functools import partial
+# from datetime import timedelta
 
 import pandas as pd
 import polars as pl
@@ -75,7 +76,7 @@ case_studies = {
                                                                         None, None,
                                                                         "informer", None]},
                                     
-                                    "prediction_timedelta": {"group": 2, "vals": [120]},
+                                    "prediction_timedelta": {"group": 2, "vals": [100]},
                                     # "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController"]},
                                     # "target_turbine_indices": {"group": 1, "vals": ["74,73"]},
                                     # "uncertain": {"group": 1, "vals": [True]}, 
@@ -608,6 +609,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                 [f"{key}_{val if (isinstance(val, str) or isinstance(val, np.str_) or isinstance(val, bool)) else np.round(val, 6)}" for key, val in case.items() \
                     if key not in ["simulation_dt", "use_filtered_wind_dir", "use_lut_filtered_wind_dir", "yaw_limits", "wind_case_idx", "seed", "floris_input_file", "lut_path"]]) \
                     if "case_names" not in case else case["case_names"]}.pkl'.replace("/", "_")
+
             input_filenames.append((case_study_key, fn)) 
 
     prediction_timedelta = max(inp["wind_forecast"]["prediction_timedelta"] for inp in input_dicts if inp["controller"]["wind_forecast_class"]) \
@@ -616,7 +618,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
             if any(inp["controller"]["controller_class"] == "MPC" for inp in input_dicts) else pd.Timedelta(seconds=0)
     # stoptime -= prediction_timedelta.total_seconds()
     # assert stoptime > 0, "increase stoptime parameter and/or decresease prediction_timedetla, as stoptime < prediction_timedelta"
-    
+
     # assert all([(df["time"].iloc[-1] - df["time"].iloc[0]).total_seconds() >= stoptime + prediction_timedelta + horizon_timedelta for df in wind_field_ts])
     wind_field_ts = [df.loc[(df["time"] - df["time"].iloc[0]).dt.total_seconds() 
                         <= stoptime + prediction_timedelta.total_seconds() + horizon_timedelta.total_seconds()] 

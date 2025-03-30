@@ -159,7 +159,8 @@ class GreedyController(ControllerBase):
         
         if self.wind_forecast:
             forecasted_wind_field = self.wind_forecast.predict_point(self.historic_measurements, self.current_time)
-         
+            single_forecasted_wind_field = forecasted_wind_field.loc[forecasted_wind_field["time"] == self.current_time + self.wind_forecast.prediction_timedelta, :].iloc[:1]
+             
         # if not enough wind data has been collected to filter with, or we are not using filtered data, just get the most recent wind measurements
         if self.current_time < self.lpf_start_time or not self.use_filt:
             wind = forecasted_wind_field.iloc[-1] if self.wind_forecast else current_measurements.iloc[0]
@@ -176,7 +177,7 @@ class GreedyController(ControllerBase):
         else:
             # use filtered wind direction and speed
             wind = pd.concat([self.historic_measurements, 
-                                forecasted_wind_field.iloc[-1:]], axis=0)[
+                                single_forecasted_wind_field], axis=0)[
                                         self.mean_ws_horz_cols+self.mean_ws_vert_cols] \
                                             if self.wind_forecast else self.historic_measurements
             wind_dirs = 180.0 + np.rad2deg(np.arctan2(
@@ -185,7 +186,7 @@ class GreedyController(ControllerBase):
             
             if self.verbose:
                 if self.wind_forecast:
-                    logging.info(f"unfiltered forecasted wind directions = {wind_dirs[self.sorted_tids]}")
+                    logging.info(f"unfiltered forecasted wind directions = {wind_dirs[-1, self.sorted_tids]}")
                 else:
                     logging.info(f"unfiltered current wind directions = {current_wind_directions}")
              
@@ -252,7 +253,7 @@ class GreedyController(ControllerBase):
         self.init_sol["control_inputs"] = (constrained_yaw_setpoints - self.controls_dict["yaw_angles"]) * (self.yaw_norm_const / (self.yaw_rate * self.controller_dt))
 
         if self.wind_forecast:
-            newest_predictions = forecasted_wind_field.loc[forecasted_wind_field["time"] < forecasted_wind_field["time"] + pd.Timedelta(self.controller_dt, unit="s"), :]
+            newest_predictions = forecasted_wind_field.loc[forecasted_wind_field["time"] <= self.current_time + pd.Timedelta(self.controller_dt, unit="s"), :]
             self.controls_dict = {"yaw_angles": list(constrained_yaw_setpoints), 
                                     "predicted_wind_speeds_horz": newest_predictions[self.mean_ws_horz_cols].values,
                                     "predicted_wind_speeds_vert": newest_predictions[self.mean_ws_horz_cols].values
