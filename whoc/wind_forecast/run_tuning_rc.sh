@@ -6,7 +6,7 @@
 ##SBATCH --time=12:00:00
 ##SBATCH --partition=amilan
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
+#SBATCH --ntasks-per-node=12
 #SBATCH --time=01:00:00
 #SBATCH --partition=atesting
 
@@ -36,7 +36,7 @@ export MODEL_CONFIG="/projects/aohe7145/toolboxes/wind_forecasting_env/wind-fore
 export DATA_CONFIG="/projects/aohe7145/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/preprocessing_inputs_rc_flasc.yaml"
 
 # Configure how many workers to run per CPU
-NTUNERS=1
+NTUNERS=6
 export NTASKS_PER_TUNER=$SLURM_NTASKS / $NTUNERS
 NUM_WORKERS_PER_CPU=1
 echo $NTUNERS
