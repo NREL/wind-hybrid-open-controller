@@ -292,6 +292,7 @@ class WindForecast:
                     # don't scale for single dataset, scale for all of them
                     
                     # X, y = self._get_training_data(hm, scaler, feat_type, tid, scale=False)
+                    hm = hm.gather_every(self.n_prediction_interval)
                     X, y = self._get_training_data(hm, self.scaler[output], feat_type, tid, scale=False)
                     X_train.append(X)
                     y_train.append(y)
@@ -811,6 +812,7 @@ class SVRForecast(WindForecast):
     def __post_init__(self):
         super().__post_init__()
         
+        self.n_prediction_interval = self.n_prediction
         self.n_neighboring_turbines = self.kwargs["n_neighboring_turbines"] 
         self.max_n_samples = self.kwargs["max_n_samples"] 
 
@@ -1021,6 +1023,7 @@ class KalmanFilterForecast(WindForecast):
         super().__post_init__()
         # self.model = defaultdict(KalmanFilterForecast.create_model)
         # self.scaler = defaultdict(KalmanFilterForecast.create_scaler)
+        self.n_prediction_interval = self.n_prediction
         self.n_turbines = self.fmodel.n_turbines
         dim_x = dim_z = self.n_targets_per_turbine * self.n_turbines
         self.model = KalmanFilterForecast.create_model(
@@ -1235,6 +1238,7 @@ class MLForecast(WindForecast):
     
     def __post_init__(self):
         super().__post_init__()
+        self.n_prediction_interval = 1
         self.model_key = self.kwargs["model_key"]
         
         # assert isinstance(self.kwargs["estimator_class"], PyTorchLightningEstimator)
