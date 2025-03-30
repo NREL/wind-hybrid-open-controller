@@ -17,7 +17,7 @@ except RuntimeError:
    pass
 
 # import multiprocessing as mp
-from joblib import parallel_backend
+# from joblib import parallel_backend
 
 from gluonts.torch.distributions import LowRankMultivariateNormalOutput
 from gluonts.torch.model.estimator import PyTorchLightningEstimator
@@ -142,9 +142,9 @@ class WindForecast:
             # evaluate with cross-validation
             logging.info(f"Computing score for output {output}.")
             # use joblib.parallel_backend spawn to allow multiprocessing here
-            with parallel_backend('multiprocessing', n_jobs=2):
-                # TODO HIGH split the training test data myself and use mean_squared_error, make sure X_train is being formed properly
-                total_score += cross_val_score(model, X_train, y_train, n_jobs=None, cv=2, scoring="neg_mean_squared_error", verbose=0).mean()
+            # with parallel_backend('multiprocessing', n_jobs=2):
+            # TODO HIGH split the training test data myself and use mean_squared_error, make sure X_train is being formed properly
+            total_score += cross_val_score(model, X_train, y_train, n_jobs=None, cv=2, scoring="neg_mean_squared_error", verbose=0).mean()
             
             # total_score += (-mean_squared_error(y_true, y_pred))
         
@@ -194,9 +194,8 @@ class WindForecast:
         # Get worker ID for logging
         worker_id = os.environ.get('SLURM_PROCID', '0')
         
-        # Each worker contributes trials to the shared study
-        n_trials_per_worker = max(1, n_trials // int(os.environ.get('NTASKS_PER_TUNER', '1')))
-        logging.info(f"Worker {worker_id} is optimizing Optuna study {study_name} and will run {n_trials_per_worker} of {n_trials} trials.")
+        # Each worker contributes the same number of trials to the shared study = n_trials
+        logging.info(f"Worker {worker_id} is optimizing Optuna study {study_name}.")
         
         objective_fn = self._tuning_objective
         

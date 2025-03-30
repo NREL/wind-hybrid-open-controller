@@ -16,6 +16,11 @@
 
 # export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CUDA_HOME/lib64
 
+# Configure how many workers to run per CPU
+export NTASKS_PER_TUNER=1
+NTUNERS=$((SLURM_NTASKS / NTASKS_PER_TUNER))
+# NUM_WORKERS_PER_CPU=1
+
 # Print environment info
 echo "SLURM_JOB_ID=${SLURM_JOB_ID}"
 echo "SLURM_JOB_NAME=${SLURM_JOB_NAME}"
@@ -25,6 +30,8 @@ echo "SLURM_JOB_GPUS=${SLURM_JOB_GPUS}"
 echo "SLURM_JOB_GRES=${SLURM_JOB_GRES}"
 echo "SLURM_NTASKS=${SLURM_NTASKS}"
 echo "SLURM_NTASKS_PER_NODE=${SLURM_NTASKS_PER_NODE}"
+echo "NTUNERS=${NTUNERS}"
+echo "NTASKS_PER_TUNER=${NTASKS_PER_TUNER}"
 
 echo "=== ENVIRONMENT ==="
 module list
@@ -35,12 +42,7 @@ declare -a WORKER_PIDS=()
 export MODEL_CONFIG="/projects/aohe7145/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/training_inputs_rc_flasc.yaml"
 export DATA_CONFIG="/projects/aohe7145/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/preprocessing_inputs_rc_flasc.yaml"
 
-# Configure how many workers to run per CPU
-NTUNERS=6
-export NTASKS_PER_TUNER=$((SLURM_NTASKS / NTUNERS))
-NUM_WORKERS_PER_CPU=1
-echo $NTUNERS
-echo $NTASKS_PER_TUNER
+
 
 # prepare training data first
 echo "=== STARTING DATA PREPARATION ==="
