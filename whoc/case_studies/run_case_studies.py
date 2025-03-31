@@ -24,7 +24,7 @@ from whoc.case_studies.simulate_case_studies import simulate_controller
 from whoc.case_studies.process_case_studies import (read_time_series_data, write_case_family_time_series_data, read_case_family_time_series_data, 
                                                     aggregate_time_series_data, read_case_family_agg_data, write_case_family_agg_data, 
                                                     generate_outputs, plot_simulations, plot_wind_farm, plot_breakdown_robustness, plot_horizon_length,
-                                                    plot_cost_function_pareto_curve, plot_yaw_offset_wind_direction, plot_parameter_sweep)
+                                                    plot_cost_function_pareto_curve, plot_yaw_offset_wind_direction, plot_parameter_sweep, plot_power_increase_vs_prediction_time)
 try:
     from whoc.wind_forecast.WindForecast import PerfectForecast, PersistenceForecast, MLForecast, SVRForecast, KalmanFilterForecast, PreviewForecast
 except ModuleNotFoundError:
@@ -718,5 +718,5 @@ if __name__ == "__main__":
              "wind_preview_type", "warm_start"]):
                 generate_outputs(agg_df, args.save_dir)
 
-            if case_families.index("baseline_controllers_preview_flasc_perfect") in args.case_ids:
-                plot_power_increase_vs_prediction_time(time_series_df, args.save_dir)
+#            if case_families.index("baseline_controllers_preview_flasc_perfect") in args.case_ids:
+#                plot_power_increase_vs_prediction_time(time_series_df, args.save_dir)

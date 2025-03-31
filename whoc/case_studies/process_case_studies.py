@@ -1419,7 +1419,9 @@ def plot_power_increase_vs_prediction_time(agg_df, save_dir):
     """
     
     # percentage power increase from time_series_results
-    data_df["PercentagePowerIncrease"] = data_df["RelativeFarmPower"]
+    agg_df["PercentagePowerIncrease"] = agg_df["FarmPowerMean"]
+    #sub_df[("FarmPowerMean")] = sub_df[("FarmPowerMean")] / 1e6
+
     
     fig, ax = plt.subplots(figsize=(10, 6))
     sns.lineplot(x="PredictedTime", y="PercentagePowerIncrease", hue="turbine_id", data=data_df, marker="o", ax=ax)
