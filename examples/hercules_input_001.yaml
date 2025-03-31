@@ -7,7 +7,7 @@ name: example_000
 # Describe this emulator setup
 description: Just a solar plant
 
-simulation_dt: 60 
+simulation_dt: 0.5 
 
 hercules_comms:
 
@@ -73,18 +73,18 @@ controller:
   max_std_dev: 2.0 # for wind_preview_intervals, +/- number of standard deviations from mean to select sample intervals from
   n_wind_preview_samples: 11
   warm_start: greedy # may equal 'previous' to warm-start with time-shifted previous solution,  "lut" to warm-start with lookup table solution, or "random" #TODO
-  use_lut_filtered_wind_dir: False
+  use_lut_filtered_wind_dir: True
   lut_path: "../../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_9.csv"
   generate_lut: False
   nu: 0.0001 # 0.00138 step size to add/subtract from yaw angles for stochastic gradient estimate
-  use_filtered_wind_dir: False
+  use_filtered_wind_dir: True
   floris_input_file: ../../examples/mpc_wake_steering_florisstandin/floris_gch_9.yaml
   solver: slsqp # may equal serial_refine, slsqp, sequential_slsqp, or zsgd
   basin_hop: False
   offline_probability: 0.0
   state_con_type: extreme # extreme or check_all_samples
   beta: 0.9
-  max_iter: 500
+  max_iter: 100
   acc: 0.000001
   use_state_cons: True
   use_dyn_state_cons: True
@@ -98,8 +98,6 @@ controller:
   wind_forecast_class: False
   uncertain: False
   target_turbine_indices:
-  - 1
-  - 2
 
 wind_forecast:
   context_timedelta: 1200 # seconds

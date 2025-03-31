@@ -20,9 +20,11 @@ if __name__ == "__main__":
     parser.add_argument("-mcnf", "--model_config", type=str)
     parser.add_argument("-dcnf", "--data_config", type=str)
     parser.add_argument("-sn", "--study_name", type=str)
+    parser.add_argument("-m", "--multiprocessor", choices=["mpi", "cf"], default="mpi")
+    parser.add_argument("-i", "--initialize", action="store_true")
     parser.add_argument("-rt", "--restart_tuning", action="store_true")
     parser.add_argument("-s", "--seed", type=int, help="Seed for random number generator", default=42)
-    parser.add_argument("-m", "--model", type=str, choices=["svr", "kf", "preview", "informer", "autoformer", "spacetimeformer"], required=True)
+    parser.add_argument("-md", "--model", type=str, choices=["svr", "kf", "preview", "informer", "autoformer", "spacetimeformer"], required=True)
     # pretrained_filename = "/Users/ahenry/Documents/toolboxes/wind_forecasting/examples/logging/wf_forecasting/lznjshyo/checkpoints/epoch=0-step=50.ckpt"
     args = parser.parse_args()
     
@@ -80,6 +82,10 @@ if __name__ == "__main__":
     true_wf = true_wf.partition_by("continuity_group")
     historic_measurements = [wf.slice(0, wf.select(pl.len()).item() - int(prediction_timedelta / wind_dt)) for wf in true_wf]
     
+    # %% PREPARING DIRECTORIES
+    os.makedirs(model_config["optuna"]["journal_dir"], exist_ok=True)
+    os.makedirs(data_config["temp_storage_dir"], exist_ok=True)
+    
     # %% INSTANTIATING MODEL
     logging.info("Instantiating model.")  
     if args.model == "svr": 
@@ -95,27 +101,38 @@ if __name__ == "__main__":
                             tid2idx_mapping=tid2idx_mapping,
                             turbine_signature=turbine_signature,
                             use_tuned_params=False,
-                            temp_save_dir=data_config["temp_storage_dir"])
+                            temp_save_dir=data_config["temp_storage_dir"],
+                            multiprocessor=args.multiprocessor)
     
-    os.makedirs(model_config["optuna"]["journal_dir"], exist_ok=True)
     
-    # %% TUNING MODEL
-    logging.info("Running tune_hyperparameters_multi")
-    model.tune_hyperparameters_single(historic_measurements=historic_measurements, 
-                                     study_name=args.study_name,
-                                     storage_type=model_config["optuna"]["storage_type"],
-                                     n_trials=model_config["optuna"]["n_trials"], 
-                                     journal_storage_dir=model_config["optuna"]["journal_dir"],
-                                     restart_tuning=args.restart_tuning,
-                                     seed=args.seed)
-                                    #  trial_protection_callback=handle_trial_with_oom_protection)
+    # %% PREPARING DATA FOR TUNING
+    if args.initialize:
+        logging.info("Preparing data for tuning")
+        model.prepare_training_data(historic_measurements=historic_measurements)
+        
+        logging.info("Reinitializing storage") 
+        if args.restart_tuning:
+            storage = model.get_storage(storage_type=model_config["optuna"]["storage_type"], 
+                            study_name=args.study_name, 
+                            journal_storage_dir=model_config["optuna"]["journal_dir"])
+            for s in storage.get_all_studies():
+                storage.delete_study(s._study_id)
+    else: 
+        # %% TUNING MODEL
+        logging.info("Running tune_hyperparameters_multi")
+        model.tune_hyperparameters_single(study_name=args.study_name,
+                                        storage_type=model_config["optuna"]["storage_type"],
+                                        n_trials=model_config["optuna"]["n_trials"], 
+                                        journal_storage_dir=model_config["optuna"]["journal_dir"],
+                                        seed=args.seed)
+                                        #  trial_protection_callback=handle_trial_with_oom_protection)
     
-    # %% TESTING LOADING HYPERPARAMETERS
-    # Test setting parameters
-    # model.set_tuned_params(storage_type=model_config["optuna"]["storage_type"], study_name_root=args.study_name, 
-    #                        journal_storage_dir=model_config["optuna"]["journal_dir"]) 
+        # %% TESTING LOADING HYPERPARAMETERS
+        # Test setting parameters
+        # model.set_tuned_params(storage_type=model_config["optuna"]["storage_type"], study_name_root=args.study_name, 
+        #                        journal_storage_dir=model_config["optuna"]["journal_dir"]) 
     
-    # %% After training completes
-    # torch.cuda.empty_cache()
-    gc.collect()
-    logging.info("Optuna hyperparameter tuning completed.")
+        # %% After training completes
+        # torch.cuda.empty_cache()
+        gc.collect()
+        logging.info("Optuna hyperparameter tuning completed.")

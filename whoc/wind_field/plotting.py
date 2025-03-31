@@ -13,12 +13,14 @@ def plot_ts(df, fig_dir, include_transformation=False):
         ax_ts = ax_ts.flatten()
     else:
         ax_ts = [ax_ts]
-    
-    sns.lineplot(data=df, hue="WindSeed", x="Time", y="FreestreamWindSpeedU", ax=ax_ts[0])
-    sns.lineplot(data=df, hue="WindSeed", x="Time", y="FreestreamWindSpeedV", ax=ax_ts[1])
+        
+    df["time"] = (df["time"] - df["time"].iloc[0]).dt.total_seconds()
+     
+    sns.lineplot(data=df, hue="WindSeed", x="time", y="FreestreamWindSpeedU", ax=ax_ts[0])
+    sns.lineplot(data=df, hue="WindSeed", x="time", y="FreestreamWindSpeedV", ax=ax_ts[1])
     if include_transformation:
-        sns.lineplot(data=df, hue="WindSeed", x="Time", y="FreestreamWindMag", ax=ax_ts[2])
-        sns.lineplot(data=df, hue="WindSeed", x="Time", y="FreestreamWindDir", ax=ax_ts[3])
+        sns.lineplot(data=df, hue="WindSeed", x="time", y="FreestreamWindMag", ax=ax_ts[2])
+        sns.lineplot(data=df, hue="WindSeed", x="time", y="FreestreamWindDir", ax=ax_ts[3])
 
     ax_ts[0].set(title='Downwind Freestream Wind Speed, U [m/s]', ylabel="")
     ax_ts[1].set(title='Crosswind Freestream Wind Speed, V [m/s]', ylabel="")
@@ -32,9 +34,11 @@ def plot_ts(df, fig_dir, include_transformation=False):
     for i in range(0, len(ax_ts)):
         ax_ts[i].legend([], [], frameon=False)
     
-    time = df.loc[df["WindSeed"] == 0, "Time"]
+    time = df.loc[df["WindSeed"] == 0, "time"]
     for i in range(len(ax_ts) - 2, len(ax_ts)):
-        ax_ts[i].set(xticks=time.iloc[0:-1:int(60 * 12 // (time.iloc[1] - time.iloc[0]))], xlabel='Time [s]', xlim=(time.iloc[0], 3600.0)) 
+        ax_ts[i].set(xticks=time.iloc[0:-1:int(60 * 12 // (time.iloc[1] - time.iloc[0]))].astype(int), 
+                     xlabel='Time [s]', 
+                     xlim=(0, 3600))
     
     # for seed in pd.unique(df["WindSeed"]):
     #     seed_df = df.loc[df["WindSeed"] == seed, :]
