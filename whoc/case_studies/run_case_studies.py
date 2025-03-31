@@ -24,7 +24,7 @@ from whoc.case_studies.simulate_case_studies import simulate_controller
 from whoc.case_studies.process_case_studies import (read_time_series_data, write_case_family_time_series_data, read_case_family_time_series_data, 
                                                     aggregate_time_series_data, read_case_family_agg_data, write_case_family_agg_data, 
                                                     generate_outputs, plot_simulations, plot_wind_farm, plot_breakdown_robustness, plot_horizon_length,
-                                                    plot_cost_function_pareto_curve, plot_yaw_offset_wind_direction, plot_parameter_sweep)
+                                                    plot_cost_function_pareto_curve, plot_yaw_offset_wind_direction, plot_parameter_sweep, plot_power_increase_vs_prediction_time, plot_true_vs_predicted_wind_speed, plot_yaw_angles_and_power)
 from whoc.wind_forecast.WindForecast import PerfectForecast, PersistenceForecast, MLForecast, SVRForecast, KalmanFilterForecast, PreviewForecast
 
 # np.seterr("raise") test
@@ -334,7 +334,7 @@ if __name__ == "__main__":
 
         if RUN_ONCE and PLOT:
             
-            if((case_families.index("baseline_controllers_preview_flasc") in args.case_ids 
+            if((case_families.index("baseline_controllers_preview_flasc_perfect") in args.case_ids 
                 or case_families.index("baseline_controllers_preview_awaken") in args.case_ids)):
                 from whoc.wind_forecast.WindForecast import WindForecast
                 from wind_forecasting.preprocessing.data_inspector import DataInspector
@@ -359,14 +359,14 @@ if __name__ == "__main__":
 
                 
                 forecast_wf = time_series_df.iloc[
-                    (time_series_df.index.get_level_values("CaseFamily") == "baseline_controllers_preview_flasc")]\
+                    (time_series_df.index.get_level_values("CaseFamily") == "baseline_controllers_preview_flasc_perfect")]\
                         .reset_index(level=["CaseFamily", "CaseName"], drop=True)[
                            ["WindSeed", "PredictedTime", "controller_class", "wind_forecast_class", "prediction_timedelta"] 
                            + [col for col in time_series_df.columns if "PredictedTurbine" in col] 
                         ].rename(columns={"PredictedTime": "time"})
                         
                 true_wf = time_series_df.iloc[
-                    (time_series_df.index.get_level_values("CaseFamily") == "baseline_controllers_preview_flasc")]\
+                    (time_series_df.index.get_level_values("CaseFamily") == "baseline_controllers_preview_flasc_perfect")]\
                         .reset_index(level=["CaseFamily", "CaseName"], drop=True)[
                            ["WindSeed", "Time", "controller_class", "wind_forecast_class", "prediction_timedelta"] 
                            + [col for col in time_series_df.columns if col.startswith("TurbineWind")] 
@@ -406,12 +406,12 @@ if __name__ == "__main__":
                 # TODO HIGH clean this code up
                 
                 wind_seed = 0
-                wind_forecast_class = "PreviewForecast" # "KalmanFilterForecast"
-                controller_class = "GreedyController"
-                # controller_class = "LookupBasedWakeSteeringController"
+                wind_forecast_class = "KalmanFilterForecast" # "PerfectForecast" # 
+                # controller_class = "GreedyController"
+                controller_class = "LookupBasedWakeSteeringController"
                 # TODO WHY DO GREEDY AND LUT LOOK THE SAME, WHY IS ONLY ONE TURBINE VISIBLE
                 WindForecast.plot_forecast(
-                    preview_wf=forecast_wf.loc[
+                    forecast_wf=forecast_wf.loc[
                         (forecast_wf["WindSeed"] == wind_seed) & (forecast_wf["wind_forecast_class"] == wind_forecast_class) & (forecast_wf["controller_class"] == controller_class), 
                         ["data_type", "time", "feature", "value", "turbine_id"]],
                     true_wf=true_wf.loc[
@@ -704,3 +704,6 @@ if __name__ == "__main__":
             if all(case_families.index(cf) in args.case_ids for cf in ["baseline_controllers", "solver_type",
              "wind_preview_type", "warm_start"]):
                 generate_outputs(agg_df, args.save_dir)
+
+            if case_families.index("baseline_controllers_preview_flasc_perfect") in args.case_ids:
+                plot_power_increase_vs_prediction_time(time_series_df, args.save_dir)

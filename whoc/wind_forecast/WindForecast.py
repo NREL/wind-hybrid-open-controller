@@ -471,7 +471,7 @@ class WindForecast:
         h, l = axs[-1].get_legend_handles_labels()
         labels_1 = ["data_type", "True", "Forecast"]
         labels_2 = ["turbine_id"] + sorted(list(forecast_wf.select(pl.col("turbine_id").unique()).to_numpy().flatten()))
-        handles_1 = [h[l.index(label)] for label in labels_1]
+        handles_1 = WindForecast.new_method(h, l, labels_1)
         handles_2 = [h[l.index(label)] for label in labels_2]
         leg1 = plt.legend(handles_1, labels_1, loc='upper right', bbox_to_anchor=(0.98, 1), frameon=False)
         leg2 = plt.legend(handles_2, labels_2, loc='upper left', bbox_to_anchor=(1.01, 1), frameon=False)
@@ -479,6 +479,20 @@ class WindForecast:
         # axs[-].set(xlabel="Time [s]", ylabel="Wind Speed [m/s]", xlim=(forecast_wf.select(pl.col("time").min()).item()], forecast_wf.select(pl.col("time").max()).item()))
         plt.tight_layout()
         fig.savefig(os.path.join(fig_dir, f'forecast_ts{label}.png'))
+
+    @staticmethod
+    def new_method(h, l, labels_1):
+        l = list(map(str, l))  # Convert all to string
+        labels_1 = list(map(str, labels_1))  # Convert all to string
+    
+        # Filter out invalid labels (those not in l)
+        valid_labels = [label for label in labels_1 if label in l]
+
+        if not valid_labels:
+            raise ValueError(f"None of the labels in labels_1 exist in l. Invalid labels: {labels_1}")
+        
+        handles_1 = [h[l.index(label)] for label in valid_labels]
+        return handles_1
 
     @staticmethod
     def plot_turbine_data(long_df, fig_dir, label=""):

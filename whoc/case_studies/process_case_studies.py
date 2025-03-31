@@ -1409,3 +1409,90 @@ def plot_breakdown_robustness(data_summary_df, save_dir):
     fig.tight_layout()
     fig.savefig(os.path.join(save_dir, "breakdown_robustness.png"))
     plt.close(fig)
+
+def plot_power_increase_vs_prediction_time(time_series_df, save_dir):
+    """
+    Plots percentage power increase compared to persistence and perfect forecasts
+    against prediction time for different forecasters.
+    """
+    
+    # percentage power increase from time_series_results
+    data_df["PercentagePowerIncrease"] = data_df["RelativeFarmPower"]
+    
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.lineplot(x="PredictedTime", y="PercentagePowerIncrease", hue="turbine_id", data=data_df, marker="o", ax=ax)
+    
+    ax.set(title="Percentage Power Increase vs. Prediction Time for Different Forecasters",
+           xlabel="Prediction Time (s)", ylabel="% Power Increase")
+    ax.legend(title="Forecaster")
+    ax.grid(True)
+    
+    # Save the figure
+    fig.tight_layout()
+    fig.savefig(os.path.join(save_dir, "power_increase_vs_prediction_time.png"))
+
+    plt.show()  
+
+def plot_true_vs_predicted_wind_speed(data_df, save_dir):
+    """
+    Plots true vs predicted wind speed with predicted standard deviation for Kalman Filter and ML Forecasters.
+    """
+    
+    # Select relevant columns (only turbines 4 and 6)
+    true_speed_cols = ["TrueTurbineWindSpeedVert_4", "TrueTurbineWindSpeedVert_6"]
+    predicted_speed_cols = ["PredictedTurbineWindSpeedVert_4", "PredictedTurbineWindSpeedVert_6"]
+    stddev_cols = ["StddevTurbineWindSpeedVert_4", "StddevTurbineWindSpeedVert_6"]
+    
+    fig, ax = plt.subplots(figsize=(12, 6))
+    for true_col, pred_col, std_col in zip(true_speed_cols, predicted_speed_cols, stddev_cols):
+        sns.lineplot(x=data_df.index, y=data_df[true_col], label=f"True {true_col}", ax=ax)
+        sns.lineplot(x=data_df.index, y=data_df[pred_col], label=f"Predicted {pred_col}", ax=ax)
+        ax.fill_between(data_df.index, 
+                        data_df[pred_col] - data_df[std_col], 
+                        data_df[pred_col] + data_df[std_col], 
+                        alpha=0.2)
+    
+    ax.set(title="True vs Predicted Wind Speed for Kalman Filter & ML Forecasters (Turbines 4 & 6)",
+           xlabel="Time Step", ylabel="Wind Speed (m/s)")
+    ax.legend()
+    ax.grid(True)
+    
+    # Save the figure
+    fig.tight_layout()
+    fig.savefig(os.path.join(save_dir, "true_vs_predicted_wind_speed.png"))
+
+    plt.show()
+    print(f'Breakpoint test!')
+
+def plot_yaw_angles_and_power(data_df, save_dir):
+    """
+    Plots yaw angles and power for Persistence, Perfect, and other forecasters at best prediction times.
+    """
+    yaw_angle_cols = ["FarmYawAngleChangeAbsSum", "RelativeFarmYawAngleChangeAbsSum"]
+    power_cols = ["FarmPower", "RelativeFarmPower"]
+    
+    fig, ax1 = plt.subplots(figsize=(12, 6))
+    
+    # Plot yaw angles
+    for col in yaw_angle_cols:
+        sns.lineplot(x=data_df["PredictedTime"], y=data_df[col], label=col, ax=ax1)
+    
+    ax1.set_xlabel("Prediction Time (s)")
+    ax1.set_ylabel("Yaw Angle Change (°)")
+    ax1.legend()
+    ax1.grid(True)
+    
+    # Plot power
+    ax2 = ax1.twinx()
+    for col in power_cols:
+        sns.lineplot(x=data_df["PredictedTime"], y=data_df[col], label=col, ax=ax2, linestyle="dashed")
+    
+    ax2.set_ylabel("Power (MW)")
+    ax2.legend()
+    ax1.set_title("Yaw Angles and Power for Persistence, Perfect vs. Other Forecasters")
+    
+    # Save the figure
+    fig.tight_layout()
+    fig.savefig(os.path.join(save_dir, "yaw_angles_and_power.png"))
+
+    plt.show()
