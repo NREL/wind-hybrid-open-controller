@@ -550,7 +550,9 @@ def aggregate_time_series_data(time_series_df, input_dict_path, n_seeds):
         turbine_power_ts = seed_df[sorted([c for c in time_series_df.columns if "TurbinePower_" in c], key=lambda s: int(s.split("_")[-1]))]
         
         try:
-            result_summary.append((seed_df.index.get_level_values("CaseFamily")[0], seed_df.index.get_level_values("CaseName")[0], seed, 
+            result_summary.append((seed_df.index.get_level_values("CaseFamily")[0], 
+                                   seed_df.index.get_level_values("CaseName")[0], 
+                                   seed, 
                                 yaw_angles_change_ts.abs().sum(axis=1).mean(), 
                                 ((yaw_angles_change_ts.abs().to_numpy() * np.logical_not(turbine_offline_status_ts)).sum(axis=1) / ((np.logical_not(turbine_offline_status_ts)).sum(axis=1))).mean(),
                                 turbine_power_ts.sum(axis=1).mean(), 

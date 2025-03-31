@@ -66,7 +66,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
         if "FreestreamWindDir" in kwargs["wind_field_ts"].columns:
             simulation_input_dict["controller"]["initial_conditions"]["yaw"] = np.array([kwargs["wind_field_ts"]["FreestreamWindDir"].iloc[0]] * fi.n_turbines)
         else:
-            sorted_tids = sorted(simulation_input_dict["controller"]["target_turbine_indices"])
+            sorted_tids = np.arange(fi_full.n_turbines) if simulation_input_dict["controller"]["target_turbine_indices"] == "all" else sorted(simulation_input_dict["controller"]["target_turbine_indices"])
             u = kwargs["wind_field_ts"].iloc[0][[f"ws_horz_{idx2tid_mapping[i]}" for i in sorted_tids]].values.astype(float)
             v = kwargs["wind_field_ts"].iloc[0][[f"ws_vert_{idx2tid_mapping[i]}" for i in sorted_tids]].values.astype(float)
             simulation_input_dict["controller"]["initial_conditions"]["yaw"] = 180.0 + np.rad2deg(np.arctan2(u, v))
