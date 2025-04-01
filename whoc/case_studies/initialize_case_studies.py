@@ -39,7 +39,7 @@ case_studies = {
     "baseline_controllers_preview_flasc_perfect": {
                                     # "controller_dt": {"group": 1, "vals": [120, 120]},
                                     # # "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
-                                    # "target_turbine_indices": {"group": 1, "vals": ["6,4", "6,"]},
+                                    "target_turbine_indices": {"group": 1, "vals": ["6,4", "6,"]},
                                     # "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
                                     # "use_filtered_wind_dir": {"group": 1, "vals": [True, True]},
                                     # "use_lut_filtered_wind_dir": {"group": 1, "vals": [True, True]},

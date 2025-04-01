@@ -7,7 +7,6 @@ from memory_profiler import profile
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 from whoc.wind_field.WindField import first_ord_filter
 
-@profile
 def simulate_controller(controller_class, wind_forecast_class, simulation_input_dict, **kwargs):
     print(f'Entering simulate_controller function')
     results_dir = os.path.join(kwargs["save_dir"], kwargs['case_family'])
@@ -169,7 +168,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
             if tt == (t + ctrl.controller_dt - simulation_input_dict["simulation_dt"]):
                 fi.run_floris = True
             
-            ctrl.step()
+            ctrl.step()        
             
             # Note these are results from previous time step
             yaw_angles_ts += [ctrl.measurements_dict["yaw_angles"]]
@@ -262,24 +261,27 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
             stddev_turbine_wind_speed_vert_ts += [[np.nan] * fi_full.n_turbines]
             turbine_offline_status_ts += [np.isclose(last_measurements["turbine_powers"], 0, atol=1e-3)]
 
-        turbine_wind_mag_ts = np.vstack(turbine_wind_mag_ts)[:-(n_future_steps + 1), :]
-        turbine_wind_dir_ts = np.vstack(turbine_wind_dir_ts)[:-(n_future_steps + 1), :]
+        n_truncate_steps = (n_future_steps + 1) + int(ctrl.controller_dt - (simulation_input_dict["hercules_comms"]["helics"]["config"]["stoptime"] % ctrl.controller_dt)) // simulation_input_dict["simulation_dt"]
+        turbine_wind_mag_ts = np.vstack(turbine_wind_mag_ts)[:-(n_truncate_steps), :]
+        turbine_wind_dir_ts = np.vstack(turbine_wind_dir_ts)[:-(n_truncate_steps), :]
         if wind_forecast_class:
-            predicted_turbine_wind_speed_horz_ts = np.vstack(predicted_turbine_wind_speed_horz_ts)[:-(n_future_steps + 1), :].astype(float)
-            predicted_turbine_wind_speed_vert_ts = np.vstack(predicted_turbine_wind_speed_vert_ts)[:-(n_future_steps + 1), :].astype(float)
-        stddev_turbine_wind_speed_horz_ts = np.vstack(stddev_turbine_wind_speed_horz_ts)[:-(n_future_steps + 1), :].astype(float)
-        stddev_turbine_wind_speed_vert_ts = np.vstack(stddev_turbine_wind_speed_vert_ts)[:-(n_future_steps + 1), :].astype(float)
-        turbine_offline_status_ts = np.vstack(turbine_offline_status_ts)[:-(n_future_steps + 1), :]
+            predicted_turbine_wind_speed_horz_ts = np.vstack(predicted_turbine_wind_speed_horz_ts)[:-(n_truncate_steps), :].astype(float)
+            predicted_turbine_wind_speed_vert_ts = np.vstack(predicted_turbine_wind_speed_vert_ts)[:-(n_truncate_steps), :].astype(float)
+        stddev_turbine_wind_speed_horz_ts = np.vstack(stddev_turbine_wind_speed_horz_ts)[:-(n_truncate_steps), :].astype(float)
+        stddev_turbine_wind_speed_vert_ts = np.vstack(stddev_turbine_wind_speed_vert_ts)[:-(n_truncate_steps), :].astype(float)
+        turbine_offline_status_ts = np.vstack(turbine_offline_status_ts)[:-(n_truncate_steps), :]
 
         yaw_angles_ts = np.vstack(yaw_angles_ts)
         init_yaw_angles_ts = np.vstack(init_yaw_angles_ts)
         yaw_angles_change_ts = np.diff(yaw_angles_ts, axis=0)
 
-        yaw_angles_change_ts = yaw_angles_change_ts[:(-n_future_steps) or None, :]
-        yaw_angles_ts = yaw_angles_ts[:-(n_future_steps + 1), :]
-        init_yaw_angles_ts = init_yaw_angles_ts[:-(n_future_steps + 1), :]
-        turbine_powers_ts = np.vstack(turbine_powers_ts)[:-(n_future_steps + 1), :]
-        
+        yaw_angles_change_ts = yaw_angles_change_ts[:-(n_truncate_steps - 1) or None, :]
+        yaw_angles_ts = yaw_angles_ts[:-(n_truncate_steps), :]
+        init_yaw_angles_ts = init_yaw_angles_ts[:-(n_truncate_steps), :]
+        turbine_powers_ts = np.vstack(turbine_powers_ts)[:-(n_truncate_steps), :]
+        opt_cost_terms_ts = opt_cost_terms_ts[:-(n_future_steps) or None]
+        convergence_time_ts = convergence_time_ts[:-(n_future_steps) or None]
+
         # predicted_turbine_wind_mag_ts = np.sqrt(predicted_turbine_wind_speed_horz_ts**2 + predicted_turbine_wind_speed_vert_ts**2)
         # predicted_turbine_wind_dir_ts = 180.0 + np.rad2deg(np.arctan2(predicted_turbine_wind_speed_horz_ts, predicted_turbine_wind_speed_vert_ts))
 
@@ -385,7 +387,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
             "StateConsActivatedLower": lower_state_cons_activated_ts,
             "StateConsActivatedUpper": upper_state_cons_activated_ts,
         })
-    
+
     results_df = pd.DataFrame(results_data)
     results_df.to_csv(os.path.join(results_dir, fn))
     print(f"Saved {fn}")

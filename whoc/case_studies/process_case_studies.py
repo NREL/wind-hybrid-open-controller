@@ -1419,7 +1419,7 @@ def plot_power_increase_vs_prediction_time(agg_df, save_dir):
     """
     
     # percentage power increase from time_series_results
-    agg_df["PercentagePowerIncrease"] = agg_df["FarmPowerMean"]
+    agg_df["PercentagePowerIncrease", "mean"] = agg_df["FarmPowerMean", "mean"]
     #sub_df[("FarmPowerMean")] = sub_df[("FarmPowerMean")] / 1e6
 
     
