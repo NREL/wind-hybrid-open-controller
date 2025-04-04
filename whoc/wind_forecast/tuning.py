@@ -20,7 +20,7 @@ if __name__ == "__main__":
     parser.add_argument("-mcnf", "--model_config", type=str)
     parser.add_argument("-dcnf", "--data_config", type=str)
     parser.add_argument("-sn", "--study_name", type=str)
-    parser.add_argument("-m", "--multiprocessor", choices=["mpi", "cf"], default="mpi")
+    parser.add_argument("-m", "--multiprocessor", choices=["mpi", "cf"], default="cf")
     parser.add_argument("-i", "--initialize", action="store_true")
     parser.add_argument("-rt", "--restart_tuning", action="store_true")
     parser.add_argument("-s", "--seed", type=int, help="Seed for random number generator", default=42)
@@ -31,7 +31,7 @@ if __name__ == "__main__":
     with open(args.model_config, 'r') as file:
         model_config  = yaml.safe_load(file)
         
-    assert model_config["optuna"]["storage_type"] in ["sqlite", "mysql", "journal"]
+    assert model_config["optuna"]["backend"] in ["sqlite", "mysql", "journal"]
     
     with open(args.data_config, 'r') as file:
         data_config  = yaml.safe_load(file)
@@ -83,7 +83,7 @@ if __name__ == "__main__":
     historic_measurements = [wf.slice(0, wf.select(pl.len()).item() - int(prediction_timedelta / wind_dt)) for wf in true_wf]
     
     # %% PREPARING DIRECTORIES
-    os.makedirs(model_config["optuna"]["journal_dir"], exist_ok=True)
+    os.makedirs(model_config["optuna"]["storage_dir"], exist_ok=True)
     os.makedirs(data_config["temp_storage_dir"], exist_ok=True)
     
     # %% INSTANTIATING MODEL
@@ -112,25 +112,28 @@ if __name__ == "__main__":
         
         logging.info("Reinitializing storage") 
         if args.restart_tuning:
-            storage = model.get_storage(storage_type=model_config["optuna"]["storage_type"], 
-                            study_name=args.study_name, 
-                            journal_storage_dir=model_config["optuna"]["journal_dir"])
+            storage = model.get_storage(
+                backend=model_config["optuna"]["backend"], 
+                    study_name=args.study_name, 
+                    storage_dir=model_config["optuna"]["storage_dir"])
             for s in storage.get_all_studies():
                 storage.delete_study(s._study_id)
     else: 
         # %% TUNING MODEL
         logging.info("Running tune_hyperparameters_multi")
+        pruning_kwargs = model_config["optuna"]["pruning"] 
+        #{"type": "hyperband", "min_resource": 2, "max_resource": 5, "reduction_factor": 3, "percentile": 25}
         model.tune_hyperparameters_single(study_name=args.study_name,
-                                        storage_type=model_config["optuna"]["storage_type"],
+                                        backend=model_config["optuna"]["backend"],
                                         n_trials=model_config["optuna"]["n_trials"], 
-                                        journal_storage_dir=model_config["optuna"]["journal_dir"],
+                                        storage_dir=model_config["optuna"]["storage_dir"],
                                         seed=args.seed)
                                         #  trial_protection_callback=handle_trial_with_oom_protection)
     
         # %% TESTING LOADING HYPERPARAMETERS
         # Test setting parameters
-        # model.set_tuned_params(storage_type=model_config["optuna"]["storage_type"], study_name_root=args.study_name, 
-        #                        journal_storage_dir=model_config["optuna"]["journal_dir"]) 
+        # model.set_tuned_params(backend=model_config["optuna"]["backend"], study_name_root=args.study_name, 
+        #                        storage_dir=model_config["optuna"]["storage_dir"]) 
     
         # %% After training completes
         # torch.cuda.empty_cache()

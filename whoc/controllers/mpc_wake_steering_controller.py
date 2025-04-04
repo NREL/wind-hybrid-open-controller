@@ -1104,7 +1104,7 @@ class MPC(ControllerBase):
         pyopt_prob.addObj("cost")
         return pyopt_prob
     
-    #@profile
+    
     def compute_controls(self):
         """
         solve OCP to minimize objective over future horizon
@@ -1457,7 +1457,7 @@ class MPC(ControllerBase):
         
         return np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
 
-    #@profile
+    
     def sr_solve(self):
         
         # warm-up with previous solution
@@ -1578,7 +1578,7 @@ class MPC(ControllerBase):
             self.init_sol["states"] = basin_hop_init_sol.x[:self.n_horizon * self.n_turbines]
             self.init_sol["control_inputs"] = basin_hop_init_sol.x[self.n_horizon * self.n_turbines:]
     
-    #@profile
+    
     def sequential_slsqp_solve(self):
         
         # set self.opt_sol to initial solution
@@ -1640,7 +1640,7 @@ class MPC(ControllerBase):
         
         return np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment
 
-    #@profile
+    
     def slsqp_solve(self):
         
         # warm start Vars by reinitializing the solution from last time-step self.mi_model.states, set self.init_sol
@@ -1742,7 +1742,7 @@ class MPC(ControllerBase):
         rounded_yaw_setpoints = np.mod(np.rint(yaw_setpoints / self.yaw_increment) * self.yaw_increment, 360)
         return rounded_yaw_setpoints
 
-    #@profile
+    
     def solve_turbine_group(self, solve_turbine_ids, downstream_turbine_ids):
         # solve_turbine_ids = grouped_turbines_ordered[turbine_group_idx]
         n_solve_turbines = len(solve_turbine_ids)
@@ -1768,7 +1768,7 @@ class MPC(ControllerBase):
 
     def generate_opt_rules(self, solve_turbine_ids, downstream_turbine_ids, compute_constraints=True, compute_derivatives=True):
         n_solve_turbines = len(solve_turbine_ids)
-        #@profile
+        
         def opt_rules(opt_var_dict):
 
             funcs = {}
@@ -1843,7 +1843,7 @@ class MPC(ControllerBase):
         # opt_rules.__qualname__ = "opt_rules"
         return opt_rules
 
-    #@profile
+    
     def update_norm_turbine_powers(self, yaw_setpoints, solve_turbine_ids, downstream_turbine_ids, compute_derivatives=True):
         # no need to update norm_turbine_powers if yaw_setpoints have not changed
 

@@ -132,7 +132,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
         a = [1, -self.lpf_alpha]
         return lfilter(b, a, x)
     
-    # @profile
+    
     @staticmethod
     def _optimize_lookup_table(floris_config_path, uncertain, yaw_limits, parallel=False, optimization="scipy", sorted_target_tids="all", lut_path=None, generate_lut=True):
         if not generate_lut and lut_path is not None and os.path.exists(lut_path):

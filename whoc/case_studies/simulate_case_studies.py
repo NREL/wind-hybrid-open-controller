@@ -6,7 +6,7 @@ from time import perf_counter
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 from whoc.wind_field.WindField import first_ord_filter
 
-#@profile
+
 def simulate_controller(controller_class, wind_forecast_class, simulation_input_dict, **kwargs):
 
     results_dir = os.path.join(kwargs["save_dir"], kwargs['case_family'])

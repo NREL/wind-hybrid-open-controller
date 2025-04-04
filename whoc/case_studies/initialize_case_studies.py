@@ -41,25 +41,33 @@ case_studies = {
                                     "prediction_timedelta": {"group": 4, "vals": [60]},
                                     "yaw_limits": {"group": 0, "vals": ["-15,15"]}
                                     },
-    "baseline_controllers_preview_flasc": {"controller_dt": {"group": 1, "vals": [120, 120]},
-                                    # "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
-                                    "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
-                                    "use_filtered_wind_dir": {"group": 1, "vals": [True, True]},
-                                    "use_lut_filtered_wind_dir": {"group": 1, "vals": [True, True]},
-                                    # "group": 1, "vals": [120]},
-                                    # "case_names": {"group": 1, "vals": ["LUT"]},
-                                    # "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController"]},
-                                    # "use_filtered_wind_dir": {"group": 1, "vals": [True]},
-                                    # "use_lut_filtered_wind_dir": {"group": 1, "vals": [True]},
-                                    "simulation_dt": {"group": 0, "vals": [60]},
-                                    "floris_input_file": {"group": 0, "vals": ["../../examples/inputs/smarteole_farm.yaml"]},
-                                    "lut_path": {"group": 0, "vals": ["../../examples/inputs/smarteole_farm_lut.csv"]},
-                                    "uncertain": {"group": 3, "vals": [False, True, False, False, False]},
-                                    "wind_forecast_class": {"group": 3, "vals": ["MLForecast", "PreviewForecast", "KalmanFilterForecast", "PerfectForecast", "PersistenceForecast", "SVRForecast"]},
-                                    "prediction_timedelta": {"group": 4, "vals": [60]},
-                                    "yaw_limits": {"group": 0, "vals": [15]}
+    "baseline_controllers_forecasters_flasc": {"controller_dt": {"group": 0, "vals": [60]},
+                                               "simulation_dt": {"group": 0, "vals": [60]},
+                                               "floris_input_file": {"group": 0, "vals": ["../../examples/inputs/smarteole_farm.yaml"]},
+                                                # "lut_path": {"group": 0, "vals": ["../../examples/inputs/smarteole_farm_lut.csv"]},
+                                               "use_filtered_wind_dir": {"group": 0, "vals": [True]},
+                                                "use_lut_filtered_wind_dir": {"group": 0, "vals": [True]},
+                                                "yaw_limits": {"group": 0, "vals": ["-15,15"],
+                                                "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
+                                                "uncertain": {"group": 2, "vals": [False, False, False, True, False,
+                                                                                   True, False,
+                                                                                   True, False,
+                                                                                   True, False,
+                                                                                   True, False]},
+                                                "wind_forecast_class": {"group": 2, "vals": ["PerfectForecast", "PersistenceForecast", "PreviewForecast", "KalmanFilterForecast", "SVRForecast", 
+                                                                                             "MLForecast", "MLForecast", 
+                                                                                             "MLForecast", "MLForecast", 
+                                                                                             "MLForecast", "MLForecast", 
+                                                                                             "MLForecast", "MLForecast"]},
+                                                "model_key": {"group": 2, "vals": [None, None, None, None, None,
+                                                                                   "informer", "informer", 
+                                                                                   "autoformer", "autoformer", 
+                                                                                   "spacetimeformer", "spacetimeformer", 
+                                                                                   "tactis", "tactis"]},
+                                                "prediction_timedelta": {"group": 3, "vals": [60, 120, 180]},
+                                                }
                                     },
-    "baseline_controllers_preview_awaken": {"controller_dt": {"group": 0, "vals": [5]},
+    "baseline_controllers_forecasters_awaken": {"controller_dt": {"group": 0, "vals": [5]},
                                     "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "LookupBasedWakeSteeringController", 
                                                                               "LookupBasedWakeSteeringController", "LookupBasedWakeSteeringController",
                                                                               "GreedyController", "GreedyController"]},
@@ -647,5 +655,5 @@ case_families = ["baseline_controllers", "solver_type", # 0, 1
                     "gradient_type", "n_wind_preview_samples", # 9, 10
                     "generate_sample_figures", "baseline_controllers_3", # 11, 12
                     "cost_func_tuning_small", "sr_solve", # 13, 14
-                    "baseline_controllers_preview_flasc", "baseline_controllers_preview_awaken", # 15, 16
+                    "baseline_controllers_forecasters_flasc", "baseline_controllers_forecasters_awaken", # 15, 16
                     "baseline_controllers_preview_flasc_perfect"] # 17
