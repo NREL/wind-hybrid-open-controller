@@ -18,8 +18,8 @@ from hercules.emulator import Emulator
 from hercules.py_sims import PySims
 from hercules.utilities import load_yaml
 from whoc.controllers import (
-    WindHydrogenController,
     WindFarmPowerTrackingController,
+    WindHydrogenController,
 )
 from whoc.interfaces.hercules_wind_hydrogen_interface import HerculesWindHydrogenInterface
 
@@ -29,7 +29,7 @@ if len(sys.argv) != 3:
 
 
 input_dict = load_yaml(sys.argv[1])
-input_dict["output_file"] = "hercules_output_control.csv"
+input_dict["output_file"] = "outputs/hercules_output_control.csv"
 
 # Set the helics port
 helics_port = int(sys.argv[2])
@@ -49,6 +49,7 @@ controller = WindHydrogenController(
 
 print("Establishing simulators.")
 py_sims = PySims(input_dict)
+print(input_dict)
 
 emulator = Emulator(controller, py_sims, input_dict)
 emulator.run_helics_setup()
