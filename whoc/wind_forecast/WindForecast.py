@@ -590,7 +590,7 @@ class PerfectForecast(WindForecast):
             assert sub_df.select(pl.len()).item() == int(self.prediction_timedelta / self.measurements_timedelta)
         elif isinstance(self.true_wind_field, pd.DataFrame):
             sub_df = self.true_wind_field.rename(columns=self.col_mapping) if self.col_mapping else self.true_wind_field
-            sub_df = sub_df.loc[(sub_df["time"] > current_time) & (sub_df["time"] <= (current_time + self.prediction_timedelta)), :].reset_index(drop=True)
+            sub_df = sub_df.loc[(sub_df["time"] >= current_time) & (sub_df["time"] < (current_time + self.prediction_timedelta)), :].reset_index(drop=True)
             assert len(sub_df.index) == int(self.prediction_timedelta / self.measurements_timedelta)
         return sub_df
 
