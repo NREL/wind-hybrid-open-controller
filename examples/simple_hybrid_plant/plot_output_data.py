@@ -6,12 +6,18 @@ df = pd.read_csv("outputs/hercules_output.csv", index_col=False)
 power_ref_input = pd.read_csv("inputs/plant_power_reference.csv")
 
 # Extract individual components powers as well as total power
-solar_power = df["py_sims.solar_farm_0.outputs.power_mw"]
+if "py_sims.solar_farm_0.outputs.power_mw" in df.columns:
+    solar_power = df["py_sims.solar_farm_0.outputs.power_mw"]
+else:
+    solar_power = [0] * len(df)
 n_wind_turbines = 10
 wind_power = df[["hercules_comms.amr_wind.wind_farm_0.turbine_powers.{0:03d}".format(t)
                  for t in range(n_wind_turbines)]].to_numpy().sum(axis=1) / 1e3
-battery_power = -df["py_sims.battery_0.outputs.power"] / 1e3 # discharging positive
-power_output = (df["py_sims.inputs.available_power"] - df["py_sims.battery_0.outputs.power"]) / 1e3
+if "py_sims.battery_0.outputs.power" in df.columns:
+    battery_power = -df["py_sims.battery_0.outputs.power"] / 1e3 # discharging positive
+else:
+    battery_power = [0] * len(df)
+power_output = (df["py_sims.inputs.available_power"] / 1e3 + battery_power)
 time = df["hercules_comms.amr_wind.wind_farm_0.sim_time_s_amr_wind"] / 60 # minutes
 
 # Set plotting aesthetics
@@ -37,33 +43,35 @@ ax.set_xlim([0, 5])
 
 # fig.savefig("../../docs/graphics/simple-hybrid-example-plot.png", dpi=300, format="png")
 
-# Plot the battery power and state of charge
-battery_soc = df["py_sims.battery_0.outputs.soc"]
-fig, ax = plt.subplots(2, 1, sharex=True, figsize=(7,5))
-ax[0].plot(time, battery_power, color=battery_col)
-ax[1].plot(time, battery_soc, color=battery_col)
-ax[0].set_ylabel("Battery power [MW]")
-ax[0].grid()
-ax[1].set_ylabel("Battery SOC")
-ax[1].set_xlabel("Time [mins]")
-ax[1].grid()
+# Plot the battery power and state of charge, if battery component included
+if "py_sims.battery_0.outputs.power" in df.columns:
+    battery_soc = df["py_sims.battery_0.outputs.soc"]
+    fig, ax = plt.subplots(2, 1, sharex=True, figsize=(7,5))
+    ax[0].plot(time, battery_power, color=battery_col)
+    ax[1].plot(time, battery_soc, color=battery_col)
+    ax[0].set_ylabel("Battery power [MW]")
+    ax[0].grid()
+    ax[1].set_ylabel("Battery SOC")
+    ax[1].set_xlabel("Time [mins]")
+    ax[1].grid()
 
-# Plot the solar data
-angle_of_incidence = df["py_sims.solar_farm_0.outputs.aoi"]
-direct_normal_irradiance = df["py_sims.solar_farm_0.outputs.dni"]
-fig, ax = plt.subplots(3, 1, sharex=True, figsize=(7,5))
-ax[0].plot(time, solar_power, color="C1")
-ax[0].set_ylabel("Solar power [MW]")
-ax[0].grid()
+# Plot the solar data, if solar component included
+if "py_sims.solar_farm_0.outputs.power_mw" in df.columns:
+    angle_of_incidence = df["py_sims.solar_farm_0.outputs.aoi"]
+    direct_normal_irradiance = df["py_sims.solar_farm_0.outputs.dni"]
+    fig, ax = plt.subplots(3, 1, sharex=True, figsize=(7,5))
+    ax[0].plot(time, solar_power, color="C1")
+    ax[0].set_ylabel("Solar power [MW]")
+    ax[0].grid()
 
-ax[1].plot(time, direct_normal_irradiance, color="black")
-ax[1].set_ylabel("DNI [W/m$^2$]")
-ax[1].grid()
+    ax[1].plot(time, direct_normal_irradiance, color="black")
+    ax[1].set_ylabel("DNI [W/m$^2$]")
+    ax[1].grid()
 
-ax[2].plot(time, angle_of_incidence, color="black")
-ax[2].set_ylabel("AOI [deg]")
-ax[-1].set_xlabel("Time [mins]")
-ax[2].grid()
+    ax[2].plot(time, angle_of_incidence, color="black")
+    ax[2].set_ylabel("AOI [deg]")
+    ax[-1].set_xlabel("Time [mins]")
+    ax[2].grid()
 
 # Plot the wind data
 wind_power_individuals = df[["hercules_comms.amr_wind.wind_farm_0.turbine_powers.{0:03d}".format(t)

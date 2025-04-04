@@ -1,17 +1,3 @@
-# Copyright 2021 NREL
-
-# Licensed under the Apache License, Version 2.0 (the "License"); you may not
-# use this file except in compliance with the License. You may obtain a copy of
-# the License at http://www.apache.org/licenses/LICENSE-2.0
-
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations under
-# the License.
-
-# See https://nrel.github.io/wind-hybrid-open-controller for documentation
-
 import numpy as np
 
 from whoc.controllers.controller_base import ControllerBase
@@ -36,10 +22,24 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
         self.solar_controller = solar_controller
         self.battery_controller = battery_controller
 
+        self._has_solar_controller = solar_controller is not None
+        self._has_wind_controller = wind_controller is not None
+        self._has_battery_controller = battery_controller is not None
+
+        # Must provide a controller for one type of generation
+        if not self._has_wind_controller and not self._has_solar_controller:
+            raise ValueError(
+                "The HybridSupervisoryControllerBaseline requires that either a solar_controller"
+                " or a wind_controller be provided."
+            )
+
         # Set constants
         py_sims = list(input_dict["py_sims"].keys())
-        battery_name = [ps for ps in py_sims if "battery" in ps][0]
-        self.battery_charge_rate = input_dict["py_sims"][battery_name]["charge_rate"]*1000
+        if self.battery_controller:
+            battery_name = [ps for ps in py_sims if "battery" in ps][0]
+            self.battery_charge_rate = input_dict["py_sims"][battery_name]["charge_rate"]*1000
+        else:
+            self.battery_charge_rate = 0
         # Change battery charge rate to kW
 
         # Initialize Power references
@@ -56,7 +56,7 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
 
         # Package the controls for the individual controllers, step, and return
         self.controls_dict = {}
-        if self.wind_controller:
+        if self._has_wind_controller:
             self.wind_controller.measurements_dict["wind_power_reference"] = wind_reference
             self.wind_controller.measurements_dict["turbine_powers"] = (
                 self.measurements_dict["wind_turbine_powers"]
@@ -65,14 +65,19 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
             self.controls_dict["wind_power_setpoints"] = (
                 self.wind_controller.controls_dict["power_setpoints"]
             )
-        if self.solar_controller:
+        if self._has_solar_controller:
             self.solar_controller.measurements_dict["solar_power_reference"] = solar_reference
             self.solar_controller.compute_controls()
             self.controls_dict["solar_power_setpoint"] = (
                 self.solar_controller.controls_dict["power_setpoint"]
             )
-        if self.battery_controller:
-            self.battery_controller.measurements_dict["battery_power_reference"] = battery_reference
+        if self._has_battery_controller:
+            self.battery_controller.measurements_dict.update({
+                "time": self.measurements_dict["time"],
+                "power_reference": battery_reference,
+                "battery_power": self.measurements_dict["battery_power"],
+                "battery_soc": self.measurements_dict["battery_soc"]
+            })
             self.battery_controller.compute_controls()
             self.controls_dict["battery_power_setpoint"] = (
                 self.battery_controller.controls_dict["power_setpoint"]
@@ -83,15 +88,30 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
     def supervisory_control(self):
         # Extract measurements sent
         time = self.measurements_dict["time"] # noqa: F841 
-        wind_power = np.array(self.measurements_dict["wind_turbine_powers"]).sum()
-        solar_power = self.measurements_dict["solar_power"]
-        battery_power = self.measurements_dict["battery_power"] # noqa: F841
-        plant_power_reference = self.measurements_dict["plant_power_reference"] # noqa: F841
-        wind_speed = self.measurements_dict["wind_speed"] # noqa: F841
-        battery_soc = self.measurements_dict["battery_soc"] # noqa: F841
-        solar_dni = self.measurements_dict["solar_dni"] # direct normal irradiance # noqa: F841
-        solar_aoi = self.measurements_dict["solar_aoi"] # angle of incidence # noqa: F841
-        reference_power = self.measurements_dict["plant_power_reference"]
+        if self._has_wind_controller:
+            wind_power = np.array(self.measurements_dict["wind_turbine_powers"]).sum()
+            wind_speed = self.measurements_dict["wind_speed"] # noqa: F841
+        else:
+            wind_power = 0
+            wind_speed = 0 # noqa: F841
+
+        if self._has_solar_controller:
+            solar_power = self.measurements_dict["solar_power"]
+            solar_dni = self.measurements_dict["solar_dni"] # direct normal irradiance # noqa: F841
+            solar_aoi = self.measurements_dict["solar_aoi"] # angle of incidence # noqa: F841
+        else:
+            solar_power = 0
+            solar_dni = 0 # noqa: F841
+            solar_aoi = 0 # noqa: F841
+
+        if self._has_battery_controller:
+            battery_power = self.measurements_dict["battery_power"]
+            battery_soc = self.measurements_dict["battery_soc"]
+        else:
+            battery_power = 0
+            battery_soc = 0
+
+        plant_power_reference = self.measurements_dict["plant_power_reference"]
 
         # Filter the wind and solar power measurements to reduce noise and improve closed-loop
         # controller damping
@@ -101,14 +121,17 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
 
         # Temporary print statements (note that negative battery indicates discharging)
         print("Measured powers (wind, solar, battery):", wind_power, solar_power, battery_power)
-        print("Reference power:", reference_power)
+        print("Reference power:", plant_power_reference)
 
         # Calculate battery reference value
-        battery_reference = (wind_power + solar_power) - plant_power_reference
+        if self._has_battery_controller:
+            battery_reference = plant_power_reference - (wind_power + solar_power)
+        else:
+            battery_reference = 0
 
         # Decide control gain:
         if (wind_power + solar_power) < (plant_power_reference+self.battery_charge_rate)\
-            and battery_power > 0:
+            and battery_power < 0:
             if battery_soc>0.89:
                 K = ((wind_power + solar_power) - plant_power_reference) / 2
             else:
@@ -116,6 +139,9 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
         else:
             K = ((wind_power + solar_power) - plant_power_reference) / 2
 
+        if not (self._has_wind_controller & self._has_solar_controller):
+            # Only one type of generation available, double the control gain
+            K = 2*K
 
         if (wind_power + solar_power) > (plant_power_reference+self.battery_charge_rate) or \
             ((wind_power + solar_power) > (plant_power_reference) and battery_soc>0.89):
@@ -137,6 +163,12 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
             else:
                 wind_reference = wind_power - K
 
+        # Reset references for invalid controllers
+        if not self._has_wind_controller:
+            wind_reference = 0
+        if not self._has_solar_controller:
+            solar_reference = 0
+
         print(
             "Power reference values (wind, solar, battery)",
             wind_reference, solar_reference, battery_reference
@@ -147,10 +179,5 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
         self.wind_reference = wind_reference
         self.solar_reference = solar_reference
         self.battery_reference = battery_reference
-
-        # # Placeholder for supervisory control logic
-        # wind_reference = 20000 # kW
-        # solar_reference = 5000 # kW, not currently working
-        # battery_reference = -30 # kW, Negative requests discharging, positive requests charging
 
         return wind_reference, solar_reference, battery_reference
