@@ -282,7 +282,7 @@ if __name__ == "__main__":
                             case_name_df = case_family_df.iloc[case_family_df.index.get_level_values("CaseName") == case_name, :]
                             res = aggregate_time_series_data(
                                                             time_series_df=case_name_df,
-                                                             input_dict_path=os.path.join(args.save_dir, case_families[i], f"input_config_case_{case_name}.pkl"),
+                                                            input_dict_path=os.path.join(args.save_dir, case_families[i], f"input_config_case_{case_name}.pkl"),
                                                             # results_path=os.path.join(args.save_dir, case_families[i], f"agg_results_{case_name}.csv"),
                                                             n_seeds=args.n_seeds)
                             if res is not None:
