@@ -757,15 +757,16 @@ if __name__ == "__main__":
 
 
                 # Filter data for the two forecast types
-                kalman_df = mpc_df[mpc_df["wind_forecast_class"] == "KalmanFilterForecast"]
-                perfect_df = mpc_df[mpc_df["wind_forecast_class"] == "PerfectForecast"]
+                kalman_df = mpc_df.loc[mpc_df["wind_forecast_class"] == "KalmanFilterForecast", :]
+                perfect_df = mpc_df.loc[mpc_df["wind_forecast_class"] == "PerfectForecast", :]
 
                 if "prediction_timedelta" in kalman_df.columns and "prediction_timedelta" in perfect_df.columns:
                     merged_df = kalman_df.merge(
-                        perfect_df,
-                        on="prediction_timedelta",
-                        suffixes=("_kalman", "_perfect")
+                    perfect_df,
+                    on=["CaseFamily", "prediction_timedelta"],
+                    suffixes=("_kalman", "_perfect")
                     )
+
 
                 merged_df["power_ratio"] = (merged_df["FarmPowerMean_kalman", "mean"] / merged_df["FarmPowerMean_perfect", "mean"]) * 100
 

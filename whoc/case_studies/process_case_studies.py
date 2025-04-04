@@ -1412,19 +1412,15 @@ def plot_breakdown_robustness(data_summary_df, save_dir):
     fig.savefig(os.path.join(save_dir, "breakdown_robustness.png"))
     plt.close(fig)
 
-def plot_power_increase_vs_prediction_time(agg_df, save_dir):
+def plot_power_increase_vs_prediction_time(plot_df, save_dir):
     """
     Plots percentage power increase compared to persistence and perfect forecasts
     against prediction time for different forecasters.
     """
     
-    # percentage power increase from time_series_results
-    agg_df["PercentagePowerIncrease", "mean"] = agg_df["FarmPowerMean", "mean"]
-    #sub_df[("FarmPowerMean")] = sub_df[("FarmPowerMean")] / 1e6
-
     
     fig, ax = plt.subplots(figsize=(10, 6))
-    sns.lineplot(x="PredictedTime", y="PercentagePowerIncrease", hue="turbine_id", data=data_df, marker="o", ax=ax)
+    sns.lineplot(x=("prediction_timedelta", ""), y=("power_ratio", ""), data=plot_df, marker="o", ax=ax)
     
     ax.set(title="Percentage Power Increase vs. Prediction Time for Different Forecasters",
            xlabel="Prediction Time (s)", ylabel="% Power Increase")

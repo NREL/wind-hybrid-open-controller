@@ -256,9 +256,9 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
             turbine_wind_dir_ts += [last_measurements["wind_directions"]]
             if wind_forecast_class:
                 predicted_turbine_wind_speed_horz_ts += [[np.nan] * fi_full.n_turbines]
-            predicted_turbine_wind_speed_vert_ts += [[np.nan] * fi_full.n_turbines]
-            stddev_turbine_wind_speed_horz_ts += [[np.nan] * fi_full.n_turbines]
-            stddev_turbine_wind_speed_vert_ts += [[np.nan] * fi_full.n_turbines]
+                predicted_turbine_wind_speed_vert_ts += [[np.nan] * fi_full.n_turbines]
+                stddev_turbine_wind_speed_horz_ts += [[np.nan] * fi_full.n_turbines]
+                stddev_turbine_wind_speed_vert_ts += [[np.nan] * fi_full.n_turbines]
             turbine_offline_status_ts += [np.isclose(last_measurements["turbine_powers"], 0, atol=1e-3)]
 
         n_truncate_steps = (n_future_steps + 1) + int(ctrl.controller_dt - (simulation_input_dict["hercules_comms"]["helics"]["config"]["stoptime"] % ctrl.controller_dt)) // simulation_input_dict["simulation_dt"]
@@ -267,8 +267,8 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
         if wind_forecast_class:
             predicted_turbine_wind_speed_horz_ts = np.vstack(predicted_turbine_wind_speed_horz_ts)[:-(n_truncate_steps), :].astype(float)
             predicted_turbine_wind_speed_vert_ts = np.vstack(predicted_turbine_wind_speed_vert_ts)[:-(n_truncate_steps), :].astype(float)
-        stddev_turbine_wind_speed_horz_ts = np.vstack(stddev_turbine_wind_speed_horz_ts)[:-(n_truncate_steps), :].astype(float)
-        stddev_turbine_wind_speed_vert_ts = np.vstack(stddev_turbine_wind_speed_vert_ts)[:-(n_truncate_steps), :].astype(float)
+            stddev_turbine_wind_speed_horz_ts = np.vstack(stddev_turbine_wind_speed_horz_ts)[:-(n_truncate_steps), :].astype(float)
+            stddev_turbine_wind_speed_vert_ts = np.vstack(stddev_turbine_wind_speed_vert_ts)[:-(n_truncate_steps), :].astype(float)
         turbine_offline_status_ts = np.vstack(turbine_offline_status_ts)[:-(n_truncate_steps), :]
 
         yaw_angles_ts = np.vstack(yaw_angles_ts)
@@ -371,12 +371,12 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
         results_data.update({
             **{
                 f"TrueTurbineWindSpeedHorz_{idx2tid_mapping[i]}": 
-                kwargs["wind_field_ts"][f"ws_horz_{idx2tid_mapping[i]}"].iloc[:-(n_future_steps)]
+                kwargs["wind_field_ts"][f"ws_horz_{idx2tid_mapping[i]}"].iloc[:len(results_data["Time"])]
                 for i in range(fi_full.n_turbines)
             },
             **{
                 f"TrueTurbineWindSpeedVert_{idx2tid_mapping[i]}": 
-                kwargs["wind_field_ts"][f"ws_vert_{idx2tid_mapping[i]}"].iloc[:-(n_future_steps)]
+                kwargs["wind_field_ts"][f"ws_vert_{idx2tid_mapping[i]}"].iloc[:len(results_data["Time"])]
                 for i in range(fi_full.n_turbines)
             },
         })
