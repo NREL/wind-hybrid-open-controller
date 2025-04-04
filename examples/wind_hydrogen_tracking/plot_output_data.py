@@ -37,8 +37,8 @@ blue_col = 1.0
 for i in turbines:
     turb_num = i
     turb_str = str(turb_num)
-    ax[1].plot(time,  wind_power_individuals[:,i], label="WT"+str(i), color=(0.5, blue_col, red_col),\
-               linewidth=width, alpha = alpha)
+    ax[1].plot(time,  wind_power_individuals[:,i], label="WT"+str(i), \
+               color=(0.5, blue_col, red_col), linewidth=width, alpha = alpha)
     width = width - 1.25
     alpha = alpha+0.075
     red_col = red_col+0.05
