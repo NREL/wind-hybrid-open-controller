@@ -159,7 +159,7 @@ Actuator.UniformCtDisk.num_points_t = 5
 
 Actuator.UniformCtDisk.yaw = 240.0
 
-Actuator.labels                            = T00 T01 T02 T03 T04 T05 T06 T07 T08 T09           
+Actuator.labels                            = T00 T01 T02 T03 T04 T05 T06 T07 T08           
 
 Actuator.T00.base_position = 1000.0 1500.0 0.0
 Actuator.T01.base_position = 1000.0 2500.0 0.0
@@ -170,4 +170,4 @@ Actuator.T05.base_position = 2000.0 3500.0 0.0
 Actuator.T06.base_position = 3000.0 1500.0 0.0
 Actuator.T07.base_position = 3000.0 2500.0 0.0
 Actuator.T08.base_position = 3000.0 3500.0 0.0
-Actuator.T09.base_position = 1000.0 4500.0 0.0
+
