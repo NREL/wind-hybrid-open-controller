@@ -716,7 +716,61 @@ if __name__ == "__main__":
 
             if all(case_families.index(cf) in args.case_ids for cf in ["baseline_controllers", "solver_type",
              "wind_preview_type", "warm_start"]):
-                generate_outputs(agg_df, args.save_dir)
+                generate_outputs(agg_df, args.save_dir)       
 
-#            if case_families.index("baseline_controllers_preview_flasc_perfect") in args.case_ids:
-#                plot_power_increase_vs_prediction_time(time_series_df, args.save_dir)
+
+            if case_families.index("baseline_controllers_preview_flasc_perfect") in args.case_ids:
+
+                mpc_df = agg_df[agg_df.index.get_level_values("CaseFamily") == "baseline_controllers_preview_flasc_perfect"]
+
+                config_cols = ["wind_forecast_class", "prediction_timedelta"]
+
+                for (case_family, case_name), _ in mpc_df.iterrows():
+                    input_fn = f"input_config_case_{case_name}.pkl"
+                    input_path = os.path.join(args.save_dir, case_family, input_fn)
+
+                    with open(input_path, mode='rb') as fp:
+                        input_config = pickle.load(fp)
+
+                    controller_config = input_config.get("controller", {})
+                    wind_forecast_config = input_config.get("wind_forecast", {})
+
+                    
+                    for col in config_cols:
+                        if col in controller_config:
+                            if col == "wind_forecast_class":
+                                mpc_df.loc[
+                                    (mpc_df.index.get_level_values("CaseFamily") == case_family) & 
+                                    (mpc_df.index.get_level_values("CaseName") == case_name), 
+                                    'wind_forecast_class'
+                                ] = controller_config[col]  
+
+                        elif col in wind_forecast_config:
+                            if col == "prediction_timedelta":
+                                mpc_df.loc[
+                                    (mpc_df.index.get_level_values("CaseFamily") == case_family) & 
+                                    (mpc_df.index.get_level_values("CaseName") == case_name), 
+                                    "prediction_timedelta"
+                                ] = wind_forecast_config[col]
+                        else:
+                            print(f"Warning: '{col}' not found in config for {case_name}")
+
+
+                # Filter data for the two forecast types
+                kalman_df = mpc_df[mpc_df["wind_forecast_class"] == "KalmanFilterForecast"]
+                perfect_df = mpc_df[mpc_df["wind_forecast_class"] == "PerfectForecast"]
+
+                if "prediction_timedelta" in kalman_df.columns and "prediction_timedelta" in perfect_df.columns:
+                    merged_df = kalman_df.merge(
+                        perfect_df,
+                        on="prediction_timedelta",
+                        suffixes=("_kalman", "_perfect")
+                    )
+
+                merged_df["power_ratio"] = (merged_df["FarmPowerMean_kalman", "mean"] / merged_df["FarmPowerMean_perfect", "mean"]) * 100
+
+                plot_df = merged_df[["prediction_timedelta", "power_ratio"]]
+
+                # Display the prepared data (for debugging)
+                print(plot_df.head())
+                plot_power_increase_vs_prediction_time(plot_df, args.save_dir)

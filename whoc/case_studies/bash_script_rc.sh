@@ -11,7 +11,6 @@
 
 # load modules
 module purge
-<<<<<<< HEAD
 module load miniforge 
 mamba activate wind_forecasting
 #module load gcc/10.3 openmpi

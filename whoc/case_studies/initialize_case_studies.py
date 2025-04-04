@@ -44,7 +44,7 @@ case_studies = {
                                     # "use_filtered_wind_dir": {"group": 1, "vals": [True, True]},
                                     # "use_lut_filtered_wind_dir": {"group": 1, "vals": [True, True]},
                                     "controller_dt": {"group": 1, "vals": [180]},
-                                    "case_names": {"group": 1, "vals": ["LUT"]},
+                                    #"case_names": {"group": 1, "vals": ["LUT"]},
                                     "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController"]},
                                     "use_filtered_wind_dir": {"group": 1, "vals": [True]},
                                     "use_lut_filtered_wind_dir": {"group": 1, "vals": [True]},
