@@ -51,7 +51,7 @@ case_studies = {
                                     "simulation_dt": {"group": 0, "vals": [60]},
                                     "floris_input_file": {"group": 0, "vals": ["../../examples/inputs/smarteole_farm.yaml"]},
                                     "lut_path": {"group": 0, "vals": ["../../examples/inputs/lut_smarteole_farm_(1, 2)_uncertainFalse.csv"]},
-                                    "uncertain": {"group": 3, "vals": [False]},
+                                    "uncertain": {"group": 3, "vals": [False, False]},
                                     "wind_forecast_class": {"group": 3, "vals": ["KalmanFilterForecast", "PerfectForecast"]},
                                     "prediction_timedelta": {"group": 4, "vals": [60]},
                                     "yaw_limits": {"group": 0, "vals": ["-15,15"]}
@@ -537,6 +537,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
 
         # make adjustements based on case study
         for c, case in enumerate(case_list):
+            print(f"Processing case: {case['wind_forecast_class']}")
             for property_name, property_value in case.items():
                 if property_name in input_dicts[start_case_idx + c]["controller"]:
                     property_group = "controller"
@@ -657,7 +658,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
 # 0, 1, 2, 3, 6
 case_families = ["baseline_controllers", "solver_type", # 0, 1
                     "wind_preview_type", "warm_start", # 2, 3
-                     "horizon_length", "cost_func_tuning",  # 4, 5
+                    "horizon_length", "cost_func_tuning",  # 4, 5
                     "yaw_offset_study", "scalability", # 6, 7
                     "breakdown_robustness", # 8
                     "gradient_type", "n_wind_preview_samples", # 9, 10
