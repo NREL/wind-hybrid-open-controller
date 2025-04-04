@@ -70,4 +70,8 @@ done
 
 # If everything is successful
 echo "Finished running hercules"
+echo "Plotting outputs"
+
+python plot_output_data.py
+
 exit 0

@@ -36,6 +36,11 @@ controllers for hybrid power plants are built out. Supports sending power
 reference signals to each wind turbine in a wind farm, as well as a bulk power
 signal to the solar farm and a bulk power signal to the battery.
 
+### HerculesWindHydrogenInterface
+For direct python communication with Hercules, when simulating a  
+wind/hydrogen plant. Currently, intended for use with the
+`WindHydrogenController`. Supports sending power reference signals to each wind turbine in a wind farm.
+
 ### ROSCO_ZMQInterface
 For sending and receiving communications from one or more ROSCO instances 
 (which are likely connected to OpenFAST and FAST.Farm). Uses ZeroMQ to pass
