@@ -255,18 +255,20 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
             turbine_wind_dir_ts += [last_measurements["wind_directions"]]
             if wind_forecast_class:
                 predicted_turbine_wind_speed_horz_ts += [[np.nan] * fi_full.n_turbines]
-            predicted_turbine_wind_speed_vert_ts += [[np.nan] * fi_full.n_turbines]
-            stddev_turbine_wind_speed_horz_ts += [[np.nan] * fi_full.n_turbines]
-            stddev_turbine_wind_speed_vert_ts += [[np.nan] * fi_full.n_turbines]
+                predicted_turbine_wind_speed_vert_ts += [[np.nan] * fi_full.n_turbines]
+                stddev_turbine_wind_speed_horz_ts += [[np.nan] * fi_full.n_turbines]
+                stddev_turbine_wind_speed_vert_ts += [[np.nan] * fi_full.n_turbines]
+                
             turbine_offline_status_ts += [np.isclose(last_measurements["turbine_powers"], 0, atol=1e-3)]
 
+        # TODO add n_truncate_steps from Steven's branch
         turbine_wind_mag_ts = np.vstack(turbine_wind_mag_ts)[:-(n_future_steps + 1), :]
         turbine_wind_dir_ts = np.vstack(turbine_wind_dir_ts)[:-(n_future_steps + 1), :]
         if wind_forecast_class:
             predicted_turbine_wind_speed_horz_ts = np.vstack(predicted_turbine_wind_speed_horz_ts)[:-(n_future_steps + 1), :].astype(float)
             predicted_turbine_wind_speed_vert_ts = np.vstack(predicted_turbine_wind_speed_vert_ts)[:-(n_future_steps + 1), :].astype(float)
-        stddev_turbine_wind_speed_horz_ts = np.vstack(stddev_turbine_wind_speed_horz_ts)[:-(n_future_steps + 1), :].astype(float)
-        stddev_turbine_wind_speed_vert_ts = np.vstack(stddev_turbine_wind_speed_vert_ts)[:-(n_future_steps + 1), :].astype(float)
+            stddev_turbine_wind_speed_horz_ts = np.vstack(stddev_turbine_wind_speed_horz_ts)[:-(n_future_steps + 1), :].astype(float)
+            stddev_turbine_wind_speed_vert_ts = np.vstack(stddev_turbine_wind_speed_vert_ts)[:-(n_future_steps + 1), :].astype(float)
         turbine_offline_status_ts = np.vstack(turbine_offline_status_ts)[:-(n_future_steps + 1), :]
 
         yaw_angles_ts = np.vstack(yaw_angles_ts)
