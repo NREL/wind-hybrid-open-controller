@@ -16,8 +16,8 @@ if len(sys.argv) > 2:
 else:
     amr_standin_data_file = None
 
-# if len(sys.argv) > 3:
-#     helics_port = int(sys.argv[3])
-#     print(f"Using HELICS port: {helics_port}")
+if len(sys.argv) > 3:
+    helics_port = int(sys.argv[3])
+    print(f"Using HELICS port: {helics_port}")
 
-launch_floris(amr_input_file, amr_standin_data_file)
+launch_floris(amr_input_file, amr_standin_data_file, helics_port=helics_port)
