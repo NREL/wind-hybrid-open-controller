@@ -2,14 +2,14 @@
 #SBATCH --job-name=model_tuning
 #SBATCH --output=model_tuning_%j.out
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=64
-#SBATCH --time=12:00:00
+##SBATCH --ntasks-per-node=64
+##SBATCH --time=12:00:00
 #SBATCH --partition=amilan
 ##SBATCH --nodes=1
-##SBATCH --ntasks-per-node=12
-##SBATCH --time=01:00:00
+#SBATCH --ntasks-per-node=12
+#SBATCH --time=01:00:00
 ##SBATCH --partition=atesting
-
+# salloc --nodes=1 --ntasks-per-node=12 --time=01:00:00 --partition=atesting
 #  srun -n 1 --exclusive python tuning.py --config $HOME/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/training_inputs_kestrel.yaml --study_name "svr_tuning" --model "svr" &
 # salloc --account=ssc --job-name=model_tuning  --ntasks=104 --cpus-per-task=1 --time=01:00:00 --partition=debug
 # python tuning.py --config $HOME/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/training_inputs_kestrel.yaml --study_name "svr_tuning" --model "svr"
@@ -17,7 +17,8 @@
 # export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CUDA_HOME/lib64
 
 # Configure how many workers to run per CPU
-export NTASKS_PER_TUNER=16
+#export NTASKS_PER_TUNER=16
+export NTASKS_PER_TUNER=12
 NTUNERS=$((SLURM_NTASKS / NTASKS_PER_TUNER))
 # NUM_WORKERS_PER_CPU=1
 
@@ -42,6 +43,8 @@ declare -a WORKER_PIDS=()
 export MODEL_CONFIG="/projects/aohe7145/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/training_inputs_rc_flasc.yaml"
 export DATA_CONFIG="/projects/aohe7145/toolboxes/wind_forecasting_env/wind-forecasting/examples/inputs/preprocessing_inputs_rc_flasc.yaml"
 export TMPDIR="/tmp/scratch/${SLURM_JOB_ID}/"
+export STUDY_NAME="${1}_${2}_tuning"
+echo "STUDY_NAME=${STUDY_NAME}"
 
 # prepare training data first
 echo "=== STARTING DATA PREPARATION ==="
@@ -53,7 +56,7 @@ conda activate wind_forecasting
 python tuning.py \
             --model_config $MODEL_CONFIG \
             --data_config $DATA_CONFIG \
-            --study_name "${1}_${flasc}_tuning" \
+            --study_name "${1}_${2}_tuning" \
             --initialize \
             --model $1 \
             --seed 0
@@ -77,27 +80,23 @@ for i in $(seq 0 $((${NTUNERS}-1))); do
 
         # Calculate worker index for logging
         WORKER_INDEX=$((i))
-        export SLURM_PROCID=${WORKER_INDEX}
-
-        echo "Starting worker ${WORKER_INDEX} on GPU ${i} with seed ${WORKER_SEED}"
+        #export SLURM_PROCID=${WORKER_INDEX}
+	#start_core=$((i * NTASKS_PER_TUNER))
+	#end_core=$(((i+1) * NTASKS_PER_TUNER - 1))
+	#export CPU_LIST="${start_core}-${end_core}"
+	#echo "CPU_LIST=${CPU_LIST}"
         
-        # Launch worker with environment settings
-        # CUDA_VISIBLE_DEVICES ensures each worker sees only one GPU
-        # The worker ID (SLURM_PROCID) helps Optuna identify workers
-        # srun --exclusive -n 1 --export=ALL,CUDA_VISIBLE_DEVICES=$i,SLURM_PROCID=${WORKER_INDEX},WANDB_DIR=${WANDB_DIR} \
-        nohup bash -c "
-        module purge
-        module load miniforge
-        module load intel impi
-        # mamba init
-        # conda init
+	echo "Starting worker ${WORKER_INDEX} on GPU ${i} with seed ${WORKER_SEED}"
+	nohup bash -c "
+	module purge
+	module load intel mpi
         conda activate wind_forecasting
-        mpirun -np $NTASKS_PER_TUNER python tuning.py \
+       	python tuning.py \
             --model_config $MODEL_CONFIG \
             --data_config $DATA_CONFIG \
-            --study_name "${1}_${2}_tuning" \
+            --study_name $STUDY_NAME \
             --model $1 \
-            --multiprocessor mpi \
+            --multiprocessor cf \
             --seed ${WORKER_SEED} \
             ${RESTART_FLAG}" &
 

@@ -128,7 +128,6 @@ class ControlledFlorisModel(InterfaceBase):
 
         return disturbances
     
-    #@profile
     def send_controls(self, hercules_dict, **controls):
         """ abstract method from Interface class """
         # if control_dt time has passed, pass yaw_setpoint_trajectory to floris model and flush controls buffer. Otherwise, add controls angles to buffer.

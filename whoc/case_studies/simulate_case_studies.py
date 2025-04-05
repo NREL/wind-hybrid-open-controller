@@ -7,6 +7,7 @@ from memory_profiler import profile
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 from whoc.wind_field.WindField import first_ord_filter
 
+
 def simulate_controller(controller_class, wind_forecast_class, simulation_input_dict, **kwargs):
     print(f'Entering simulate_controller function')
     results_dir = os.path.join(kwargs["save_dir"], kwargs['case_family'])
@@ -259,6 +260,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
                 predicted_turbine_wind_speed_vert_ts += [[np.nan] * fi_full.n_turbines]
                 stddev_turbine_wind_speed_horz_ts += [[np.nan] * fi_full.n_turbines]
                 stddev_turbine_wind_speed_vert_ts += [[np.nan] * fi_full.n_turbines]
+                
             turbine_offline_status_ts += [np.isclose(last_measurements["turbine_powers"], 0, atol=1e-3)]
 
         n_truncate_steps = (n_future_steps + 1) + int(ctrl.controller_dt - (simulation_input_dict["hercules_comms"]["helics"]["config"]["stoptime"] % ctrl.controller_dt)) // simulation_input_dict["simulation_dt"]

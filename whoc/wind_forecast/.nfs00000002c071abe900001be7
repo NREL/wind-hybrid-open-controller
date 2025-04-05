@@ -1,0 +1,49 @@
+SLURM_JOB_ID=12670415
+SLURM_JOB_NAME=model_tuning
+SLURM_JOB_PARTITION=amilan
+SLURM_JOB_NUM_NODES=1
+SLURM_JOB_GPUS=
+SLURM_JOB_GRES=
+SLURM_NTASKS=12
+SLURM_NTASKS_PER_NODE=12
+NTUNERS=1
+NTASKS_PER_TUNER=12
+=== ENVIRONMENT ===
+No modules loaded
+=== STARTING DATA PREPARATION ===
+2025-04-01 15:54:38
+No MPI available on system.
+No MPI available on system.
+2025-04-01 15:54:49,227 - INFO - Parsing arguments and configuration yaml.
+2025-04-01 15:54:49,485 - INFO - Setting random seed to 0
+2025-04-01 15:54:49,485 - INFO - Reading input wind field.
+2025-04-01 15:54:49,535 - INFO - Instantiating model.
+2025-04-01 15:54:49,536 - INFO - Preparing data for tuning
+2025-04-01 15:54:49,608 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_horz_1.dat
+2025-04-01 15:54:49,680 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_horz_2.dat
+2025-04-01 15:54:49,747 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_horz_3.dat
+2025-04-01 15:54:49,814 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_horz_4.dat
+2025-04-01 15:54:49,881 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_horz_5.dat
+2025-04-01 15:54:49,948 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_horz_6.dat
+2025-04-01 15:54:50,019 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_horz_7.dat
+2025-04-01 15:54:50,083 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_vert_1.dat
+2025-04-01 15:54:50,148 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_vert_2.dat
+2025-04-01 15:54:50,211 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_vert_3.dat
+2025-04-01 15:54:50,274 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_vert_4.dat
+2025-04-01 15:54:50,337 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_vert_5.dat
+2025-04-01 15:54:50,400 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_vert_6.dat
+2025-04-01 15:54:50,463 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_vert_7.dat
+2025-04-01 15:54:50,463 - INFO - Reinitializing storage
+=== DATA PREPARATION COMPLETE ===
+=== STARTING TUNING ===
+2025-04-01 15:54:51
+CPU_LIST=0-11
+Starting worker 0 on GPU 0 with seed 42
+
+CondaError: Run 'conda init' before 'conda activate'
+
+taskset: failed to set pid 2118285's affinity: Invalid argument
+Started 1 worker processes for model 
+Process IDs: 2118285
+2025-04-01 15:54:53
+=== TUNING COMPLETED ===

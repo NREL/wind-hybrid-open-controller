@@ -132,7 +132,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
         a = [1, -self.lpf_alpha]
         return lfilter(b, a, x)
     
-    # @profile
+    
     @staticmethod
     def _optimize_lookup_table(floris_config_path, uncertain, yaw_limits, parallel=False, optimization="scipy", sorted_target_tids="all", lut_path=None, generate_lut=True):
         if not generate_lut and lut_path is not None and os.path.exists(lut_path):
@@ -456,7 +456,8 @@ class LookupBasedWakeSteeringController(ControllerBase):
          
         if self.wind_forecast:
             # wf.filter(pl.col("time") < pl.col("time").first() + preview_forecast.controller_timedelta)
-            newest_predictions = forecasted_wind_field.loc[forecasted_wind_field["time"] <= self.current_time + pd.Timedelta(self.controller_dt, unit="s"), :]
+            newest_predictions = forecasted_wind_field.loc[
+                forecasted_wind_field["time"] <= self.current_time + max(pd.Timedelta(self.controller_dt, unit="s"), self.wind_forecast.prediction_timedelta), :]
             self.controls_dict = {
                 "yaw_angles": list(constrained_yaw_setpoints), 
                 "predicted_wind_speeds_horz": newest_predictions[self.mean_ws_horz_cols].values,

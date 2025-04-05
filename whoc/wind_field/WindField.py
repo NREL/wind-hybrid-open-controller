@@ -116,7 +116,7 @@ class WindField:
             [0, 1], size=(self.simulation_max_time_steps, self.num_turbines),
             p=[self.offline_probability, 1 - self.offline_probability])
     
-    # @profile
+    
     def _generate_wind_preview_distribution_params(self, regenerate_params=False):
         # TODO just compute this on the fly...
         if os.path.exists(self.distribution_params_path) and not regenerate_params:
@@ -507,7 +507,7 @@ def generate_wind_preview_ts(config, case_idx, wind_field_data):
     
     # save case raw_data as dataframe
     wind_preview_data = defaultdict(list)
-    wind_preview_data["Time"] = time
+    wind_preview_data["time"] = time
     
     for u, v in zip(mean_freestream_wind_speed_u, mean_freestream_wind_speed_v):
         noise_preview = wf._sample_wind_preview(current_measurements=[u, v], 
@@ -557,12 +557,12 @@ def write_abl_velocity_timetable(dfs, save_path, boundary_starttime=7200.0):
         df["FreestreamWindDir"] = (270.0 - df["FreestreamWindDir"]) % 360.0
         # df.loc[df["FreestreamWindDir"] > 180.0, "FreestreamWindDir"] = df.loc[df["FreestreamWindDir"] > 180.0, "FreestreamWindDir"] - 360.0
         # df.loc[df["FreestreamWindDir"] < 0.0, "FreestreamWindDir"] = df.loc[df["FreestreamWindDir"] < 0.0, "FreestreamWindDir"] + 360.0
-        # dt = df["Time"].iloc[1] - df["Time"].iloc[0]
+        # dt = df["time"].iloc[1] - df["time"].iloc[0]
         # init_time = np.arange(0, boundary_starttime, dt)
-        # mean_df = pd.DataFrame({"Time": init_time,
+        # mean_df = pd.DataFrame({"time": init_time,
         #                         "FreestreamWindMag": [df["FreestreamWindMag"].iloc[0]] * len(init_time),
         #                         "FreestreamWindDir": [df["FreestreamWindDir"].iloc[0]] * len(init_time)})
-        df["Time"] = df["Time"] + boundary_starttime
+        df["time"] = df["time"] + boundary_starttime
         # pd.concat([mean_df, df])
         
         df.to_csv(os.path.join(save_path, f"abl_velocity_timetable_{d}.txt"), index=False, sep=" ")
@@ -821,9 +821,9 @@ if __name__ == '__main__':
     stochastic_preview["Wind Component"] = np.concatenate([["U"] * n_time_steps + ["V"] * n_time_steps for m in range(input_dict["controller"]["n_wind_preview_samples"])])
     # stochastic_preview = pd.DataFrame(stochastic_preview)
 
-    perfect_preview["Time"] = persistent_preview["Time"] = np.tile(np.arange(n_time_steps), (2, )) * input_dict["simulation_dt"]
+    perfect_preview["time"] = persistent_preview["time"] = np.tile(np.arange(n_time_steps), (2, )) * input_dict["simulation_dt"]
     
-    stochastic_preview["Time"] = np.tile(np.arange(n_time_steps) * input_dict["simulation_dt"], (2 * input_dict["controller"]["n_wind_preview_samples"],))
+    stochastic_preview["time"] = np.tile(np.arange(n_time_steps) * input_dict["simulation_dt"], (2 * input_dict["controller"]["n_wind_preview_samples"],))
     
     perfect_preview = pd.DataFrame(perfect_preview)
     perfect_preview["Data Type"] = ["Preview"] * len(perfect_preview.index)
@@ -867,11 +867,11 @@ if __name__ == '__main__':
     stochastic_preview.reset_index(inplace=True, drop=True)
     
     # stochastic_preview.loc[(stochastic_preview["Data Type"] == "Preview") & (stochastic_preview["Wind Component"] == "U"), "Wind Speed"].mean()
-    # stochastic_preview.loc[(stochastic_preview["Data Type"] == "Preview") & (stochastic_preview["Sample"] == 1), "Time"]
+    # stochastic_preview.loc[(stochastic_preview["Data Type"] == "Preview") & (stochastic_preview["Sample"] == 1), "time"]
     
     assert np.all(perfect_preview.loc[perfect_preview["Data Type"] == "True", "Wind Speed"].dropna().to_numpy() == persistent_preview.loc[persistent_preview["Data Type"] == "True", "Wind Speed"].dropna().to_numpy())
     assert np.all(perfect_preview.loc[perfect_preview["Data Type"] == "True", "Wind Speed"].dropna().to_numpy() == stochastic_preview.loc[stochastic_preview["Data Type"] == "True", "Wind Speed"].dropna().to_numpy())
-    assert np.all(perfect_preview.loc[perfect_preview["Data Type"] == "True", "Time"].dropna().to_numpy() == stochastic_preview.loc[stochastic_preview["Data Type"] == "True", "Time"].dropna().to_numpy())
+    assert np.all(perfect_preview.loc[perfect_preview["Data Type"] == "True", "time"].dropna().to_numpy() == stochastic_preview.loc[stochastic_preview["Data Type"] == "True", "time"].dropna().to_numpy())
 
     # perfect_preview["TrueWindSpeed"] = persistent_preview["TrueWindSpeed"] \
     # 	= [wind_u_ts[idx + j] for j in range(input_dict["controller"]["n_horizon"] + 1)] + [wind_v_ts[idx + j] for j in range(input_dict["controller"]["n_horizon"] + 1)]
@@ -881,8 +881,8 @@ if __name__ == '__main__':
     # different hues for u vs k, different style for true vs preview
     # TODO
     fig = plt.figure(figsize=(7.7, 5.86))
-    ax = sns.lineplot(data=perfect_preview.loc[perfect_preview["Data Type"] == "True", :], x="Time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[1, 0]])
-    ax = sns.lineplot(data=perfect_preview.loc[perfect_preview["Data Type"] == "Preview", :], x="Time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[4, 4]], marker="o")
+    ax = sns.lineplot(data=perfect_preview.loc[perfect_preview["Data Type"] == "True", :], x="time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[1, 0]])
+    ax = sns.lineplot(data=perfect_preview.loc[perfect_preview["Data Type"] == "Preview", :], x="time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[4, 4]], marker="o")
     ax.set(xlabel="Time [s]", ylabel="Wind Speed [m/s]", xlim=(0, int(wind_field_config["n_preview_steps"] * input_dict["simulation_dt"])))
     ax.set_xticks(np.arange(0, int(n_time_steps * input_dict["simulation_dt"]), int(60)))
     h, l = ax.get_legend_handles_labels()
@@ -892,23 +892,23 @@ if __name__ == '__main__':
     # plt.legend(labels=["Preview, U", "Preview, V", "True, U", "True, V"])
     
     fig = plt.figure(figsize=(7.7, 5.86))
-    ax = sns.lineplot(data=persistent_preview.loc[persistent_preview["Data Type"] == "True", :], x="Time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[1, 0]])
-    ax = sns.lineplot(data=persistent_preview.loc[persistent_preview["Data Type"] == "Preview", :], x="Time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[4, 4]], marker="o")
+    ax = sns.lineplot(data=persistent_preview.loc[persistent_preview["Data Type"] == "True", :], x="time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[1, 0]])
+    ax = sns.lineplot(data=persistent_preview.loc[persistent_preview["Data Type"] == "Preview", :], x="time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[4, 4]], marker="o")
     ax.set(xlabel="Time [s]", ylabel="Wind Speed [m/s]", xlim=(0, int(wind_field_config["n_preview_steps"] * input_dict["simulation_dt"])))
     ax.set_xticks(np.arange(0, int(n_time_steps * input_dict["simulation_dt"]), int(60)))
     h, l = ax.get_legend_handles_labels()
     ax.legend(h[:5] + h[9:], l[:5] + l[9:])
     fig.savefig(os.path.join(wind_field_dir, f'persistent_preview.png'))
-    # sns.scatterplot(data=persistent_preview.loc[perfect_preview["Data Type"] == "Preview", :], x="Time", y="Wind Speed", zorder=7)
+    # sns.scatterplot(data=persistent_preview.loc[perfect_preview["Data Type"] == "Preview", :], x="time", y="Wind Speed", zorder=7)
     # plt.legend(labels=["Preview, U", "Preview, V", "True, U", "True, V"])
 
     # stochastic_preview.loc[(stochastic_preview["Data Type"] == "Preview") & (stochastic_preview["Wind Component"] == "U"), "Wind Speed"].dropna()
     fig = plt.figure(figsize=(7.7, 5.86))
-    # sns.lineplot(data=stochastic_preview.loc[stochastic_preview["Sample"] == 1, :], x="Time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[4, 4], [1, 0]])
-    ax = sns.lineplot(data=stochastic_preview.loc[stochastic_preview["Data Type"] == "True", :], x="Time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[1, 0]])
-    # ax = sns.lineplot(data=stochastic_preview.loc[stochastic_preview["Data Type"] == "Preview", :], x="Time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[4, 4]], marker="o", errorbar= lambda x: (x.min(), x.max()))
+    # sns.lineplot(data=stochastic_preview.loc[stochastic_preview["Sample"] == 1, :], x="time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[4, 4], [1, 0]])
+    ax = sns.lineplot(data=stochastic_preview.loc[stochastic_preview["Data Type"] == "True", :], x="time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[1, 0]])
+    # ax = sns.lineplot(data=stochastic_preview.loc[stochastic_preview["Data Type"] == "Preview", :], x="time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[4, 4]], marker="o", errorbar= lambda x: (x.min(), x.max()))
     
-    ax = sns.lineplot(data=stochastic_preview.loc[stochastic_preview["Data Type"] == "Preview", :], x="Time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[4, 4]], marker="o", errorbar=("sd", 2))
+    ax = sns.lineplot(data=stochastic_preview.loc[stochastic_preview["Data Type"] == "Preview", :], x="time", y="Wind Speed", hue="Wind Component", style="Data Type", dashes=[[4, 4]], marker="o", errorbar=("sd", 2))
     ax.lines[-6].remove()
     ax.lines[-6].remove()
     ax.get_children()[9].set_label("U Preview")

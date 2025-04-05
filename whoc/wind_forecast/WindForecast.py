@@ -53,6 +53,8 @@ from optuna import create_study
 from optuna.samplers import TPESampler
 from optuna.storages import JournalStorage, RDBStorage
 from optuna.storages.journal import JournalFileBackend
+from optuna.pruners import HyperbandPruner, MedianPruner, PercentilePruner, NopPruner
+from optuna.integration import PyTorchLightningPruningCallback
 
 # from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import MinMaxScaler
@@ -183,10 +185,42 @@ class WindForecast:
         for output in self.outputs:
             self._get_output_training_data(historic_measurements=historic_measurements, output=output, reload=True)
      
-    # def tune_hyperparameters_single(self, historic_measurements, scaler, feat_type, tid, study_name, seed, restart_tuning, storage_type, journal_storage_dir, n_trials=1):
-    def tune_hyperparameters_single(self, study_name, seed, storage_type, journal_storage_dir, n_trials=1):
+    # def tune_hyperparameters_single(self, historic_measurements, scaler, feat_type, tid, study_name, seed, restart_tuning, backend, storage_dir, n_trials=1):
+    def tune_hyperparameters_single(self, study_name, seed, backend, storage_dir, 
+                                    n_trials=1, 
+                                    pruning_kwargs=None):
         # for case when argument is list of multiple continuous time series AND to only get the training inputs/outputs relevant to this model
-        storage = self.get_storage(storage_type=storage_type, study_name=study_name, journal_storage_dir=journal_storage_dir)
+        storage = self.get_storage(backend=backend, study_name=study_name, storage_dir=storage_dir)
+        
+        # Configure pruner based on settings
+        if pruning_kwargs:
+            pruning_type = pruning_kwargs["type"]
+            logging.info(f"Configuring pruner: type={pruning_type}, min_resource={min_resource}")
+
+            if pruning_type == "hyperband":
+                reduction_factor = pruning_kwargs["reduction_factor"]
+                min_resource = pruning_kwargs["min_resource"]
+                max_resource = pruning_kwargs["max_resource"]
+                
+                pruner = HyperbandPruner(
+                    min_resource=min_resource,
+                    max_resource=max_resource,
+                    reduction_factor=reduction_factor
+                )
+                logging.info(f"Created HyperbandPruner with min_resource={min_resource}, max_resource={max_resource}, reduction_factor={reduction_factor}")
+            elif pruning_type == "median":
+                pruner = MedianPruner(n_startup_trials=5, n_warmup_steps=min_resource)
+                logging.info(f"Created MedianPruner with n_startup_trials=5, n_warmup_steps={min_resource}")
+            elif pruning_type == "percentile":
+                percentile = pruning_kwargs[percentile]
+                pruner = PercentilePruner(percentile=percentile, n_startup_trials=5, n_warmup_steps=min_resource)
+                logging.info(f"Created PercentilePruner with percentile={percentile}, n_startup_trials=5, n_warmup_steps={min_resource}")
+            else:
+                logging.warning(f"Unknown pruner type: {pruning_type}, using no pruning")
+                pruner = NopPruner()
+        else:
+            logging.info("Pruning is disabled, using NopPruner")
+            pruner = NopPruner()
          
         try:
             logging.info(f"Creating Optuna study {study_name}.") 
@@ -194,7 +228,8 @@ class WindForecast:
                                     storage=storage,
                                     direction="maximize",
                                     load_if_exists=True,
-                                    sampler=TPESampler(seed=seed)) # maximize negative mse ie minimize mse
+                                    sampler=TPESampler(seed=seed),
+                                    pruner=pruner) # maximize negative mse ie minimize mse
             logging.info(f"Study successfully created or loaded: {study_name}")
         except Exception as e:
             logging.error(f"Error creating study: {str(e)}")
@@ -232,19 +267,19 @@ class WindForecast:
         
         return study.best_params
     
-    def get_storage(self, storage_type, study_name, journal_storage_dir=None):
+    def get_storage(self, backend, study_name, storage_dir=None):
         """
         Get storage for Optuna studies.
         
         Args:
             use_rdb: Whether to use SQLite storage
             study_name: Name of the study
-            journal_storage_dir: Directory to store journal files
+            storage_dir: Directory to store journal files
             
         Returns:
             Storage object for Optuna
         """
-        if storage_type == "mysql":
+        if backend == "mysql":
             logging.info(f"Connecting to MySQL RDB database {study_name}")
             conn = sql_connect(host="localhost", user="root")
             cursor = conn.cursor()
@@ -259,11 +294,11 @@ class WindForecast:
                 cursor.execute(f"CREATE DATABASE {study_name}") 
                 
             storage = RDBStorage(url=f"mysql://{conn.user}@{conn.server_host}:{conn.server_port}/{study_name}")
-        elif storage_type == "sqlite":
+        elif backend == "sqlite":
             logging.info(f"Connecting to SQLite RDB database {study_name}")
             # SQLite with WAL mode - using a simpler URL format
-            os.makedirs(journal_storage_dir, exist_ok=True)
-            db_path = os.path.join(journal_storage_dir, f"{study_name}.db")
+            os.makedirs(storage_dir, exist_ok=True)
+            db_path = os.path.join(storage_dir, f"{study_name}.db")
             
             # Use a simplified connection string format that Optuna expects
             storage_url = f"sqlite:///{db_path}"
@@ -290,7 +325,7 @@ class WindForecast:
             storage = RDBStorage(url=storage_url)
         else:
             logging.info(f"Connecting to Journal database {study_name}")
-            journal_file = os.path.join(journal_storage_dir, f"{study_name}.journal")
+            journal_file = os.path.join(storage_dir, f"{study_name}.journal")
             storage = JournalStorage(
                 JournalFileBackend(journal_file)
             )
@@ -346,13 +381,13 @@ class WindForecast:
         del fp
         return X_train, y_train
     
-    def set_tuned_params(self, storage_type, study_name_root, journal_storage_dir):
+    def set_tuned_params(self, backend, study_name_root, storage_dir):
         """_summary_
 
         Args:
-            storage_type (_type_): journal, sqlite, or mysql
+            backend (_type_): journal, sqlite, or mysql
             study_name_root (_type_): _description_
-            journal_storage_dir (FilePath): required for sqlite or journal storage
+            storage_dir (FilePath): required for sqlite or journal storage
 
         Raises:
             Exception: _description_
@@ -360,7 +395,7 @@ class WindForecast:
         """
         if len(self.outputs) > 1:
             for output in self.outputs:
-                storage = self.get_storage(storage_type=storage_type, study_name=f"{study_name_root}_{output}", journal_storage_dir=journal_storage_dir)
+                storage = self.get_storage(backend=backend, study_name=f"{study_name_root}_{output}", storage_dir=storage_dir)
                 try:
                     study_id = storage.get_study_id_from_name(f"{study_name_root}_{output}")
                 except KeyError:
@@ -369,7 +404,7 @@ class WindForecast:
                 # storage.get_all_studies()[0]._study_id
                 self.model[output] = self.create_model(**storage.get_best_trial(study_id).params)
         else:
-            storage = self.get_storage(use_rdb=storage_type, study_name=f"{study_name_root}")
+            storage = self.get_storage(use_rdb=backend, study_name=f"{study_name_root}")
             try:
                 study_id = storage.get_study_id_from_name(f"{study_name_root}")
             except KeyError:
@@ -839,7 +874,7 @@ class GaussianForecast(WindForecast):
 @dataclass
 class SVRForecast(WindForecast):
     """Wind speed component forecasting using Support Vector Regression."""
-    multiprocessor: str = "mpi"
+    multiprocessor: str = "cf"
     
     def __post_init__(self):
         super().__post_init__()
@@ -870,9 +905,9 @@ class SVRForecast(WindForecast):
             
         if self.use_tuned_params and self.model_config is not None:
             try:
-                self.set_tuned_params(storage_type=self.model_config["optuna"]["storage_type"], 
+                self.set_tuned_params(backend=self.model_config["optuna"]["backend"], 
                                       study_name_root=self.model_config["optuna"]["study_name"], 
-                                      journal_storage_dir=self.model_config["optuna"]["journal_dir"])
+                                      storage_dir=self.model_config["optuna"]["storage_dir"])
             except KeyError as e:
                 logging.warning(e)
     
@@ -1282,8 +1317,8 @@ class MLForecast(WindForecast):
                 logging.info("Getting tuned parameters")
                 tuned_params = get_tuned_params(model=self.model_key,
                                                 data_source=os.path.splitext(os.path.basename(self.model_config["dataset"]["data_path"]))[0], 
-                                                storage_type=self.model_config["optuna"]["storage_type"], 
-                                                journal_storage_dir=self.model_config["optuna"]["journal_dir"])
+                                                backend=self.model_config["optuna"]["backend"], 
+                                                storage_dir=self.model_config["optuna"]["storage_dir"])
                 logging.info(f"Declaring estimator {self.model_key.capitalize()} with tuned parameters")
                 self.model_config["dataset"].update({k: v for k, v in tuned_params.items() if k in self.model_config["dataset"]})
                 self.model_config["model"][self.model_key].update({k: v for k, v in tuned_params.items() if k in self.model_config["model"][self.model_key]})
@@ -1539,23 +1574,24 @@ class MLForecast(WindForecast):
         pred = self.distr_predictor.predict(test_data, num_samples=1, output_distr_params=True)
         
         if self.data_module.per_turbine_target:
-            # TODO test
+            # TODO HIGH test
             pred_df = pl.concat([pl.DataFrame(
                 data={
                     **{"time": pred.index.to_timestamp()},
                     **{f"loc_{col}": turbine_pred.distribution.loc[:, c].flatten() for c, col in enumerate(self.data_module.target_cols)},
-                    **{f"sd_{col}": np.sqrt(turbine_pred.distribution.cov_diag[:, c].flatten()) for c, col in enumerate(self.data_module.target_cols)}
+                    **{f"sd_{col}": np.sqrt(turbine_pred.distribution.stddev[:, c].flatten()) for c, col in enumerate(self.data_module.target_cols)}
                 }
             ).rename(columns={output_type: f"{output_type}_{self.data_module.static_features.iloc[t]['turbine_id']}" 
                               for output_type in self.data_module.target_cols}).sort_values(["time"]) for t, turbine_pred in enumerate(pred)], how="horizontal")
         else:
+            # TODO HIGH test
             pred = next(pred)
             # pred_turbine_id = pd.Categorical([col.split("_")[-1] for col in col_names for t in range(pred.prediction_length)])
             pred_df = pl.DataFrame(
                 data={
                     **{"time": pred.index.to_timestamp()},
                     **{f"loc_{col}": pred.distribution.loc[:, c].cpu().numpy() for c, col in enumerate(self.data_module.target_cols)},
-                    **{f"sd_{col}": np.sqrt(pred.distribution.cov_diag[:, c].cpu().numpy()) for c, col in enumerate(self.data_module.target_cols)}
+                    **{f"sd_{col}": np.sqrt(pred.distribution.stddev[:, c].cpu().numpy()) for c, col in enumerate(self.data_module.target_cols)}
                 }
             ).sort(by=["time"])
         

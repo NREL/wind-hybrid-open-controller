@@ -1,0 +1,37 @@
+SLURM_JOB_ID=12670572
+SLURM_JOB_NAME=model_tuning
+SLURM_JOB_PARTITION=amilan
+SLURM_JOB_NUM_NODES=1
+SLURM_JOB_GPUS=
+SLURM_JOB_GRES=
+SLURM_NTASKS=12
+SLURM_NTASKS_PER_NODE=12
+NTUNERS=1
+NTASKS_PER_TUNER=12
+=== ENVIRONMENT ===
+No modules loaded
+=== STARTING DATA PREPARATION ===
+2025-04-01 15:59:52
+No MPI available on system.
+No MPI available on system.
+2025-04-01 16:00:03,970 - INFO - Parsing arguments and configuration yaml.
+usage: WindFarmForecasting [-h] [-mcnf MODEL_CONFIG] [-dcnf DATA_CONFIG]
+                           [-sn STUDY_NAME] [-m {mpi,cf}] [-i] [-rt] [-s SEED]
+                           -md
+                           {svr,kf,preview,informer,autoformer,spacetimeformer}
+WindFarmForecasting: error: argument -md/--model: expected one argument
+=== DATA PREPARATION COMPLETE ===
+=== STARTING TUNING ===
+2025-04-01 16:00:05
+CPU_LIST=0-11
+Starting worker 0 on GPU 0 with seed 42
+STUDY_NAME=__tuning
+DEBUG INSIDE NOHUP: Using CPU_LIST='0-11'
+
+CondaError: Run 'conda init' before 'conda activate'
+
+taskset: failed to set pid 2119793's affinity: Invalid argument
+Started 1 worker processes for model 
+Process IDs: 2119793
+2025-04-01 16:00:07
+=== TUNING COMPLETED ===
