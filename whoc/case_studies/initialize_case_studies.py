@@ -6,7 +6,10 @@ import sys
 from glob import glob
 from itertools import product
 from functools import partial
+from memory_profiler import profile
+#from line_profiler import profile
 # from datetime import timedelta
+
 
 import pandas as pd
 import polars as pl
@@ -17,28 +20,39 @@ from whoc import __file__ as whoc_file
 from whoc.case_studies.process_case_studies import plot_wind_field_ts
 from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
 
-N_COST_FUNC_TUNINGS = 21
+if sys.platform == "linux":
+    N_COST_FUNC_TUNINGS = 21
+    # if os.getlogin() == "ahenry":
+    #     # Kestrel
+    #     STORAGE_DIR = "/projects/ssc/ahenry/whoc/floris_case_studies"
+    # elif os.getlogin() == "aohe7145":
+    #     STORAGE_DIR = "/projects/aohe7145/toolboxes/wind-hybrid-open-controller/whoc/floris_case_studies"
+elif sys.platform == "darwin":
+    N_COST_FUNC_TUNINGS = 21
+    # STORAGE_DIR = "/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/floris_case_studies"
+elif sys.platform == "win32" or sys.platform == "cygwin":  # Add Windows check
+    N_COST_FUNC_TUNINGS = 21
 
 # sequential_pyopt is best solver, stochastic is best preview type
 case_studies = {
+                                
     "baseline_controllers_preview_flasc_perfect": {
                                     # "controller_dt": {"group": 1, "vals": [120, 120]},
                                     # # "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
-                                    # "target_turbine_indices": {"group": 1, "vals": ["6,4", "6,"]},
+                                    "target_turbine_indices": {"group": 1, "vals": ["6,4", "6,"]},
                                     # "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "GreedyController"]},
                                     # "use_filtered_wind_dir": {"group": 1, "vals": [True, True]},
                                     # "use_lut_filtered_wind_dir": {"group": 1, "vals": [True, True]},
                                     "controller_dt": {"group": 1, "vals": [180]},
-                                    "case_names": {"group": 1, "vals": ["LUT"]},
-                                    "controller_class": {"group": 1, "vals": ["GreedyController", "LookupBasedWakeSteeringController"]},
-                                     "target_turbine_indices": {"group": 1, "vals": ["4,", "4,6"]},
+                                    #"case_names": {"group": 1, "vals": ["LUT"]},
+                                    "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController"]},
                                     "use_filtered_wind_dir": {"group": 1, "vals": [True]},
                                     "use_lut_filtered_wind_dir": {"group": 1, "vals": [True]},
                                     "simulation_dt": {"group": 0, "vals": [60]},
                                     "floris_input_file": {"group": 0, "vals": ["../../examples/inputs/smarteole_farm.yaml"]},
-                                    "lut_path": {"group": 0, "vals": ["../../examples/inputs/smarteole_farm_lut.csv"]},
-                                    "uncertain": {"group": 3, "vals": [True]},
-                                    "wind_forecast_class": {"group": 3, "vals": ["KalmanFilterForecast"]},
+                                    "lut_path": {"group": 0, "vals": ["../../examples/inputs/lut_smarteole_farm_(1, 2)_uncertainFalse.csv"]},
+                                    "uncertain": {"group": 3, "vals": [False, False]},
+                                    "wind_forecast_class": {"group": 3, "vals": ["KalmanFilterForecast", "PerfectForecast"]},
                                     "prediction_timedelta": {"group": 4, "vals": [240]},
                                     "yaw_limits": {"group": 0, "vals": ["-15,15"]}
                                     },
@@ -362,6 +376,7 @@ def CaseGen_General(case_inputs, namebase=''):
 
     return case_list, case_name
 
+#@profile
 def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_field, 
                            n_seeds, stoptime, save_dir, wf_source, multiprocessor,
                            whoc_config, model_config=None, data_config=None):
@@ -531,6 +546,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
 
         # make adjustements based on case study
         for c, case in enumerate(case_list):
+            print(f"Processing case: {case['wind_forecast_class']}")
             for property_name, property_value in case.items():
                 if property_name in input_dicts[start_case_idx + c]["controller"]:
                     property_group = "controller"
@@ -542,7 +558,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                 
                 if property_group:
                     if property_name == "yaw_limits":
-                        input_dicts[start_case_idx + c][property_group][property_name] = tuple(int(v) for v in property_value.split(","))
+                        input_dicts[start_case_idx + c][property_group][property_name] = tuple(int(v) for v in str(property_value).split(","))
                     elif property_name == "target_turbine_indices":
                         if property_value != "all":
                             # need to preserve order, taking first as upstream
@@ -651,7 +667,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
 # 0, 1, 2, 3, 6
 case_families = ["baseline_controllers", "solver_type", # 0, 1
                     "wind_preview_type", "warm_start", # 2, 3
-                     "horizon_length", "cost_func_tuning",  # 4, 5
+                    "horizon_length", "cost_func_tuning",  # 4, 5
                     "yaw_offset_study", "scalability", # 6, 7
                     "breakdown_robustness", # 8
                     "gradient_type", "n_wind_preview_samples", # 9, 10

@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import yaml
 import pickle
+from memory_profiler import profile
 
 import whoc
 try:
@@ -23,7 +24,7 @@ from whoc.case_studies.simulate_case_studies import simulate_controller
 from whoc.case_studies.process_case_studies import (read_time_series_data, write_case_family_time_series_data, read_case_family_time_series_data, 
                                                     aggregate_time_series_data, read_case_family_agg_data, write_case_family_agg_data, 
                                                     generate_outputs, plot_simulations, plot_wind_farm, plot_breakdown_robustness, plot_horizon_length,
-                                                    plot_cost_function_pareto_curve, plot_yaw_offset_wind_direction, plot_parameter_sweep)
+                                                    plot_cost_function_pareto_curve, plot_yaw_offset_wind_direction, plot_parameter_sweep, plot_power_increase_vs_prediction_time)
 try:
     from whoc.wind_forecast.WindForecast import PerfectForecast, PersistenceForecast, MLForecast, SVRForecast, KalmanFilterForecast, PreviewForecast
 except ModuleNotFoundError:
@@ -46,7 +47,7 @@ if __name__ == "__main__":
     parser.add_argument("-st", "--stoptime", default="auto")
     parser.add_argument("-ns", "--n_seeds", type=int, default=6)
     parser.add_argument("-m", "--multiprocessor", type=str, choices=["mpi", "cf"])
-    parser.add_argument("-sd", "--save_dir", type=str)
+    parser.add_argument("-sd", "--save_dir", type=str, default=os.path.join(os.getcwd(), "simulation_results"))
     parser.add_argument("-wf", "--wf_source", type=str, choices=["floris", "scada"], required=True)
     parser.add_argument("-mcnf", "--model_config", type=str, required=False, default="")
     parser.add_argument("-dcnf", "--data_config", type=str, required=False, default="")
@@ -281,7 +282,7 @@ if __name__ == "__main__":
                             case_name_df = case_family_df.iloc[case_family_df.index.get_level_values("CaseName") == case_name, :]
                             res = aggregate_time_series_data(
                                                             time_series_df=case_name_df,
-                                                             input_dict_path=os.path.join(args.save_dir, case_families[i], f"input_config_case_{case_name}.pkl"),
+                                                            input_dict_path=os.path.join(args.save_dir, case_families[i], f"input_config_case_{case_name}.pkl"),
                                                             # results_path=os.path.join(args.save_dir, case_families[i], f"agg_results_{case_name}.csv"),
                                                             n_seeds=args.n_seeds)
                             if res is not None:
@@ -363,14 +364,14 @@ if __name__ == "__main__":
 
                 
                 forecast_wf = time_series_df.iloc[
-                    (time_series_df.index.get_level_values("CaseFamily") == "baseline_controllers_preview_flasc")]\
+                    (time_series_df.index.get_level_values("CaseFamily") == "baseline_controllers_preview_flasc_perfect")]\
                         .reset_index(level=["CaseFamily", "CaseName"], drop=True)[
                            ["WindSeed", "PredictedTime", "controller_class", "wind_forecast_class", "prediction_timedelta"] 
                            + [col for col in time_series_df.columns if "PredictedTurbine" in col] 
                         ].rename(columns={"PredictedTime": "time"})
                         
                 true_wf = time_series_df.iloc[
-                    (time_series_df.index.get_level_values("CaseFamily") == "baseline_controllers_preview_flasc")]\
+                    (time_series_df.index.get_level_values("CaseFamily") == "baseline_controllers_preview_flasc_perfect")]\
                         .reset_index(level=["CaseFamily", "CaseName"], drop=True)[
                            ["WindSeed", "Time", "controller_class", "wind_forecast_class", "prediction_timedelta"] 
                            + [col for col in time_series_df.columns if col.startswith("TurbineWind")] 
@@ -410,12 +411,12 @@ if __name__ == "__main__":
                 # TODO HIGH clean this code up
                 
                 wind_seed = 0
-                wind_forecast_class = "PreviewForecast" # "KalmanFilterForecast"
-                controller_class = "GreedyController"
-                # controller_class = "LookupBasedWakeSteeringController"
+                wind_forecast_class = "KalmanFilterForecast" # "PerfectForecast" # 
+                # controller_class = "GreedyController"
+                controller_class = "LookupBasedWakeSteeringController"
                 # TODO WHY DO GREEDY AND LUT LOOK THE SAME, WHY IS ONLY ONE TURBINE VISIBLE
                 WindForecast.plot_forecast(
-                    preview_wf=forecast_wf.loc[
+                    forecast_wf=forecast_wf.loc[
                         (forecast_wf["WindSeed"] == wind_seed) & (forecast_wf["wind_forecast_class"] == wind_forecast_class) & (forecast_wf["controller_class"] == controller_class), 
                         ["data_type", "time", "feature", "value", "turbine_id"]],
                     true_wf=true_wf.loc[
@@ -715,4 +716,62 @@ if __name__ == "__main__":
 
             if all(case_families.index(cf) in args.case_ids for cf in ["baseline_controllers", "solver_type",
              "wind_preview_type", "warm_start"]):
-                generate_outputs(agg_df, args.save_dir)
+                generate_outputs(agg_df, args.save_dir)       
+
+
+            if case_families.index("baseline_controllers_preview_flasc_perfect") in args.case_ids:
+
+                mpc_df = agg_df[agg_df.index.get_level_values("CaseFamily") == "baseline_controllers_preview_flasc_perfect"]
+
+                config_cols = ["wind_forecast_class", "prediction_timedelta"]
+
+                for (case_family, case_name), _ in mpc_df.iterrows():
+                    input_fn = f"input_config_case_{case_name}.pkl"
+                    input_path = os.path.join(args.save_dir, case_family, input_fn)
+
+                    with open(input_path, mode='rb') as fp:
+                        input_config = pickle.load(fp)
+
+                    controller_config = input_config.get("controller", {})
+                    wind_forecast_config = input_config.get("wind_forecast", {})
+
+                    
+                    for col in config_cols:
+                        if col in controller_config:
+                            if col == "wind_forecast_class":
+                                mpc_df.loc[
+                                    (mpc_df.index.get_level_values("CaseFamily") == case_family) & 
+                                    (mpc_df.index.get_level_values("CaseName") == case_name), 
+                                    'wind_forecast_class'
+                                ] = controller_config[col]  
+
+                        elif col in wind_forecast_config:
+                            if col == "prediction_timedelta":
+                                mpc_df.loc[
+                                    (mpc_df.index.get_level_values("CaseFamily") == case_family) & 
+                                    (mpc_df.index.get_level_values("CaseName") == case_name), 
+                                    "prediction_timedelta"
+                                ] = wind_forecast_config[col]
+                        else:
+                            print(f"Warning: '{col}' not found in config for {case_name}")
+
+
+                # Filter data for the two forecast types
+                kalman_df = mpc_df.loc[mpc_df["wind_forecast_class"] == "KalmanFilterForecast", :]
+                perfect_df = mpc_df.loc[mpc_df["wind_forecast_class"] == "PerfectForecast", :]
+
+                if "prediction_timedelta" in kalman_df.columns and "prediction_timedelta" in perfect_df.columns:
+                    merged_df = kalman_df.merge(
+                    perfect_df,
+                    on=["CaseFamily", "prediction_timedelta"],
+                    suffixes=("_kalman", "_perfect")
+                    )
+
+
+                merged_df["power_ratio"] = (merged_df["FarmPowerMean_kalman", "mean"] / merged_df["FarmPowerMean_perfect", "mean"]) * 100
+
+                plot_df = merged_df[["prediction_timedelta", "power_ratio"]]
+
+                # Display the prepared data (for debugging)
+                print(plot_df.head())
+                plot_power_increase_vs_prediction_time(plot_df, args.save_dir)

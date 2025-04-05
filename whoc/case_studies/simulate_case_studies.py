@@ -2,13 +2,14 @@ import pandas as pd
 import numpy as np
 import os
 from time import perf_counter
+from memory_profiler import profile
 
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 from whoc.wind_field.WindField import first_ord_filter
 
 
 def simulate_controller(controller_class, wind_forecast_class, simulation_input_dict, **kwargs):
-
+    print(f'Entering simulate_controller function')
     results_dir = os.path.join(kwargs["save_dir"], kwargs['case_family'])
     os.makedirs(results_dir, exist_ok=True)
     
@@ -18,6 +19,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
     fn = f"time_series_results_case_{kwargs['case_name']}_seed_{kwargs['wind_case_idx']}.csv".replace("/", "_")
     # print(f'rerun_simulations = {kwargs["rerun_simulations"]}')
     # print(f'does {os.path.join(results_dir, fn)} exist = {os.path.exists(os.path.join(results_dir, fn))}')
+    print(f'reaches the first if statement')
     if not kwargs["rerun_simulations"] and os.path.exists(os.path.join(results_dir, fn)):
         results_df = pd.read_csv(os.path.join(results_dir, fn))
         print(f"Loaded existing {fn} since rerun_simulations argument is false")
@@ -39,7 +41,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
                                 uncertain=simulation_input_dict["controller"]["uncertain"],
                                 turbine_signature=kwargs["turbine_signature"],
                                 tid2idx_mapping=kwargs["tid2idx_mapping"])
-    
+    print(f'simulation_input_dict')
     if simulation_input_dict["controller"]["target_turbine_indices"] != "all":
         fi_full = ControlledFlorisModel(t0=kwargs["wind_field_ts"]["time"].iloc[0],
                                yaw_limits=simulation_input_dict["controller"]["yaw_limits"],
@@ -112,7 +114,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
     
     t = 0
     k = 0
-    
+    print(f'simulation_input_dict reached')
     # input to floris should be from first in target_turbine_indices (most upstream one), or mean over whole farm if no target_turbine_indices
     if kwargs["wf_source"] == "scada":
         if simulation_input_dict["controller"]["target_turbine_indices"] == "all":
@@ -167,7 +169,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
             if tt == (t + ctrl.controller_dt - simulation_input_dict["simulation_dt"]):
                 fi.run_floris = True
             
-            ctrl.step()
+            ctrl.step()        
             
             # Note these are results from previous time step
             yaw_angles_ts += [ctrl.measurements_dict["yaw_angles"]]
@@ -261,25 +263,27 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
                 
             turbine_offline_status_ts += [np.isclose(last_measurements["turbine_powers"], 0, atol=1e-3)]
 
-        # TODO add n_truncate_steps from Steven's branch
-        turbine_wind_mag_ts = np.vstack(turbine_wind_mag_ts)[:-(n_future_steps + 1), :]
-        turbine_wind_dir_ts = np.vstack(turbine_wind_dir_ts)[:-(n_future_steps + 1), :]
+        n_truncate_steps = (n_future_steps + 1) + int(ctrl.controller_dt - (simulation_input_dict["hercules_comms"]["helics"]["config"]["stoptime"] % ctrl.controller_dt)) // simulation_input_dict["simulation_dt"]
+        turbine_wind_mag_ts = np.vstack(turbine_wind_mag_ts)[:-(n_truncate_steps), :]
+        turbine_wind_dir_ts = np.vstack(turbine_wind_dir_ts)[:-(n_truncate_steps), :]
         if wind_forecast_class:
-            predicted_turbine_wind_speed_horz_ts = np.vstack(predicted_turbine_wind_speed_horz_ts)[:-(n_future_steps + 1), :].astype(float)
-            predicted_turbine_wind_speed_vert_ts = np.vstack(predicted_turbine_wind_speed_vert_ts)[:-(n_future_steps + 1), :].astype(float)
-            stddev_turbine_wind_speed_horz_ts = np.vstack(stddev_turbine_wind_speed_horz_ts)[:-(n_future_steps + 1), :].astype(float)
-            stddev_turbine_wind_speed_vert_ts = np.vstack(stddev_turbine_wind_speed_vert_ts)[:-(n_future_steps + 1), :].astype(float)
-        turbine_offline_status_ts = np.vstack(turbine_offline_status_ts)[:-(n_future_steps + 1), :]
+            predicted_turbine_wind_speed_horz_ts = np.vstack(predicted_turbine_wind_speed_horz_ts)[:-(n_truncate_steps), :].astype(float)
+            predicted_turbine_wind_speed_vert_ts = np.vstack(predicted_turbine_wind_speed_vert_ts)[:-(n_truncate_steps), :].astype(float)
+            stddev_turbine_wind_speed_horz_ts = np.vstack(stddev_turbine_wind_speed_horz_ts)[:-(n_truncate_steps), :].astype(float)
+            stddev_turbine_wind_speed_vert_ts = np.vstack(stddev_turbine_wind_speed_vert_ts)[:-(n_truncate_steps), :].astype(float)
+        turbine_offline_status_ts = np.vstack(turbine_offline_status_ts)[:-(n_truncate_steps), :]
 
         yaw_angles_ts = np.vstack(yaw_angles_ts)
         init_yaw_angles_ts = np.vstack(init_yaw_angles_ts)
         yaw_angles_change_ts = np.diff(yaw_angles_ts, axis=0)
 
-        yaw_angles_change_ts = yaw_angles_change_ts[:(-n_future_steps) or None, :]
-        yaw_angles_ts = yaw_angles_ts[:-(n_future_steps + 1), :]
-        init_yaw_angles_ts = init_yaw_angles_ts[:-(n_future_steps + 1), :]
-        turbine_powers_ts = np.vstack(turbine_powers_ts)[:-(n_future_steps + 1), :]
-        
+        yaw_angles_change_ts = yaw_angles_change_ts[:-(n_truncate_steps - 1) or None, :]
+        yaw_angles_ts = yaw_angles_ts[:-(n_truncate_steps), :]
+        init_yaw_angles_ts = init_yaw_angles_ts[:-(n_truncate_steps), :]
+        turbine_powers_ts = np.vstack(turbine_powers_ts)[:-(n_truncate_steps), :]
+        opt_cost_terms_ts = opt_cost_terms_ts[:-(n_future_steps)]
+        convergence_time_ts = convergence_time_ts[:-(n_future_steps)]
+
         # predicted_turbine_wind_mag_ts = np.sqrt(predicted_turbine_wind_speed_horz_ts**2 + predicted_turbine_wind_speed_vert_ts**2)
         # predicted_turbine_wind_dir_ts = 180.0 + np.rad2deg(np.arctan2(predicted_turbine_wind_speed_horz_ts, predicted_turbine_wind_speed_vert_ts))
 
@@ -355,13 +359,27 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
         "TotalRunningOptimizationCost": np.sum(running_opt_cost_terms_ts, axis=1),
     }
     # TODO make floris data uniform with scada data
+    #if kwargs["wf_source"] == "scada":
+    #    results_data.update({
+    #        **{
+    #            f"TrueTurbineWindSpeedHorz_{idx2tid_mapping[i]}": kwargs["wind_field_ts"][f"ws_horz_{idx2tid_mapping[i]}"] for i in range(fi_full.n_turbines)
+    #        },
+    #        **{
+    #            f"TrueTurbineWindSpeedVert_{idx2tid_mapping[i]}": kwargs["wind_field_ts"][f"ws_vert_{idx2tid_mapping[i]}"] for i in range(fi_full.n_turbines)
+    #        },
+    #    })
+
     if kwargs["wf_source"] == "scada":
         results_data.update({
             **{
-                f"TrueTurbineWindSpeedHorz_{idx2tid_mapping[i]}": kwargs["wind_field_ts"][f"ws_horz_{idx2tid_mapping[i]}"] for i in range(fi_full.n_turbines)
+                f"TrueTurbineWindSpeedHorz_{idx2tid_mapping[i]}": 
+                kwargs["wind_field_ts"][f"ws_horz_{idx2tid_mapping[i]}"].iloc[:len(results_data["Time"])]
+                for i in range(fi_full.n_turbines)
             },
             **{
-                f"TrueTurbineWindSpeedVert_{idx2tid_mapping[i]}": kwargs["wind_field_ts"][f"ws_vert_{idx2tid_mapping[i]}"] for i in range(fi_full.n_turbines)
+                f"TrueTurbineWindSpeedVert_{idx2tid_mapping[i]}": 
+                kwargs["wind_field_ts"][f"ws_vert_{idx2tid_mapping[i]}"].iloc[:len(results_data["Time"])]
+                for i in range(fi_full.n_turbines)
             },
         })
     
@@ -385,7 +403,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
             "StateConsActivatedLower": lower_state_cons_activated_ts,
             "StateConsActivatedUpper": upper_state_cons_activated_ts,
         })
-    
+
     results_df = pd.DataFrame(results_data)
     results_df.to_csv(os.path.join(results_dir, fn))
     print(f"Saved {fn}")
