@@ -42,7 +42,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
                                 uncertain=simulation_input_dict["controller"]["uncertain"],
                                 turbine_signature=kwargs["turbine_signature"],
                                 tid2idx_mapping=kwargs["tid2idx_mapping"])
-    print(f'simulation_input_dict')
+     
     if simulation_input_dict["controller"]["target_turbine_indices"] != "all":
         fi_full = ControlledFlorisModel(t0=kwargs["wind_field_ts"]["time"].iloc[0],
                                yaw_limits=simulation_input_dict["controller"]["yaw_limits"],
@@ -268,7 +268,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
         yaw_angles_ts = yaw_angles_ts[:-(n_future_steps + 1), :]
         turbine_powers_ts = np.vstack(turbine_powers_ts)
         
-    n_truncate_steps = int(ctrl.controller_dt - (simulation_input_dict["hercules_comms"]["helics"]["config"]["stoptime"] % ctrl.controller_dt)) // simulation_input_dict["simulation_dt"]
+    n_truncate_steps = (int(ctrl.controller_dt - (simulation_input_dict["hercules_comms"]["helics"]["config"]["stoptime"] % ctrl.controller_dt)) % ctrl.controller_dt) // simulation_input_dict["simulation_dt"]
     turbine_wind_mag_ts = turbine_wind_mag_ts[:(-n_truncate_steps) or None, :]
     turbine_wind_dir_ts = turbine_wind_dir_ts[:(-n_truncate_steps) or None, :]
     turbine_offline_status_ts = turbine_offline_status_ts[:(-n_truncate_steps) or None, :]

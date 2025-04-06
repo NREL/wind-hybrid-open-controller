@@ -443,7 +443,7 @@ class WindForecast:
         """
         raise NotImplementedError()
 
-    def predict_distr(self, historic_measurements: Union[pd.DataFrame, pl.DataFrame]):
+    def predict_distr(self, historic_measurements: Union[pd.DataFrame, pl.DataFrame], current_time):
         """_summary_
         Generate the parameters of the forecasted distribution
         """
@@ -662,14 +662,14 @@ class PerfectForecast(WindForecast):
         """_summary_
         Make a point prediction (e.g. the mean prediction) for each time step in the horizon
         """
-        # TODO check not including current time
+        
         if isinstance(self.true_wind_field, pl.DataFrame):
             sub_df = self.true_wind_field.rename(self.col_mapping) if self.col_mapping else self.true_wind_field
             sub_df = sub_df.filter(pl.col("time").is_between(current_time, current_time + self.prediction_timedelta, closed="right"))
             assert sub_df.select(pl.len()).item() == int(self.prediction_timedelta / self.measurements_timedelta)
         elif isinstance(self.true_wind_field, pd.DataFrame):
             sub_df = self.true_wind_field.rename(columns=self.col_mapping) if self.col_mapping else self.true_wind_field
-            sub_df = sub_df.loc[(sub_df["time"] >= current_time) & (sub_df["time"] < (current_time + self.prediction_timedelta)), :].reset_index(drop=True)
+            sub_df = sub_df.loc[(sub_df["time"] > current_time) & (sub_df["time"] <= (current_time + self.prediction_timedelta)), :].reset_index(drop=True)
             assert len(sub_df.index) == int(self.prediction_timedelta / self.measurements_timedelta)
         return sub_df
 
@@ -1725,11 +1725,11 @@ def transform_wind(inp_df, added_wm=None, added_wd=None):
     
     return inp_df.select(original_cols)
 
-def make_predictions(forecaster, test_data, true_wind_field, prediction_type):
+def make_predictions(forecaster, test_data, true_wind_field, prediction_type, max_splits):
     forecasts = []
     controller_times = true_wind_field.gather_every(forecaster.n_controller).select(pl.col("time"))
     for i, (inp, label) in enumerate(iter(test_data)):
-        if i == args.max_splits:
+        if i == max_splits:
             break
         start = inp[FieldName.START].to_timestamp()
         # end = min((label[FieldName.START] + label['target'].shape[1]).to_timestamp(), pd.Timestamp(true_wind_field.select(pl.col("time").last()).item()))
@@ -1772,20 +1772,19 @@ def make_predictions(forecaster, test_data, true_wind_field, prediction_type):
 def generate_wind_field_df(datasets, target_cols, feat_dynamic_real_cols):
     full_target = np.concatenate([ds[FieldName.TARGET] for ds in datasets], axis=-1)
     full_feat_dynamic_reals = np.concatenate([ds[FieldName.FEAT_DYNAMIC_REAL] for ds in datasets], axis=-1)[:, :full_target.shape[1]]
+    full_splits = np.atleast_2d(np.hstack([np.repeat(int(re.search("(?<=SPLIT)\\d+", ds[FieldName.ITEM_ID]).group()), (ds[FieldName.TARGET].shape[1],)) for ds in datasets])).astype(int)
     index = pd.concat([period_index(
         {FieldName.START: ds[FieldName.START], FieldName.TARGET: ds[FieldName.TARGET]}
         ).to_series() for ds in datasets]).index
 
-    true_wind_field = pd.DataFrame(np.concatenate([full_target, full_feat_dynamic_reals], axis=0).transpose(),
-                                    columns=target_cols + feat_dynamic_real_cols,
-                                    index=index
-                                #    schema={k: pl.Float32 for k in data_module.target_cols + data_module.feat_dynamic_real_cols}
-                                    )
-    # complete_index = pd.period_range(start=index[0], end=index[-1], freq=index[0].freq)
-    # true_wind_field = true_wind_field.reindex(complete_index).reset_index(names="time")
-    true_wind_field = true_wind_field.reset_index(names="time")
-    true_wind_field["time"] = true_wind_field["time"].dt.to_timestamp()
-    return pl.from_pandas(true_wind_field)
+    wf = pd.DataFrame(np.concatenate([full_splits, full_target, full_feat_dynamic_reals], axis=0).transpose(),
+                                    columns=["split"] + target_cols + feat_dynamic_real_cols,
+                                    index=index)
+    wf["split"] = wf["split"].astype(int)
+     
+    wf = wf.reset_index(names="time")
+    wf["time"] = wf["time"].dt.to_timestamp()
+    return pl.from_pandas(wf)
 
 if __name__ == "__main__":
     import yaml
@@ -1945,7 +1944,14 @@ if __name__ == "__main__":
     if not os.path.exists(data_module.train_ready_data_path):
         data_module.generate_datasets()
     
-    true_wind_field = data_module.generate_splits()._df.collect()
+    true_wind_field = data_module.generate_splits(save=True, reload=True)._df.collect()
+     
+    # window_length = model_config["dataset"]["prediction_length"] + model_config["dataset"].get("lead_time", 0)
+    window_length = int(data_module.test_dataset[0]["target"].shape[1] // 2)
+    _, test_template = split(data_module.test_dataset, offset=-window_length)
+    test_data = test_template.generate_instances(window_length, windows=1)
+    
+    
     
     assert pd.Timedelta(data_module.test_dataset[0]["start"].freq) == wind_dt
     assert true_wind_field.select(pl.col("time").slice(0, 2).diff()).slice(1,1).item() == wind_dt
@@ -1959,17 +1965,8 @@ if __name__ == "__main__":
     evaluator = MultivariateEvaluator(num_workers=None, 
         custom_eval_fn=None
     )
-    # window_length = model_config["dataset"]["prediction_length"] + model_config["dataset"].get("lead_time", 0)
-    window_length = int(data_module.test_dataset[0]["target"].shape[1] // 2)
-    _, test_template = split(data_module.test_dataset, offset=-window_length)
-    test_data = test_template.generate_instances(window_length, windows=1)
-    # true_wind_field = generate_wind_field_df(datasets=data_module.test_dataset, 
-    #                                          target_cols=data_module.target_cols, 
-    #                                          feat_dynamic_real_cols=data_module.feat_dynamic_real_cols)
-    # x = list(iter(test_data))
     
     # TODO compute probabilistic and deterministic metrics for training/test data covering all continuity groups
-    # TODO generate plots of training to test data (true vs. predicted) for one continuity group
      
     ## GENERATE PERFECT PREVIEW \
     if args.model == "perfect":
@@ -2120,7 +2117,8 @@ if __name__ == "__main__":
         
     true, forecasts = make_predictions(forecaster=forecaster, test_data=test_data, 
                                            true_wind_field=true_wind_field, 
-                                           prediction_type=args.prediction_type)
+                                           prediction_type=args.prediction_type,
+                                           max_splits=args.max_splits)
 
     if args.prediction_type == "distribution":
         value_vars = ["loc_nd_cos", "loc_nd_sin", "loc_ws_horz", "loc_ws_vert", "sd_nd_cos", "sd_nd_sin", "sd_ws_horz", "sd_ws_vert"]

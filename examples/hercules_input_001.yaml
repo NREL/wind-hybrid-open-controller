@@ -74,7 +74,7 @@ controller:
   n_wind_preview_samples: 11
   warm_start: greedy # may equal 'previous' to warm-start with time-shifted previous solution,  "lut" to warm-start with lookup table solution, or "random" #TODO
   use_lut_filtered_wind_dir: True
-  lut_path: "../../examples/mpc_wake_steering_florisstandin/lookup_tables/lut_9.csv"
+  lut_path: "../../examples/inputs/lut_9.csv"
   generate_lut: False
   nu: 0.0001 # 0.00138 step size to add/subtract from yaw angles for stochastic gradient estimate
   use_filtered_wind_dir: True

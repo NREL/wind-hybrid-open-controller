@@ -253,7 +253,7 @@ class GreedyController(ControllerBase):
         self.init_sol["control_inputs"] = (constrained_yaw_setpoints - self.controls_dict["yaw_angles"]) * (self.yaw_norm_const / (self.yaw_rate * self.controller_dt))
 
         if self.wind_forecast:
-            # TODO does this include current?
+            
             newest_predictions = forecasted_wind_field.loc[
                 forecasted_wind_field["time"] <= self.current_time + max(pd.Timedelta(self.controller_dt, unit="s"), self.wind_forecast.prediction_timedelta), :]
             self.controls_dict = {"yaw_angles": list(constrained_yaw_setpoints),

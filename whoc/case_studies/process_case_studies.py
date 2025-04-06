@@ -288,8 +288,8 @@ def plot_simulations(time_series_df, plotting_cases, save_dir, include_power=Tru
             case_name_df = case_family_df.loc[case_family_df.index.get_level_values("CaseName") == case_name, :]
             input_fn = [fn for fn in os.listdir(os.path.join(save_dir, case_family)) if "input_config" in fn and case_name in fn][0]
             
-            with open(os.path.join(save_dir, case_family, input_fn), 'r') as fp:
-                input_config = yaml.safe_load(fp)
+            with open(os.path.join(save_dir, case_family, input_fn), 'rb') as fp:
+                input_config =  pickle.load(fp)
             if single_plot:
                 fig, _ = plot_yaw_power_ts(case_name_df, os.path.join(save_dir, case_family, f"yaw_power_ts_{case_name}.png"), include_power=include_power, legend_loc=legend_loc,
                                         controller_dt=None, include_filtered_wind_dir=(case_family=="baseline_controllers"), single_plot=single_plot, fig=yaw_power_ts_fig, ax=yaw_power_ts_ax, case_label=case_name)
@@ -327,7 +327,7 @@ def plot_simulations(time_series_df, plotting_cases, save_dir, include_power=Tru
 
         (a == b).all()
 
-    summary_df = pd.read_csv(os.path.join(save_dir, f"comparison_time_series_results.csv"), index_col=0)
+    # summary_df = pd.read_csv(os.path.join(save_dir, f"comparison_time_series_results.csv"), index_col=0)
     # barplot_opt_cost(summary_df, save_dir, relative=True)
 
 # TODO this should be in another file
@@ -501,9 +501,9 @@ def aggregate_time_series_data(time_series_df, input_dict_path, n_seeds):
     Returns:
         _type_: _description_
     """
-    time_series_df = time_series_df.drop(columns=[col for col in time_series_df.columns if "Predicted" in col or "Stddev" in col]).dropna()
+    # x = time_series_df.reset_index(level=["CaseFamily", "CaseName"], drop=True)
+    time_series_df = time_series_df.drop(columns=[col for col in time_series_df.columns if "Predicted" in col or "Stddev" in col])
     case_seeds = pd.unique(time_series_df["WindSeed"])
-    time = pd.unique(time_series_df["Time"])
     case_family = time_series_df.index.get_level_values("CaseFamily")[0]
     # case_family = df_name.replace(f"_{results_df['CaseName'].iloc[0]}", "")
     case_name = time_series_df.index.get_level_values("CaseName")[0]
@@ -514,7 +514,11 @@ def aggregate_time_series_data(time_series_df, input_dict_path, n_seeds):
     with open(input_dict_path, 'rb') as fp:
         input_config = pickle.load(fp)
 
-    if len(pd.unique(time)) != int(input_config["hercules_comms"]["helics"]["config"]["stoptime"] // input_config["simulation_dt"]):
+    stoptime = (np.ceil(input_config["hercules_comms"]["helics"]["config"]["stoptime"] / input_config["simulation_dt"]) * input_config["simulation_dt"]).astype(int)
+    time_series_df = time_series_df.loc[time_series_df["Time"] < stoptime, :]
+    time = pd.unique(time_series_df["Time"])
+    
+    if len(pd.unique(time)) != int(stoptime // input_config["simulation_dt"]):
        print(f"NOT aggregating data for {case_family}={case_name} due to insufficient time steps.")
        return None
    
@@ -522,7 +526,6 @@ def aggregate_time_series_data(time_series_df, input_dict_path, n_seeds):
     # input_fn = f"input_config_case_{case_name}.yaml"
     print(f"Aggregating data for {case_family}={case_name}")
     
-
     if "lpf_start_time" in input_config["controller"]:
         lpf_start_time = input_config["controller"]["lpf_start_time"]
     else:
