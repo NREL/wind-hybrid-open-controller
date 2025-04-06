@@ -49,7 +49,7 @@ case_studies = {
                                     "use_lut_filtered_wind_dir": {"group": 1, "vals": [True]},
                                     "simulation_dt": {"group": 0, "vals": [60]},
                                     "floris_input_file": {"group": 0, "vals": ["../../examples/inputs/smarteole_farm.yaml"]},
-                                    "lut_path": {"group": 0, "vals": ["../../examples/inputs/lut_smarteole_farm_(1, 2)_uncertainFalse.csv"]},
+                                    # "lut_path": {"group": 0, "vals": ["../../examples/inputs/lut_smarteole_farm_(1, 2)_uncertainFalse.csv"]},
                                     "uncertain": {"group": 3, "vals": [False, False]},
                                     "wind_forecast_class": {"group": 3, "vals": ["KalmanFilterForecast", "PerfectForecast"]},
                                     "prediction_timedelta": {"group": 4, "vals": [240]},
@@ -90,14 +90,18 @@ case_studies = {
         "floris_input_file": {"group": 0, "vals": ["../../examples/inputs/gch_KP_v4.yaml"]},
         "lut_path": {"group": 0, "vals": ["../../examples/inputs/gch_KP_v4_lut.csv"]},
         "yaw_limits": {"group": 0, "vals": ["-15,15"]},
-        "controller_class": {"group": 1, "vals": ["GreedyController", "LookupBasedWakeSteeringController"]},
-        "target_turbine_indices": {"group": 1, "vals": ["4,", "74,73"]},
-        "uncertain": {"group": 1, "vals": [False, False]},
-        "wind_forecast_class": {"group": 1, "vals": ["PerfectForecast", "PerfectForecast"]},
+        # "controller_class": {"group": 1, "vals": ["GreedyController", "LookupBasedWakeSteeringController"]},
+        # "target_turbine_indices": {"group": 1, "vals": ["4,", "74,73"]},
+        # "uncertain": {"group": 1, "vals": [False, False]},
+        # "wind_forecast_class": {"group": 1, "vals": ["PerfectForecast", "PerfectForecast"]},
         # "controller_class": {"group": 1, "vals": ["GreedyController"]},
         # "target_turbine_indices": {"group": 1, "vals": ["4,"]},
         # "uncertain": {"group": 1, "vals": [False]},
         # "wind_forecast_class": {"group": 1, "vals": ["PerfectForecast"]},
+        "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "LookupBasedWakeSteeringController"]},
+        "target_turbine_indices": {"group": 1, "vals": ["74,73", "74,73"]},
+        "uncertain": {"group": 1, "vals": [False, True]},
+        "wind_forecast_class": {"group": 1, "vals": ["PerfectForecast", "PerfectForecast"]},
         "prediction_timedelta": {"group": 2, "vals": [60, 120, 180, 240, 300, 360, 420, 480, 540, 600]},
         },
     "baseline_controllers_forecasters_awaken": {"controller_dt": {"group": 0, "vals": [5]},
@@ -542,8 +546,9 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         print(f"Loaded and normalized SCADA wind field from {model_config['dataset']['data_path']} with dt = {wind_field_ts[0]['time'].diff().iloc[1]}")
         
         # make sure wind_dt == simulation_dt
-        print(f"Resampling to {simulation_dt} seconds.")
-        wind_field_ts = [wf.set_index("time").resample(f"{simulation_dt}s").mean().reset_index(names=["time"]) for wf in wind_field_ts]
+        if simulation_dt != wind_field_ts[0]["time"].diff().iloc[1].total_seconds():
+            print(f"Resampling to {simulation_dt} seconds.")
+            wind_field_ts = [wf.set_index("time").resample(f"{simulation_dt}s").mean().reset_index(names=["time"]) for wf in wind_field_ts]
         
         wind_field_config = {}
         

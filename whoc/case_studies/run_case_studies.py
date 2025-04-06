@@ -52,7 +52,7 @@ if __name__ == "__main__":
     parser.add_argument("-mcnf", "--model_config", type=str, required=False, default="")
     parser.add_argument("-dcnf", "--data_config", type=str, required=False, default="")
     parser.add_argument("-wcnf", "--whoc_config", type=str, required=True)
-   
+     
     # "/projects/ssc/ahenry/whoc/floris_case_studies" on kestrel
     # "/projects/aohe7145/whoc/floris_case_studies" on curc
     # "/Users/ahenry/Documents/toolboxes/wind-hybrid-open-controller/examples/floris_case_studies" on mac
@@ -146,7 +146,7 @@ if __name__ == "__main__":
                                     simulation_input_dict=d, 
                                     wf_source=args.wf_source,
                                     wind_case_idx=case_lists[c]["wind_case_idx"], wind_field_ts=wind_field_ts[case_lists[c]["wind_case_idx"]],
-                                    case_name="_".join([f"{key}_{val if (isinstance(val, str) or isinstance(val, np.str_) or isinstance(val, bool)) else np.round(val, 6)}" for key, val in case_lists[c].items() if key not in ["controller_dt", "simulation_dt", "use_filtered_wind_dir", "use_lut_filtered_wind_dir", "yaw_limits", "wind_case_idx", "seed", "floris_input_file", "lut_path"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
+                                    case_name="_".join([f"{key}_{val if (isinstance(val, str) or isinstance(val, np.str_) or isinstance(val, bool)) else np.round(val, 6)}" for key, val in case_lists[c].items() if key not in ["simulation_dt", "use_filtered_wind_dir", "use_lut_filtered_wind_dir", "yaw_limits", "wind_case_idx", "seed", "floris_input_file", "lut_path"]]) if "case_names" not in case_lists[c] else case_lists[c]["case_names"], 
                                     case_family="_".join(case_name_lists[c].split("_")[:-1]),
                                     multiprocessor=False, 
                                     wind_field_config=wind_field_config, verbose=args.verbose, save_dir=args.save_dir, rerun_simulations=args.rerun_simulations,
@@ -718,10 +718,13 @@ if __name__ == "__main__":
              "wind_preview_type", "warm_start"]):
                 generate_outputs(agg_df, args.save_dir)       
 
+            if case_families.index("baseline_controllers_preview_flasc_perfect") in args.case_ids \
+                or case_families.index("baseline_controllers_perfect_forecaster_awaken") in args.case_ids:
 
-            if case_families.index("baseline_controllers_preview_flasc_perfect") in args.case_ids:
-
-                mpc_df = agg_df[agg_df.index.get_level_values("CaseFamily") == "baseline_controllers_preview_flasc_perfect"]
+                if case_families.index("baseline_controllers_preview_flasc_perfect") in args.case_ids:
+                    mpc_df = agg_df.loc[agg_df.index.get_level_values("CaseFamily") == "baseline_controllers_preview_flasc_perfect", :]
+                elif case_families.index("baseline_controllers_perfect_forecaster_awaken") in args.case_ids:
+                    mpc_df = agg_df.loc[agg_df.index.get_level_values("CaseFamily") == "baseline_controllers_perfect_forecaster_awaken", :]
 
                 config_cols = ["wind_forecast_class", "prediction_timedelta"]
 
@@ -734,37 +737,24 @@ if __name__ == "__main__":
 
                     controller_config = input_config.get("controller", {})
                     wind_forecast_config = input_config.get("wind_forecast", {})
-
+                    full_config = {**controller_config, **wind_forecast_config}
                     
                     for col in config_cols:
-                        if col in controller_config:
-                            if col == "wind_forecast_class":
-                                mpc_df.loc[
-                                    (mpc_df.index.get_level_values("CaseFamily") == case_family) & 
-                                    (mpc_df.index.get_level_values("CaseName") == case_name), 
-                                    'wind_forecast_class'
-                                ] = controller_config[col]  
-
-                        elif col in wind_forecast_config:
-                            if col == "prediction_timedelta":
-                                mpc_df.loc[
-                                    (mpc_df.index.get_level_values("CaseFamily") == case_family) & 
-                                    (mpc_df.index.get_level_values("CaseName") == case_name), 
-                                    "prediction_timedelta"
-                                ] = wind_forecast_config[col]
-                        else:
-                            print(f"Warning: '{col}' not found in config for {case_name}")
-
+                        mpc_df.loc[
+                            (mpc_df.index.get_level_values("CaseFamily") == case_family) & 
+                            (mpc_df.index.get_level_values("CaseName") == case_name), 
+                            col
+                        ] = full_config[col]  
 
                 # Filter data for the two forecast types
-                kalman_df = mpc_df.loc[mpc_df["wind_forecast_class"] == "KalmanFilterForecast", :]
+                forecasters_df = mpc_df.loc[mpc_df["wind_forecast_class"] != "PerfectForecast", :]
                 perfect_df = mpc_df.loc[mpc_df["wind_forecast_class"] == "PerfectForecast", :]
 
-                if "prediction_timedelta" in kalman_df.columns and "prediction_timedelta" in perfect_df.columns:
-                    merged_df = kalman_df.merge(
-                    perfect_df,
-                    on=["CaseFamily", "prediction_timedelta"],
-                    suffixes=("_kalman", "_perfect")
+                if "prediction_timedelta" in forecasters_df.columns and "prediction_timedelta" in perfect_df.columns:
+                    merged_df = forecasters_df.merge(
+                        perfect_df,
+                        on=["CaseFamily", "prediction_timedelta"],
+                        suffixes=("_kalman", "_perfect")
                     )
 
 

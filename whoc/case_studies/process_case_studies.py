@@ -501,9 +501,7 @@ def aggregate_time_series_data(time_series_df, input_dict_path, n_seeds):
     Returns:
         _type_: _description_
     """
-    x = time_series_df.loc[(time_series_df["WindSeed"] == 0), sorted([c for c in time_series_df.columns if "TurbineOfflineStatus_" in c], key=lambda s: int(s.split("_")[-1]))].isna().any(axis=1)
-    x.index[x]
-    # time_series_df = read_time_series_data(results_path=time_series_path)
+    time_series_df = time_series_df.drop(columns=[col for col in time_series_df.columns if "Predicted" in col or "Stddev" in col]).dropna()
     case_seeds = pd.unique(time_series_df["WindSeed"])
     time = pd.unique(time_series_df["Time"])
     case_family = time_series_df.index.get_level_values("CaseFamily")[0]
@@ -529,11 +527,11 @@ def aggregate_time_series_data(time_series_df, input_dict_path, n_seeds):
         lpf_start_time = input_config["controller"]["lpf_start_time"]
     else:
         lpf_start_time = 180.0
-
+    
     for seed in case_seeds:
 
-        if time_series_df.Time.max() > lpf_start_time:
-            seed_df = time_series_df.loc[(time_series_df["WindSeed"] == seed) & (time_series_df.Time >= lpf_start_time), :]
+        if time_series_df["Time"].max() > lpf_start_time:
+            seed_df = time_series_df.loc[(time_series_df["WindSeed"] == seed) & (time_series_df["Time"] >= lpf_start_time), :]
         else:
             seed_df = time_series_df.loc[(time_series_df["WindSeed"] == seed), :]
         
