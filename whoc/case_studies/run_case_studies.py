@@ -45,7 +45,7 @@ if __name__ == "__main__":
     parser.add_argument("-ras", "--reaggregate_simulations", action="store_true")
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("-st", "--stoptime", default="auto")
-    parser.add_argument("-ns", "--n_seeds", type=int, default=6)
+    parser.add_argument("-ns", "--n_seeds", type=int, default=1)
     parser.add_argument("-m", "--multiprocessor", type=str, choices=["mpi", "cf"])
     parser.add_argument("-sd", "--save_dir", type=str, default=os.path.join(os.getcwd(), "simulation_results"))
     parser.add_argument("-wf", "--wf_source", type=str, choices=["floris", "scada"], required=True)
@@ -66,7 +66,7 @@ if __name__ == "__main__":
     # os.environ["PYOPTSPARSE_REQUIRE_MPI"] = "false"
     RUN_ONCE = (args.multiprocessor == "mpi" and (comm_rank := MPI.COMM_WORLD.Get_rank()) == 0) or (args.multiprocessor != "mpi") or (args.multiprocessor is None)
     PLOT = True #sys.platform != "linux"
-    if args.run_simulations:
+    if args.run_simulations or args.generate_lut or args.generate_wind_field:
         # run simulations
         
         if RUN_ONCE:

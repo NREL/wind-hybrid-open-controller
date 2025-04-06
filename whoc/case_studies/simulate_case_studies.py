@@ -255,49 +255,27 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
             
             # Note these are results from previous time step
             yaw_angles_ts += [last_measurements["yaw_angles"]]
-            init_yaw_angles_ts += [[ctrl.init_sol["states"][i] * ctrl.yaw_norm_const for i in range(ctrl.n_turbines)]]
-            turbine_powers_ts += [last_measurements["turbine_powers"]]
-            turbine_wind_mag_ts += [last_measurements["wind_speeds"]]
-            turbine_wind_dir_ts += [last_measurements["wind_directions"]]
-            # if wind_forecast_class:
-                # predicted_time_ts += [np.nan]
-                # predicted_turbine_wind_speed_horz_ts += [[np.nan] * fi_full.n_turbines]
-                # predicted_turbine_wind_speed_vert_ts += [[np.nan] * fi_full.n_turbines]
-                # stddev_turbine_wind_speed_horz_ts += [[np.nan] * fi_full.n_turbines]
-                # stddev_turbine_wind_speed_vert_ts += [[np.nan] * fi_full.n_turbines]
-                
-            turbine_offline_status_ts += [np.isclose(last_measurements["turbine_powers"], 0, atol=1e-3)]
             fi.time += pd.Timedelta(seconds=ctrl.controller_dt)
 
-        n_truncate_steps = (n_future_steps + 1) + int(ctrl.controller_dt - (simulation_input_dict["hercules_comms"]["helics"]["config"]["stoptime"] % ctrl.controller_dt)) // simulation_input_dict["simulation_dt"]
-        turbine_wind_mag_ts = np.vstack(turbine_wind_mag_ts)[:-(n_truncate_steps), :]
-        turbine_wind_dir_ts = np.vstack(turbine_wind_dir_ts)[:-(n_truncate_steps), :]
-        # if wind_forecast_class:
-        #     # TODO no need to add nans if we truncate later
-        #     predicted_turbine_wind_speed_horz_ts = np.vstack(predicted_turbine_wind_speed_horz_ts)[:-(n_truncate_steps), :].astype(float)
-        #     predicted_turbine_wind_speed_vert_ts = np.vstack(predicted_turbine_wind_speed_vert_ts)[:-(n_truncate_steps), :].astype(float)
-        #     stddev_turbine_wind_speed_horz_ts = np.vstack(stddev_turbine_wind_speed_horz_ts)[:-(n_truncate_steps), :].astype(float)
-        #     stddev_turbine_wind_speed_vert_ts = np.vstack(stddev_turbine_wind_speed_vert_ts)[:-(n_truncate_steps), :].astype(float)
-        turbine_offline_status_ts = np.vstack(turbine_offline_status_ts)[:-(n_truncate_steps), :]
+        turbine_wind_mag_ts = np.vstack(turbine_wind_mag_ts)
+        turbine_wind_dir_ts = np.vstack(turbine_wind_dir_ts)
+        turbine_offline_status_ts = np.vstack(turbine_offline_status_ts)
 
         yaw_angles_ts = np.vstack(yaw_angles_ts)
         init_yaw_angles_ts = np.vstack(init_yaw_angles_ts)
-        yaw_angles_change_ts = np.diff(yaw_angles_ts, axis=0)
+        yaw_angles_change_ts = np.diff(yaw_angles_ts, axis=0)[:-(n_future_steps - 1) or None, :]
 
-        yaw_angles_change_ts = yaw_angles_change_ts[:-(n_truncate_steps - 1) or None, :]
-        yaw_angles_ts = yaw_angles_ts[:-(n_truncate_steps), :]
-        init_yaw_angles_ts = init_yaw_angles_ts[:-(n_truncate_steps), :]
-        turbine_powers_ts = np.vstack(turbine_powers_ts)[:-(n_truncate_steps), :]
-        opt_cost_terms_ts = opt_cost_terms_ts[:-(n_future_steps+1)]
-        convergence_time_ts = convergence_time_ts[:-(n_future_steps+1)]
-
-        # predicted_turbine_wind_mag_ts = np.sqrt(predicted_turbine_wind_speed_horz_ts**2 + predicted_turbine_wind_speed_vert_ts**2)
-        # predicted_turbine_wind_dir_ts = 180.0 + np.rad2deg(np.arctan2(predicted_turbine_wind_speed_horz_ts, predicted_turbine_wind_speed_vert_ts))
-
-    # greedy_turbine_powers_ts = np.vstack(greedy_turbine_powers_ts)
-    # opt_cost_terms_ts = np.vstack(opt_cost_terms_ts)
-    # running_opt_cost_terms_ts = np.vstack(running_opt_cost_terms_ts)
-
+        yaw_angles_ts = yaw_angles_ts[:-n_future_steps, :]
+        turbine_powers_ts = np.vstack(turbine_powers_ts)
+        
+    n_truncate_steps = int(ctrl.controller_dt - (simulation_input_dict["hercules_comms"]["helics"]["config"]["stoptime"] % ctrl.controller_dt)) // simulation_input_dict["simulation_dt"]
+    turbine_wind_mag_ts = turbine_wind_mag_ts[:(-n_truncate_steps) or None, :]
+    turbine_wind_dir_ts = turbine_wind_dir_ts[:(-n_truncate_steps) or None, :]
+    turbine_offline_status_ts = turbine_offline_status_ts[:(-n_truncate_steps) or None, :]
+    yaw_angles_change_ts = yaw_angles_change_ts[:(-n_truncate_steps) or None, :]
+    yaw_angles_ts = yaw_angles_ts[:(-n_truncate_steps) or None, :]
+    turbine_powers_ts = turbine_powers_ts[:(-n_truncate_steps) or None, :]
+    
     running_opt_cost_terms_ts = np.zeros_like(opt_cost_terms_ts)
     Q = simulation_input_dict["controller"]["alpha"]
     R = (1 - simulation_input_dict["controller"]["alpha"]) 
