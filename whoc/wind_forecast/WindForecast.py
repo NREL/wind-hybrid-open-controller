@@ -662,6 +662,7 @@ class PerfectForecast(WindForecast):
         """_summary_
         Make a point prediction (e.g. the mean prediction) for each time step in the horizon
         """
+        # TODO check not including current time
         if isinstance(self.true_wind_field, pl.DataFrame):
             sub_df = self.true_wind_field.rename(self.col_mapping) if self.col_mapping else self.true_wind_field
             sub_df = sub_df.filter(pl.col("time").is_between(current_time, current_time + self.prediction_timedelta, closed="right"))
@@ -680,6 +681,7 @@ class PersistenceForecast(WindForecast):
     #     pass
     
     def predict_point(self, historic_measurements: Union[pl.DataFrame, pd.DataFrame], current_time):
+        # TODO check not including current time
         pred_slice = self.get_pred_interval(current_time)
         
         if isinstance(historic_measurements, pd.DataFrame):
@@ -714,6 +716,7 @@ class PreviewForecast(WindForecast):
         self.measurement_layout = np.vstack([self.fmodel.layout_x, self.fmodel.layout_y]).T
         
     def predict_point(self, historic_measurements: Union[pd.DataFrame, pl.DataFrame], current_time):
+        # TODO check not including current time
         pred_slice = self.get_pred_interval(current_time)
         pred_slice = pred_slice[-1:] # pred_slice.filter(pred_slice == current_time + self.prediction_timedelta)
         outputs = self._get_ws_cols(historic_measurements)
@@ -999,7 +1002,8 @@ class SVRForecast(WindForecast):
         pass
 
     def predict_point(self, historic_measurements: Union[pd.DataFrame, pl.DataFrame], current_time):
-         # TODO LOW include yaw angles in inputs?
+        # TODO LOW include yaw angles in inputs?
+        # TODO check not including current time
         pred_slice = self.get_pred_interval(current_time)
         pred_slice = pred_slice[-1:] 
         outputs = self._get_ws_cols(historic_measurements)
@@ -1198,6 +1202,7 @@ class KalmanFilterForecast(WindForecast):
         return np.diag((1 / (self.n_context - 1)) * np.sum((historic_noise[-self.n_context:, :] - (1 / self.n_context) * historic_noise[-self.n_context:, :].sum(axis=0))**2, axis=0))
     
     def predict_point(self, historic_measurements: Union[pd.DataFrame, pl.DataFrame], current_time, return_var=False):
+        # TODO check not including current time
         pred_slice = self.get_pred_interval(current_time)
         pred_slice = pred_slice[-1:] # pred_slice.filter(pred_slice == current_time + self.prediction_timedelta)
         outputs = self._get_ws_cols(historic_measurements)
@@ -1546,7 +1551,7 @@ class MLForecast(WindForecast):
             return pred_df.to_pandas()
 
     def predict_point(self, historic_measurements: Union[pd.DataFrame, pl.DataFrame], current_time): 
-        
+        # TODO check not including current time
         if isinstance(historic_measurements, pd.DataFrame):
             historic_measurements = pl.DataFrame(historic_measurements)
             return_pl = False

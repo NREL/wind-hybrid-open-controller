@@ -263,9 +263,9 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
 
         yaw_angles_ts = np.vstack(yaw_angles_ts)
         init_yaw_angles_ts = np.vstack(init_yaw_angles_ts)
-        yaw_angles_change_ts = np.diff(yaw_angles_ts, axis=0)[:-(n_future_steps - 1) or None, :]
+        yaw_angles_change_ts = np.diff(yaw_angles_ts, axis=0)[:-n_future_steps, :]
 
-        yaw_angles_ts = yaw_angles_ts[:-n_future_steps, :]
+        yaw_angles_ts = yaw_angles_ts[:-(n_future_steps + 1), :]
         turbine_powers_ts = np.vstack(turbine_powers_ts)
         
     n_truncate_steps = int(ctrl.controller_dt - (simulation_input_dict["hercules_comms"]["helics"]["config"]["stoptime"] % ctrl.controller_dt)) // simulation_input_dict["simulation_dt"]
@@ -343,17 +343,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
         },
         "TotalRunningOptimizationCost": np.sum(running_opt_cost_terms_ts, axis=1),
     }
-    # TODO make floris data uniform with scada data
-    #if kwargs["wf_source"] == "scada":
-    #    results_data.update({
-    #        **{
-    #            f"TrueTurbineWindSpeedHorz_{idx2tid_mapping[i]}": kwargs["wind_field_ts"][f"ws_horz_{idx2tid_mapping[i]}"] for i in range(fi_full.n_turbines)
-    #        },
-    #        **{
-    #            f"TrueTurbineWindSpeedVert_{idx2tid_mapping[i]}": kwargs["wind_field_ts"][f"ws_vert_{idx2tid_mapping[i]}"] for i in range(fi_full.n_turbines)
-    #        },
-    #    })
-
+    
     if kwargs["wf_source"] == "scada":
         results_data.update({
             **{
