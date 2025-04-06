@@ -1,364 +1,0 @@
-SLURM_JOB_ID=12671403
-SLURM_JOB_NAME=model_tuning
-SLURM_JOB_PARTITION=amilan
-SLURM_JOB_NUM_NODES=1
-SLURM_JOB_GPUS=
-SLURM_JOB_GRES=
-SLURM_NTASKS=12
-SLURM_NTASKS_PER_NODE=12
-NTUNERS=1
-NTASKS_PER_TUNER=12
-=== ENVIRONMENT ===
-No modules loaded
-STUDY_NAME=svr_flasc_tuning
-=== STARTING DATA PREPARATION ===
-2025-04-01 16:10:31
-No MPI available on system.
-No MPI available on system.
-2025-04-01 16:13:43,231 - INFO - Parsing arguments and configuration yaml.
-2025-04-01 16:13:54,763 - INFO - Setting random seed to 0
-2025-04-01 16:13:54,763 - INFO - Reading input wind field.
-2025-04-01 16:13:55,650 - INFO - Instantiating model.
-2025-04-01 16:13:55,651 - INFO - Preparing data for tuning
-2025-04-01 16:13:55,774 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_horz_1.dat
-2025-04-01 16:13:55,829 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_horz_2.dat
-2025-04-01 16:13:55,883 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_horz_3.dat
-2025-04-01 16:13:55,939 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_horz_4.dat
-2025-04-01 16:13:55,994 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_horz_5.dat
-2025-04-01 16:13:56,049 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_horz_6.dat
-2025-04-01 16:13:56,106 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_horz_7.dat
-2025-04-01 16:13:56,161 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_vert_1.dat
-2025-04-01 16:13:56,215 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_vert_2.dat
-2025-04-01 16:13:56,270 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_vert_3.dat
-2025-04-01 16:13:56,325 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_vert_4.dat
-2025-04-01 16:13:56,380 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_vert_5.dat
-2025-04-01 16:13:56,435 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_vert_6.dat
-2025-04-01 16:13:56,491 - INFO - Saved training data to /pl/active/paolab/wind_forecasting/flasc_data/temp/Xy_train_ws_vert_7.dat
-2025-04-01 16:13:56,491 - INFO - Reinitializing storage
-=== DATA PREPARATION COMPLETE ===
-=== STARTING TUNING ===
-2025-04-01 16:13:59
-Starting worker 0 on GPU 0 with seed 42
-Run 'mamba init' to be able to run mamba activate/deactivate
-and start a new shell session. Or use conda to activate/deactivate.
-
-Run 'mamba init' to be able to run mamba activate/deactivate
-and start a new shell session. Or use conda to activate/deactivate.
-
-Started 1 worker processes for model 
-Process IDs: 436252
-Lmod has detected the following error: The following module(s) are unknown:
-"mpi"
-
-Please check the spelling or version number. Also try "module spider ..."
-It is also possible your cache file is out-of-date; it may help to try:
-  $ module --ignore-cache load "mpi"
-
-Also make sure that all modulefiles written in TCL start with the string
-#%Module
-
-
-
-bash: line 3: conda: command not found
-2025-04-01 16:14:28,296 - INFO - Parsing arguments and configuration yaml.
-2025-04-01 16:14:28,508 - INFO - Setting random seed to 42
-2025-04-01 16:14:28,508 - INFO - Reading input wind field.
-2025-04-01 16:14:28,548 - INFO - Instantiating model.
-2025-04-01 16:14:28,548 - INFO - Running tune_hyperparameters_multi
-2025-04-01 16:14:28,548 - INFO - Connecting to SQLite RDB database svr_flasc_tuning
-2025-04-01 16:14:32,001 - INFO - Creating Optuna study svr_flasc_tuning.
-[I 2025-04-01 16:14:32,006] Using an existing study with name 'svr_flasc_tuning' instead of creating a new one.
-2025-04-01 16:14:32,016 - INFO - Study successfully created or loaded: svr_flasc_tuning
-2025-04-01 16:14:32,016 - INFO - Worker 0 is optimizing Optuna study svr_flasc_tuning.
-No MPI available on system.
-No MPI available on system.
-  0%|          | 0/100 [00:00<?, ?it/s]No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-                                         0%|          | 0/100 [00:41<?, ?it/s]Best trial: 481. Best value: -0.0340017:   0%|          | 0/100 [00:41<?, ?it/s]Best trial: 481. Best value: -0.0340017:   1%|          | 1/100 [00:41<1:08:12, 41.34s/it][I 2025-04-01 16:15:13,333] Trial 481 finished with value: -0.034001728069834675 and parameters: {'C': 0.031223488672887795, 'epsilon': 0.05669849511478854, 'gamma': 'scale'}. Best is trial 481 with value: -0.034001728069834675.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-                                                                                          Best trial: 481. Best value: -0.0340017:   1%|          | 1/100 [01:49<1:08:12, 41.34s/it]Best trial: 481. Best value: -0.0340017:   1%|          | 1/100 [01:49<1:08:12, 41.34s/it]Best trial: 481. Best value: -0.0340017:   2%|▏         | 2/100 [01:49<1:33:10, 57.05s/it][I 2025-04-01 16:16:21,376] Trial 482 finished with value: -0.33674277323196317 and parameters: {'C': 7.451156502282094e-05, 'epsilon': 6.025215736203862e-06, 'gamma': 'auto'}. Best is trial 481 with value: -0.034001728069834675.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-                                                                                          Best trial: 481. Best value: -0.0340017:   2%|▏         | 2/100 [03:00<1:33:10, 57.05s/it]Best trial: 483. Best value: -0.03257:   2%|▏         | 2/100 [03:00<1:33:10, 57.05s/it]  Best trial: 483. Best value: -0.03257:   3%|▎         | 3/100 [03:00<1:42:29, 63.40s/it][I 2025-04-01 16:17:32,325] Trial 483 finished with value: -0.03257003513821055 and parameters: {'C': 16.344819951627372, 'epsilon': 0.0034702669886504172, 'gamma': 'auto'}. Best is trial 483 with value: -0.03257003513821055.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-                                                                                        Best trial: 483. Best value: -0.03257:   3%|▎         | 3/100 [33:52<1:42:29, 63.40s/it]Best trial: 483. Best value: -0.03257:   3%|▎         | 3/100 [33:52<1:42:29, 63.40s/it]Best trial: 483. Best value: -0.03257:   4%|▍         | 4/100 [33:52<20:31:26, 769.65s/it][I 2025-04-01 16:48:24,640] Trial 484 finished with value: -0.03568269317729978 and parameters: {'C': 9756.896309824397, 'epsilon': 1.152644954031562e-05, 'gamma': 'auto'}. Best is trial 483 with value: -0.03257003513821055.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-                                                                                          Best trial: 483. Best value: -0.03257:   4%|▍         | 4/100 [35:45<20:31:26, 769.65s/it]Best trial: 483. Best value: -0.03257:   4%|▍         | 4/100 [35:45<20:31:26, 769.65s/it]Best trial: 483. Best value: -0.03257:   5%|▌         | 5/100 [35:45<14:03:44, 532.89s/it][I 2025-04-01 16:50:17,721] Trial 485 finished with value: -0.039720684059636635 and parameters: {'C': 0.004476173538513518, 'epsilon': 0.0004205156450913873, 'gamma': 'scale'}. Best is trial 483 with value: -0.03257003513821055.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-                                                                                          Best trial: 483. Best value: -0.03257:   5%|▌         | 5/100 [37:45<14:03:44, 532.89s/it]Best trial: 483. Best value: -0.03257:   5%|▌         | 5/100 [37:45<14:03:44, 532.89s/it]Best trial: 483. Best value: -0.03257:   6%|▌         | 6/100 [37:45<10:14:38, 392.33s/it][I 2025-04-01 16:52:17,193] Trial 486 finished with value: -0.033758217512153535 and parameters: {'C': 21.990481396828173, 'epsilon': 4.982752357076453e-06, 'gamma': 'auto'}. Best is trial 483 with value: -0.03257003513821055.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-                                                                                          Best trial: 483. Best value: -0.03257:   6%|▌         | 6/100 [38:51<10:14:38, 392.33s/it]Best trial: 483. Best value: -0.03257:   6%|▌         | 6/100 [38:51<10:14:38, 392.33s/it]Best trial: 483. Best value: -0.03257:   7%|▋         | 7/100 [38:51<7:22:44, 285.64s/it] [I 2025-04-01 16:53:23,119] Trial 487 finished with value: -0.032877451003896566 and parameters: {'C': 0.29705701356941455, 'epsilon': 0.008431013932082471, 'gamma': 'auto'}. Best is trial 483 with value: -0.03257003513821055.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-                                                                                         Best trial: 483. Best value: -0.03257:   7%|▋         | 7/100 [40:14<7:22:44, 285.64s/it]Best trial: 483. Best value: -0.03257:   7%|▋         | 7/100 [40:15<7:22:44, 285.64s/it]Best trial: 483. Best value: -0.03257:   8%|▊         | 8/100 [40:15<5:39:26, 221.38s/it][I 2025-04-01 16:54:46,981] Trial 488 finished with value: -0.03382175562792854 and parameters: {'C': 12.852121611249112, 'epsilon': 1.707072883030666e-06, 'gamma': 'scale'}. Best is trial 483 with value: -0.03257003513821055.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-                                                                                         Best trial: 483. Best value: -0.03257:   8%|▊         | 8/100 [40:53<5:39:26, 221.38s/it]Best trial: 483. Best value: -0.03257:   8%|▊         | 8/100 [40:53<5:39:26, 221.38s/it]Best trial: 483. Best value: -0.03257:   9%|▉         | 9/100 [40:53<4:08:52, 164.09s/it][I 2025-04-01 16:55:25,094] Trial 489 finished with value: -1.2060497609753429 and parameters: {'C': 6.034191876190336e-06, 'epsilon': 0.055517216852447225, 'gamma': 'scale'}. Best is trial 483 with value: -0.03257003513821055.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-No MPI available on system.
-                                                                                         Best trial: 483. Best value: -0.03257:   9%|▉         | 9/100 [41:35<4:08:52, 164.09s/it]Best trial: 483. Best value: -0.03257:   9%|▉         | 9/100 [41:35<4:08:52, 164.09s/it]Best trial: 483. Best value: -0.03257:  10%|█         | 10/100 [41:35<3:09:41, 126.46s/it][I 2025-04-01 16:56:07,264] Trial 490 finished with value: -0.04073181169070018 and parameters: {'C': 0.004522361030063303, 'epsilon': 3.0786517836196202e-06, 'gamma': 'scale'}. Best is trial 483 with value: -0.03257003513821055.

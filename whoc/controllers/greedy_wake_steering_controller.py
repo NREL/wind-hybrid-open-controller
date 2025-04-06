@@ -196,9 +196,9 @@ class GreedyController(ControllerBase):
             
             if self.verbose:
                 if self.wind_forecast:
-                    logging.info(f"filtered forecasted wind directions = {wind_dirs[-1, self.sorted_tids]}")
+                    logging.info(f"filtered forecasted wind directions = {wind_dirs[self.sorted_tids]}")
                 else:
-                    logging.info(f"filtered current wind directions = {wind_dirs[-1, self.sorted_tids]}")
+                    logging.info(f"filtered current wind directions = {wind_dirs[self.sorted_tids]}")
             
         # only get wind_dirs corresponding to target_turbine_ids
         wind_dirs = wind_dirs[self.sorted_tids]

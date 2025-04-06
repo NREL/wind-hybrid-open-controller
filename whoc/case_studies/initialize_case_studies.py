@@ -35,7 +35,6 @@ elif sys.platform == "win32" or sys.platform == "cygwin":  # Add Windows check
 
 # sequential_pyopt is best solver, stochastic is best preview type
 case_studies = {
-                                
     "baseline_controllers_preview_flasc_perfect": {
                                     # "controller_dt": {"group": 1, "vals": [120, 120]},
                                     # # "case_names": {"group": 1, "vals": ["LUT", "Greedy"]},
@@ -56,8 +55,8 @@ case_studies = {
                                     "prediction_timedelta": {"group": 4, "vals": [240]},
                                     "yaw_limits": {"group": 0, "vals": ["-15,15"]}
                                     },
-    "baseline_controllers_forecasters_flasc": {"controller_dt": {"group": 0, "vals": [60]},
-                                               "simulation_dt": {"group": 0, "vals": [60]},
+    "baseline_controllers_forecasters_flasc": {"controller_dt": {"group": 0, "vals": [5]},
+                                               "simulation_dt": {"group": 0, "vals": [1]},
                                                "floris_input_file": {"group": 0, "vals": ["../../examples/inputs/smarteole_farm.yaml"]},
                                                 # "lut_path": {"group": 0, "vals": ["../../examples/inputs/smarteole_farm_lut.csv"]},
                                                "use_filtered_wind_dir": {"group": 0, "vals": [True]},
@@ -83,6 +82,24 @@ case_studies = {
                                                 "prediction_timedelta": {"group": 3, "vals": [60, 120, 180]},
                                                 }
                                     },
+    "baseline_controllers_perfect_forecaster_awaken": {
+        "controller_dt": {"group": 0, "vals": [60]},
+        "use_filtered_wind_dir": {"group": 0, "vals": [True]},
+        "use_lut_filtered_wind_dir": {"group": 0, "vals": [True]},
+        "simulation_dt": {"group": 0, "vals": [30]},
+        "floris_input_file": {"group": 0, "vals": ["../../examples/inputs/gch_KP_v4.yaml"]},
+        "lut_path": {"group": 0, "vals": ["../../examples/inputs/gch_KP_v4_lut.csv"]},
+        "yaw_limits": {"group": 0, "vals": ["-15,15"]},
+        # "controller_class": {"group": 1, "vals": ["GreedyController", "LookupBasedWakeSteeringController"]},
+        # "target_turbine_indices": {"group": 1, "vals": ["4,", "74,73"]},
+        # "uncertain": {"group": 1, "vals": [False, False]},
+        # "wind_forecast_class": {"group": 1, "vals": ["PerfectForecast", "PerfectForecast"]},
+        "controller_class": {"group": 1, "vals": ["GreedyController"]},
+        "target_turbine_indices": {"group": 1, "vals": ["4,"]},
+        "uncertain": {"group": 1, "vals": [False]},
+        "wind_forecast_class": {"group": 1, "vals": ["PerfectForecast"]},
+        "prediction_timedelta": {"group": 2, "vals": [60, 120, 180, 240, 300, 360, 420, 480, 540, 600]},
+        },
     "baseline_controllers_forecasters_awaken": {"controller_dt": {"group": 0, "vals": [5]},
                                     "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "LookupBasedWakeSteeringController", 
                                                                               "LookupBasedWakeSteeringController", "LookupBasedWakeSteeringController",
@@ -396,6 +413,11 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
 
     os.makedirs(save_dir, exist_ok=True)
     
+    simulation_dt = set(np.concatenate([case_studies[k]["simulation_dt"]["vals"] for k in case_study_keys]))
+    assert len(simulation_dt) == 1, "There may only be a single value of 'simulation_dt'."
+    simulation_dt = list(simulation_dt)[0]
+    # simulation_timedelta = pd.Timedelta(seconds=list(simulation_dt)[0])
+    
     if stoptime != "auto": 
         whoc_config["hercules_comms"]["helics"]["config"]["stoptime"] = stoptime = int(stoptime)
     
@@ -516,12 +538,13 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         
         wind_field_ts = sorted(wind_field_ts, reverse=True, key=lambda df: df["time"].iloc[-1] - df["time"].iloc[0])
         wind_field_ts = wind_field_ts[:n_seeds]
-        # pl.DataFrame(wind_field_ts[0]).select(180+pl.arctan2(pl.mean_horizontal(cs.starts_with("ws_horz")), pl.mean_horizontal(cs.starts_with("ws_vert"))).degrees()).select(pl.all().mean()) 
-        # if stoptime != "auto":
-        #     # wind_field_ts = [df for df in wind_field_ts if (df["time"].iloc[-1] - df["time"].iloc[0]).total_seconds() >= stoptime]
-        # wind_field_ts = [df.loc[(df["time"] - df["time"].iloc[0]).dt.total_seconds() <= stoptime] for df in wind_field_ts]
-            
-        # n_seeds = len(wind_field_ts) 
+        
+        print(f"Loaded and normalized SCADA wind field from {model_config['dataset']['data_path']} with dt = {wind_field_ts[0]['time'].diff().iloc[1]}")
+        
+        # make sure wind_dt == simulation_dt
+        print(f"Resampling to {simulation_dt} seconds.")
+        wind_field_ts = [wf.set_index("time").resample(f"{simulation_dt}s").mean().reset_index(names=["time"]) for wf in wind_field_ts]
+        
         wind_field_config = {}
         
         if stoptime == "auto": 
@@ -608,7 +631,7 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
                     os.path.dirname(lut_path), 
                     f"lut_{floris_input_file}_{target_turbine_indices}_uncertain{uncertain_flag}_yawlimits{yaw_limits}.csv")
             # **{k: v for k, v in input_dicts[start_case_idx + c]["wind_forecast"].items() if isinstance(k, str) and "_kwargs" in k} 
-            assert input_dicts[start_case_idx + c]["controller"]["controller_dt"] >= input_dicts[start_case_idx + c]["simulation_dt"]
+            assert input_dicts[start_case_idx + c]["controller"]["controller_dt"] >= input_dicts[start_case_idx + c]["simulation_dt"], "controller_dt must be greater than or equal to simulation_dt"
              
             # regenerate floris lookup tables for all wind farms included
             # generate LUT for combinations of lut_path/floris_input_file, yaw_limits, uncertain, and target_turbine_indices that arise together
@@ -674,4 +697,4 @@ case_families = ["baseline_controllers", "solver_type", # 0, 1
                     "generate_sample_figures", "baseline_controllers_3", # 11, 12
                     "cost_func_tuning_small", "sr_solve", # 13, 14
                     "baseline_controllers_forecasters_flasc", "baseline_controllers_forecasters_awaken", # 15, 16
-                    "baseline_controllers_preview_flasc_perfect"] # 17
+                    "baseline_controllers_preview_flasc_perfect", "baseline_controllers_perfect_forecaster_awaken"] # 18
