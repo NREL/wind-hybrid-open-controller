@@ -518,7 +518,7 @@ def aggregate_time_series_data(time_series_df, input_dict_path, n_seeds):
     time_series_df = time_series_df.loc[time_series_df["Time"] < stoptime, :]
     time = pd.unique(time_series_df["Time"])
     
-    if len(pd.unique(time)) != int(stoptime // input_config["simulation_dt"]):
+    if len(time) != int(stoptime // input_config["simulation_dt"]):
        print(f"NOT aggregating data for {case_family}={case_name} due to insufficient time steps.")
        return None
    

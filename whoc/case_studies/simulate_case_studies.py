@@ -2,15 +2,15 @@ import pandas as pd
 import numpy as np
 import os
 from time import perf_counter
-# from memory_profiler import profile
+from memory_profiler import profile
 import re
 
 from whoc.interfaces.controlled_floris_interface import ControlledFlorisModel
 from whoc.wind_field.WindField import first_ord_filter
 
-
+@profile
 def simulate_controller(controller_class, wind_forecast_class, simulation_input_dict, **kwargs):
-    print(f'Entering simulate_controller function')
+    
     results_dir = os.path.join(kwargs["save_dir"], kwargs['case_family'])
     os.makedirs(results_dir, exist_ok=True)
     
@@ -18,9 +18,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
     os.makedirs(temp_storage_dir, exist_ok=True)
 
     fn = f"time_series_results_case_{kwargs['case_name']}_seed_{kwargs['wind_case_idx']}.csv".replace("/", "_")
-    # print(f'rerun_simulations = {kwargs["rerun_simulations"]}')
-    # print(f'does {os.path.join(results_dir, fn)} exist = {os.path.exists(os.path.join(results_dir, fn))}')
-    print(f'reaches the first if statement')
+    
     if not kwargs["rerun_simulations"] and os.path.exists(os.path.join(results_dir, fn)):
         results_df = pd.read_csv(os.path.join(results_dir, fn))
         print(f"Loaded existing {fn} since rerun_simulations argument is false")
@@ -29,7 +27,6 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
         # TODO load checkpoint if exists
         pass
     
-
     print(f"Running instance of {controller_class.__name__} - {kwargs['case_name']} with wind seed {kwargs['wind_case_idx']}")
     # Load a FLORIS object for power calculations
     fi = ControlledFlorisModel(t0=kwargs["wind_field_ts"]["time"].iloc[0],
@@ -91,7 +88,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
     ctrl = controller_class(fi, wind_forecast=wind_forecast, simulation_input_dict=simulation_input_dict, **kwargs)
     
     yaw_angles_ts = []
-    init_yaw_angles_ts = []
+    # init_yaw_angles_ts = []
     yaw_angles_change_ts = []
     turbine_powers_ts = []
     turbine_wind_mag_ts = []
@@ -172,11 +169,12 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
             if tt == (t + ctrl.controller_dt - simulation_input_dict["simulation_dt"]):
                 fi.run_floris = True
             
+            # init_yaw_angles_ts += [ctrl.measurements_dict["yaw_angles"]]
+            
             ctrl.step()        
             
             # Note these are results from previous time step
             yaw_angles_ts += [ctrl.measurements_dict["yaw_angles"]]
-            init_yaw_angles_ts += [[ctrl.init_sol["states"][i] * ctrl.yaw_norm_const for i in range(ctrl.n_turbines)]]
             turbine_powers_ts += [ctrl.measurements_dict["turbine_powers"]]
             turbine_wind_mag_ts += [ctrl.measurements_dict["wind_speeds"]]
             turbine_wind_dir_ts += [ctrl.measurements_dict["wind_directions"]]
@@ -262,7 +260,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
         turbine_offline_status_ts = np.vstack(turbine_offline_status_ts)
 
         yaw_angles_ts = np.vstack(yaw_angles_ts)
-        init_yaw_angles_ts = np.vstack(init_yaw_angles_ts)
+        # init_yaw_angles_ts = np.vstack(init_yaw_angles_ts)
         yaw_angles_change_ts = np.diff(yaw_angles_ts, axis=0)[:-n_future_steps, :]
 
         yaw_angles_ts = yaw_angles_ts[:-(n_future_steps + 1), :]
@@ -273,7 +271,7 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
     turbine_wind_dir_ts = turbine_wind_dir_ts[:(-n_truncate_steps) or None, :]
     turbine_offline_status_ts = turbine_offline_status_ts[:(-n_truncate_steps) or None, :]
     yaw_angles_change_ts = yaw_angles_change_ts[:(-n_truncate_steps) or None, :]
-    yaw_angles_ts = yaw_angles_ts[:(-n_truncate_steps) or None, :]
+    yaw_angles_ts = yaw_angles_ts[:(-n_truncate_steps) or None, :] # TODO LOW first element allows for greater change than yaw_rate
     turbine_powers_ts = turbine_powers_ts[:(-n_truncate_steps) or None, :]
     
     running_opt_cost_terms_ts = np.zeros_like(opt_cost_terms_ts)
@@ -302,9 +300,9 @@ def simulate_controller(controller_class, wind_forecast_class, simulation_input_
         "FreestreamWindDir": simulation_dir[:yaw_angles_ts.shape[0]],
         "FilteredFreestreamWindDir": first_ord_filter(simulation_dir[:yaw_angles_ts.shape[0]], 
                                                       alpha=np.exp(-(1 / simulation_input_dict["controller"]["lpf_time_const"]) * simulation_input_dict["simulation_dt"])),
-        **{
-            f"InitTurbineYawAngle_{idx2tid_mapping[i]}": init_yaw_angles_ts[:, i] for i in range(ctrl.n_turbines)
-        }, 
+        # **{
+        #     f"InitTurbineYawAngle_{idx2tid_mapping[i]}": init_yaw_angles_ts[:, i] for i in range(ctrl.n_turbines)
+        # }, 
         **{
             f"TurbineYawAngle_{idx2tid_mapping[i]}": yaw_angles_ts[:, i] for i in range(ctrl.n_turbines)
         }, 

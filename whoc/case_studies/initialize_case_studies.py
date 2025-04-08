@@ -6,16 +6,16 @@ import sys
 from glob import glob
 from itertools import product
 from functools import partial
-# from memory_profiler import profile
+from memory_profiler import profile
 from wind_forecasting.preprocessing.data_module import DataModule
 from whoc.wind_forecast.WindForecast import generate_wind_field_df
+import gc
 #from line_profiler import profile
 # from datetime import timedelta
 
 
 import pandas as pd
 import polars as pl
-import polars.selectors as cs
 import numpy as np
 
 from whoc import __file__ as whoc_file
@@ -104,7 +104,29 @@ case_studies = {
         # "target_turbine_indices": {"group": 1, "vals": ["74,73", "74,73"]},
         # "uncertain": {"group": 1, "vals": [False, True]},
         # "wind_forecast_class": {"group": 1, "vals": ["PerfectForecast", "PerfectForecast"]},
-        "prediction_timedelta": {"group": 2, "vals": [60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 780, 840, 900, 960, 1020, 1080]},
+        "prediction_timedelta": {"group": 2, "vals": [60, 120, 180]} #240, 300, 360, 420, 480, 540, 600, 660, 720, 780, 840, 900, 960, 1020, 1080]},
+        },
+    "baseline_controllers_perfect_forecaster_flasc": {
+        "controller_dt": {"group": 0, "vals": [5]},
+        "use_filtered_wind_dir": {"group": 0, "vals": [True]},
+        "use_lut_filtered_wind_dir": {"group": 0, "vals": [True]},
+        "simulation_dt": {"group": 0, "vals": [1]},
+        "floris_input_file": {"group": 0, "vals": ["../../examples/inputs/smarteole_farm.yaml"]},
+        # "lut_path": {"group": 0, "vals": ["../../examples/inputs/gch_KP_v4_lut.csv"]},
+        "yaw_limits": {"group": 0, "vals": ["-15,15"]},
+        "controller_class": {"group": 1, "vals": ["GreedyController", "LookupBasedWakeSteeringController"]},
+        "target_turbine_indices": {"group": 1, "vals": ["6,", "6,4"]},
+        "uncertain": {"group": 1, "vals": [False, False]},
+        "wind_forecast_class": {"group": 1, "vals": ["PerfectForecast", "PerfectForecast"]},
+        # "controller_class": {"group": 1, "vals": ["GreedyController"]},
+        # "target_turbine_indices": {"group": 1, "vals": ["4,"]},
+        # "uncertain": {"group": 1, "vals": [False]},
+        # "wind_forecast_class": {"group": 1, "vals": ["PerfectForecast"]},
+        # "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "LookupBasedWakeSteeringController"]},
+        # "target_turbine_indices": {"group": 1, "vals": ["74,73", "74,73"]},
+        # "uncertain": {"group": 1, "vals": [False, True]},
+        # "wind_forecast_class": {"group": 1, "vals": ["PerfectForecast", "PerfectForecast"]},
+        "prediction_timedelta": {"group": 2, "vals": [60, 120, 180]} #240, 300, 360, 420, 480, 540, 600, 660, 720, 780, 840, 900, 960, 1020, 1080]},
         },
     "baseline_controllers_forecasters_awaken": {"controller_dt": {"group": 0, "vals": [5]},
                                     "controller_class": {"group": 1, "vals": ["LookupBasedWakeSteeringController", "LookupBasedWakeSteeringController", 
@@ -399,7 +421,7 @@ def CaseGen_General(case_inputs, namebase=''):
 
     return case_list, case_name
 
-#@profile
+@profile
 def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_field, 
                            n_seeds, stoptime, save_dir, wf_source, multiprocessor,
                            whoc_config, model_config=None, data_config=None):
@@ -548,10 +570,12 @@ def initialize_simulations(case_study_keys, regenerate_lut, regenerate_wind_fiel
         
         # pull ws_horz, ws_vert, nacelle_direction, normalization_consts from awaken data and run for ML, SVR
         data_module.generate_splits(splits=["test"], save=True, reload=reload)
-        test_dataset = generate_wind_field_df(data_module.test_dataset, data_module.target_cols, data_module.feat_dynamic_real_cols)
+        wind_field_ts = generate_wind_field_df(data_module.test_dataset, data_module.target_cols, data_module.feat_dynamic_real_cols)
+        delattr(data_module, "test_dataset")
         del data_module
+        gc.collect()
         
-        wind_field_ts = [df.to_pandas() for df in test_dataset.partition_by("split")]
+        wind_field_ts = [df.to_pandas() for df in wind_field_ts.partition_by("split")]
         
         wind_field_ts = sorted(wind_field_ts, reverse=True, key=lambda df: df["time"].iloc[-1] - df["time"].iloc[0])
         wind_field_ts = wind_field_ts[:n_seeds]
@@ -717,4 +741,4 @@ case_families = ["baseline_controllers", "solver_type", # 0, 1
                     "generate_sample_figures", "baseline_controllers_3", # 11, 12
                     "cost_func_tuning_small", "sr_solve", # 13, 14
                     "baseline_controllers_forecasters_flasc", "baseline_controllers_forecasters_awaken", # 15, 16
-                    "baseline_controllers_preview_flasc_perfect", "baseline_controllers_perfect_forecaster_awaken"] # 18
+                    "baseline_controllers_perfect_forecaster_flasc", "baseline_controllers_perfect_forecaster_awaken"] # 17, 18
