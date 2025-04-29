@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plot_offsets_wswd_heatmap(
+def plot_offsets_wdws_heatmap(
     df_opt,
     turb_id,
     ti_plot=None,
@@ -56,7 +56,7 @@ def plot_offsets_wswd_heatmap(
     ws_array = np.unique(df_opt.wind_speed)
     wd_array = np.unique(df_opt.wind_direction)
 
-    # Construct array of offets
+    # Construct array of offsets
     offsets_array = np.zeros((len(ws_array), len(wd_array)))
     for i, ws in enumerate(ws_array):
         offsets_array[i, :] = offsets_all[
@@ -121,7 +121,7 @@ def plot_offsets_wd(
         color (str): color of line
         alpha (float): transparency of line
         label (str): label for line
-        ax (matplotlib.axes.Axes): axis to plot on.  If None, a new figure is created.
+        ax (matplotlib.axes.Axes): axis to plot on. If None, a new figure is created.
             Default is None.
     """
     if "yaw_angles_opt" not in df_opt.columns:

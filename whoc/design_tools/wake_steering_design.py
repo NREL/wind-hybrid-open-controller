@@ -2,17 +2,18 @@ import numpy as np
 import pandas as pd
 from floris import FlorisModel, UncertainFlorisModel, WindRose, WindTIRose
 from floris.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
+from floris.utilities import wrap_180, wrap_360
 from scipy.interpolate import interp1d, RegularGridInterpolator
 
 
 def build_simple_wake_steering_lookup_table(
     fmodel: FlorisModel,
-    wd_resolution: float = 5,
-    wd_min: float = 0,
-    wd_max: float = 360,
-    ws_resolution: float = 1,
-    ws_min: float = 8,
-    ws_max: float = 8,
+    wd_resolution: float = 5.0,
+    wd_min: float = 0.0,
+    wd_max: float = 360.0,
+    ws_resolution: float = 1.0,
+    ws_min: float = 8.0,
+    ws_max: float = 8.0,
     ti_resolution: float = 0.02,
     ti_min: float = 0.06,
     ti_max: float = 0.06,
@@ -31,20 +32,23 @@ def build_simple_wake_steering_lookup_table(
         fmodel (FlorisModel): An instantiated FlorisModel object.
         wd_resolution (float, optional): The resolution of the wind direction in degrees.
             Defaults to 5.
-        wd_min (float, optional): The minimum wind direction in degrees. Defaults to 0.
-        wd_max (float, optional): The maximum wind direction in degrees. Defaults to 360.
+        wd_min (float, optional): The minimum (inclusive) wind direction in degrees. Defaults to 0.
+        wd_max (float, optional): The maximum (inclusive) wind direction in degrees. Defaults to
+            360.
         ws_resolution (float, optional): The resolution of the wind speed in m/s.
             Defaults to 1.
-        ws_min (float, optional): The minimum wind speed in m/s. Defaults to 8.
-        ws_max (float, optional): The maximum wind speed in m/s. Defaults to 8.
+        ws_min (float, optional): The minimum (inclusive) wind speed in m/s. Defaults to 8.
+        ws_max (float, optional): The maximum (inclusive) wind speed in m/s. Defaults to 8.
         ti_resolution (float, optional): The resolution of the turbulence intensity as a fraction.
             Defaults to 0.02.
-        ti_min (float, optional): The minimum turbulence intensity as a fraction. Defaults to 0.06.
-        ti_max (float, optional): The maximum turbulence intensity as a fraction. Defaults to 0.06.
-        minimum_yaw_angle (float, optional): The minimum allowable misalignment in degrees.
-            Defaults to 0.0.
-        maximum_yaw_angle (float, optional): The maximum allowable misalignment in degrees.
-            Defaults to 25.0.
+        ti_min (float, optional): The minimum (inclusive) turbulence intensity as a fraction.
+            Defaults to 0.06.
+        ti_max (float, optional): The maximum (inclusive) turbulence intensity as a fraction.
+            Defaults to 0.06.
+        minimum_yaw_angle (float, optional): The minimum (inclusive) allowable misalignment in
+            degrees. Defaults to 0.0.
+        maximum_yaw_angle (float, optional): The maximum (inclusive) allowable misalignment in
+            degrees. Defaults to 25.0.
 
     Returns:
         pd.DataFrame: A yaw offset lookup table.
@@ -75,12 +79,12 @@ def build_simple_wake_steering_lookup_table(
 def build_uncertain_wake_steering_lookup_table(
     fmodel: FlorisModel,
     wd_std: float,
-    wd_resolution: float = 5,
-    wd_min: float = 0,
-    wd_max: float = 360,
-    ws_resolution: float = 1,
-    ws_min: float = 8,
-    ws_max: float = 8,
+    wd_resolution: float = 5.0,
+    wd_min: float = 0.0,
+    wd_max: float = 360.0,
+    ws_resolution: float = 1.0,
+    ws_min: float = 8.0,
+    ws_max: float = 8.0,
     ti_resolution: float = 0.02,
     ti_min: float = 0.06,
     ti_max: float = 0.06,
@@ -101,20 +105,23 @@ def build_uncertain_wake_steering_lookup_table(
         wd_std (float): Wind direction standard deviation in degrees.
         wd_resolution (float, optional): The resolution of the wind direction in degrees.
             Defaults to 5.
-        wd_min (float, optional): The minimum wind direction in degrees. Defaults to 0.
-        wd_max (float, optional): The maximum wind direction in degrees. Defaults to 360.
+        wd_min (float, optional): The minimum (inclusive) wind direction in degrees. Defaults to 0.
+        wd_max (float, optional): The maximum (inclusive) wind direction in degrees. Defaults to
+            360.
         ws_resolution (float, optional): The resolution of the wind speed in m/s.
             Defaults to 1.
-        ws_min (float, optional): The minimum wind speed in m/s. Defaults to 8.
-        ws_max (float, optional): The maximum wind speed in m/s. Defaults to 8.
+        ws_min (float, optional): The minimum (inclusive) wind speed in m/s. Defaults to 8.
+        ws_max (float, optional): The maximum (inclusive) wind speed in m/s. Defaults to 8.
         ti_resolution (float, optional): The resolution of the turbulence intensity as a fraction.
             Defaults to 0.02.
-        ti_min (float, optional): The minimum turbulence intensity as a fraction. Defaults to 0.06.
-        ti_max (float, optional): The maximum turbulence intensity as a fraction. Defaults to 0.06.
-        minimum_yaw_angle (float, optional): The minimum allowable misalignment in degrees.
-            Defaults to 0.0.
-        maximum_yaw_angle (float, optional): The maximum allowable misalignment in degrees.
-            Defaults to 25.0.
+        ti_min (float, optional): The minimum (inclusive) turbulence intensity as a fraction.
+            Defaults to 0.06.
+        ti_max (float, optional): The maximum (inclusive) turbulence intensity as a fraction.
+            Defaults to 0.06.
+        minimum_yaw_angle (float, optional): The minimum (inclusive) allowable misalignment in
+            degrees. Defaults to 0.0.
+        maximum_yaw_angle (float, optional): The maximum (inclusive) allowable misalignment in
+            degrees. Defaults to 25.0.
         kwargs_UncertainFlorisModel (dict, optional): Additional keyword arguments for the
             instantiation of the UncertainFlorisModel. Defaults to an empty dictionary.
 
@@ -152,12 +159,14 @@ def build_uncertain_wake_steering_lookup_table(
 
 def apply_static_rate_limits(
     df_opt: pd.DataFrame,
-    wd_rate_limit: float = 5,
-    ws_rate_limit: float = 10,
-    ti_rate_limit: float = 500,
+    wd_rate_limit: float = 5.0,
+    ws_rate_limit: float = 10.0,
+    ti_rate_limit: float = 500.0,
 ) -> pd.DataFrame:
     """
-    Apply static rate limits to a yaw offset lookup table.
+    Apply static rate limits to a yaw offset lookup table. Note that this method may produce
+    significantly different yaw offsets than the original lookup table, resulting in suboptimal
+    behavior, even for slow wind direction changes.
 
     Args:
         df_opt (pd.DataFrame): A yaw offset lookup table.
@@ -247,7 +256,7 @@ def compute_hysteresis_zones(
     Compute wind direction sectors where hysteresis is applied.
 
     Identifies wind direction sectors over which hysteresis is applied when
-    there is a switch in sign in the yaw offset. Note that this is only applied
+    there is a significant jump in the yaw offset. Note that this is only applied
     for wind direction, that is, no hysteresis is applied for wind speed or
     turbulence intensity changes.
 
@@ -282,48 +291,65 @@ def compute_hysteresis_zones(
     # Add 360 to end, if starting at/near 0
     if len(wind_directions) == 1:
         raise ValueError("Cannot compute hysteresis regions for single wind direction.")
-    wd_step = (wind_directions[1]-wind_directions[0])
-    if (wind_directions[0] - wd_step < 0) & (wind_directions[-1] + wd_step >= 360):
+    wd_steps = wind_directions[1:]-wind_directions[:-1]
+    if (wind_directions[0] - wd_steps[0] < 0) & (wind_directions[-1] + wd_steps[-1] >= 360):
         offsets = np.concatenate((offsets, offsets[0:1, :, :, :]), axis=0)
-        wd_centers = wind_directions + 0.5 * wd_step
-        wind_directions = np.concatenate((wind_directions, [wind_directions[-1] + wd_step]))
+        wd_centers = wind_directions[:-1] + 0.5 * wd_steps
+        wind_directions = np.concatenate((wind_directions, [wind_directions[-1] + wd_steps[-1]]))
+        wd_steps = wind_directions[1:]-wind_directions[:-1]
     else:
-        wd_centers = wind_directions[:-1] + 0.5 * wd_step
+        wd_centers = wind_directions[:-1] + 0.5 * wd_steps
     
     # Define function that identifies hysteresis zones
-    switching_idx = np.argwhere(np.diff(offsets, axis=0) >= yaw_rate_threshold*wd_step)
+    jump_threshold = yaw_rate_threshold*wd_steps[:,None,None,None]
+    jump_idx = np.argwhere(np.abs(np.diff(offsets, axis=0)) >= jump_threshold)
     # Drop information about ws, ti
-    switching_idx = np.unique(switching_idx[:, [0, 3]], axis=0)
+    jump_idx = np.unique(jump_idx[:, [0, 3]], axis=0)
     # Convert to a per-turbine dictionary of switching wind directions
-    hysteresis_dict = {}
-    for t in np.unique(switching_idx[:,1]):
-        hysteresis_dict["T{:03d}".format(t)] = (
-            wd_centers[switching_idx[switching_idx[:,1] == t][:,0]]
+    centers_dict = {}
+    for t in np.unique(jump_idx[:,1]):
+        centers_dict["T{:03d}".format(t)] = (
+            wd_centers[jump_idx[jump_idx[:,1] == t][:,0]]
         )
     if verbose:
-        print("Center wind directions for hysteresis, per turbine: {}".format(hysteresis_dict))
+        print("Center wind directions for hysteresis, per turbine: {}".format(centers_dict))
         print("Computing hysteresis regions.")
 
     # Find hysteresis regions for each switching point
     # Note: doesn't handle the (unlikely) case that there is a large jump without a sign change
-    for turbine_tag in hysteresis_dict.keys():
+    hysteresis_dict = {}
+    for turbine_tag in centers_dict.keys():
         hysteresis_wds = []
-        for wd_switch_point in hysteresis_dict[turbine_tag]:
+        for wd_switch_point in centers_dict[turbine_tag]:
             t = int(turbine_tag[1:])
-            # Starting point for hysteresis region
-            lb = np.max(wind_directions[
-                (wind_directions < wd_switch_point) & (offsets[:,:,:,t] < 0.1).any(axis=(1,2))
-            ])
-            # Ending point for hysteresis region
-            ub = np.min(wind_directions[
-                (wind_directions > wd_switch_point) & (offsets[:,:,:,t] > -0.1).any(axis=(1,2))
-            ])
-            # Check wide enough to satisfy min_region_width; if not, widen
-            if (ub - lb) < min_region_width:
-                center_point = (lb + ub)/2
-                lb = center_point - min_region_width/2
-                ub = center_point + min_region_width/2
-            hysteresis_wds.append((lb, ub))
+            # Create region of minimum width
+            lb = wrap_360(wd_switch_point - min_region_width/2)
+            ub = wrap_360(wd_switch_point + min_region_width/2)
+            # Check for overlap with existing region; if so, add to existing region
+            overlap = False
+            for hwd in hysteresis_wds:
+                # Handle wrapped cases
+                if lb > ub or hwd[0] > hwd[1]:
+                    lb2 = wrap_180(lb)
+                    ub2 = wrap_180(ub)
+                    hwd_l2 = wrap_180(hwd[0])
+                    hwd_u2 = wrap_180(hwd[1])
+                    
+                    if lb2 < hwd_u2:
+                        hwd[1] = ub
+                        overlap = True
+                    if ub2 > hwd_l2:
+                        hwd[0] = lb
+                        overlap = True
+                if lb < hwd[1]:
+                    hwd[1] = ub
+                    overlap = True
+                if ub > hwd[0]:
+                    hwd[0] = lb
+                    overlap = True
+            # If no overlap, add new region
+            if not overlap:
+                hysteresis_wds.append((lb, ub))
         hysteresis_dict[turbine_tag] = hysteresis_wds
 
     if verbose:
@@ -334,13 +360,13 @@ def compute_hysteresis_zones(
 
 def apply_wind_speed_ramps(
     df_opt: pd.DataFrame,
-    ws_resolution: float = 1,
-    ws_min: float = 0,
-    ws_max: float = 30,
-    ws_wake_steering_cut_in: float = 3,
-    ws_wake_steering_fully_engaged_low: float = 5,
-    ws_wake_steering_fully_engaged_high: float = 10,
-    ws_wake_steering_cut_out: float = 13,
+    ws_resolution: float = 1.0,
+    ws_min: float = 0.0,
+    ws_max: float = 30.0,
+    ws_wake_steering_cut_in: float = 3.0,
+    ws_wake_steering_fully_engaged_low: float = 5.0,
+    ws_wake_steering_fully_engaged_high: float = 10.0,
+    ws_wake_steering_cut_out: float = 13.0,
 ) -> pd.DataFrame:
     """
     Apply wind speed ramps to a yaw offset lookup table.
@@ -349,8 +375,8 @@ def apply_wind_speed_ramps(
         df_opt (pd.DataFrame): A yaw offset lookup table.
         ws_resolution (float, optional): The resolution of the wind speed in m/s.
             Defaults to 1.
-        ws_min (float, optional): The minimum wind speed in m/s. Defaults to 0.
-        ws_max (float, optional): The maximum wind speed in m/s. Defaults to 30.
+        ws_min (float, optional): The minimum (inclusive) wind speed in m/s. Defaults to 0.
+        ws_max (float, optional): The maximum (inclusive) wind speed in m/s. Defaults to 30.
         ws_wake_steering_cut_in (float, optional): The wind speed at which wake steering
             begins to be applied. Defaults to 3.
         ws_wake_steering_fully_engaged_low (float, optional): The lower wind speed at which
@@ -561,16 +587,30 @@ def get_yaw_angles_interpolant(df_opt):
 
 
 def create_uniform_wind_rose(
-    wd_resolution: float = 5,
-    wd_min: float = 0,
-    wd_max: float = 360,
-    ws_resolution: float = 1,
-    ws_min: float = 8,
-    ws_max: float = 8,
+    wd_resolution: float = 5.0,
+    wd_min: float = 0.0,
+    wd_max: float = 360.0,
+    ws_resolution: float = 1.0,
+    ws_min: float = 8.0,
+    ws_max: float = 8.0,
     ti_resolution: float = 0.02,
     ti_min: float = 0.06,
     ti_max: float = 0.06,
 ):
+    """"
+    Create a uniform wind rose to use for wake steering optimizations.
+
+    Args:
+      wd_resolution (float): Wind direction resolution in degrees. Defaults to 5 degrees.
+      wd_min (float): Minimum (inclusive) wind direction in degrees. Defaults to 0 degrees.
+        wd_max (float): Maximum (inclusive) wind direction in degrees. Defaults to 360 degrees.
+        ws_resolution (float): Wind speed resolution in m/s. Defaults to 1 m/s.
+        ws_min (float): Minimum (inclusive) wind speed in m/s. Defaults to 8 m/s.
+        ws_max (float): Maximum (inclusive) wind speed in m/s. Defaults to 8 m/s.
+        ti_resolution (float): Turbulence intensity resolution as a fraction. Defaults to 0.02.
+        ti_min (float): Minimum (inclusive) turbulence intensity as a fraction. Defaults to 0.06.
+        ti_max (float): Maximum (inclusive) turbulence intensity as a fraction. Defaults to 0.06.
+    """
 
     if wd_min == 0 and wd_max == 360:
         wd_max = wd_max - wd_resolution

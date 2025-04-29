@@ -17,7 +17,7 @@ df_opt = pd.read_pickle("inputs/yaw_offsets.pkl")
 
 # Optionally, add hysteresis
 if use_hysteresis:
-    hysteresis_dict = compute_hysteresis_zones(df_opt, min_region_width=8.0)
+    hysteresis_dict = compute_hysteresis_zones(df_opt, min_region_width=8.0, verbose=True)
 else:
     hysteresis_dict = None
 

@@ -205,7 +205,7 @@ if __name__ == "__main__":
 
     # Also, plot heatmap of offsets for Simple design
     fig, ax = plt.subplots(2, 2, sharex=True, sharey=True, figsize=(10,10))
-    _, cbar = wsv.plot_offsets_wswd_heatmap(
+    _, cbar = wsv.plot_offsets_wdws_heatmap(
         df_opt_simple,
         plot_turbine,
         ti_plot=ti_min,
@@ -215,7 +215,7 @@ if __name__ == "__main__":
     )
     cbar.set_label("Yaw offset [deg]")
     ax[0,0].set_title("Simple")
-    _, cbar = wsv.plot_offsets_wswd_heatmap(
+    _, cbar = wsv.plot_offsets_wdws_heatmap(
         df_opt_unc,
         plot_turbine,
         ti_plot=ti_min,
@@ -225,7 +225,7 @@ if __name__ == "__main__":
     )
     cbar.set_label("Yaw offset [deg]")
     ax[0,1].set_title("Uncertain")
-    _, cbar = wsv.plot_offsets_wswd_heatmap(
+    _, cbar = wsv.plot_offsets_wdws_heatmap(
         df_opt_rate_limited,
         plot_turbine,
         ti_plot=ti_min,
@@ -235,7 +235,7 @@ if __name__ == "__main__":
     )
     cbar.set_label("Yaw offset [deg]")
     ax[1,0].set_title("Rate limited")
-    _, cbar = wsv.plot_offsets_wswd_heatmap(
+    _, cbar = wsv.plot_offsets_wdws_heatmap(
         df_opt_ws_ramps,
         plot_turbine,
         ti_plot=ti_min,

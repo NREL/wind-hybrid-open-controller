@@ -40,7 +40,8 @@ offsets to avoid high sensitivity to changes in the lookup table inputs (most ob
 wind direction near the perfectly aligned directions, where optimal offsets often change from
 being at largest negative value to being at their largest positive value over a small wind
 direction window). Resulting offsets, however, will be suboptimal and produce significant
-performance reduction.
+performance reduction, and we generally recommend using time-based limitation instead, such as
+hysteresis zones or low-pass filtering the input wind directions.
 
 ___
 
