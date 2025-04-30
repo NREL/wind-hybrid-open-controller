@@ -343,7 +343,7 @@ def test_hysteresis_zones():
     )
     # Check actual grouping occurs (not purely due to larger region width)
     assert (
-        hysteresis_dict_test["T000"][0][1] - hysteresis_dict_base["T000"][0][0]
+        hysteresis_dict_test["T000"][0][1] - hysteresis_dict_test["T000"][0][0]
         > 3*min_region_width
     )
     # Check new region covers original region
@@ -359,7 +359,14 @@ def test_hysteresis_zones():
         min_region_width=3*min_region_width,
         yaw_rate_threshold=1.0
     )
-    import ipdb; ipdb.set_trace()
+    # Check actual grouping occurs (not purely due to larger region width)
+    assert (
+        (hysteresis_dict_test["T000"][0][1] - hysteresis_dict_test["T000"][0][0]) % 360.0
+        > 3*min_region_width
+    )
+    # Check new region covers original region
+    assert (hysteresis_dict_test["T000"][0][0] - 90.0) % 360.0 < hysteresis_dict_base["T000"][0][0]
+    assert (hysteresis_dict_test["T000"][0][1] - 90.0) % 360.0 > hysteresis_dict_base["T000"][0][1]
 
 def test_create_uniform_wind_rose():
     wind_rose = create_uniform_wind_rose()

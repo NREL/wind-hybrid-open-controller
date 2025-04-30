@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from floris import FlorisModel, UncertainFlorisModel, WindRose, WindTIRose
 from floris.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
-from floris.utilities import wrap_180, wrap_360
+from floris.utilities import wrap_360
 from scipy.interpolate import interp1d, RegularGridInterpolator
 
 
@@ -325,22 +325,29 @@ def compute_hysteresis_zones(
             # Create region of minimum width
             lb = wrap_360(wd_switch_point - min_region_width/2)
             ub = wrap_360(wd_switch_point + min_region_width/2)
-            # Check for overlap with existing region; if so, add to existing region
-            overlap = False
-            for i, hwd in enumerate(hysteresis_wds):
-                # Handle wrapped cases
-                if lb > ub or hwd[0] > hwd[1]:
-                    if wrap_180(lb) <= wrap_180(hwd[1]) <= wrap_180(ub):
-                        hwd_new = (hwd[0], ub)
-                        overlap = True
-                if lb <= hwd[1] <= ub:
-                    hwd_new = (hwd[0], ub)
-                    overlap = True
-                if overlap:
-                    hysteresis_wds[i] = hwd_new
-            # If no overlap, add new region
-            if not overlap:
-                hysteresis_wds.append((lb, ub))
+            hysteresis_wds.append((lb, ub))
+
+        # Consolidate regions
+        for _ in range(len(hysteresis_wds)): # Outer loop to handle multiple possible wrap merges
+            i_h = 0
+            while i_h < len(hysteresis_wds)-1:
+                if (hysteresis_wds[i_h][1] >= hysteresis_wds[i_h+1][0]
+                    and hysteresis_wds[i_h][0] <= hysteresis_wds[i_h+1][1]):
+                    # Merge regions
+                    hysteresis_wds[i_h] = (
+                        min(hysteresis_wds[i_h][0], hysteresis_wds[i_h+1][0]),
+                        max(hysteresis_wds[i_h][1], hysteresis_wds[i_h+1][1])
+                    )
+                    # Remove next region
+                    hysteresis_wds.pop(i_h+1)
+                else:
+                    i_h += 1
+            # Check the final region, which could be reversed
+            if ((hysteresis_wds[-1][0] > hysteresis_wds[-1][1])
+                or (hysteresis_wds[0][0] > hysteresis_wds[0][1])):
+                if hysteresis_wds[-1][1] > hysteresis_wds[0][0]:
+                    hysteresis_wds[0] = (hysteresis_wds[-1][0], hysteresis_wds[0][1])
+                    hysteresis_wds.pop(-1)
         hysteresis_dict[turbine_tag] = hysteresis_wds
 
     if verbose:
