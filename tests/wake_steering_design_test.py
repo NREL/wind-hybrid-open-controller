@@ -297,31 +297,30 @@ def test_wake_steering_interpolant():
 def test_hysteresis_zones():
 
     df_opt = generic_df_opt()
-    wind_directions = np.unique(df_opt.wind_direction.values)
-    wd_resolution = wind_directions[1] - wind_directions[0]
+    min_region_width = 4.0
 
-    hysteresis_dict_base = {"T000": [(270-wd_resolution/2, 270+wd_resolution/2)]}
+    hysteresis_dict_base = {"T000": [(270-min_region_width/2, 270+min_region_width/2)]}
 
     # Calculate hysteresis regions
-    hysteresis_dict_test = compute_hysteresis_zones(df_opt, verbose=True)
+    hysteresis_dict_test = compute_hysteresis_zones(df_opt, min_region_width=min_region_width)
 
     # Check for full rotation of wds, too.
     assert hysteresis_dict_test == hysteresis_dict_base
 
     # Check angle wrapping works (runs through)
     df_opt = generic_df_opt(wd_min=0.0, wd_max=360.0)
-    hysteresis_dict_test = compute_hysteresis_zones(df_opt)
+    hysteresis_dict_test = compute_hysteresis_zones(df_opt, min_region_width=min_region_width)
 
     assert hysteresis_dict_test["T000"] == hysteresis_dict_base["T000"]
 
     # Check 0 low end, less than 360 upper end
     df_opt = generic_df_opt(wd_min=0.0, wd_max=300.0)
-    hysteresis_dict_test = compute_hysteresis_zones(df_opt)
+    hysteresis_dict_test = compute_hysteresis_zones(df_opt, min_region_width=min_region_width)
     assert hysteresis_dict_test["T000"] == hysteresis_dict_base["T000"]
 
     # Check nonzero low end, 360 upper end
     df_opt = generic_df_opt(wd_min=200.0, wd_max=360.0)
-    hysteresis_dict_test = compute_hysteresis_zones(df_opt)
+    hysteresis_dict_test = compute_hysteresis_zones(df_opt, min_region_width=min_region_width)
     assert hysteresis_dict_test["T000"] == hysteresis_dict_base["T000"]
 
     # Close to zero low end, 360 upper end
