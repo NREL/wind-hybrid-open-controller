@@ -288,18 +288,18 @@ def compute_hysteresis_zones(
         offsets_stacked.shape[1]
     )
 
-    # Add 360 to end, if starting at/near 0
+    # Add 360 to end, if full wind rose and wraps
     if len(wind_directions) == 1:
         raise ValueError("Cannot compute hysteresis regions for single wind direction.")
     wd_steps = wind_directions[1:]-wind_directions[:-1]
-    if (wind_directions[0] - wd_steps[0] < 0) & (wind_directions[-1] + wd_steps[-1] >= 360):
+    if ((wind_directions[0] - wd_steps[0] < 0)
+        & (wind_directions[-1] + wd_steps[-1] >= 360)
+    ):
         offsets = np.concatenate((offsets, offsets[0:1, :, :, :]), axis=0)
-        wd_centers = wind_directions[:-1] + 0.5 * wd_steps
         wind_directions = np.concatenate((wind_directions, [wind_directions[-1] + wd_steps[-1]]))
         wd_steps = wind_directions[1:]-wind_directions[:-1]
-    else:
-        wd_centers = wind_directions[:-1] + 0.5 * wd_steps
-    
+    wd_centers = wind_directions[:-1] + 0.5 * wd_steps
+
     # Define function that identifies hysteresis zones
     jump_threshold = yaw_rate_threshold*wd_steps[:,None,None,None]
     jump_idx = np.argwhere(np.abs(np.diff(offsets, axis=0)) >= jump_threshold)
@@ -327,26 +327,17 @@ def compute_hysteresis_zones(
             ub = wrap_360(wd_switch_point + min_region_width/2)
             # Check for overlap with existing region; if so, add to existing region
             overlap = False
-            for hwd in hysteresis_wds:
+            for i, hwd in enumerate(hysteresis_wds):
                 # Handle wrapped cases
                 if lb > ub or hwd[0] > hwd[1]:
-                    lb2 = wrap_180(lb)
-                    ub2 = wrap_180(ub)
-                    hwd_l2 = wrap_180(hwd[0])
-                    hwd_u2 = wrap_180(hwd[1])
-                    
-                    if lb2 < hwd_u2:
-                        hwd[1] = ub
+                    if wrap_180(lb) <= wrap_180(hwd[1]) <= wrap_180(ub):
+                        hwd_new = (hwd[0], ub)
                         overlap = True
-                    if ub2 > hwd_l2:
-                        hwd[0] = lb
-                        overlap = True
-                if lb < hwd[1]:
-                    hwd[1] = ub
+                if lb <= hwd[1] <= ub:
+                    hwd_new = (hwd[0], ub)
                     overlap = True
-                if ub > hwd[0]:
-                    hwd[0] = lb
-                    overlap = True
+                if overlap:
+                    hysteresis_wds[i] = hwd_new
             # If no overlap, add new region
             if not overlap:
                 hysteresis_wds.append((lb, ub))
