@@ -57,7 +57,7 @@ until a certain "large-enough" change in wind direction occurs. This prevents ch
 large positive and negative values. The `compute_hysteresis_zones()` function takes in a DataFrame
 of optimal yaw angles, and returns a list of wind direction bands where hysteresis should be applied
 based on transitions exceeding the `yaw_rate_threshold`. The width of the hysteresis region is defined
-by `min_zone_width`, unless multiple regions overlap, in which case they are combined.
+by `min_zone_width`, unless zones overlap, in which case they are combined.
 The list of hysteresis zones can be provided to the {ref}`controllers_luwakesteer`
 on instantiation, along with `df_opt`, to apply
 dynamic hysteresis to the yaw offsets. However, again, care should be taken with this approach as it
@@ -86,9 +86,10 @@ Visualization tools for wake steering lookup tables are provided in the
 `whoc.design_tools.wake_steering_visualization` module. There are currently two functions:
 
 - `plot_offsets_wswd_heatmap()` creates a heatmap of offsets by wind speed and wind direction based
-on `df_opt` for a given turbine index `turb_id`.
-- `plot_offsets_wd()` plots the offsets from `df_opt` for turbine `turb_id` at a specified (set of)
-wind speeds `wd_plot`. 
+on `df_opt` for a given turbine index `turb_id`. Unless only a single TI value
+appears in `df_opt`, users will need to specify the turbulence intensity for the plot using `ti_plot`.
+- `plot_offsets_wd()` plots the offsets from `df_opt` for turbine `turb_id` at a specified (set of) wind speeds `wd_plot`. Unless only a single TI value
+appears in `df_opt`, users will need to specify the turbulence intensity for the plot using `ti_plot`.
 
 Both functions, as well as many of the design functions described here, are demonstrated in the
 compare_yaw_offset_designs.py python script provided in {ref}`examples_luwakesteer`.
