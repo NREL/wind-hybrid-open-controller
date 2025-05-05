@@ -248,7 +248,7 @@ def apply_static_rate_limits(
 
 def compute_hysteresis_zones(
     df_opt: pd.DataFrame,
-    min_region_width: float = 2.0,
+    min_zone_width: float = 2.0,
     yaw_rate_threshold: float = 10.0,
     verbose: bool = False,
 ) -> dict[str: list[tuple[float, float]]]:
@@ -262,7 +262,7 @@ def compute_hysteresis_zones(
 
     Args:
         df_opt (pd.DataFrame): A yaw offset lookup table.
-        min_region_width (float, optional): The minimum width of a hysteresis
+        min_zone_width (float, optional): The minimum width of a hysteresis
             region in degrees. Defaults to 2.0.
         yaw_rate_threshold (float, optional): The threshold for identifying a
             hysteresis region in degrees per degree change in wind direction.
@@ -323,8 +323,8 @@ def compute_hysteresis_zones(
         for wd_switch_point in centers_dict[turbine_tag]:
             t = int(turbine_tag[1:])
             # Create region of minimum width
-            lb = wrap_360(wd_switch_point - min_region_width/2)
-            ub = wrap_360(wd_switch_point + min_region_width/2)
+            lb = wrap_360(wd_switch_point - min_zone_width/2)
+            ub = wrap_360(wd_switch_point + min_zone_width/2)
             hysteresis_wds.append((lb, ub))
 
         # Consolidate regions

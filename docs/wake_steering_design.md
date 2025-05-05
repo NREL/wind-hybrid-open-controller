@@ -56,8 +56,9 @@ holds the yaw offset at a fixed value across the transition between negative and
 until a certain "large-enough" change in wind direction occurs. This prevents chattering between
 large positive and negative values. The `compute_hysteresis_zones()` function takes in a DataFrame
 of optimal yaw angles, and returns a list of wind direction bands where hysteresis should be applied
-based on transitions exceeding the `yaw_rate_threshold`. The list of hysteresis zones can be
-provided to the {ref}`controllers_luwakesteer`
+based on transitions exceeding the `yaw_rate_threshold`. The width of the hysteresis region is defined
+by `min_zone_width`, unless multiple regions overlap, in which case they are combined.
+The list of hysteresis zones can be provided to the {ref}`controllers_luwakesteer`
 on instantiation, along with `df_opt`, to apply
 dynamic hysteresis to the yaw offsets. However, again, care should be taken with this approach as it
 can result in "wrong-way steering".

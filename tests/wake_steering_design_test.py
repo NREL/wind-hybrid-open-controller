@@ -297,37 +297,37 @@ def test_wake_steering_interpolant():
 def test_hysteresis_zones():
 
     df_opt = generic_df_opt()
-    min_region_width = 4.0
+    min_zone_width = 4.0
 
-    hysteresis_dict_base = {"T000": [(270-min_region_width/2, 270+min_region_width/2)]}
+    hysteresis_dict_base = {"T000": [(270-min_zone_width/2, 270+min_zone_width/2)]}
 
     # Calculate hysteresis regions
-    hysteresis_dict_test = compute_hysteresis_zones(df_opt, min_region_width=min_region_width)
+    hysteresis_dict_test = compute_hysteresis_zones(df_opt, min_zone_width=min_zone_width)
 
     # Check for full rotation of wds, too.
     assert hysteresis_dict_test == hysteresis_dict_base
 
     # Check angle wrapping works (runs through)
     df_opt = generic_df_opt(wd_min=0.0, wd_max=360.0)
-    hysteresis_dict_test = compute_hysteresis_zones(df_opt, min_region_width=min_region_width)
+    hysteresis_dict_test = compute_hysteresis_zones(df_opt, min_zone_width=min_zone_width)
     assert hysteresis_dict_test["T000"] == hysteresis_dict_base["T000"]
 
     # Limited wind directions that span 360/0 \
     df_opt_2 = generic_df_opt()
     df_opt_2.wind_direction = (df_opt_2.wind_direction + 90.0) % 360.0
     df_opt_2 = df_opt_2.sort_values(by=["wind_direction", "wind_speed", "turbulence_intensity"])
-    hysteresis_dict_test = compute_hysteresis_zones(df_opt_2, min_region_width=min_region_width)
+    hysteresis_dict_test = compute_hysteresis_zones(df_opt_2, min_zone_width=min_zone_width)
     assert ((np.array(hysteresis_dict_test["T000"][0]) - 90.0) % 360.0
             == np.array(hysteresis_dict_base["T000"][0])).all()
 
     # Check 0 low end, less than 360 upper end
     df_opt = generic_df_opt(wd_min=0.0, wd_max=300.0)
-    hysteresis_dict_test = compute_hysteresis_zones(df_opt, min_region_width=min_region_width)
+    hysteresis_dict_test = compute_hysteresis_zones(df_opt, min_zone_width=min_zone_width)
     assert hysteresis_dict_test["T000"] == hysteresis_dict_base["T000"]
 
     # Check nonzero low end, 360 upper end
     df_opt = generic_df_opt(wd_min=200.0, wd_max=360.0)
-    hysteresis_dict_test = compute_hysteresis_zones(df_opt, min_region_width=min_region_width)
+    hysteresis_dict_test = compute_hysteresis_zones(df_opt, min_zone_width=min_zone_width)
     assert hysteresis_dict_test["T000"] == hysteresis_dict_base["T000"]
 
     # Close to zero low end, 360 upper end
@@ -338,13 +338,13 @@ def test_hysteresis_zones():
     df_opt = generic_df_opt()
     hysteresis_dict_test = compute_hysteresis_zones(
         df_opt,
-        min_region_width=3*min_region_width, # Force regions to be grouped
+        min_zone_width=3*min_zone_width, # Force regions to be grouped
         yaw_rate_threshold=1.0
     )
     # Check actual grouping occurs (not purely due to larger region width)
     assert (
         hysteresis_dict_test["T000"][0][1] - hysteresis_dict_test["T000"][0][0]
-        > 3*min_region_width
+        > 3*min_zone_width
     )
     # Check new region covers original region
     assert hysteresis_dict_test["T000"][0][0] < hysteresis_dict_base["T000"][0][0]
@@ -356,13 +356,13 @@ def test_hysteresis_zones():
     df_opt_2 = df_opt_2.sort_values(by=["wind_direction", "wind_speed", "turbulence_intensity"])
     hysteresis_dict_test = compute_hysteresis_zones(
         df_opt_2,
-        min_region_width=3*min_region_width,
+        min_zone_width=3*min_zone_width,
         yaw_rate_threshold=1.0
     )
     # Check actual grouping occurs (not purely due to larger region width)
     assert (
         (hysteresis_dict_test["T000"][0][1] - hysteresis_dict_test["T000"][0][0]) % 360.0
-        > 3*min_region_width
+        > 3*min_zone_width
     )
     # Check new region covers original region
     assert (hysteresis_dict_test["T000"][0][0] - 90.0) % 360.0 < hysteresis_dict_base["T000"][0][0]
