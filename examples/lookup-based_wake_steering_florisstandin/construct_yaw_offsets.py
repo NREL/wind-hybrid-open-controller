@@ -1,14 +1,9 @@
+import argparse
+
 import numpy as np
 import pandas as pd
-from floris.tools import FlorisInterface
-from floris.tools.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
-
-"""
-NOTE: Currently, FLORIS v3 is required to run this! Will fix when v4 more mature.
-"""
-
-optimize_yaw_offsets = True
-build_external_data = True
+from floris import FlorisModel
+from whoc.design_tools.wake_steering_design import build_simple_wake_steering_lookup_table
 
 floris_dict = {
     "logging": {
@@ -26,6 +21,7 @@ floris_dict = {
         "enable_secondary_steering": True,
         "enable_yaw_added_recovery": True,
         "enable_transverse_velocities": True,
+        "enable_active_wake_mixing": False,
         "wake_deflection_parameters": {
             "gauss": {
                 "ad": 0.0,
@@ -36,28 +32,26 @@ floris_dict = {
                 "ka": 0.38,
                 "kb": 0.004,
             },
-            "jimenez": {"ad": 0.0, "bd": 0.0, "kd": 0.05},
         },
         "wake_turbulence_parameters": {
             "crespo_hernandez": {"initial": 0.1, "constant": 0.5, "ai": 0.8, "downstream": -0.32}
         },
         "wake_velocity_parameters": {
             "gauss": {"alpha": 0.58, "beta": 0.077, "ka": 0.38, "kb": 0.004},
-            "jensen": {"we": 0.05},
         },
     },
     "farm": {
-        "layout_x": [0.0],
-        "layout_y": [0.0],
+        "layout_x": [0.0, 1000.0],
+        "layout_y": [0.0, 0.0],
         "turbine_type": ["nrel_5MW"],
     },
     "flow_field": {
         "wind_speeds": [8.0],
         "wind_directions": [270.0],
+        "turbulence_intensities": [0.06],
         "wind_veer": 0.0,
         "wind_shear": 0.12,
         "air_density": 1.225,
-        "turbulence_intensity": 0.06,
         "reference_wind_height": 90.0,
     },
     "name": "GCH_for_FlorisStandin",
@@ -65,25 +59,31 @@ floris_dict = {
     "floris_version": "v4.x",
 }
 
-if optimize_yaw_offsets:
-    fi = FlorisInterface(floris_dict)
+if __name__ == "__main__":
+    # Handle inputs
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--yaw_offset_filename", default="yaw_offsets.pkl")
+    parser.add_argument("--input_wind_filename", default="amr_standin_data.csv")
 
-    fi.reinitialize(
-        layout_x=[0.0, 1000.0],
-        layout_y=[0.0, 0.0],
-        wind_directions=np.arange(0.0, 360.0, 3.0),
-        wind_speeds=np.arange(2.0, 18.0, 1.0),
+    args = parser.parse_args()
+
+    fmodel = FlorisModel(floris_dict)
+
+    df_opt = build_simple_wake_steering_lookup_table(
+        fmodel,
+        wd_resolution=3.0,
+        ws_resolution=1.0,
+        ws_min=2.0,
+        ws_max=17.0,
+        minimum_yaw_angle=-25.0,
+        maximum_yaw_angle=25.0,
     )
-
-    yaw_opt = YawOptimizationSR(fi, verify_convergence=True)
-    df_opt = yaw_opt.optimize()
 
     print("Optimization results:")
     print(df_opt)
 
-    df_opt.to_pickle("yaw_offsets.pkl")
+    df_opt.to_pickle(args.yaw_offset_filename)
 
-if build_external_data:
     # Also, build an example external data file
     total_time = 100 # seconds
     dt = 0.5
@@ -99,4 +99,4 @@ if build_external_data:
         "amr_wind_direction": wind_directions
     })
 
-    df_data.to_csv("amr_standin_data.csv")
+    df_data.to_csv(args.input_wind_filename, index=False)
