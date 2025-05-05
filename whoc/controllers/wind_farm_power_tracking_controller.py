@@ -58,23 +58,32 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
     Inherits from WindFarmPowerDistributingController.
     """
 
-    def __init__(self, interface, input_dict, proportional_gain=1, verbose=False):
+    def __init__(
+            self,
+            interface, 
+            input_dict,
+            proportional_gain=1,
+            ramp_rate_limit=None,
+            verbose=False
+        ):
+        """
+        Constructor for WindFarmPowerTrackingController.
+
+        Args:
+            interface: WHOC Interface object for communication with the simulation environment.
+            input_dict: Dictionary containing input parameters for the controller.
+            proportional_gain: Proportional gain for the controller.
+            ramp_rate_limit: Ramp rate limit for the controller (kW/s). Defaults to None.
+            verbose: Boolean flag for verbosity.
+        """
         super().__init__(interface, input_dict, verbose=verbose)
+        self.dt = input_dict["dt"]
 
-        # No integral action for now. beta and omega_n not used.
-        # beta=0.7
-        # omega_n=0.01
-        # integral_gain=0 
-
+        # Proportional gain
         self.K_p = proportional_gain * 1/self.n_turbines
-        # self.K_i = integral_gain *(4*beta*omega_n)
 
-        # Initialize controller (only used for integral action)
-        # self.e_prev = 0
-        # self.u_prev = 0
-        # self.u_i_prev = 0
-        # self.ai_prev = [0.33]*self.n_turbines # TODO: different method for anti-windup?
-        # self.n_saturated = 0 
+        # Ramp rate limit
+        self.ramp_rate_limit = ramp_rate_limit
 
     def turbine_power_references(self, farm_power_reference=POWER_SETPOINT_DEFAULT):
         """
@@ -89,6 +98,14 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
         turbine_current_powers = self.measurements_dict["turbine_powers"]
         farm_current_power = np.sum(turbine_current_powers)
         farm_current_error = farm_power_reference - farm_current_power
+
+        # Apply ramp rate limit
+        if self.ramp_rate_limit is not None:
+            farm_current_error = np.clip(
+                farm_current_error,
+                farm_current_power - self.ramp_rate_limit * self.dt,
+                farm_current_power + self.ramp_rate_limit * self.dt
+            )
 
         self.n_saturated = 0 # TODO: determine whether to use gain scheduling
         if self.n_saturated < self.n_turbines:
