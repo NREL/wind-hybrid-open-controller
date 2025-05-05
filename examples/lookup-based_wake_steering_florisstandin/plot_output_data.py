@@ -46,6 +46,7 @@ ax[1].set_xlabel("Time [s]")
 ax[1].legend(loc="lower left")
 
 #fig.savefig("../../docs/graphics/lookup-table-example-plot.png", dpi=300, format="png")
+#fig.savefig("../../docs/graphics/lookup-table-example-plot_hysteresis.png", dpi=300, format="png")
 
 # Almost equal power to begin with as turbines turbines are not aligned. As the wind direction
 # shifts towards the aligned direction beginning at t = 30s, the downstream turbine (T001) begins to
