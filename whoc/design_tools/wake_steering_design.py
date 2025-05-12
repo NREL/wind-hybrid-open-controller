@@ -345,7 +345,7 @@ def compute_hysteresis_zones(
             # Check the final region, which could be reversed
             if ((hysteresis_wds[-1][0] > hysteresis_wds[-1][1])
                 or (hysteresis_wds[0][0] > hysteresis_wds[0][1])):
-                if hysteresis_wds[-1][1] > hysteresis_wds[0][0]:
+                if hysteresis_wds[-1][1] >= hysteresis_wds[0][0]:
                     hysteresis_wds[0] = (hysteresis_wds[-1][0], hysteresis_wds[0][1])
                     hysteresis_wds.pop(-1)
         hysteresis_dict[turbine_tag] = hysteresis_wds
