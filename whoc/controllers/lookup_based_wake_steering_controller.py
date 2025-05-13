@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from floris.utilities import wrap_180
 
 from whoc.controllers.controller_base import ControllerBase
 from whoc.design_tools.wake_steering_design import get_yaw_angles_interpolant
@@ -107,7 +108,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
         if self.hysteresis_dict is not None:
             for t in range(self.n_turbines):
                 for zone in self.hysteresis_dict["T{:03d}".format(t)]:
-                    if zone[0] < wind_directions[t] < zone[1]:
+                    if wrap_180(zone[0]) < wrap_180(wind_directions[t]) < wrap_180(zone[1]):
                         # In hysteresis zone, overwrite yaw angle with previous setpoint
                         yaw_setpoint[t] = self.yaw_store[t]
 
