@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from floris import FlorisModel, UncertainFlorisModel, WindRose, WindTIRose
 from floris.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
-from floris.utilities import wrap_360
+from floris.utilities import wrap_180, wrap_360
 from scipy.interpolate import interp1d, RegularGridInterpolator
 
 
@@ -328,32 +328,38 @@ def compute_hysteresis_zones(
             hysteresis_wds.append((lb, ub))
 
         # Consolidate regions
-        for _ in range(len(hysteresis_wds)): # Outer loop to handle multiple possible wrap merges
-            i_h = 0
-            while i_h < len(hysteresis_wds)-1:
-                if (hysteresis_wds[i_h][1] >= hysteresis_wds[i_h+1][0]
-                    and hysteresis_wds[i_h][0] <= hysteresis_wds[i_h+1][1]):
-                    # Merge regions
-                    hysteresis_wds[i_h] = (
-                        min(hysteresis_wds[i_h][0], hysteresis_wds[i_h+1][0]),
-                        max(hysteresis_wds[i_h][1], hysteresis_wds[i_h+1][1])
-                    )
-                    # Remove next region
-                    hysteresis_wds.pop(i_h+1)
-                else:
-                    i_h += 1
-            # Check the final region, which could be reversed
-            if ((hysteresis_wds[-1][0] > hysteresis_wds[-1][1])
-                or (hysteresis_wds[0][0] > hysteresis_wds[0][1])):
-                if hysteresis_wds[-1][1] >= hysteresis_wds[0][0]:
-                    hysteresis_wds[0] = (hysteresis_wds[-1][0], hysteresis_wds[0][1])
-                    hysteresis_wds.pop(-1)
-        hysteresis_dict[turbine_tag] = hysteresis_wds
+        hysteresis_dict[turbine_tag] = consolidate_hysteresis_zones(hysteresis_wds)
 
     if verbose:
-        print("Identified hysteresis regions: {}".format(hysteresis_dict))
+        print("Identified hysteresis zones: {}".format(hysteresis_dict))
 
     return hysteresis_dict
+
+def consolidate_hysteresis_zones(hysteresis_wds):
+    """
+    Merge hysteresis zones that overlap.
+
+    Args:
+        hysteresis_wds (list): A list of tuples representing the lower and upper bounds for the
+           hysteresis zones.
+
+    Returns:
+        hysteresis_wds (list): A list of tuples representing the merged hysteresis zones.
+    """
+    import ipdb; ipdb.set_trace()
+    for _ in range(len(hysteresis_wds)): # Outer loop to handle multiple possible wrap merges
+        i_h = 0
+        while i_h < len(hysteresis_wds)-1:
+            if ((hysteresis_wds[i_h][1] >= hysteresis_wds[i_h+1][0])):
+                #or (wrap_180(hysteresis_wds[i_h][1]) >= wrap_180(hysteresis_wds[i_h+1][0]))
+                #):
+                # Merge regions
+                hysteresis_wds[i_h] = (hysteresis_wds[i_h][0], hysteresis_wds[i_h+1][1])
+                # Remove next region
+                hysteresis_wds.pop(i_h+1)
+            else:
+                i_h += 1
+    return hysteresis_wds
 
 
 def apply_wind_speed_ramps(

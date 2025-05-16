@@ -10,6 +10,7 @@ from whoc.design_tools.wake_steering_design import (
     build_uncertain_wake_steering_lookup_table,
     check_df_opt_ordering,
     compute_hysteresis_zones,
+    consolidate_hysteresis_zones,
     create_uniform_wind_rose,
     get_yaw_angles_interpolant,
 )
@@ -303,8 +304,6 @@ def test_hysteresis_zones():
 
     # Calculate hysteresis regions
     hysteresis_dict_test = compute_hysteresis_zones(df_opt, min_zone_width=min_zone_width)
-
-    # Check for full rotation of wds, too.
     assert hysteresis_dict_test == hysteresis_dict_base
 
     # Check angle wrapping works (runs through)
@@ -357,7 +356,8 @@ def test_hysteresis_zones():
     hysteresis_dict_test = compute_hysteresis_zones(
         df_opt_2,
         min_zone_width=3*min_zone_width,
-        yaw_rate_threshold=1.0
+        yaw_rate_threshold=1.0,
+        verbose=True
     )
     # Check actual grouping occurs (not purely due to larger region width)
     assert (
@@ -367,6 +367,57 @@ def test_hysteresis_zones():
     # Check new region covers original region
     assert (hysteresis_dict_test["T000"][0][0] - 90.0) % 360.0 < hysteresis_dict_base["T000"][0][0]
     assert (hysteresis_dict_test["T000"][0][1] - 90.0) % 360.0 > hysteresis_dict_base["T000"][0][1]
+
+
+def test_consolidate_hysteresis_zones():
+
+    # Check basic grouping
+    # hysteresis_wds_base = [(10, 30)]
+    # hysteresis_wds_unconsolidated = [(10, 20), (18, 25), (25, 30)]
+    # hysteresis_wds_test = consolidate_hysteresis_zones(hysteresis_wds_unconsolidated)
+    # assert hysteresis_wds_test == hysteresis_wds_base
+
+    # # Check 360 degree wrap
+    # hysteresis_wds_base = [(350, 10)]
+    # hysteresis_wds_unconsolidated = [(350, 355), (355, 5), (5, 10)]
+    # hysteresis_wds_test = consolidate_hysteresis_zones(hysteresis_wds_unconsolidated)
+    # assert hysteresis_wds_test == hysteresis_wds_base
+
+    # # Only last one crosses 0/360 divide
+    # hysteresis_wds_base = [(350, 10)]
+    # hysteresis_wds_unconsolidated = [(350, 355), (354, 10)]
+    # hysteresis_wds_test = consolidate_hysteresis_zones(hysteresis_wds_unconsolidated)
+    # assert hysteresis_wds_test == hysteresis_wds_base
+
+    # # Only first one crosses 0/360 divide
+    # hysteresis_wds_base = [(350, 10)]
+    # hysteresis_wds_unconsolidated = [(350, 5), (5, 10)]
+    # hysteresis_wds_test = consolidate_hysteresis_zones(hysteresis_wds_unconsolidated)
+    # assert hysteresis_wds_test == hysteresis_wds_base
+    
+    #
+    hysteresis_centers = [  8.,  12.,  16., 344., 348., 352., 360.]
+    hysteresis_wds_base = [(hysteresis_centers[0]-6, hysteresis_centers[-1]+6)]
+    hysteresis_wds_unconsolidated = [
+        (hysteresis_centers[0]-6, hysteresis_centers[0]+6),
+        (hysteresis_centers[1]-6, hysteresis_centers[1]+6),
+        (hysteresis_centers[2]-6, hysteresis_centers[2]+6),
+        (hysteresis_centers[3]-6, hysteresis_centers[3]+6),
+        (hysteresis_centers[4]-6, hysteresis_centers[4]+6),
+        (hysteresis_centers[5]-6, hysteresis_centers[5]+6),
+        (hysteresis_centers[6]-6, hysteresis_centers[6]+6)
+    ]
+    hysteresis_wds_test = consolidate_hysteresis_zones(hysteresis_wds_unconsolidated)
+    assert hysteresis_wds_test == hysteresis_wds_base
+    
+    # Two crossing 0/360 divide
+    hysteresis_wds_base = [(350, 10)]
+    hysteresis_wds_unconsolidated = [(350, 355), (355, 5), (357, 8), (7, 10)]
+    hysteresis_wds_test = consolidate_hysteresis_zones(hysteresis_wds_unconsolidated)
+    assert hysteresis_wds_test == hysteresis_wds_base
+
+
+
 
 def test_create_uniform_wind_rose():
     wind_rose = create_uniform_wind_rose()
