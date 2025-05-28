@@ -47,15 +47,15 @@ source $SCRIPTS_DIR/get_helics_port.sh $first_port
 if [ -d outputs ]; then rm -r outputs; fi
 mkdir -p outputs
 
-# # Generate floris standin data
-# python ../../hercules/tools/generate_amr_standin_data.py floris_standin_data.csv
-
+# Generate input time series for hydrogen reference and wind resource
+echo "Generating input time series"
+python generate_input_timeseries.py
 
 # Set up the helics broker
 echo "Connecting helics broker to port $HELICS_PORT"
 helics_broker -t zmq  -f 2 --loglevel="debug" --local_port=$HELICS_PORT & 
 python hercules_runscript.py inputs/hercules_input.yaml $HELICS_PORT >> outputs/loghercules_cl.log 2>&1 &
-python floris_runscript.py inputs/amr_input.inp inputs/floris_standin_data_ws10_wd240.csv $HELICS_PORT >> outputs/logfloris_cl.log 2>&1
+python floris_runscript.py inputs/amr_input.inp inputs/amr_standin_data.csv $HELICS_PORT >> outputs/logfloris_cl.log 2>&1
 
 # Clean up helics output if there
 # Search for a file that begins with the current year
