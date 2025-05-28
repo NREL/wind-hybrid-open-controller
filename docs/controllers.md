@@ -91,8 +91,9 @@ The default is to apply the full reference across the full range of SOCs, i.e.
     graphics/clipping-schedules.png
 )
 
+(controllers_windhydrogen)=
 ### WindHydrogenController
-Simple closed-loop controller for a wind/hydrogen plant. The controller uses an external hydrogen reference signal to control the hydrogen production of the plant through setting the wind reference signal.
+Simple closed-loop controller for an off-grid wind/hydrogen plant. The controller uses an external hydrogen reference signal to control the hydrogen production of the plant through setting the wind reference signal.
 
 Reads in current power production for wind, the current hydrogen production rate, and the hydrogen rate reference. Contains logic to set the wind power reference using a proportional gain based on the difference between the current hydrogen production rate and the hydrogen production reference. This difference is then scaled by the current wind power production due to the difference of several magnitudes between the wind power and the hydrogen production rate.
 
