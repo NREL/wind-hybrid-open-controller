@@ -21,7 +21,7 @@ from whoc.controllers import (
     WindFarmPowerTrackingController,
     WindHydrogenController,
 )
-from whoc.interfaces.hercules_wind_hydrogen_interface import HerculesWindHydrogenInterface
+from whoc.interfaces import HerculesHybridADInterface
 
 # Check that command line arguments are provided
 if len(sys.argv) != 3:
@@ -37,7 +37,7 @@ input_dict["hercules_comms"]["helics"]["config"]["helics"]["helicsport"] = helic
 print(f"Running Hercules with helics_port {helics_port}")
 
 
-interface = HerculesWindHydrogenInterface(input_dict)
+interface = HerculesHybridADInterface(input_dict)
 
 print("Setting up controller.")
 wind_controller = WindFarmPowerTrackingController(interface, input_dict)

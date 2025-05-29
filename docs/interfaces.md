@@ -30,16 +30,10 @@ and power setpoints to wind turbines.
 
 ### HerculesHybridADInterface
 For direct python communication with Hercules, when simulating a hybrid 
-wind/solar/battery plant. Currently, intended for use with the
-`HybridSupervisoryControllerBaseline`, while full closed-loop supervisory
-controllers for hybrid power plants are built out. Supports sending power
-reference signals to each wind turbine in a wind farm, as well as a bulk power
-signal to the solar farm and a bulk power signal to the battery.
-
-### HerculesWindHydrogenInterface
-For direct python communication with Hercules, when simulating a  
-wind/hydrogen plant. Currently, intended for use with the
-`WindHydrogenController`. Supports sending power reference signals to each wind turbine in a wind farm.
+wind/solar/battery plant. Also handles Hercules' hydrogen modules.
+Supports sending power reference signals to each wind turbine in a wind farm,
+as well as a bulk power signal to the solar farm and a bulk power signal to the
+battery.
 
 ### ROSCO_ZMQInterface
 For sending and receiving communications from one or more ROSCO instances 

@@ -3,7 +3,6 @@ from whoc.interfaces import (
     HerculesADInterface,
     HerculesBatteryInterface,
     HerculesHybridADInterface,
-    HerculesWindHydrogenInterface,
 )
 
 test_hercules_dict = {
@@ -45,7 +44,6 @@ def test_interface_instantiation():
     _ = HerculesADInterface(hercules_dict=test_hercules_dict)
     _ = HerculesHybridADInterface(hercules_dict=test_hercules_dict)
     _ = HerculesBatteryInterface(hercules_dict=test_hercules_dict)
-    _ = HerculesWindHydrogenInterface(hercules_dict=test_hercules_dict)
     # _ = ROSCO_ZMQInterface()
 
 
@@ -181,6 +179,14 @@ def test_HerculesHybridADInterface():
         test_hercules_dict_out["py_sims"]["inputs"]["solar_setpoint_mw"]
         == controls_dict["solar_power_setpoint"] / 1000
     )
+    assert (
+        measurements["hydrogen_reference"]
+        == test_hercules_dict["external_signals"]["hydrogen_reference"]
+    )
+    assert (
+        measurements["hydrogen_output"]
+        == test_hercules_dict["py_sims"]["test_hydrogen"]["outputs"]["H2_output"]
+    )
 
     with pytest.raises(TypeError):  # Bad kwarg
         interface.send_controls(test_hercules_dict, **bad_controls_dict)
@@ -238,56 +244,3 @@ def test_HerculesBatteryInterface():
     # defaults to zero
     test_hercules_dict_out = interface.send_controls(hercules_dict=test_hercules_dict)
     assert test_hercules_dict_out["py_sims"]["inputs"]["battery_signal"] == 0
-
-def test_HerculesWindHydrogenInterface():
-
-    interface = HerculesWindHydrogenInterface(hercules_dict=test_hercules_dict)
-
-    # Test get_measurements()
-    measurements = interface.get_measurements(hercules_dict=test_hercules_dict)
-
-    assert measurements["time"] == test_hercules_dict["time"]
-    assert (
-        measurements["wind_turbine_powers"]
-        == test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"]
-    )
-    assert (
-        measurements["wind_speed"]
-        == test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["wind_speed"]
-    )
-    assert (
-        measurements["hydrogen_reference"]
-        == test_hercules_dict["external_signals"]["hydrogen_reference"]
-    )
-    assert (
-        measurements["hydrogen_output"]
-        == test_hercules_dict["py_sims"]["test_hydrogen"]["outputs"]["H2_output"]
-    )
-
-
-    # Test check_controls()
-    controls_dict = {
-        "wind_power_setpoints": [1000.0, 1000.0],
-    }
-    bad_controls_dict = {
-        "wind_power_setpoints": [1000.0, 1000.0],
-        "unavailable_control": 0.0,
-    }
-
-    interface.check_controls(controls_dict)
-
-    with pytest.raises(ValueError):
-        interface.check_controls(bad_controls_dict)
-
-    # Test send_controls()
-    test_hercules_dict_out = interface.send_controls(
-        hercules_dict=test_hercules_dict, **controls_dict
-    )
-
-    assert (
-        test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
-        == controls_dict["wind_power_setpoints"]
-    )
-
-    with pytest.raises(TypeError):  # Bad kwarg
-        interface.send_controls(test_hercules_dict, **bad_controls_dict)
