@@ -18,7 +18,6 @@ from whoc.interfaces import (
     HerculesADInterface,
     HerculesBatteryInterface,
     HerculesHybridADInterface,
-    HerculesWindHydrogenInterface,
 )
 from whoc.interfaces.interface_base import InterfaceBase
 
@@ -44,8 +43,7 @@ class StandinInterface(InterfaceBase):
 test_hercules_dict = {
     "dt": 1,
     "time": 0,
-    "controller": {"num_turbines": 2, "initial_conditions": {"yaw": [270.0, 270.0]}, 
-                   "wind_capacity_MW": 10},
+    "controller": {"num_turbines": 2, "initial_conditions": {"yaw": [270.0, 270.0]}},
     "hercules_comms": {
         "amr_wind": {
             "test_farm": {
@@ -537,7 +535,7 @@ def test_WindHydrogenController():
     """
     Tests that the WindHydrogenController outputs a reasonable signal
     """
-    test_interface = HerculesWindHydrogenInterface(test_hercules_dict)
+    test_interface = HerculesHybridADInterface(test_hercules_dict)
 
     # Establish lower controllers
     wind_controller = WindFarmPowerTrackingController(test_interface, test_hercules_dict)

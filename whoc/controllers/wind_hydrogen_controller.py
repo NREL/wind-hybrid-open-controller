@@ -31,7 +31,6 @@ class WindHydrogenController(ControllerBase):
 
         # Assign the individual asset controllers
         self.wind_controller = wind_controller
-        self.wind_ref_value = interface.wind_capacity_kW
 
         # # Set constants
         # py_sims = list(input_dict["py_sims"].keys())
@@ -81,7 +80,7 @@ class WindHydrogenController(ControllerBase):
         if wind_power > 0:
             wind_scaling = wind_power
         else:
-            wind_scaling = self.wind_ref_value
+            wind_scaling = 100 # MS TODO: check for appropriate default?
         if hydrogen_output> 0 :
             h2_scaling = hydrogen_output
         else:
