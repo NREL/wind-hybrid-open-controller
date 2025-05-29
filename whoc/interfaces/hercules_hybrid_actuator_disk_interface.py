@@ -9,11 +9,12 @@ class HerculesHybridADInterface(InterfaceBase):
         self.dt = hercules_dict["dt"]
         py_sims = list(hercules_dict["py_sims"].keys())
         hercules_comms = list(hercules_dict["hercules_comms"].keys())
-        tech_keys = ["solar", "battery", "wind"]
+        tech_keys = ["solar", "battery", "wind", "hydrogen"]
 
         self._has_solar_component = False
         self._has_wind_component = False
         self._has_battery_component = False
+        self._has_hydrogen_component = False
         # Grab name of wind, solar, and battery 
         for i in py_sims:
             if tech_keys[0] in i.split('_'):
@@ -21,7 +22,10 @@ class HerculesHybridADInterface(InterfaceBase):
                 self._has_solar_component = True
             if tech_keys[1] in i.split('_'):
                 self.battery_name = [ps for ps in py_sims if "battery" in ps][0]
-                self._has_battery_component = True   
+                self._has_battery_component = True
+            if tech_keys[3] in i.split("_"):
+                self.hydrogen_name = [ps for ps in py_sims if "hydrogen" in ps][0]
+                self._has_hydrogen_component = True
 
         for i in hercules_comms:
             if tech_keys[2] in i.split('_'):
@@ -61,6 +65,9 @@ class HerculesHybridADInterface(InterfaceBase):
             measurements["wind_speed"] =  \
                 hercules_dict["hercules_comms"]["amr_wind"][self.wind_name]["wind_speed"]
         if self._has_solar_component:
+            # solar_power converted to kW here
+            # solar_dni is the direct normal irradiance
+            # solar_aoi is the 
             measurements["solar_power"]= \
                 hercules_dict["py_sims"][self.solar_name]["outputs"]["power_mw"] * 1000
             measurements["solar_dni"]= \
@@ -72,10 +79,15 @@ class HerculesHybridADInterface(InterfaceBase):
                 -hercules_dict["py_sims"][self.battery_name]["outputs"]["power"]
             measurements["battery_soc"]= \
                 hercules_dict["py_sims"][self.battery_name]["outputs"]["soc"]
-
-        # Notes: solar_power converted to kW here
-        # solar_dni is the direct normal irradiance
-        # solar_aoi is the angle of incidence
+        if self._has_hydrogen_component:
+            measurements["hydrogen_output"]= \
+                hercules_dict["py_sims"][self.hydrogen_name]["outputs"]["H2_output"]
+            if "external_signals" in hercules_dict and \
+               "hydrogen_reference" in hercules_dict["external_signals"]:
+                measurements["hydrogen_reference"] = \
+                    hercules_dict["external_signals"]["hydrogen_reference"]
+            else:
+                measurements["hydrogen_reference"] = POWER_SETPOINT_DEFAULT
 
         return measurements
 
