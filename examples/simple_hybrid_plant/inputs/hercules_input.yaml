@@ -45,7 +45,7 @@ py_sims:
     lon: -105.1778
     elev: 1829
     target_system_capacity: 100000 # kW
-    target_dc_ac_ratio: 1.2 # Does not affect output power
+    target_dc_ac_ratio: 1.3
 
     initial_conditions:
       power: 25 # MW
