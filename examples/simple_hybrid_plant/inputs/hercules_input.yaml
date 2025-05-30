@@ -1,7 +1,5 @@
-# Input YAML for emy_python
-
 # Name
-name: example_000
+name: simple_hybrid_plant
 
 ###
 # Describe this emulator setup
@@ -46,11 +44,10 @@ py_sims:
     lat: 39.7442
     lon: -105.1778
     elev: 1829
-
-    # capacity: 100 # MW
+    target_system_capacity: 100000 # kW
+    target_dc_ac_ratio: 1.2 # Does not affect output power
 
     initial_conditions:
-
       power: 25 # MW
       dni: 1000
 
