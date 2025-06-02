@@ -26,15 +26,13 @@ class ControllerBase(metaclass=ABCMeta):
         # If not running with direct hercules integration, hercules_dict may simply be None
         # throughout this method.
         self._receive_measurements(input_dict)
-        
-        self.compute_controls()
-        
+
+        self.controls_dict = self.compute_controls(self.measurements_dict)
+
         output_dict = self._send_controls(input_dict)
-        
+
         return output_dict
-    
-    
     @abstractmethod
-    def compute_controls(self):
+    def compute_controls(self, measurements_dict: dict) -> dict:
         pass  # Control algorithms should be implemented in the compute_controls 
         # method of the child class. 

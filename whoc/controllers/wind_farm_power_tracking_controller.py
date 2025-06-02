@@ -23,13 +23,13 @@ class WindFarmPowerDistributingController(ControllerBase):
         # For startup
 
 
-    def compute_controls(self):
-        if "wind_power_reference" in self.measurements_dict:
-            farm_power_reference = self.measurements_dict["wind_power_reference"]
+    def compute_controls(self, measurements_dict):
+        if "wind_power_reference" in measurements_dict:
+            farm_power_reference = measurements_dict["wind_power_reference"]
         else:
             farm_power_reference = POWER_SETPOINT_DEFAULT
         
-        self.turbine_power_references(farm_power_reference=farm_power_reference)
+        return self.turbine_power_references(farm_power_reference=farm_power_reference)
 
     def turbine_power_references(self, farm_power_reference=POWER_SETPOINT_DEFAULT):
         """
@@ -43,12 +43,12 @@ class WindFarmPowerDistributingController(ControllerBase):
 
         # Split farm power reference among turbines and set "no value" for yaw angles (Floris not
         # compatible with both power_setpoints and yaw_angles).
-        self.controls_dict = {
+        controls_dict = {
             "power_setpoints": [farm_power_reference/self.n_turbines]*self.n_turbines,
             "yaw_angles": [-1000]*self.n_turbines
         }
 
-        return None
+        return controls_dict
 
 class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
     """
@@ -116,7 +116,7 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
         
         # set "no value" for yaw angles (Floris not compatible with both 
         # power_setpoints and yaw_angles)
-        self.controls_dict = {
+        controls_dict = {
             "power_setpoints": list(turbine_power_setpoints),
             "yaw_angles": [-1000]*self.n_turbines
         }
@@ -126,4 +126,4 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
         # self.u_prev = u
         # self.u_i_prev = u_i
 
-        return None
+        return controls_dict
