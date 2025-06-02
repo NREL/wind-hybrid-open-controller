@@ -50,40 +50,37 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
         self.prev_wind_power = 0
         self.prev_solar_power = 0
 
-    def compute_controls(self):
+    def compute_controls(self, measurements_dict):
         # Run supervisory control logic
         wind_reference, solar_reference, battery_reference = self.supervisory_control()
 
         # Package the controls for the individual controllers, step, and return
-        self.controls_dict = {}
+        controls_dict = {}
         if self._has_wind_controller:
-            self.wind_controller.measurements_dict["wind_power_reference"] = wind_reference
-            self.wind_controller.measurements_dict["turbine_powers"] = (
-                self.measurements_dict["wind_turbine_powers"]
-            )
-            self.wind_controller.compute_controls()
-            self.controls_dict["wind_power_setpoints"] = (
-                self.wind_controller.controls_dict["power_setpoints"]
-            )
+            print("UPPER measurements:", measurements_dict)
+            wind_measurements_dict = {
+                "wind_power_reference": wind_reference,
+                "turbine_powers": measurements_dict["wind_turbine_powers"]
+            }
+            wind_controls_dict = self.wind_controller.compute_controls(wind_measurements_dict)
+            controls_dict["wind_power_setpoints"] = wind_controls_dict["power_setpoints"]
         if self._has_solar_controller:
-            self.solar_controller.measurements_dict["solar_power_reference"] = solar_reference
-            self.solar_controller.compute_controls()
-            self.controls_dict["solar_power_setpoint"] = (
-                self.solar_controller.controls_dict["power_setpoint"]
-            )
+            solar_measurements_dict = {"solar_power_reference": solar_reference}
+            solar_controls_dict = self.solar_controller.compute_controls(solar_measurements_dict)
+            controls_dict["solar_power_setpoint"] = solar_controls_dict["power_setpoint"]
         if self._has_battery_controller:
-            self.battery_controller.measurements_dict.update({
+            battery_measurements_dict = {
                 "time": self.measurements_dict["time"],
                 "power_reference": battery_reference,
                 "battery_power": self.measurements_dict["battery_power"],
                 "battery_soc": self.measurements_dict["battery_soc"]
-            })
-            self.battery_controller.compute_controls()
-            self.controls_dict["battery_power_setpoint"] = (
-                self.battery_controller.controls_dict["power_setpoint"]
+            }
+            battery_controls_dict = self.battery_controller.compute_controls(
+                battery_measurements_dict
             )
+            controls_dict["battery_power_setpoint"] = battery_controls_dict["power_setpoint"]
 
-        return None
+        return controls_dict
 
     def supervisory_control(self):
         # Extract measurements sent

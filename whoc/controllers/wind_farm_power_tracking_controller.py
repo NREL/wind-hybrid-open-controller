@@ -29,9 +29,16 @@ class WindFarmPowerDistributingController(ControllerBase):
         else:
             farm_power_reference = POWER_SETPOINT_DEFAULT
         
-        return self.turbine_power_references(farm_power_reference=farm_power_reference)
+        return self.turbine_power_references(
+            farm_power_reference=farm_power_reference,
+            turbine_powers=measurements_dict["turbine_powers"]
+        )
 
-    def turbine_power_references(self, farm_power_reference=POWER_SETPOINT_DEFAULT):
+    def turbine_power_references(
+            self,
+            farm_power_reference=POWER_SETPOINT_DEFAULT,
+            turbine_powers=None
+        ):
         """
         Compute turbine-level power setpoints based on farm-level power
         reference signal.
@@ -76,7 +83,11 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
         # self.ai_prev = [0.33]*self.n_turbines # TODO: different method for anti-windup?
         # self.n_saturated = 0 
 
-    def turbine_power_references(self, farm_power_reference=POWER_SETPOINT_DEFAULT):
+    def turbine_power_references(
+            self,
+            farm_power_reference=POWER_SETPOINT_DEFAULT,
+            turbine_powers=None
+        ):
         """
         Compute turbine-level power setpoints based on farm-level power
         reference signal.
@@ -86,8 +97,7 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
         - None (sets self.controls_dict)
         """
         
-        turbine_current_powers = self.measurements_dict["turbine_powers"]
-        farm_current_power = np.sum(turbine_current_powers)
+        farm_current_power = np.sum(turbine_powers)
         farm_current_error = farm_power_reference - farm_current_power
 
         self.n_saturated = 0 # TODO: determine whether to use gain scheduling
@@ -112,7 +122,7 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
         u = u_p #+ u_i
         delta_P_ref = u
 
-        turbine_power_setpoints = np.array(turbine_current_powers) + delta_P_ref
+        turbine_power_setpoints = np.array(turbine_powers) + delta_P_ref
         
         # set "no value" for yaw angles (Floris not compatible with both 
         # power_setpoints and yaw_angles)
