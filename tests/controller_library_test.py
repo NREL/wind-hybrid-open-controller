@@ -401,18 +401,18 @@ def test_BatteryPassthroughController():
     test_controller = BatteryPassthroughController(test_interface, test_hercules_dict)
 
     power_ref = 1000
-    test_controller.measurements_dict["power_reference"] = power_ref
-    test_controller.compute_controls()
-    assert test_controller.controls_dict["power_setpoint"] == power_ref
+    measurements_dict = {"power_reference": power_ref}
+    controls_dict = test_controller.compute_controls(measurements_dict)
+    assert controls_dict["power_setpoint"] == power_ref
 
 def test_SolarPassthroughController():
     test_interface = HerculesHybridADInterface(test_hercules_dict)
     test_controller = SolarPassthroughController(test_interface, test_hercules_dict)
 
     power_ref = 1000
-    test_controller.measurements_dict["solar_power_reference"] = power_ref
-    test_controller.compute_controls()
-    assert test_controller.controls_dict["power_setpoint"] == power_ref
+    measurements_dict = {"solar_power_reference": power_ref}
+    controls_dict = test_controller.compute_controls(measurements_dict)
+    assert controls_dict["power_setpoint"] == power_ref
 
 def test_BatteryController():
     test_interface = HerculesBatteryInterface(test_hercules_dict)
