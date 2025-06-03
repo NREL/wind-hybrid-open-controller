@@ -36,9 +36,10 @@ class HydrogenPlantController(ControllerBase):
         # py_sims = list(input_dict["py_sims"].keys())
 
         # Initialize Power references
-        self.wind_reference = 0
+        self.wind_reference = 0 # TODO: Unused, remove?
 
-        self.prev_wind_power = 0
+        # Initialize filter
+        self.filtered_power_prev = 0
 
     def compute_controls(self, measurements_dict):
         # Run supervisory control logic
@@ -50,6 +51,7 @@ class HydrogenPlantController(ControllerBase):
             generator_measurements_dict = {
                 "power_reference": power_reference,
                 "wind_turbine_powers": measurements_dict["wind_turbine_powers"],
+                "total_power": measurements_dict["total_power"],
             }
             wind_controls_dict = self.generator_controller.compute_controls(
                 generator_measurements_dict
@@ -63,45 +65,41 @@ class HydrogenPlantController(ControllerBase):
     def supervisory_control(self, measurements_dict):
         # Extract measurements sent
         time = measurements_dict["time"] # noqa: F841 
-        wind_power = measurements_dict["total_power"]
+        current_power = measurements_dict["total_power"]
         hydrogen_output = measurements_dict["hydrogen_output"]
         wind_speed = measurements_dict["wind_speed"] # noqa: F841
-        reference_hydrogen = measurements_dict["hydrogen_reference"]
+        hydrogen_reference = measurements_dict["hydrogen_reference"]
 
         # Input filtering
-        a = 0.1 # TODO: make this dt-dependent?
-        wind_power = (1-a)*self.prev_wind_power + a*wind_power
+        a = 0.05
+        filtered_power = (1-a/self.dt)*self.filtered_power_prev + a/self.dt*current_power
 
         # TODO: Temporary print statements (note that negative battery indicates discharging)
-        print("Measured powers (wind):", wind_power)
+        print("Power generated (filtered):", filtered_power)
         print("Current hydrogen:", hydrogen_output)
-        print("Reference hydrogen:", reference_hydrogen)
+        print("Reference hydrogen:", hydrogen_reference)
 
         # Calculate difference between hydrogen reference and hydrogen actual
-        hydrogen_difference = reference_hydrogen - hydrogen_output
-        if wind_power > 0:
-            wind_scaling = wind_power
+        hydrogen_error = hydrogen_reference - hydrogen_output
+        if filtered_power > 0:
+            power_scaling = filtered_power
         else:
-            wind_scaling = 100 # MS TODO: check for appropriate default?
+            power_scaling = 100 # MS TODO: check for appropriate default?
         if hydrogen_output > 0:
             h2_scaling = hydrogen_output
         else:
-            h2_scaling = reference_hydrogen
-        
+            h2_scaling = hydrogen_reference
 
         # Scale gain by hydrogen output
-        K = (wind_scaling/h2_scaling) * hydrogen_difference
+        K = power_scaling/h2_scaling
 
-        # Apply gain to wind power output
-        power_reference = wind_power + K 
+        # Apply gain to generator power output
+        power_reference = filtered_power + K * hydrogen_error
 
-        print(
-            "Power reference value (wind)",
-            power_reference
-        )
+        print("Power reference value", power_reference) # TODO: remove when happy
 
-        self.prev_wind_power = wind_power
-        self.wind_reference = power_reference
+        self.filtered_power_prev = filtered_power
+        self.wind_reference = power_reference # TODO: Unused, remove?
 
         # # Placeholder for supervisory control logic
         # wind_reference = 20000 # kW
