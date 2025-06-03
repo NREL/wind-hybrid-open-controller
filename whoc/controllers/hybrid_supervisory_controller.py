@@ -59,7 +59,6 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
         # Package the controls for the individual controllers, step, and return
         controls_dict = {}
         if self._has_wind_controller:
-            print("UPPER measurements:", measurements_dict)
             wind_measurements_dict = {
                 "power_reference": wind_reference,
                 "wind_turbine_powers": measurements_dict["wind_turbine_powers"]
