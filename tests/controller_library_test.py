@@ -7,11 +7,11 @@ from whoc.controllers import (
     BatteryController,
     BatteryPassthroughController,
     HybridSupervisoryControllerBaseline,
+    HydrogenPlantController,
     LookupBasedWakeSteeringController,
     SolarPassthroughController,
     WindFarmPowerDistributingController,
     WindFarmPowerTrackingController,
-    HydrogenPlantController,
 )
 from whoc.controllers.wind_farm_power_tracking_controller import POWER_SETPOINT_DEFAULT
 from whoc.interfaces import (
