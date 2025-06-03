@@ -558,7 +558,9 @@ def test_WindHydrogenController():
     test_controller.prev_wind_power = sum(wind_current) # To override filtering
 
     test_controller.step(test_hercules_dict) # Run the controller once to update measurements
-    supervisory_control_output = test_controller.supervisory_control()
+    supervisory_control_output = test_controller.supervisory_control(
+        test_controller._measurements_dict
+    )
 
     wind_power_cmd = sum(wind_current) + \
         ((sum(wind_current) / hydrogen_output) * hydrogen_difference)
