@@ -52,7 +52,9 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
 
     def compute_controls(self, measurements_dict):
         # Run supervisory control logic
-        wind_reference, solar_reference, battery_reference = self.supervisory_control()
+        wind_reference, solar_reference, battery_reference = self.supervisory_control(
+            measurements_dict
+        )
 
         # Package the controls for the individual controllers, step, and return
         controls_dict = {}
@@ -70,10 +72,10 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
             controls_dict["solar_power_setpoint"] = solar_controls_dict["power_setpoint"]
         if self._has_battery_controller:
             battery_measurements_dict = {
-                "time": self.measurements_dict["time"],
+                "time": measurements_dict["time"],
                 "power_reference": battery_reference,
-                "battery_power": self.measurements_dict["battery_power"],
-                "battery_soc": self.measurements_dict["battery_soc"]
+                "battery_power": measurements_dict["battery_power"],
+                "battery_soc": measurements_dict["battery_soc"]
             }
             battery_controls_dict = self.battery_controller.compute_controls(
                 battery_measurements_dict
@@ -82,33 +84,33 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
 
         return controls_dict
 
-    def supervisory_control(self):
+    def supervisory_control(self, measurements_dict):
         # Extract measurements sent
-        time = self.measurements_dict["time"] # noqa: F841 
+        time = measurements_dict["time"] # noqa: F841 
         if self._has_wind_controller:
-            wind_power = np.array(self.measurements_dict["wind_turbine_powers"]).sum()
-            wind_speed = self.measurements_dict["wind_speed"] # noqa: F841
+            wind_power = np.array(measurements_dict["wind_turbine_powers"]).sum()
+            wind_speed = measurements_dict["wind_speed"] # noqa: F841
         else:
             wind_power = 0
             wind_speed = 0 # noqa: F841
 
         if self._has_solar_controller:
-            solar_power = self.measurements_dict["solar_power"]
-            solar_dni = self.measurements_dict["solar_dni"] # direct normal irradiance # noqa: F841
-            solar_aoi = self.measurements_dict["solar_aoi"] # angle of incidence # noqa: F841
+            solar_power = measurements_dict["solar_power"]
+            solar_dni = measurements_dict["solar_dni"] # direct normal irradiance # noqa: F841
+            solar_aoi = measurements_dict["solar_aoi"] # angle of incidence # noqa: F841
         else:
             solar_power = 0
             solar_dni = 0 # noqa: F841
             solar_aoi = 0 # noqa: F841
 
         if self._has_battery_controller:
-            battery_power = self.measurements_dict["battery_power"]
-            battery_soc = self.measurements_dict["battery_soc"]
+            battery_power = measurements_dict["battery_power"]
+            battery_soc = measurements_dict["battery_soc"]
         else:
             battery_power = 0
             battery_soc = 0
 
-        plant_power_reference = self.measurements_dict["plant_power_reference"]
+        plant_power_reference = measurements_dict["plant_power_reference"]
 
         # Filter the wind and solar power measurements to reduce noise and improve closed-loop
         # controller damping
