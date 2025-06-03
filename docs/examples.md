@@ -112,7 +112,7 @@ significant as the simulation progresses.
 (examples_windhydrogen)=
 ## wind_hydrogen_tracking
 Example of an off-grid wind-to-hydrogen hybrid energy system using the 
-{ref}`controllers_windhydrogen` to
+{ref}`controllers_hydrogen` to
 track a hydrogen production rate reference. The plant comprises 9 NREL 5MW reference wind turbines
 (45 MW total wind capacity) and a hydrogen plant composed of 40 1-MW electrolyzer stacks.
 
