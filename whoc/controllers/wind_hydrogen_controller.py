@@ -40,32 +40,30 @@ class WindHydrogenController(ControllerBase):
 
         self.prev_wind_power = 0
 
-    def compute_controls(self):
+    def compute_controls(self, measurements_dict):
         # Run supervisory control logic
-        wind_reference = self.supervisory_control()
+        wind_reference = self.supervisory_control(measurements_dict)
 
         # Package the controls for the individual controllers, step, and return
-        self.controls_dict = {}
+        controls_dict = {}
         if self.wind_controller:
-            self.wind_controller.measurements_dict["wind_power_reference"] = wind_reference
-            self.wind_controller.measurements_dict["turbine_powers"] = (
-                self.measurements_dict["wind_turbine_powers"]
-            )
-            self.wind_controller.compute_controls()
-            self.controls_dict["wind_power_setpoints"] = (
-                self.wind_controller.controls_dict["power_setpoints"]
-            )
-        print('Wind ref, final', self.controls_dict["wind_power_setpoints"])
+            wind_measurements_dict = {
+                "power_reference": wind_reference,
+                "wind_turbine_powers": measurements_dict["wind_turbine_powers"],
+            }
+            wind_controls_dict = self.wind_controller.compute_controls(wind_measurements_dict)
+            controls_dict["wind_power_setpoints"] = wind_controls_dict["wind_power_setpoints"]
+        print('Wind ref, final', controls_dict["wind_power_setpoints"])
 
-        return None
+        return controls_dict
 
-    def supervisory_control(self):
+    def supervisory_control(self, measurements_dict):
         # Extract measurements sent
-        time = self.measurements_dict["time"] # noqa: F841 
-        wind_power = np.array(self.measurements_dict["wind_turbine_powers"]).sum()
-        hydrogen_output = self.measurements_dict["hydrogen_output"]
-        wind_speed = self.measurements_dict["wind_speed"] # noqa: F841
-        reference_hydrogen = self.measurements_dict["hydrogen_reference"]
+        time = measurements_dict["time"] # noqa: F841 
+        wind_power = np.array(measurements_dict["wind_turbine_powers"]).sum()
+        hydrogen_output = measurements_dict["hydrogen_output"]
+        wind_speed = measurements_dict["wind_speed"] # noqa: F841
+        reference_hydrogen = measurements_dict["hydrogen_reference"]
 
         a = 0.1
         wind_power = (1-a)*self.prev_wind_power + a*wind_power
