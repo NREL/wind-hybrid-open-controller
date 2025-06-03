@@ -59,7 +59,7 @@ def test_HerculesADInterface():
         == test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_wind_directions"]
     )
     assert (
-        measurements["turbine_powers"]
+        measurements["wind_turbine_powers"]
         == test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"]
     )
     test_forecast = {
@@ -71,7 +71,7 @@ def test_HerculesADInterface():
     controls_dict = {"yaw_angles": [270.0, 278.9]}
     controls_dict2 = {
         "yaw_angles": [270.0, 268.9],
-        "power_setpoints": [3000.0, 3000.0],
+        "wind_power_setpoints": [3000.0, 3000.0],
     }
     interface.check_controls(controls_dict)
     interface.check_controls(controls_dict2)
@@ -79,7 +79,7 @@ def test_HerculesADInterface():
     bad_controls_dict1 = {"yaw_angels": [270.0, 268.9]}  # Misspelling
     bad_controls_dict2 = {
         "yaw_angles": [270.0, 268.9],
-        "power_setpoints": [3000.0, 3000.0],
+        "wind_power_setpoints": [3000.0, 3000.0],
         "unavailable_control": [0.0, 0.0],
     }
     bad_controls_dict3 = {"yaw_angles": [270.0, 268.9, 270.0]}  # Mismatched number of turbines
@@ -122,7 +122,7 @@ def test_HerculesHybridADInterface():
         == test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["wind_speed"]
     )
     assert (
-        measurements["plant_power_reference"]
+        measurements["power_reference"]
         == test_hercules_dict["external_signals"]["wind_power_reference"]
     )
     assert (

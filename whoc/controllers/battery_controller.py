@@ -109,13 +109,13 @@ class BatteryController(ControllerBase):
 
         return np.clip(reference_power, -r_discharge, r_charge)
 
-    def compute_controls(self):
+    def compute_controls(self, measurements_dict):
         """
         Main compute_controls method for BatteryController.
         """
-        reference_power = self.measurements_dict["power_reference"]
-        current_power = self.measurements_dict["battery_power"]
-        soc = self.measurements_dict["battery_soc"]
+        reference_power = measurements_dict["power_reference"]
+        current_power = measurements_dict["battery_power"]
+        soc = measurements_dict["battery_soc"]
 
         # Apply reference clipping
         reference_power = self.soc_clipping(soc, reference_power)
@@ -128,7 +128,9 @@ class BatteryController(ControllerBase):
         # Update controller internal state
         self.x = self.a * self.x + self.b * e
 
-        self.controls_dict["power_setpoint"] = current_power + u
+        controls_dict = {"power_setpoint": current_power + u}
+
+        return controls_dict
 
 class BatteryPassthroughController(ControllerBase):
     """
@@ -140,9 +142,8 @@ class BatteryPassthroughController(ControllerBase):
         """
         super().__init__(interface, verbose)
 
-    def compute_controls(self):
+    def compute_controls(self, measurements_dict):
         """"
         Main compute_controls method for BatteryPassthroughController.
         """
-        reference_power = self.measurements_dict["power_reference"]
-        self.controls_dict["power_setpoint"] = reference_power
+        return {"power_setpoint": measurements_dict["power_reference"]}

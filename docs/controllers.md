@@ -4,9 +4,13 @@ The `whoc.controllers` module contains a library of wind and hybrid power plant
 controllers. Each controller must inherit from `ControllerBase` (see 
 controller_base.py) and implement a
 mandatory `compute_controls()` method, which contains the relevant control 
-algorithm and writes final control signals to the `controls_dict` attribute 
-as key-value pairs. `compute_controls()` is, in turn, called in the `step()`
-method of `ControllerBase`.
+algorithm. `compute_controls()` must accept a single argument dictionary 
+(nominally called `measurement_dict`) that contains the necessary input
+signals and return a second dictionary (nominally called `controls_dict`) that
+returns the control actions. In the basic set up, `measurement_dict` is 
+provided to `compute_controls()` by the `step()` method defined on
+`ControllerBase`, and the returned `controls_dict` is then passed via the
+interface at the conclusion of the `step()` method.
 
 ## Available controllers
 
