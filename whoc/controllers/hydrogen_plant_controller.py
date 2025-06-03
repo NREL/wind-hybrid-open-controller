@@ -17,12 +17,12 @@ import numpy as np
 from whoc.controllers.controller_base import ControllerBase
 
 
-class WindHydrogenController(ControllerBase):
+class HydrogenPlantController(ControllerBase):
     def __init__(
             self,
             interface,
             input_dict,
-            wind_controller=None,
+            generator_controller=None,
             verbose=False
         ):
         super().__init__(interface, verbose=verbose)
@@ -30,7 +30,7 @@ class WindHydrogenController(ControllerBase):
         self.dt = input_dict["dt"]  # Won't be needed here, but generally good to have
 
         # Assign the individual asset controllers
-        self.wind_controller = wind_controller
+        self.generator_controller = generator_controller
 
         # # Set constants
         # py_sims = list(input_dict["py_sims"].keys())
@@ -42,17 +42,20 @@ class WindHydrogenController(ControllerBase):
 
     def compute_controls(self, measurements_dict):
         # Run supervisory control logic
-        wind_reference = self.supervisory_control(measurements_dict)
+        power_reference = self.supervisory_control(measurements_dict)
 
         # Package the controls for the individual controllers, step, and return
         controls_dict = {}
-        if self.wind_controller:
-            wind_measurements_dict = {
-                "power_reference": wind_reference,
+        if self.generator_controller:
+            generator_measurements_dict = {
+                "power_reference": power_reference,
                 "wind_turbine_powers": measurements_dict["wind_turbine_powers"],
             }
-            wind_controls_dict = self.wind_controller.compute_controls(wind_measurements_dict)
+            wind_controls_dict = self.generator_controller.compute_controls(
+                generator_measurements_dict
+            )
             controls_dict["wind_power_setpoints"] = wind_controls_dict["wind_power_setpoints"]
+            # TODO: Do I need to unpack other setpoints here?
         print('Wind ref, final', controls_dict["wind_power_setpoints"])
 
         return controls_dict
@@ -65,10 +68,11 @@ class WindHydrogenController(ControllerBase):
         wind_speed = measurements_dict["wind_speed"] # noqa: F841
         reference_hydrogen = measurements_dict["hydrogen_reference"]
 
-        a = 0.1
+        # Input filtering
+        a = 0.1 # TODO: make this dt-dependent?
         wind_power = (1-a)*self.prev_wind_power + a*wind_power
 
-        # Temporary print statements (note that negative battery indicates discharging)
+        # TODO: Temporary print statements (note that negative battery indicates discharging)
         print("Measured powers (wind):", wind_power)
         print("Current hydrogen:", hydrogen_output)
         print("Reference hydrogen:", reference_hydrogen)
@@ -79,7 +83,7 @@ class WindHydrogenController(ControllerBase):
             wind_scaling = wind_power
         else:
             wind_scaling = 100 # MS TODO: check for appropriate default?
-        if hydrogen_output> 0 :
+        if hydrogen_output > 0:
             h2_scaling = hydrogen_output
         else:
             h2_scaling = reference_hydrogen
@@ -89,20 +93,20 @@ class WindHydrogenController(ControllerBase):
         K = (wind_scaling/h2_scaling) * hydrogen_difference
 
         # Apply gain to wind power output
-        wind_reference = wind_power + K 
+        power_reference = wind_power + K 
 
         print(
             "Power reference value (wind)",
-            wind_reference
+            power_reference
         )
 
         self.prev_wind_power = wind_power
-        self.wind_reference = wind_reference
+        self.wind_reference = power_reference
 
         # # Placeholder for supervisory control logic
         # wind_reference = 20000 # kW
         # solar_reference = 5000 # kW, not currently working
         # battery_reference = -30 # kW, Negative requests discharging, positive requests charging
 
-        print('wind reference', wind_reference)
-        return wind_reference
+        print('wind reference', power_reference)
+        return power_reference

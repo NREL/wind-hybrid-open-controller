@@ -19,7 +19,7 @@ from hercules.py_sims import PySims
 from hercules.utilities import load_yaml
 from whoc.controllers import (
     WindFarmPowerTrackingController,
-    WindHydrogenController,
+    HydrogenPlantController,
 )
 from whoc.interfaces import HerculesHybridADInterface
 
@@ -41,10 +41,10 @@ interface = HerculesHybridADInterface(input_dict)
 
 print("Setting up controller.")
 wind_controller = WindFarmPowerTrackingController(interface, input_dict)
-controller = WindHydrogenController(
+controller = HydrogenPlantController(
     interface,
     input_dict,
-    wind_controller=wind_controller
+    generator_controller=wind_controller
 )
 
 print("Establishing simulators.")

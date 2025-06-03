@@ -11,7 +11,7 @@ from whoc.controllers import (
     SolarPassthroughController,
     WindFarmPowerDistributingController,
     WindFarmPowerTrackingController,
-    WindHydrogenController,
+    HydrogenPlantController,
 )
 from whoc.controllers.wind_farm_power_tracking_controller import POWER_SETPOINT_DEFAULT
 from whoc.interfaces import (
@@ -531,9 +531,9 @@ def test_BatteryController():
     
     assert out_0 > out_1
 
-def test_WindHydrogenController():
+def test_HydrogenPlantController():
     """
-    Tests that the WindHydrogenController outputs a reasonable signal
+    Tests that the HydrogenPlantController outputs a reasonable signal
     """
     test_interface = HerculesHybridADInterface(test_hercules_dict)
 
@@ -541,10 +541,10 @@ def test_WindHydrogenController():
     wind_controller = WindFarmPowerTrackingController(test_interface, test_hercules_dict)
 
     ## First, try with wind and solar only
-    test_controller = WindHydrogenController(
+    test_controller = HydrogenPlantController(
         interface=test_interface,
         input_dict=test_hercules_dict,
-        wind_controller=wind_controller,
+        generator_controller=wind_controller,
     )
 
     wind_current = [600, 300]
