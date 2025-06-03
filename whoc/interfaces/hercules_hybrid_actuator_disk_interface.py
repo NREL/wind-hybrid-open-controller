@@ -51,6 +51,8 @@ class HerculesHybridADInterface(InterfaceBase):
                 if "forecast" in k != "wind_power_reference":
                     forecast[k] = hercules_dict["external_signals"][k]
 
+        total_power = 0.0
+
         measurements = {
             "time": time,
             "power_reference": plant_power_reference,
@@ -64,6 +66,7 @@ class HerculesHybridADInterface(InterfaceBase):
             measurements["wind_turbine_powers"] =  turbine_powers
             measurements["wind_speed"] =  \
                 hercules_dict["hercules_comms"]["amr_wind"][self.wind_name]["wind_speed"]
+            total_power += sum(turbine_powers)
         if self._has_solar_component:
             # solar_power converted to kW here
             # solar_dni is the direct normal irradiance
@@ -74,11 +77,13 @@ class HerculesHybridADInterface(InterfaceBase):
                 hercules_dict["py_sims"][self.solar_name]["outputs"]["dni"]
             measurements["solar_aoi"]= \
                 hercules_dict["py_sims"][self.solar_name]["outputs"]["aoi"]
+            total_power += measurements["solar_power"]
         if self._has_battery_component:
             measurements["battery_power"]= \
                 -hercules_dict["py_sims"][self.battery_name]["outputs"]["power"]
             measurements["battery_soc"]= \
                 hercules_dict["py_sims"][self.battery_name]["outputs"]["soc"]
+            total_power += measurements["battery_power"]
         if self._has_hydrogen_component:
             measurements["hydrogen_output"]= \
                 hercules_dict["py_sims"][self.hydrogen_name]["outputs"]["H2_output"]
@@ -88,6 +93,7 @@ class HerculesHybridADInterface(InterfaceBase):
                     hercules_dict["external_signals"]["hydrogen_reference"]
             else:
                 measurements["hydrogen_reference"] = POWER_SETPOINT_DEFAULT
+        measurements["total_power"] = total_power
 
         return measurements
 

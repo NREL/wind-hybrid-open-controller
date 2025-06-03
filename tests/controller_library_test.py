@@ -555,6 +555,8 @@ def test_HydrogenPlantController():
     # Simply test the supervisory_control method, for the time being
     test_hercules_dict["external_signals"]["hydrogen_reference"] = hyrogen_ref
     test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = wind_current
+    test_hercules_dict["py_sims"]["test_battery"]["outputs"]["power"] = 0.0
+    test_hercules_dict["py_sims"]["test_solar"]["outputs"]["power_mw"] = 0.0
     test_controller.prev_wind_power = sum(wind_current) # To override filtering
 
     test_controller.step(test_hercules_dict) # Run the controller once to update measurements
@@ -565,9 +567,5 @@ def test_HydrogenPlantController():
     wind_power_cmd = sum(wind_current) + \
         ((sum(wind_current) / hydrogen_output) * hydrogen_difference)
 
-
-    assert np.allclose(
-            supervisory_control_output,
-            [wind_power_cmd]
-        )
+    assert np.allclose(supervisory_control_output, wind_power_cmd)
 

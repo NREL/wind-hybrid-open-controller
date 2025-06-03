@@ -63,7 +63,7 @@ class HydrogenPlantController(ControllerBase):
     def supervisory_control(self, measurements_dict):
         # Extract measurements sent
         time = measurements_dict["time"] # noqa: F841 
-        wind_power = np.array(measurements_dict["wind_turbine_powers"]).sum()
+        wind_power = measurements_dict["total_power"]
         hydrogen_output = measurements_dict["hydrogen_output"]
         wind_speed = measurements_dict["wind_speed"] # noqa: F841
         reference_hydrogen = measurements_dict["hydrogen_reference"]
