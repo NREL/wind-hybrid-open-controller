@@ -61,13 +61,13 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
         if self._has_wind_controller:
             print("UPPER measurements:", measurements_dict)
             wind_measurements_dict = {
-                "wind_power_reference": wind_reference,
+                "power_reference": wind_reference,
                 "wind_turbine_powers": measurements_dict["wind_turbine_powers"]
             }
             wind_controls_dict = self.wind_controller.compute_controls(wind_measurements_dict)
             controls_dict["wind_power_setpoints"] = wind_controls_dict["wind_power_setpoints"]
         if self._has_solar_controller:
-            solar_measurements_dict = {"solar_power_reference": solar_reference}
+            solar_measurements_dict = {"power_reference": solar_reference}
             solar_controls_dict = self.solar_controller.compute_controls(solar_measurements_dict)
             controls_dict["solar_power_setpoint"] = solar_controls_dict["power_setpoint"]
         if self._has_battery_controller:
@@ -110,7 +110,7 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
             battery_power = 0
             battery_soc = 0
 
-        plant_power_reference = measurements_dict["plant_power_reference"]
+        plant_power_reference = measurements_dict["power_reference"]
 
         # Filter the wind and solar power measurements to reduce noise and improve closed-loop
         # controller damping

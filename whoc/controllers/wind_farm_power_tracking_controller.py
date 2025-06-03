@@ -24,8 +24,8 @@ class WindFarmPowerDistributingController(ControllerBase):
 
 
     def compute_controls(self, measurements_dict):
-        if "wind_power_reference" in measurements_dict:
-            farm_power_reference = measurements_dict["wind_power_reference"]
+        if "power_reference" in measurements_dict:
+            farm_power_reference = measurements_dict["power_reference"]
         else:
             farm_power_reference = POWER_SETPOINT_DEFAULT
         
