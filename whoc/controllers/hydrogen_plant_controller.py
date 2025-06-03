@@ -12,7 +12,7 @@
 
 # See https://nrel.github.io/wind-hybrid-open-controller for documentation
 
-import numpy as np
+import copy
 
 from whoc.controllers.controller_base import ControllerBase
 
@@ -46,21 +46,20 @@ class HydrogenPlantController(ControllerBase):
         power_reference = self.supervisory_control(measurements_dict)
 
         # Package the controls for the individual controllers, step, and return
-        controls_dict = {}
         if self.generator_controller:
-            generator_measurements_dict = {
-                "power_reference": power_reference,
-                "wind_turbine_powers": measurements_dict["wind_turbine_powers"],
-                "total_power": measurements_dict["total_power"],
-            }
-            wind_controls_dict = self.generator_controller.compute_controls(
+            # Create exhaustive generator measurements dict to handle variety
+            # of possible lower-level controllers
+            generator_measurements_dict = copy.deepcopy(measurements_dict)
+            generator_measurements_dict["power_reference"] = power_reference
+            generator_controls_dict = self.generator_controller.compute_controls(
                 generator_measurements_dict
             )
-            controls_dict["wind_power_setpoints"] = wind_controls_dict["wind_power_setpoints"]
-            # TODO: Do I need to unpack other setpoints here?
-        print('Wind ref, final', controls_dict["wind_power_setpoints"])
+            if "yaw_angles" in generator_controls_dict:
+                del generator_controls_dict["yaw_angles"]
+        # TODO: remove print statement
+        print('Wind ref, final', generator_controls_dict["wind_power_setpoints"])
 
-        return controls_dict
+        return generator_controls_dict
 
     def supervisory_control(self, measurements_dict):
         # Extract measurements sent
@@ -101,10 +100,5 @@ class HydrogenPlantController(ControllerBase):
         self.filtered_power_prev = filtered_power
         self.wind_reference = power_reference # TODO: Unused, remove?
 
-        # # Placeholder for supervisory control logic
-        # wind_reference = 20000 # kW
-        # solar_reference = 5000 # kW, not currently working
-        # battery_reference = -30 # kW, Negative requests discharging, positive requests charging
-
-        print('wind reference', power_reference)
+        print('power reference', power_reference)
         return power_reference

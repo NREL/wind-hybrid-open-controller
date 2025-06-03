@@ -537,10 +537,9 @@ def test_HydrogenPlantController():
     """
     test_interface = HerculesHybridADInterface(test_hercules_dict)
 
-    # Establish lower controllers
+    ## Test with only wind providing generation
     wind_controller = WindFarmPowerTrackingController(test_interface, test_hercules_dict)
 
-    ## First, try with wind and solar only
     test_controller = HydrogenPlantController(
         interface=test_interface,
         input_dict=test_hercules_dict,
@@ -550,22 +549,53 @@ def test_HydrogenPlantController():
     wind_current = [600, 300]
     hyrogen_ref = 0.02
     hydrogen_output = test_hercules_dict["py_sims"]["test_hydrogen"]["outputs"]["H2_output"]
-    hydrogen_difference = hyrogen_ref - hydrogen_output
+    hydrogen_error = hyrogen_ref - hydrogen_output
 
     # Simply test the supervisory_control method, for the time being
     test_hercules_dict["external_signals"]["hydrogen_reference"] = hyrogen_ref
     test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = wind_current
     test_hercules_dict["py_sims"]["test_battery"]["outputs"]["power"] = 0.0
     test_hercules_dict["py_sims"]["test_solar"]["outputs"]["power_mw"] = 0.0
-    test_controller.prev_wind_power = sum(wind_current) # To override filtering
+    test_controller.filtered_power_prev = sum(wind_current) # To override filtering
 
     test_controller.step(test_hercules_dict) # Run the controller once to update measurements
     supervisory_control_output = test_controller.supervisory_control(
         test_controller._measurements_dict
     )
 
-    wind_power_cmd = sum(wind_current) + \
-        ((sum(wind_current) / hydrogen_output) * hydrogen_difference)
+    wind_power_cmd = sum(wind_current) + (sum(wind_current) / hydrogen_output) * hydrogen_error
 
-    assert np.allclose(supervisory_control_output, wind_power_cmd)
+    assert supervisory_control_output == wind_power_cmd
 
+    # Test with a full wind/solar/battery plant
+    hybrid_controller = HybridSupervisoryControllerBaseline(
+        interface=test_interface,
+        input_dict=test_hercules_dict,
+        wind_controller=wind_controller,
+        solar_controller=SolarPassthroughController(test_interface, test_hercules_dict),
+        battery_controller=BatteryPassthroughController(test_interface, test_hercules_dict)
+    )
+
+    test_controller = HydrogenPlantController(
+        interface=test_interface,
+        input_dict=test_hercules_dict,
+        generator_controller=hybrid_controller,
+    )
+
+    # Set up the dictionary
+    solar_current = 1000
+    battery_current = 500
+    total_current_power = sum(wind_current) + solar_current - battery_current
+    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = wind_current
+    test_hercules_dict["py_sims"]["test_battery"]["outputs"]["power"] = battery_current
+    test_hercules_dict["py_sims"]["test_solar"]["outputs"]["power_mw"] = solar_current / 1e3
+    test_controller.filtered_power_prev = total_current_power # To override filtering
+
+    test_controller.step(test_hercules_dict) # Run the controller once to update measurements
+    supervisory_control_output = test_controller.supervisory_control(
+        test_controller._measurements_dict
+    )
+
+    power_cmd_base = total_current_power + (total_current_power / hydrogen_output) * hydrogen_error
+
+    assert supervisory_control_output == power_cmd_base
