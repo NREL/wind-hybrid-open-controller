@@ -18,8 +18,8 @@ from hercules.emulator import Emulator
 from hercules.py_sims import PySims
 from hercules.utilities import load_yaml
 from whoc.controllers import (
-    WindFarmPowerTrackingController,
     HydrogenPlantController,
+    WindFarmPowerTrackingController,
 )
 from whoc.interfaces import HerculesHybridADInterface
 
