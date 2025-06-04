@@ -24,7 +24,6 @@ classifiers = [
 ]
 dependencies = [
     "numpy~=2.0",
-    "flasc~=2.3",
     "pandas~=2.0",
     "matplotlib~=3.0",
     "floris~=4.3",

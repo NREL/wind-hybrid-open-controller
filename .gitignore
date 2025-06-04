@@ -13,6 +13,7 @@ slices
 examples/*/logstandin*
 examples/*/loghercules*
 examples/*/logfloris*
+*.pkl
 
 # Exceptions
 !examples/*/inputs/*.csv
