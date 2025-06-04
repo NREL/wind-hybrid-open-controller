@@ -10,7 +10,7 @@ n_wind_turbines = 9
 wind_power = df[["hercules_comms.amr_wind.wind_farm_0.turbine_powers.{0:03d}".format(t)
                  for t in range(n_wind_turbines)]].to_numpy().sum(axis=1) / 1e3
 hydrogen_output = df["py_sims.hydrogen_plant_0.outputs.H2_output"]
-power_output = (df["py_sims.inputs.available_power"]) / 1e3
+# power_output = (df["py_sims.inputs.available_power"]) / 1e3
 time = df["hercules_comms.amr_wind.wind_farm_0.sim_time_s_amr_wind"] / 60 # minutes
 
 # Set plotting aesthetics

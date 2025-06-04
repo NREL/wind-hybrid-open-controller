@@ -109,6 +109,7 @@ py_sims:
 
 controller:
   num_turbines: 9 # Should match AMR-Wind! Ideally, would come from AMR-wind
-  wind_capacity_MW: 45 # Should match AMR-Wind! Ideally, would come from AMR-wind
+  nominal_plant_power_kW: 45000 # Plant power in kW
+  nominal_hydrogen_rate_kgps: 0.208 # in kg/s [kg per day/24/3600 * stack number]
 
 external_data_file: inputs/hydrogen_ref_signal.csv

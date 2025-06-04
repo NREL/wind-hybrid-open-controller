@@ -35,8 +35,10 @@ class HydrogenPlantController(ControllerBase):
         # # Set constants
         # py_sims = list(input_dict["py_sims"].keys())
 
-        # Initialize Power references
-        self.wind_reference = 0 # TODO: Unused, remove?
+        # Set K from plant inputs
+        nominal_plant_power_kW = input_dict['controller']['nominal_plant_power_kW']
+        nominal_hydrogen_rate_kgps = input_dict['controller']['nominal_hydrogen_rate_kgps']
+        self.K = nominal_plant_power_kW / nominal_hydrogen_rate_kgps
 
         # Initialize filter
         self.filtered_power_prev = 0
@@ -80,20 +82,9 @@ class HydrogenPlantController(ControllerBase):
 
         # Calculate difference between hydrogen reference and hydrogen actual
         hydrogen_error = hydrogen_reference - hydrogen_output
-        if filtered_power > 0:
-            power_scaling = filtered_power
-        else:
-            power_scaling = 100 # MS TODO: check for appropriate default?
-        if hydrogen_output > 0:
-            h2_scaling = hydrogen_output
-        else:
-            h2_scaling = hydrogen_reference
-
-        # Scale gain by hydrogen output
-        K = power_scaling/h2_scaling
 
         # Apply gain to generator power output
-        power_reference = filtered_power + K * hydrogen_error
+        power_reference = filtered_power + self.K * hydrogen_error
 
         print("Power reference value", power_reference) # TODO: remove when happy
 
