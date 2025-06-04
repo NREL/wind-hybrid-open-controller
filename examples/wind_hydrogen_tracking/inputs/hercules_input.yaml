@@ -1,7 +1,5 @@
-# Input YAML for emy_python
-
 # Name
-name: example_04
+name: wind_hydrogen_tracking
 
 ###
 # Describe this emulator setup
@@ -16,7 +14,6 @@ hercules_comms:
     wind_farm_0:
       type: amr_wind_local #options are amr_wind or amr_wind_local
       amr_wind_input_file: inputs/amr_input.inp
-      yaw_simulator_name: yaw_system_0 # can also use "none" (without quotes)
 
   helics:
 
@@ -111,17 +108,7 @@ py_sims:
 
 
 controller:
-  controller_type: SimpleYawController # This may not be needed
   num_turbines: 9 # Should match AMR-Wind! Ideally, would come from AMR-wind
   wind_capacity_MW: 45 # Should match AMR-Wind! Ideally, would come from AMR-wind
-  initial_conditions:
-      yaw: 240. # degrees (same for all turbines) (will this work?)
 
 external_data_file: inputs/hydrogen_ref_signal.csv
-
-
-
-
-
-
-
