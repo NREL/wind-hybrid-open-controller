@@ -2,45 +2,34 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-save_inputs = True # Save generated inputs to csv files
+save_inputs = False # Save generated inputs to csv files
 show_inputs = False # Plot generated inputs for inspection
 
 dt = 1.0 # time step in seconds
 total_time = 600 # total time in seconds
-time = np.arange(0, total_time, dt)
+time = np.linspace(dt, 600, num=round(total_time/dt))
 
-# Create a varied reference signal for hydrogen production by overlaying a constant value
-# and two sine waves of different frequencies and amplitudes.
-hydrogen_base_value = 0.03 # in kg/s
-sine1_frequency = 5 / total_time # Hz
-sine1_amplitude = 0.1 # as a percentage of the reference value
-sine2_frequency = 3 / total_time # Hz
-sine2_amplitude = 0.2 # as a percentage of the reference value
-sine_start_time = 100 # seconds
+# External signal for hydrogen reference: Step change
+hydrogen_reference_value = 0.03 # in kg/dt
+second_value = 0.04
+third_value = 0.02
+hydrogen_reference = hydrogen_reference_value*np.ones(600)
 
-hydrogen_reference = hydrogen_base_value * np.ones(len(time))
-sine1 = np.sin(2 * np.pi * sine1_frequency * time) * hydrogen_base_value * sine1_amplitude
-sine2 = np.sin(2 * np.pi * sine2_frequency * time) * hydrogen_base_value * sine2_amplitude
-hydrogen_reference[round(sine_start_time/dt):] += (
-    sine1[:-round(sine_start_time/dt)] + 
-    sine2[:-round(sine_start_time/dt)]
-)
+hydrogen_reference[150:] = second_value
+hydrogen_reference[300:] = third_value
+hydrogen_reference[450:] = second_value
 
-fig, ax = plt.subplots(2, 1, sharex=True)
-ax[0].plot(time, hydrogen_reference)
-ax[0].set_ylabel("Full hydrogen\nreference [kg/s]")
-ax[0].grid()
+fig1 = plt.figure(figsize=(8,4))
+plt.plot(time, hydrogen_reference, 'b')
+plt.ylabel("Full hydrogen\nreference [kg/s]")
+plt.xlabel("Time")
+plt.grid()
 
-ax[1].plot([time[0], time[-1]], [hydrogen_base_value, hydrogen_base_value])
-ax[1].plot(time[round(sine_start_time/dt):], sine1[:-round(sine_start_time/dt)])
-ax[1].plot(time[round(sine_start_time/dt):], sine2[:-round(sine_start_time/dt)])
-ax[1].set_ylabel("Hydrogen reference\ncomponents [kg/s]")
-ax[1].set_xlabel("Time [s]")
-ax[1].grid()
 
 if save_inputs:
     df = pd.DataFrame(data={"time":time, "hydrogen_reference":hydrogen_reference})
     df.to_csv("inputs/hydrogen_ref_signal.csv", index=False, header=True)
+
 
 # Generate (constant) wind speed and direction inputs
 wind_speed = 10.0 # m/s
