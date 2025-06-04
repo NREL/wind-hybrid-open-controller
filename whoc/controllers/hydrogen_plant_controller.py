@@ -38,8 +38,9 @@ class HydrogenPlantController(ControllerBase):
         # Set K from plant inputs
         nominal_plant_power_kW = input_dict['controller']['nominal_plant_power_kW']
         nominal_hydrogen_rate_kgps = input_dict['controller']['nominal_hydrogen_rate_kgps']
-        self.K = nominal_plant_power_kW / nominal_hydrogen_rate_kgps
+        hydrogen_controller_gain = input_dict['controller']['hydrogen_controller_gain']
 
+        self.K = nominal_plant_power_kW / nominal_hydrogen_rate_kgps * hydrogen_controller_gain   
         # Initialize filter
         self.filtered_power_prev = 0
 
