@@ -49,7 +49,7 @@ class HerculesHybridADInterface(InterfaceBase):
 
         measurements = {
             "time": time,
-            "plant_power_reference": plant_power_reference,
+            "power_reference": plant_power_reference,
             "forecast": forecast,
         } 
 
