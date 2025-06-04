@@ -117,10 +117,6 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
         wind_power = (1-a)*self.prev_wind_power + a*wind_power
         solar_power = (1-a)*self.prev_solar_power + a*solar_power
 
-        a = 0.1
-        wind_power = (1-a)*self.prev_wind_power + a*wind_power
-        solar_power = (1-a)*self.prev_solar_power + a*solar_power
-
         # Temporary print statements (note that negative battery indicates discharging)
         print("Measured powers (wind, solar, battery):", wind_power, solar_power, battery_power)
         print("Reference power:", plant_power_reference)
