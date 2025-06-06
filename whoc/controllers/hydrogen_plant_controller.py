@@ -59,8 +59,6 @@ class HydrogenPlantController(ControllerBase):
             )
             if "yaw_angles" in generator_controls_dict:
                 del generator_controls_dict["yaw_angles"]
-        # TODO: remove print statement
-        print('Wind ref, final', generator_controls_dict["wind_power_setpoints"])
 
         return generator_controls_dict
 
@@ -76,22 +74,15 @@ class HydrogenPlantController(ControllerBase):
         a = 0.05
         filtered_power = (1-a/self.dt)*self.filtered_power_prev + a/self.dt*current_power
 
-        # TODO: Temporary print statements (note that negative battery indicates discharging)
-        print("Power generated (filtered):", filtered_power)
-        print("Current hydrogen:", hydrogen_output)
-        print("Reference hydrogen:", hydrogen_reference)
-
         # Calculate difference between hydrogen reference and hydrogen actual
         hydrogen_error = hydrogen_reference - hydrogen_output
 
         # Apply gain to generator power output
         power_reference = filtered_power + self.K * hydrogen_error
 
-        print("Power reference value", power_reference) # TODO: remove when happy
         if power_reference < 0:
             power_reference = 0
             
         self.filtered_power_prev = filtered_power
-        self.wind_reference = power_reference # TODO: Unused, remove?
 
         return power_reference
