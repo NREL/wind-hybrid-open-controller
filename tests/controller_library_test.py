@@ -553,7 +553,7 @@ def test_HydrogenPlantController():
     )
 
     wind_current = [600, 300]
-    hyrogen_ref = 0.02
+    hyrogen_ref = 0.03
     hydrogen_output = test_hercules_dict["py_sims"]["test_hydrogen"]["outputs"]["H2_mfr"]
     hydrogen_error = hyrogen_ref - hydrogen_output
 
