@@ -43,7 +43,13 @@ class StandinInterface(InterfaceBase):
 test_hercules_dict = {
     "dt": 1,
     "time": 0,
-    "controller": {"num_turbines": 2, "initial_conditions": {"yaw": [270.0, 270.0]}},
+    "controller": {
+        "num_turbines": 2,
+        "initial_conditions": {"yaw": [270.0, 270.0]},
+        "nominal_plant_power_kW": 10000,
+        "nominal_hydrogen_rate_kgps": 0.1,
+        "hydrogen_controller_gain": 1.0,
+    },
     "hercules_comms": {
         "amr_wind": {
             "test_farm": {
@@ -562,8 +568,12 @@ def test_HydrogenPlantController():
     supervisory_control_output = test_controller.supervisory_control(
         test_controller._measurements_dict
     )
+    controller_gain = test_hercules_dict["controller"]["nominal_plant_power_kW"] / \
+        test_hercules_dict["controller"]["nominal_hydrogen_rate_kgps"] * \
+        test_hercules_dict["controller"]["hydrogen_controller_gain"]
+    assert controller_gain == test_controller.K
 
-    wind_power_cmd = sum(wind_current) + (sum(wind_current) / hydrogen_output) * hydrogen_error
+    wind_power_cmd = sum(wind_current) + controller_gain * hydrogen_error
 
     assert supervisory_control_output == wind_power_cmd
 
@@ -596,6 +606,6 @@ def test_HydrogenPlantController():
         test_controller._measurements_dict
     )
 
-    power_cmd_base = total_current_power + (total_current_power / hydrogen_output) * hydrogen_error
+    power_cmd_base = total_current_power + controller_gain * hydrogen_error
 
     assert supervisory_control_output == power_cmd_base
