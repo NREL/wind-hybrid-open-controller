@@ -88,9 +88,10 @@ class HydrogenPlantController(ControllerBase):
         power_reference = filtered_power + self.K * hydrogen_error
 
         print("Power reference value", power_reference) # TODO: remove when happy
-
+        if power_reference < 0:
+            power_reference = 0
+            
         self.filtered_power_prev = filtered_power
         self.wind_reference = power_reference # TODO: Unused, remove?
 
-        print('power reference', power_reference)
         return power_reference
