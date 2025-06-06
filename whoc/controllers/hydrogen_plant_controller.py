@@ -68,7 +68,7 @@ class HydrogenPlantController(ControllerBase):
         # Extract measurements sent
         time = measurements_dict["time"] # noqa: F841 
         current_power = measurements_dict["total_power"]
-        hydrogen_output = measurements_dict["hydrogen_output"]
+        hydrogen_output = measurements_dict["hydrogen_production_rate"]
         wind_speed = measurements_dict["wind_speed"] # noqa: F841
         hydrogen_reference = measurements_dict["hydrogen_reference"]
 

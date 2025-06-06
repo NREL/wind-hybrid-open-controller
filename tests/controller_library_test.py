@@ -66,7 +66,7 @@ test_hercules_dict = {
             "discharge_rate":20
         },
         "test_solar": {"outputs": {"power_mw": 1.0, "dni": 1000.0, "aoi": 30.0}},
-        "test_hydrogen": {"outputs": {"H2_output": 0.03}},
+        "test_hydrogen": {"outputs": {"H2_mfr": 0.03}},
         "inputs": {},
     },
     "external_signals": {"wind_power_reference": 1000.0, "plant_power_reference": 1000.0,
@@ -554,7 +554,7 @@ def test_HydrogenPlantController():
 
     wind_current = [600, 300]
     hyrogen_ref = 0.02
-    hydrogen_output = test_hercules_dict["py_sims"]["test_hydrogen"]["outputs"]["H2_output"]
+    hydrogen_output = test_hercules_dict["py_sims"]["test_hydrogen"]["outputs"]["H2_mfr"]
     hydrogen_error = hyrogen_ref - hydrogen_output
 
     # Simply test the supervisory_control method, for the time being

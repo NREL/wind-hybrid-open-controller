@@ -9,7 +9,7 @@ h2_ref_input = pd.read_csv("inputs/hydrogen_ref_signal.csv")
 n_wind_turbines = 9
 wind_power = df[["hercules_comms.amr_wind.wind_farm_0.turbine_powers.{0:03d}".format(t)
                  for t in range(n_wind_turbines)]].to_numpy().sum(axis=1) / 1e3
-hydrogen_output = df["py_sims.hydrogen_plant_0.outputs.H2_output"]
+hydrogen_output_rate = df["py_sims.hydrogen_plant_0.outputs.H2_mfr"]
 # power_output = (df["py_sims.inputs.available_power"]) / 1e3
 time = df["hercules_comms.amr_wind.wind_farm_0.sim_time_s_amr_wind"] / 60 # minutes
 
@@ -50,7 +50,7 @@ ax[1].legend()
 
 ax[2].plot(h2_ref_input['time'] / 60, h2_ref_input['hydrogen_reference'],\
             'k--', label="Hydrogen Reference")
-ax[2].plot(time, hydrogen_output, color=h2_col, label='Hydrogen Rate Output')
+ax[2].plot(time, hydrogen_output_rate, color=h2_col, label='Hydrogen Rate Output')
 ax[2].set_ylabel("Hydrogen Production Rate [kg/s]")
 ax[2].grid()
 ax[2].legend()

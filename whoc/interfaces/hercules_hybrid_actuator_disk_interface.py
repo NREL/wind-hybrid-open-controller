@@ -85,8 +85,9 @@ class HerculesHybridADInterface(InterfaceBase):
                 hercules_dict["py_sims"][self.battery_name]["outputs"]["soc"]
             total_power += measurements["battery_power"]
         if self._has_hydrogen_component:
-            measurements["hydrogen_output"]= \
-                hercules_dict["py_sims"][self.hydrogen_name]["outputs"]["H2_output"]
+            # hydrogen production rate in kg/s
+            measurements["hydrogen_production_rate"]= \
+                hercules_dict["py_sims"][self.hydrogen_name]["outputs"]["H2_mfr"]
             if "external_signals" in hercules_dict and \
                "hydrogen_reference" in hercules_dict["external_signals"]:
                 measurements["hydrogen_reference"] = \

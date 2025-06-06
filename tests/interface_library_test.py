@@ -21,7 +21,7 @@ test_hercules_dict = {
     "py_sims": {
         "test_battery": {"outputs": {"power": 10.0, "soc": 0.3}, "charge_rate":20},
         "test_solar": {"outputs": {"power_mw": 1.0, "dni": 1000.0, "aoi": 30.0}},
-        "test_hydrogen": {"outputs": {"H2_output": 0.03} },
+        "test_hydrogen": {"outputs": {"H2_mfr": 0.03} },
         "inputs": {},
     },
     "external_signals": {
@@ -184,8 +184,8 @@ def test_HerculesHybridADInterface():
         == test_hercules_dict["external_signals"]["hydrogen_reference"]
     )
     assert (
-        measurements["hydrogen_output"]
-        == test_hercules_dict["py_sims"]["test_hydrogen"]["outputs"]["H2_output"]
+        measurements["hydrogen_production_rate"]
+        == test_hercules_dict["py_sims"]["test_hydrogen"]["outputs"]["H2_mfr"]
     )
 
     with pytest.raises(TypeError):  # Bad kwarg
