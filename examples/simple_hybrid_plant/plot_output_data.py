@@ -7,7 +7,7 @@ power_ref_input = pd.read_csv("inputs/plant_power_reference.csv")
 
 # Extract individual components powers as well as total power
 if "py_sims.solar_farm_0.outputs.power_mw" in df.columns:
-    solar_power = df["py_sims.solar_farm_0.outputs.power_mw"]
+    solar_power = df["py_sims.solar_farm_0.outputs.power_kw"]
 else:
     solar_power = [0] * len(df)
 n_wind_turbines = 10
@@ -17,7 +17,7 @@ if "py_sims.battery_0.outputs.power" in df.columns:
     battery_power = -df["py_sims.battery_0.outputs.power"] / 1e3 # discharging positive
 else:
     battery_power = [0] * len(df)
-power_output = (df["py_sims.inputs.available_power"] / 1e3 + battery_power)
+power_output = df["py_sims.inputs.plant_outputs.electricity"] / 1e3
 time = df["hercules_comms.amr_wind.wind_farm_0.sim_time_s_amr_wind"] / 60 # minutes
 
 # Set plotting aesthetics

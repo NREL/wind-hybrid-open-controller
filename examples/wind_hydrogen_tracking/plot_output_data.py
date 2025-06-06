@@ -25,6 +25,10 @@ wind_power_individuals = df[["hercules_comms.amr_wind.wind_farm_0.turbine_powers
 # Plot the hydrogen output 
 fig, ax = plt.subplots(3, 1, sharex=True, figsize=(12,8))
 ax[0].plot(time, wind_power, color=plant_col, label="Total Plant Power")
+ax[0].plot(time, df["py_sims.inputs.locally_generated_power"], label="Generated power")
+ax[0].plot(time, df["py_sims.inputs.plant_outputs.electricity"], label="Plant output")
+ax[0].plot(time, df["py_sims.hydrogen_plant_0.outputs.power_used_kw"], \
+        label="Electrolyzer power used")
 ax[0].set_ylabel("Power [MW]")
 ax[0].grid()
 ax[0].legend()
@@ -57,5 +61,12 @@ ax[2].legend()
 ax[2].set_xlabel("Time [mins]")
 
 # fig.savefig("../../docs/graphics/wind-hydrogen-example-plot.png", dpi=300, format="png")
+
+fig1, ax1 = plt.subplots(1, 1, sharex=True, figsize=(12,8))
+ax1.plot(time, hydrogen_mfr, color=plant_col, label="H2 mass flow rate")
+ax1.plot(time, hydrogen_output, color=h2_col, label="H2 produced")
+ax1.set_ylabel("Power [MW]")
+ax1.grid()
+ax1.legend()
 
 plt.show()
