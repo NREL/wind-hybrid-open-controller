@@ -427,6 +427,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#windfarmpowertrackingcontroller">WindFarmPowerTrackingController</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hybridsupervisorycontrollerbaseline">HybridSupervisoryControllerBaseline</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#batterycontroller">BatteryController</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hydrogenplantcontroller">HydrogenPlantController</a></li>
 </ul>
 </li>
 </ul>
@@ -446,9 +447,13 @@ document.write(`
 controllers. Each controller must inherit from <code class="docutils literal notranslate"><span class="pre">ControllerBase</span></code> (see
 controller_base.py) and implement a
 mandatory <code class="docutils literal notranslate"><span class="pre">compute_controls()</span></code> method, which contains the relevant control
-algorithm and writes final control signals to the <code class="docutils literal notranslate"><span class="pre">controls_dict</span></code> attribute
-as key-value pairs. <code class="docutils literal notranslate"><span class="pre">compute_controls()</span></code> is, in turn, called in the <code class="docutils literal notranslate"><span class="pre">step()</span></code>
-method of <code class="docutils literal notranslate"><span class="pre">ControllerBase</span></code>.</p>
+algorithm. <code class="docutils literal notranslate"><span class="pre">compute_controls()</span></code> must accept a single argument dictionary
+(nominally called <code class="docutils literal notranslate"><span class="pre">measurement_dict</span></code>) that contains the necessary input
+signals and return a second dictionary (nominally called <code class="docutils literal notranslate"><span class="pre">controls_dict</span></code>) that
+returns the control actions. In the basic set up, <code class="docutils literal notranslate"><span class="pre">measurement_dict</span></code> is
+provided to <code class="docutils literal notranslate"><span class="pre">compute_controls()</span></code> by the <code class="docutils literal notranslate"><span class="pre">step()</span></code> method defined on
+<code class="docutils literal notranslate"><span class="pre">ControllerBase</span></code>, and the returned <code class="docutils literal notranslate"><span class="pre">controls_dict</span></code> is then passed via the
+interface at the conclusion of the <code class="docutils literal notranslate"><span class="pre">step()</span></code> method.</p>
 <section id="available-controllers">
 <h2>Available controllers<a class="headerlink" href="#available-controllers" title="Link to this heading">#</a></h2>
 <section id="lookupbasedwakesteeringcontroller">
@@ -520,6 +525,13 @@ SOCs to
 The default is to apply the full reference across the full range of SOCs, i.e.
 <code class="docutils literal notranslate"><span class="pre">clipping_thresholds=[0,</span> <span class="pre">0,</span> <span class="pre">1,</span> <span class="pre">1]</span></code>.</p>
 <p><img alt="soc clipping" src="_images/clipping-schedules.png" /></p>
+</section>
+<section id="hydrogenplantcontroller">
+<span id="controllers-hydrogen"></span><h3>HydrogenPlantController<a class="headerlink" href="#hydrogenplantcontroller" title="Link to this heading">#</a></h3>
+<p>Simple closed-loop controller for an off-grid power generation/hydrogen plant. The controller uses an external hydrogen reference signal to control the hydrogen production of the plant through setting the power reference signal.</p>
+<p>Reads in current power production from the generator(s), the current hydrogen production rate, and the hydrogen rate reference. Contains logic to set the generator power reference using a proportional gain applied to the error between the current hydrogen production rate and the hydrogen production reference. The proportional gain is scaled by the current power production to handle the difference of several magnitudes between the power and the hydrogen production rate.</p>
+<p>The power reference computed is then passed to a secondary power generation plant controller, which is assigned to the <code class="docutils literal notranslate"><span class="pre">HydrogenPlantController</span></code> on instantiation.
+This secondary power generation controller could be <a class="reference internal" href="#controllers-wfpowertracking"><span class="std std-ref">WindFarmPowerTrackingController</span></a> for a wind-only plant, <a class="reference internal" href="#controllers-simplehybrid"><span class="std std-ref">HybridSupervisoryControllerBaseline</span></a> for a hybrid generation plant, etc.</p>
 </section>
 </section>
 </section>
@@ -595,6 +607,7 @@ The default is to apply the full reference across the full range of SOCs, i.e.
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#windfarmpowertrackingcontroller">WindFarmPowerTrackingController</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hybridsupervisorycontrollerbaseline">HybridSupervisoryControllerBaseline</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#batterycontroller">BatteryController</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hydrogenplantcontroller">HydrogenPlantController</a></li>
 </ul>
 </li>
 </ul>

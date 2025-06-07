@@ -423,6 +423,7 @@ document.write(`
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#wind-farm-power-tracking-florisstandin">wind_farm_power_tracking_florisstandin</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#simple-hybrid-plant">simple_hybrid_plant</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#battery-control-comparison">battery_control_comparison</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#wind-hydrogen-tracking">wind_hydrogen_tracking</a></li>
 </ul>
             </nav>
         </div>
@@ -522,6 +523,21 @@ In particular, beginning near 50% SOC results in full reference-tracking behavio
 and beginning near 15% SOC (and continuing to draw down the SOC) means that clipping becomes more
 significant as the simulation progresses.</p>
 </section>
+<section id="wind-hydrogen-tracking">
+<span id="examples-windhydrogen"></span><h2>wind_hydrogen_tracking<a class="headerlink" href="#wind-hydrogen-tracking" title="Link to this heading">#</a></h2>
+<p>Example of an off-grid wind-to-hydrogen hybrid energy system using the
+<a class="reference internal" href="controllers.html#controllers-hydrogen"><span class="std std-ref">HydrogenPlantController</span></a> to
+track a hydrogen production rate reference. The plant comprises 9 NREL 5MW reference wind turbines
+(45 MW total wind capacity) and a hydrogen plant composed of 40 1-MW electrolyzer stacks.</p>
+<p>To run this example, navigate to the examples/wind_hydrogen_tracking folder and execute the shell
+script run_script.sh:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bash</span> <span class="n">run_script</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>This will run a short (10 minute) simulation of the plant and controller tracking a hydrogen
+production reference. The resulting trajectories are plotted, producing:
+<img alt="Results of wind_farm_power_tracking_florisstandin example" src="_images/wind-hydrogen-example-plot.png" /></p>
+</section>
 </section>
 
     <script type="text/x-thebe-config">
@@ -583,6 +599,7 @@ significant as the simulation progresses.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#wind-farm-power-tracking-florisstandin">wind_farm_power_tracking_florisstandin</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#simple-hybrid-plant">simple_hybrid_plant</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#battery-control-comparison">battery_control_comparison</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#wind-hydrogen-tracking">wind_hydrogen_tracking</a></li>
 </ul>
   </nav></div>
 
