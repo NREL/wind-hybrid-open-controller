@@ -43,15 +43,16 @@ class HerculesADInterface(InterfaceBase):
             "time": time,
             "wind_directions": wind_directions,
             # "wind_speeds":wind_speeds,
-            "turbine_powers": turbine_powers,
-            "wind_power_reference": wind_power_reference,
+            "wind_turbine_powers": turbine_powers,
+            "power_reference": wind_power_reference,
             "forecast": forecast,
+            "total_power": sum(turbine_powers),
         }
 
         return measurements
 
     def check_controls(self, controls_dict):
-        available_controls = ["yaw_angles", "power_setpoints"]
+        available_controls = ["yaw_angles", "wind_power_setpoints"]
 
         for k in controls_dict.keys():
             if k not in available_controls:
@@ -61,15 +62,15 @@ class HerculesADInterface(InterfaceBase):
                     "Length of setpoint " + k + " does not match the number of turbines."
                 )
 
-    def send_controls(self, hercules_dict, yaw_angles=None, power_setpoints=None):
+    def send_controls(self, hercules_dict, yaw_angles=None, wind_power_setpoints=None):
         if yaw_angles is None:
             yaw_angles = [-1000] * self.n_turbines
-        if power_setpoints is None:
-            power_setpoints = [POWER_SETPOINT_DEFAULT] * self.n_turbines
+        if wind_power_setpoints is None:
+            wind_power_setpoints = [POWER_SETPOINT_DEFAULT] * self.n_turbines
 
         hercules_dict["hercules_comms"]["amr_wind"][self.wf_name]["turbine_yaw_angles"] = yaw_angles
         hercules_dict["hercules_comms"]["amr_wind"][self.wf_name][
             "turbine_power_setpoints"
-        ] = power_setpoints
+        ] = wind_power_setpoints
 
         return hercules_dict
