@@ -609,3 +609,40 @@ def test_HydrogenPlantController():
     power_cmd_base = total_current_power + controller_gain * hydrogen_error
 
     assert supervisory_control_output == power_cmd_base
+
+    # Test instantiation using separate controller parameters
+    external_controller_parameters={
+        "nominal_plant_power_kW": 10000,
+        "nominal_hydrogen_rate_kgps": 0.1,
+        "hydrogen_controller_gain": 1.0,
+    }
+
+    # Test an error is raised if controller_parameters is passed while also specified on input_dict
+    with pytest.raises(KeyError):
+        HydrogenPlantController(
+            interface=test_interface,
+            input_dict=test_hercules_dict,
+            generator_controller=hybrid_controller,
+            controller_parameters=external_controller_parameters
+        )
+
+    # Check instantiation fails if a required parameter is missing from both controller_parameters
+    # and input_dict["controller"]
+    del test_hercules_dict["controller"]["nominal_plant_power_kW"]
+    with pytest.raises(TypeError):
+        HydrogenPlantController(
+            interface=test_interface,
+            input_dict=test_hercules_dict,
+            generator_controller=hybrid_controller,
+        )
+
+    # Check instantiation proceeds correctly if doubly-specified parameters are avoided
+    del test_hercules_dict["controller"]["nominal_hydrogen_rate_kgps"]
+    del test_hercules_dict["controller"]["hydrogen_controller_gain"]
+
+    test_controller = HydrogenPlantController(
+        interface=test_interface,
+        input_dict=test_hercules_dict,
+        generator_controller=hybrid_controller,
+        controller_parameters=external_controller_parameters
+    )

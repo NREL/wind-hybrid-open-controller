@@ -23,6 +23,7 @@ class HydrogenPlantController(ControllerBase):
             interface,
             input_dict,
             generator_controller=None,
+            controller_parameters={},
             verbose=False
         ):
         super().__init__(interface, verbose=verbose)
@@ -32,14 +33,45 @@ class HydrogenPlantController(ControllerBase):
         # Assign the individual asset controllers
         self.generator_controller = generator_controller
 
-        # Set K from plant inputs
-        nominal_plant_power_kW = input_dict['controller']['nominal_plant_power_kW']
-        nominal_hydrogen_rate_kgps = input_dict['controller']['nominal_hydrogen_rate_kgps']
-        hydrogen_controller_gain = input_dict['controller']['hydrogen_controller_gain']
+        # Check that parameters are not specified both in input file
+        # and in controller_parameters
+        for cp in controller_parameters.keys():
+            if cp in input_dict["controller"]:
+                raise KeyError(
+                    "Found key \""+cp+"\" in both input_dict[\"controller\"] and"
+                    " in controller_parameters."
+                )
+        controller_parameters = {**controller_parameters, **input_dict["controller"]}
+        self.set_controller_parameters(**controller_parameters)
 
-        self.K = nominal_plant_power_kW / nominal_hydrogen_rate_kgps * hydrogen_controller_gain   
         # Initialize filter
         self.filtered_power_prev = 0
+
+    def set_controller_parameters(
+        self,
+        nominal_plant_power_kW,
+        nominal_hydrogen_rate_kgps,
+        hydrogen_controller_gain=1.0,
+        **_ # <- Allows arbitrary additional parameters to be passed, which are ignored
+    ):
+        """
+        Set gains and threshold limits for HydrogenPlantController.
+
+        nominal_plant_power_kW and nominal_hydrogen_rate_kgps are the nominal power of the
+        power generation plant in kW and the nominal hydrogen production rate of the electrolyzer
+        in kg/s, respectively. These are used to scale the control action.
+
+        hydrogen_controller_gain is a gain applied to the difference between the hydrogen reference
+        and hydrogen production rate to adjust the responsiveness of the controller.
+
+        Args:
+            nominal_plant_power_kW (float): Nominal power of the plant in kW.
+            nominal_hydrogen_rate_kgps (float): Nominal hydrogen production rate in kg/s.
+            hydrogen_controller_gain (float): Gain for the hydrogen controller. Defaults to 1.0.
+        """
+
+        # Set K from plant inputs
+        self.K = nominal_plant_power_kW / nominal_hydrogen_rate_kgps * hydrogen_controller_gain
 
     def compute_controls(self, measurements_dict):
         # Run supervisory control logic
