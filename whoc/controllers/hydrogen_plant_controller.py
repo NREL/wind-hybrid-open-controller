@@ -32,9 +32,6 @@ class HydrogenPlantController(ControllerBase):
         # Assign the individual asset controllers
         self.generator_controller = generator_controller
 
-        # # Set constants
-        # py_sims = list(input_dict["py_sims"].keys())
-
         # Set K from plant inputs
         nominal_plant_power_kW = input_dict['controller']['nominal_plant_power_kW']
         nominal_hydrogen_rate_kgps = input_dict['controller']['nominal_hydrogen_rate_kgps']
