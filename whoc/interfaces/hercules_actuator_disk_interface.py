@@ -46,6 +46,7 @@ class HerculesADInterface(InterfaceBase):
             "wind_turbine_powers": turbine_powers,
             "power_reference": wind_power_reference,
             "forecast": forecast,
+            "total_power": sum(turbine_powers),
         }
 
         return measurements

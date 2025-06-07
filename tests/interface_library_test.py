@@ -8,7 +8,7 @@ from whoc.interfaces import (
 test_hercules_dict = {
     "dt": 1,
     "time": 0,
-    "controller": {"num_turbines": 2},
+    "controller": {"num_turbines": 2, "wind_capacity_MW": 10},
     "hercules_comms": {
         "amr_wind": {
             "test_farm": {
@@ -21,6 +21,7 @@ test_hercules_dict = {
     "py_sims": {
         "test_battery": {"outputs": {"power": 10.0, "soc": 0.3}, "charge_rate":20},
         "test_solar": {"outputs": {"power_mw": 1.0, "dni": 1000.0, "aoi": 30.0}},
+        "test_hydrogen": {"outputs": {"H2_mfr": 0.03} },
         "inputs": {},
     },
     "external_signals": {
@@ -28,7 +29,8 @@ test_hercules_dict = {
         "plant_power_reference": 1000.0,
         "forecast_ws_mean_0": 8.0,
         "forecast_ws_mean_1": 8.1,
-        "ws_median_0": 8.1
+        "ws_median_0": 8.1,
+        "hydrogen_reference": 0.02,
     },
 }
 
@@ -176,6 +178,14 @@ def test_HerculesHybridADInterface():
     assert (
         test_hercules_dict_out["py_sims"]["inputs"]["solar_setpoint_mw"]
         == controls_dict["solar_power_setpoint"] / 1000
+    )
+    assert (
+        measurements["hydrogen_reference"]
+        == test_hercules_dict["external_signals"]["hydrogen_reference"]
+    )
+    assert (
+        measurements["hydrogen_production_rate"]
+        == test_hercules_dict["py_sims"]["test_hydrogen"]["outputs"]["H2_mfr"]
     )
 
     with pytest.raises(TypeError):  # Bad kwarg

@@ -7,6 +7,7 @@ from whoc.controllers import (
     BatteryController,
     BatteryPassthroughController,
     HybridSupervisoryControllerBaseline,
+    HydrogenPlantController,
     LookupBasedWakeSteeringController,
     SolarPassthroughController,
     WindFarmPowerDistributingController,
@@ -42,7 +43,13 @@ class StandinInterface(InterfaceBase):
 test_hercules_dict = {
     "dt": 1,
     "time": 0,
-    "controller": {"num_turbines": 2, "initial_conditions": {"yaw": [270.0, 270.0]}},
+    "controller": {
+        "num_turbines": 2,
+        "initial_conditions": {"yaw": [270.0, 270.0]},
+        "nominal_plant_power_kW": 10000,
+        "nominal_hydrogen_rate_kgps": 0.1,
+        "hydrogen_controller_gain": 1.0,
+    },
     "hercules_comms": {
         "amr_wind": {
             "test_farm": {
@@ -59,9 +66,11 @@ test_hercules_dict = {
             "discharge_rate":20
         },
         "test_solar": {"outputs": {"power_mw": 1.0, "dni": 1000.0, "aoi": 30.0}},
+        "test_hydrogen": {"outputs": {"H2_mfr": 0.03}},
         "inputs": {},
     },
-    "external_signals": {"wind_power_reference": 1000.0, "plant_power_reference": 1000.0},
+    "external_signals": {"wind_power_reference": 1000.0, "plant_power_reference": 1000.0,
+                         "hydrogen_reference": 0.02},
 }
 
 
@@ -527,3 +536,113 @@ def test_BatteryController():
     out_1 = test_controller_1._controls_dict["power_setpoint"]
     
     assert out_0 > out_1
+
+def test_HydrogenPlantController():
+    """
+    Tests that the HydrogenPlantController outputs a reasonable signal
+    """
+    test_interface = HerculesHybridADInterface(test_hercules_dict)
+
+    ## Test with only wind providing generation
+    wind_controller = WindFarmPowerTrackingController(test_interface, test_hercules_dict)
+
+    test_controller = HydrogenPlantController(
+        interface=test_interface,
+        input_dict=test_hercules_dict,
+        generator_controller=wind_controller,
+    )
+
+    wind_current = [600, 300]
+    hyrogen_ref = 0.03
+    hydrogen_output = test_hercules_dict["py_sims"]["test_hydrogen"]["outputs"]["H2_mfr"]
+    hydrogen_error = hyrogen_ref - hydrogen_output
+
+    # Simply test the supervisory_control method, for the time being
+    test_hercules_dict["external_signals"]["hydrogen_reference"] = hyrogen_ref
+    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = wind_current
+    test_hercules_dict["py_sims"]["test_battery"]["outputs"]["power"] = 0.0
+    test_hercules_dict["py_sims"]["test_solar"]["outputs"]["power_mw"] = 0.0
+    test_controller.filtered_power_prev = sum(wind_current) # To override filtering
+
+    test_controller.step(test_hercules_dict) # Run the controller once to update measurements
+    supervisory_control_output = test_controller.supervisory_control(
+        test_controller._measurements_dict
+    )
+    controller_gain = test_hercules_dict["controller"]["nominal_plant_power_kW"] / \
+        test_hercules_dict["controller"]["nominal_hydrogen_rate_kgps"] * \
+        test_hercules_dict["controller"]["hydrogen_controller_gain"]
+    assert controller_gain == test_controller.K
+
+    wind_power_cmd = sum(wind_current) + controller_gain * hydrogen_error
+
+    assert supervisory_control_output == wind_power_cmd
+
+    # Test with a full wind/solar/battery plant
+    hybrid_controller = HybridSupervisoryControllerBaseline(
+        interface=test_interface,
+        input_dict=test_hercules_dict,
+        wind_controller=wind_controller,
+        solar_controller=SolarPassthroughController(test_interface, test_hercules_dict),
+        battery_controller=BatteryPassthroughController(test_interface, test_hercules_dict)
+    )
+
+    test_controller = HydrogenPlantController(
+        interface=test_interface,
+        input_dict=test_hercules_dict,
+        generator_controller=hybrid_controller,
+    )
+
+    # Set up the dictionary
+    solar_current = 1000
+    battery_current = 500
+    total_current_power = sum(wind_current) + solar_current - battery_current
+    test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = wind_current
+    test_hercules_dict["py_sims"]["test_battery"]["outputs"]["power"] = battery_current
+    test_hercules_dict["py_sims"]["test_solar"]["outputs"]["power_mw"] = solar_current / 1e3
+    test_controller.filtered_power_prev = total_current_power # To override filtering
+
+    test_controller.step(test_hercules_dict) # Run the controller once to update measurements
+    supervisory_control_output = test_controller.supervisory_control(
+        test_controller._measurements_dict
+    )
+
+    power_cmd_base = total_current_power + controller_gain * hydrogen_error
+
+    assert supervisory_control_output == power_cmd_base
+
+    # Test instantiation using separate controller parameters
+    external_controller_parameters={
+        "nominal_plant_power_kW": 10000,
+        "nominal_hydrogen_rate_kgps": 0.1,
+        "hydrogen_controller_gain": 1.0,
+    }
+
+    # Test an error is raised if controller_parameters is passed while also specified on input_dict
+    with pytest.raises(KeyError):
+        HydrogenPlantController(
+            interface=test_interface,
+            input_dict=test_hercules_dict,
+            generator_controller=hybrid_controller,
+            controller_parameters=external_controller_parameters
+        )
+
+    # Check instantiation fails if a required parameter is missing from both controller_parameters
+    # and input_dict["controller"]
+    del test_hercules_dict["controller"]["nominal_plant_power_kW"]
+    with pytest.raises(TypeError):
+        HydrogenPlantController(
+            interface=test_interface,
+            input_dict=test_hercules_dict,
+            generator_controller=hybrid_controller,
+        )
+
+    # Check instantiation proceeds correctly if doubly-specified parameters are avoided
+    del test_hercules_dict["controller"]["nominal_hydrogen_rate_kgps"]
+    del test_hercules_dict["controller"]["hydrogen_controller_gain"]
+
+    test_controller = HydrogenPlantController(
+        interface=test_interface,
+        input_dict=test_hercules_dict,
+        generator_controller=hybrid_controller,
+        controller_parameters=external_controller_parameters
+    )

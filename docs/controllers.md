@@ -94,3 +94,12 @@ The default is to apply the full reference across the full range of SOCs, i.e.
 ![soc clipping](
     graphics/clipping-schedules.png
 )
+
+(controllers_hydrogen)=
+### HydrogenPlantController
+Simple closed-loop controller for an off-grid power generation/hydrogen plant. The controller uses an external hydrogen reference signal to control the hydrogen production of the plant through setting the power reference signal.
+
+Reads in current power production from the generator(s), the current hydrogen production rate, and the hydrogen rate reference. Contains logic to set the generator power reference using a proportional gain applied to the error between the current hydrogen production rate and the hydrogen production reference. The proportional gain is scaled by the current power production to handle the difference of several magnitudes between the power and the hydrogen production rate.
+
+The power reference computed is then passed to a secondary power generation plant controller, which is assigned to the `HydrogenPlantController` on instantiation.
+This secondary power generation controller could be {ref}`controllers_wfpowertracking` for a wind-only plant, {ref}`controllers_simplehybrid` for a hybrid generation plant, etc.
