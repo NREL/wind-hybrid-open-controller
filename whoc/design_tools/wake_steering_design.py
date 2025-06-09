@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from floris import FlorisModel, UncertainFlorisModel, WindRose, WindTIRose
 from floris.optimization.yaw_optimization.yaw_optimizer_sr import YawOptimizationSR
-from floris.utilities import wrap_180, wrap_360
+from floris.utilities import wrap_360
 from scipy.interpolate import interp1d, RegularGridInterpolator
 
 
