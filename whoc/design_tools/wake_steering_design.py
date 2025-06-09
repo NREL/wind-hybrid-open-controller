@@ -359,10 +359,17 @@ def consolidate_hysteresis_zones(hysteresis_wds):
         else:
             i_h += 1
 
-    # Various cases for handling the wrap-around at 360 degrees
+    # Case for handling the wrap-around at 360 degrees (single overlap)
     if (
-        hysteresis_wds[-1][1] < hysteresis_wds[-1][0]
-        and hysteresis_wds[-1][1] > hysteresis_wds[0][0]
+        (
+            hysteresis_wds[-1][1] < hysteresis_wds[-1][0]
+            and hysteresis_wds[-1][1] > hysteresis_wds[0][0]
+        )
+        or
+        (
+            hysteresis_wds[0][0] > hysteresis_wds[0][1]
+            and hysteresis_wds[0][0] < hysteresis_wds[-1][1]
+        )
     ):
         # Merge last and first regions
         hysteresis_wds[-1] = (
@@ -370,27 +377,12 @@ def consolidate_hysteresis_zones(hysteresis_wds):
         )
         if len(hysteresis_wds) > 1:
             hysteresis_wds.pop(0)
+    
+    # Case for handling the wrap-around at 360 degrees (double overlap)
     if (
-        hysteresis_wds[0][0] > hysteresis_wds[0][1]
-        and hysteresis_wds[0][0] < hysteresis_wds[-1][1]
+            hysteresis_wds[-1][1] < hysteresis_wds[-1][0]
+            and hysteresis_wds[0][0] > hysteresis_wds[0][1]
     ):
-        # # Merge first and last regions
-        # hysteresis_wds[0] = (
-        #     wrap_360(hysteresis_wds[-1][0]), wrap_360(hysteresis_wds[0][1])
-        # )
-        # # Remove merged region unless there is only one remaining
-        # if len(hysteresis_wds) > 1:
-        #     hysteresis_wds.pop(-1)
-        hysteresis_wds[-1] = (
-            wrap_360(hysteresis_wds[-1][0]), wrap_360(hysteresis_wds[0][1])
-        )
-        if len(hysteresis_wds) > 1:
-            hysteresis_wds.pop(0)
-    if (
-        hysteresis_wds[-1][1] < hysteresis_wds[-1][0]
-        and hysteresis_wds[0][0] > hysteresis_wds[0][1]
-    ):
-        # Merge first and last regions
         hysteresis_wds[-1] = (
             wrap_360(hysteresis_wds[0][0]), wrap_360(hysteresis_wds[-1][1])
         )
