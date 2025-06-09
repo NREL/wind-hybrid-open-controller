@@ -417,9 +417,6 @@ def test_consolidate_hysteresis_zones():
     hysteresis_wds_test = consolidate_hysteresis_zones(hysteresis_wds_unconsolidated)
     assert hysteresis_wds_test == hysteresis_wds_base
 
-
-
-
 def test_create_uniform_wind_rose():
     wind_rose = create_uniform_wind_rose()
     frequencies = wind_rose.unpack_freq()

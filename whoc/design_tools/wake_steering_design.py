@@ -346,55 +346,57 @@ def consolidate_hysteresis_zones(hysteresis_wds):
     Returns:
         hysteresis_wds (list): A list of tuples representing the merged hysteresis zones.
     """
-    # TODO: not yet passing all tests
-    maxiter = 100 # For debugging
-    #for _ in range(len(hysteresis_wds)): # Outer loop to handle multiple possible wrap merges
-    i = 0 # For debugging
-    while i <= maxiter and contains_overlaps(hysteresis_wds):
-        #import ipdb; ipdb.set_trace()
-        i_h = 0
-        while i_h < len(hysteresis_wds)-1:
-            if ((hysteresis_wds[i_h][1] >= hysteresis_wds[i_h+1][0])):
-                # Merge regions
-                hysteresis_wds[i_h] = (
-                    wrap_360(hysteresis_wds[i_h][0]), wrap_360(hysteresis_wds[i_h+1][1])
-                )
-                # Remove next region
-                hysteresis_wds.pop(i_h+1)
-            else:
-                i_h += 1
-        if (
-            hysteresis_wds[-1][1] < hysteresis_wds[-1][0]
-            and hysteresis_wds[-1][1] > hysteresis_wds[0][0]
-        ):
-            # Merge last and first regions
-            hysteresis_wds[-1] = (
-                wrap_360(hysteresis_wds[-1][0]), wrap_360(hysteresis_wds[0][1])
+    # Main loop to check for overlaps
+    i_h = 0
+    while i_h < len(hysteresis_wds)-1:
+        if ((hysteresis_wds[i_h][1] >= hysteresis_wds[i_h+1][0])):
+            # Merge regions
+            hysteresis_wds[i_h] = (
+                wrap_360(hysteresis_wds[i_h][0]), wrap_360(hysteresis_wds[i_h+1][1])
             )
-            if len(hysteresis_wds) > 1:
-                hysteresis_wds.pop(0)
-        if (
-            hysteresis_wds[0][0] > hysteresis_wds[0][1]
-            and hysteresis_wds[0][0] < hysteresis_wds[-1][1]
-        ):
-            # Merge first and last regions
-            hysteresis_wds[0] = (
-                wrap_360(hysteresis_wds[-1][0]), wrap_360(hysteresis_wds[0][1])
-            )
-            if len(hysteresis_wds) > 1:
-                hysteresis_wds.pop(0)
-        if (
-            hysteresis_wds[-1][1] < hysteresis_wds[-1][0]
-            and hysteresis_wds[0][0] > hysteresis_wds[0][1]
-        ):
-            # Merge first and last regions
-            hysteresis_wds[-1] = (
-                wrap_360(hysteresis_wds[0][0]), wrap_360(hysteresis_wds[-1][1])
-            )
-            if len(hysteresis_wds) > 1:
-                hysteresis_wds.pop(0)
-        i += 1
-    print("Iterations run:", i)
+            # Remove next region
+            hysteresis_wds.pop(i_h+1)
+        else:
+            i_h += 1
+
+    # Various cases for handling the wrap-around at 360 degrees
+    if (
+        hysteresis_wds[-1][1] < hysteresis_wds[-1][0]
+        and hysteresis_wds[-1][1] > hysteresis_wds[0][0]
+    ):
+        # Merge last and first regions
+        hysteresis_wds[-1] = (
+            wrap_360(hysteresis_wds[-1][0]), wrap_360(hysteresis_wds[0][1])
+        )
+        if len(hysteresis_wds) > 1:
+            hysteresis_wds.pop(0)
+    if (
+        hysteresis_wds[0][0] > hysteresis_wds[0][1]
+        and hysteresis_wds[0][0] < hysteresis_wds[-1][1]
+    ):
+        # # Merge first and last regions
+        # hysteresis_wds[0] = (
+        #     wrap_360(hysteresis_wds[-1][0]), wrap_360(hysteresis_wds[0][1])
+        # )
+        # # Remove merged region unless there is only one remaining
+        # if len(hysteresis_wds) > 1:
+        #     hysteresis_wds.pop(-1)
+        hysteresis_wds[-1] = (
+            wrap_360(hysteresis_wds[-1][0]), wrap_360(hysteresis_wds[0][1])
+        )
+        if len(hysteresis_wds) > 1:
+            hysteresis_wds.pop(0)
+    if (
+        hysteresis_wds[-1][1] < hysteresis_wds[-1][0]
+        and hysteresis_wds[0][0] > hysteresis_wds[0][1]
+    ):
+        # Merge first and last regions
+        hysteresis_wds[-1] = (
+            wrap_360(hysteresis_wds[0][0]), wrap_360(hysteresis_wds[-1][1])
+        )
+        if len(hysteresis_wds) > 1:
+            hysteresis_wds.pop(0)
+
     return hysteresis_wds
 
 def contains_overlaps(hysteresis_wds):
