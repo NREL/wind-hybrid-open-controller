@@ -77,13 +77,12 @@ class LookupBasedWakeSteeringController(ControllerBase):
         self.yaw_store = yaw_IC
 
 
-    def compute_controls(self):
-        self.wake_steering_angles()
+    def compute_controls(self, measurements_dict):
+        return self.wake_steering_angles(measurements_dict["wind_directions"])
 
-    def wake_steering_angles(self):
+    def wake_steering_angles(self, wind_directions):
 
         # Handle possible bad data
-        wind_directions = self.measurements_dict["wind_directions"]
         wind_speeds = [8.0]*self.n_turbines # TODO: enable extraction of wind speed in Hercules
         if not wind_directions: # Received empty or None
             if self.verbose:
@@ -116,4 +115,4 @@ class LookupBasedWakeSteeringController(ControllerBase):
 
         self.controls_dict = {"yaw_angles": yaw_setpoint}
 
-        return None
+        return {"yaw_angles": yaw_setpoint}

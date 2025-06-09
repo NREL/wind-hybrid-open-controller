@@ -8,7 +8,7 @@ from whoc.interfaces import (
 test_hercules_dict = {
     "dt": 1,
     "time": 0,
-    "controller": {"num_turbines": 2},
+    "controller": {"num_turbines": 2, "wind_capacity_MW": 10},
     "hercules_comms": {
         "amr_wind": {
             "test_farm": {
@@ -21,6 +21,7 @@ test_hercules_dict = {
     "py_sims": {
         "test_battery": {"outputs": {"power": 10.0, "soc": 0.3}, "charge_rate":20},
         "test_solar": {"outputs": {"power_mw": 1.0, "dni": 1000.0, "aoi": 30.0}},
+        "test_hydrogen": {"outputs": {"H2_mfr": 0.03} },
         "inputs": {},
     },
     "external_signals": {
@@ -28,7 +29,8 @@ test_hercules_dict = {
         "plant_power_reference": 1000.0,
         "forecast_ws_mean_0": 8.0,
         "forecast_ws_mean_1": 8.1,
-        "ws_median_0": 8.1
+        "ws_median_0": 8.1,
+        "hydrogen_reference": 0.02,
     },
 }
 
@@ -57,7 +59,7 @@ def test_HerculesADInterface():
         == test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_wind_directions"]
     )
     assert (
-        measurements["turbine_powers"]
+        measurements["wind_turbine_powers"]
         == test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"]
     )
     test_forecast = {
@@ -69,7 +71,7 @@ def test_HerculesADInterface():
     controls_dict = {"yaw_angles": [270.0, 278.9]}
     controls_dict2 = {
         "yaw_angles": [270.0, 268.9],
-        "power_setpoints": [3000.0, 3000.0],
+        "wind_power_setpoints": [3000.0, 3000.0],
     }
     interface.check_controls(controls_dict)
     interface.check_controls(controls_dict2)
@@ -77,7 +79,7 @@ def test_HerculesADInterface():
     bad_controls_dict1 = {"yaw_angels": [270.0, 268.9]}  # Misspelling
     bad_controls_dict2 = {
         "yaw_angles": [270.0, 268.9],
-        "power_setpoints": [3000.0, 3000.0],
+        "wind_power_setpoints": [3000.0, 3000.0],
         "unavailable_control": [0.0, 0.0],
     }
     bad_controls_dict3 = {"yaw_angles": [270.0, 268.9, 270.0]}  # Mismatched number of turbines
@@ -120,7 +122,7 @@ def test_HerculesHybridADInterface():
         == test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["wind_speed"]
     )
     assert (
-        measurements["plant_power_reference"]
+        measurements["power_reference"]
         == test_hercules_dict["external_signals"]["wind_power_reference"]
     )
     assert (
@@ -176,6 +178,14 @@ def test_HerculesHybridADInterface():
     assert (
         test_hercules_dict_out["py_sims"]["inputs"]["solar_setpoint_mw"]
         == controls_dict["solar_power_setpoint"] / 1000
+    )
+    assert (
+        measurements["hydrogen_reference"]
+        == test_hercules_dict["external_signals"]["hydrogen_reference"]
+    )
+    assert (
+        measurements["hydrogen_production_rate"]
+        == test_hercules_dict["py_sims"]["test_hydrogen"]["outputs"]["H2_mfr"]
     )
 
     with pytest.raises(TypeError):  # Bad kwarg
