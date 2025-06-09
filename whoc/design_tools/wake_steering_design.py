@@ -346,7 +346,7 @@ def consolidate_hysteresis_zones(hysteresis_wds):
     Returns:
         hysteresis_wds (list): A list of tuples representing the merged hysteresis zones.
     """
-    import ipdb; ipdb.set_trace()
+    # TODO: not yet passing all tests
     for _ in range(len(hysteresis_wds)): # Outer loop to handle multiple possible wrap merges
         i_h = 0
         while i_h < len(hysteresis_wds)-1:
