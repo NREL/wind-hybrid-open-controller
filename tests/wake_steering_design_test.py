@@ -372,40 +372,41 @@ def test_hysteresis_zones():
 def test_consolidate_hysteresis_zones():
 
     # Check basic grouping
-    # hysteresis_wds_base = [(10, 30)]
-    # hysteresis_wds_unconsolidated = [(10, 20), (18, 25), (25, 30)]
-    # hysteresis_wds_test = consolidate_hysteresis_zones(hysteresis_wds_unconsolidated)
-    # assert hysteresis_wds_test == hysteresis_wds_base
+    hysteresis_wds_base = [(10, 30)]
+    hysteresis_wds_unconsolidated = [(10, 20), (18, 25), (25, 30)]
+    hysteresis_wds_test = consolidate_hysteresis_zones(hysteresis_wds_unconsolidated)
+    assert hysteresis_wds_test == hysteresis_wds_base
 
     # # Check 360 degree wrap
-    # hysteresis_wds_base = [(350, 10)]
-    # hysteresis_wds_unconsolidated = [(350, 355), (355, 5), (5, 10)]
-    # hysteresis_wds_test = consolidate_hysteresis_zones(hysteresis_wds_unconsolidated)
-    # assert hysteresis_wds_test == hysteresis_wds_base
+    hysteresis_wds_base = [(350, 10)]
+    hysteresis_wds_unconsolidated = [(350, 355), (355, 5), (5, 10)]
+    hysteresis_wds_test = consolidate_hysteresis_zones(hysteresis_wds_unconsolidated)
+    assert hysteresis_wds_test == hysteresis_wds_base
 
     # # Only last one crosses 0/360 divide
-    # hysteresis_wds_base = [(350, 10)]
-    # hysteresis_wds_unconsolidated = [(350, 355), (354, 10)]
-    # hysteresis_wds_test = consolidate_hysteresis_zones(hysteresis_wds_unconsolidated)
-    # assert hysteresis_wds_test == hysteresis_wds_base
+    hysteresis_wds_base = [(350, 10)]
+    hysteresis_wds_unconsolidated = [(350, 355), (354, 10)]
+    hysteresis_wds_test = consolidate_hysteresis_zones(hysteresis_wds_unconsolidated)
+    assert hysteresis_wds_test == hysteresis_wds_base
 
     # # Only first one crosses 0/360 divide
-    # hysteresis_wds_base = [(350, 10)]
-    # hysteresis_wds_unconsolidated = [(350, 5), (5, 10)]
-    # hysteresis_wds_test = consolidate_hysteresis_zones(hysteresis_wds_unconsolidated)
-    # assert hysteresis_wds_test == hysteresis_wds_base
+    hysteresis_wds_base = [(350, 10)]
+    hysteresis_wds_unconsolidated = [(350, 5), (5, 10)]
+    hysteresis_wds_test = consolidate_hysteresis_zones(hysteresis_wds_unconsolidated)
+    assert hysteresis_wds_test == hysteresis_wds_base
     
     #
+    width = 6.0
     hysteresis_centers = [  8.,  12.,  16., 344., 348., 352., 360.]
-    hysteresis_wds_base = [(hysteresis_centers[0]-6, hysteresis_centers[-1]+6)]
+    hysteresis_wds_base = [(344.0-width, 16.0+width)]
     hysteresis_wds_unconsolidated = [
-        (hysteresis_centers[0]-6, hysteresis_centers[0]+6),
-        (hysteresis_centers[1]-6, hysteresis_centers[1]+6),
-        (hysteresis_centers[2]-6, hysteresis_centers[2]+6),
-        (hysteresis_centers[3]-6, hysteresis_centers[3]+6),
-        (hysteresis_centers[4]-6, hysteresis_centers[4]+6),
-        (hysteresis_centers[5]-6, hysteresis_centers[5]+6),
-        (hysteresis_centers[6]-6, hysteresis_centers[6]+6)
+        (hysteresis_centers[0]-width, hysteresis_centers[0]+width),
+        (hysteresis_centers[1]-width, hysteresis_centers[1]+width),
+        (hysteresis_centers[2]-width, hysteresis_centers[2]+width),
+        (hysteresis_centers[3]-width, hysteresis_centers[3]+width),
+        (hysteresis_centers[4]-width, hysteresis_centers[4]+width),
+        (hysteresis_centers[5]-width, hysteresis_centers[5]+width),
+        (hysteresis_centers[6]-width, hysteresis_centers[6]+width)
     ]
     hysteresis_wds_test = consolidate_hysteresis_zones(hysteresis_wds_unconsolidated)
     assert hysteresis_wds_test == hysteresis_wds_base

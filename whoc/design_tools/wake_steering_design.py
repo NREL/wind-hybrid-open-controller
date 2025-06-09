@@ -347,20 +347,88 @@ def consolidate_hysteresis_zones(hysteresis_wds):
         hysteresis_wds (list): A list of tuples representing the merged hysteresis zones.
     """
     # TODO: not yet passing all tests
-    for _ in range(len(hysteresis_wds)): # Outer loop to handle multiple possible wrap merges
+    maxiter = 100 # For debugging
+    #for _ in range(len(hysteresis_wds)): # Outer loop to handle multiple possible wrap merges
+    i = 0 # For debugging
+    while i <= maxiter and contains_overlaps(hysteresis_wds):
+        #import ipdb; ipdb.set_trace()
         i_h = 0
         while i_h < len(hysteresis_wds)-1:
             if ((hysteresis_wds[i_h][1] >= hysteresis_wds[i_h+1][0])):
-                #or (wrap_180(hysteresis_wds[i_h][1]) >= wrap_180(hysteresis_wds[i_h+1][0]))
-                #):
                 # Merge regions
-                hysteresis_wds[i_h] = (hysteresis_wds[i_h][0], hysteresis_wds[i_h+1][1])
+                hysteresis_wds[i_h] = (
+                    wrap_360(hysteresis_wds[i_h][0]), wrap_360(hysteresis_wds[i_h+1][1])
+                )
                 # Remove next region
                 hysteresis_wds.pop(i_h+1)
             else:
                 i_h += 1
+        if (
+            hysteresis_wds[-1][1] < hysteresis_wds[-1][0]
+            and hysteresis_wds[-1][1] > hysteresis_wds[0][0]
+        ):
+            # Merge last and first regions
+            hysteresis_wds[-1] = (
+                wrap_360(hysteresis_wds[-1][0]), wrap_360(hysteresis_wds[0][1])
+            )
+            if len(hysteresis_wds) > 1:
+                hysteresis_wds.pop(0)
+        if (
+            hysteresis_wds[0][0] > hysteresis_wds[0][1]
+            and hysteresis_wds[0][0] < hysteresis_wds[-1][1]
+        ):
+            # Merge first and last regions
+            hysteresis_wds[0] = (
+                wrap_360(hysteresis_wds[-1][0]), wrap_360(hysteresis_wds[0][1])
+            )
+            if len(hysteresis_wds) > 1:
+                hysteresis_wds.pop(0)
+        if (
+            hysteresis_wds[-1][1] < hysteresis_wds[-1][0]
+            and hysteresis_wds[0][0] > hysteresis_wds[0][1]
+        ):
+            # Merge first and last regions
+            hysteresis_wds[-1] = (
+                wrap_360(hysteresis_wds[0][0]), wrap_360(hysteresis_wds[-1][1])
+            )
+            if len(hysteresis_wds) > 1:
+                hysteresis_wds.pop(0)
+        i += 1
+    print("Iterations run:", i)
     return hysteresis_wds
 
+def contains_overlaps(hysteresis_wds):
+    """
+    Check if a list of hysteresis zones contains overlaps.
+
+    Args:
+        hysteresis_wds (list): A list of tuples representing the lower and upper bounds for the
+            hysteresis zones.
+
+    Returns:
+        bool: True if there are overlaps, False otherwise.
+    """
+    for i in range(len(hysteresis_wds)-1):
+        if (hysteresis_wds[i][1] >= hysteresis_wds[i+1][0]):
+            return True
+    if (
+        hysteresis_wds[-1][1] < hysteresis_wds[-1][0]
+        and hysteresis_wds[-1][1] > hysteresis_wds[0][0]
+       ):
+        return True
+    if (
+        hysteresis_wds[0][0] > hysteresis_wds[0][1]
+        and hysteresis_wds[0][0] < hysteresis_wds[-1][1]
+       ):
+        return True
+    if (
+        hysteresis_wds[-1][1] < hysteresis_wds[-1][0]
+        and hysteresis_wds[0][0] > hysteresis_wds[0][1]
+       ):
+        return True
+
+    # If none of the above conditions are met, no overlaps exist
+    return False
 
 def apply_wind_speed_ramps(
     df_opt: pd.DataFrame,
