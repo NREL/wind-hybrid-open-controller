@@ -348,46 +348,47 @@ def consolidate_hysteresis_zones(hysteresis_wds):
     """
     # Main loop to check for overlaps
     i_h = 0
-    while i_h < len(hysteresis_wds)-1:
-        if ((hysteresis_wds[i_h][1] >= hysteresis_wds[i_h+1][0])):
-            # Merge regions
-            hysteresis_wds[i_h] = (
-                wrap_360(hysteresis_wds[i_h][0]), wrap_360(hysteresis_wds[i_h+1][1])
-            )
-            # Remove next region
-            hysteresis_wds.pop(i_h+1)
-        else:
-            i_h += 1
+    for _ in range(len(hysteresis_wds)-1): # Loop until no overlaps
+        while i_h < len(hysteresis_wds)-1:
+            if ((hysteresis_wds[i_h][1] >= hysteresis_wds[i_h+1][0])):
+                # Merge regions
+                hysteresis_wds[i_h] = (
+                    wrap_360(hysteresis_wds[i_h][0]), wrap_360(hysteresis_wds[i_h+1][1])
+                )
+                # Remove next region
+                hysteresis_wds.pop(i_h+1)
+            else:
+                i_h += 1
 
-    # Case for handling the wrap-around at 360 degrees (single overlap)
-    if (
-        (
-            hysteresis_wds[-1][1] < hysteresis_wds[-1][0]
-            and hysteresis_wds[-1][1] > hysteresis_wds[0][0]
-        )
-        or
-        (
-            hysteresis_wds[0][0] > hysteresis_wds[0][1]
-            and hysteresis_wds[0][0] < hysteresis_wds[-1][1]
-        )
-    ):
-        # Merge last and first regions
-        hysteresis_wds[-1] = (
-            wrap_360(hysteresis_wds[-1][0]), wrap_360(hysteresis_wds[0][1])
-        )
-        if len(hysteresis_wds) > 1:
-            hysteresis_wds.pop(0)
-    
-    # Case for handling the wrap-around at 360 degrees (double overlap)
-    if (
-            hysteresis_wds[-1][1] < hysteresis_wds[-1][0]
-            and hysteresis_wds[0][0] > hysteresis_wds[0][1]
-    ):
-        hysteresis_wds[-1] = (
-            wrap_360(hysteresis_wds[0][0]), wrap_360(hysteresis_wds[-1][1])
-        )
-        if len(hysteresis_wds) > 1:
-            hysteresis_wds.pop(0)
+        # Case for handling the wrap-around at 360 degrees (single overlap)
+        if (
+            (
+                hysteresis_wds[-1][1] < hysteresis_wds[-1][0]
+                and hysteresis_wds[-1][1] > hysteresis_wds[0][0]
+            )
+            or
+            (
+                hysteresis_wds[0][0] > hysteresis_wds[0][1]
+                and hysteresis_wds[0][0] < hysteresis_wds[-1][1]
+            )
+        ):
+            # Merge last and first regions
+            hysteresis_wds[-1] = (
+                wrap_360(hysteresis_wds[-1][0]), wrap_360(hysteresis_wds[0][1])
+            )
+            if len(hysteresis_wds) > 1:
+                hysteresis_wds.pop(0)
+        
+        # Case for handling the wrap-around at 360 degrees (double overlap)
+        if (
+                hysteresis_wds[-1][1] < hysteresis_wds[-1][0]
+                and hysteresis_wds[0][0] > hysteresis_wds[0][1]
+        ):
+            hysteresis_wds[-1] = (
+                wrap_360(hysteresis_wds[0][0]), wrap_360(hysteresis_wds[-1][1])
+            )
+            if len(hysteresis_wds) > 1:
+                hysteresis_wds.pop(0)
 
     return hysteresis_wds
 
