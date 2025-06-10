@@ -429,39 +429,6 @@ def consolidate_hysteresis_zones(hysteresis_wds):
 
     return hysteresis_wds
 
-def contains_overlaps(hysteresis_wds):
-    """
-    Check if a list of hysteresis zones contains overlaps.
-
-    Args:
-        hysteresis_wds (list): A list of tuples representing the lower and upper bounds for the
-            hysteresis zones.
-
-    Returns:
-        bool: True if there are overlaps, False otherwise.
-    """
-    for i in range(len(hysteresis_wds)-1):
-        if (hysteresis_wds[i][1] >= hysteresis_wds[i+1][0]):
-            return True
-    if (
-        hysteresis_wds[-1][1] < hysteresis_wds[-1][0]
-        and hysteresis_wds[-1][1] > hysteresis_wds[0][0]
-       ):
-        return True
-    if (
-        hysteresis_wds[0][0] > hysteresis_wds[0][1]
-        and hysteresis_wds[0][0] < hysteresis_wds[-1][1]
-       ):
-        return True
-    if (
-        hysteresis_wds[-1][1] < hysteresis_wds[-1][0]
-        and hysteresis_wds[0][0] > hysteresis_wds[0][1]
-       ):
-        return True
-
-    # If none of the above conditions are met, no overlaps exist
-    return False
-
 def apply_wind_speed_ramps(
     df_opt: pd.DataFrame,
     ws_resolution: float = 1.0,
