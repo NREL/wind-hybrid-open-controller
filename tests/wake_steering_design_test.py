@@ -435,7 +435,7 @@ def test_consolidate_hysteresis_zones():
     hysteresis_wds_unconsolidated = [
         (0, 15), (10, 25), (15, 30), (35, 50), (340, 355), (345, 0), (355, 10)
     ]
-    hysteresis_wds_base = [(345, 30), (35, 50)]
+    hysteresis_wds_base = [(340, 30), (35, 50)]
     assert consolidate_hysteresis_zones(hysteresis_wds_unconsolidated) == hysteresis_wds_base
 
 def test_create_uniform_wind_rose():
