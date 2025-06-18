@@ -127,3 +127,17 @@ production reference. The resulting trajectories are plotted, producing:
 ![Results of wind_farm_power_tracking_florisstandin example](
     graphics/wind-hydrogen-example-plot.png
 )
+
+(examples_flexibleinterconnect)=
+## single_turbine_flexible_interconnect
+In this example, the a single roughly 1.5MW wind turbine generates power as a distributed power plant but must follow a flexible interconnect amount. The turbine is controlled to generated maximum power under the time-varying interconnect limit, which differs each hour of the day for 24 hours.
+
+To run this example, navigate to the examples/single_turbine_flexible_interconnect folder and execute the shell script run_script.sh:
+```
+bash run_script.sh
+```
+This will run a 24 hour simulation with 10s time steps of the turbine and controller tracking a flexible interconnect limit. The resulting trajectories are plotted, producing:
+![Results of single_turbine_flexible_interconnect example](
+    graphics/flexible-interconnect.png
+)
+The wind speed is low in the first 4 hours or so, and the turbine cannot use its full interconnect allocation. The wind speed then increases and the full hourly interconnect limit is used. Between hours 15 and 20, the wind speed is fluctuating around 10 m/s and the turbine is not fully reaching the interconnect allocation, but during periods of higher wind speeds the interconnect limit is adhered to.

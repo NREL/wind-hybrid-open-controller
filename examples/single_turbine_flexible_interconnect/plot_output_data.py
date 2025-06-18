@@ -47,9 +47,4 @@ ax[1].set_xlabel("Time [hr]")
 
 # fig.savefig("../../docs/graphics/flexible-interconnect.png", dpi=300, format="png")
 
-# In this example, the a single ~1.5MW wind turbine generates power as a distributed
-# power plant but most follow a flexible interconnect amount. The turbine is controlled
-# to generated maximum power under the time-varying interconnect limit, which differs each
-# hour of the day for 24 hours.
-
 plt.show()
