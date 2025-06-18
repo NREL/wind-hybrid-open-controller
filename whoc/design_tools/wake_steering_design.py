@@ -403,7 +403,11 @@ def consolidate_hysteresis_zones(hysteresis_wds):
     i_h = 0
     while i_h < len(hysteresis_wds)-1:
         # Continue merging into the ith until no more overlaps with the ith
-        while hysteresis_wds[i_h+1][0] <= hysteresis_wds[i_h][1]:
+        while ((hysteresis_wds[i_h+1][0] <= hysteresis_wds[i_h][1])
+                or ((hysteresis_wds[i_h][1] < hysteresis_wds[i_h][0])
+                    and (hysteresis_wds[i_h+1][0] > hysteresis_wds[i_h+1][1])
+                    )
+              ):
             # Merge regions
             hysteresis_wds[i_h] = (
                 hysteresis_wds[i_h][0],
@@ -418,9 +422,7 @@ def consolidate_hysteresis_zones(hysteresis_wds):
     # Handle wrap-around at 360 degrees
     for _ in range(len(hysteresis_wds)): # Multiple loops in case multiple overlaps
         if ((hysteresis_wds[-1][1] >= hysteresis_wds[0][0])
-             or ((hysteresis_wds[-1][1] < hysteresis_wds[-1][0])
-                  and (hysteresis_wds[0][0] > hysteresis_wds[0][1])
-                )
+            and (hysteresis_wds[-1][1] < hysteresis_wds[-1][0])
            ):
             # Merge last and first regions
             hysteresis_wds[0] = (hysteresis_wds[-1][0], hysteresis_wds[0][1])
