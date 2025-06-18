@@ -39,6 +39,14 @@ helics_broker -t zmq -f 2 --loglevel="debug" --local_port=$HELICS_PORT &
 python hercules_runscript.py inputs/hercules_input.yaml >> outputs/loghercules.log 2>&1 &
 python floris_runscript.py inputs/amr_input.inp inputs/amr_standin_data.csv >> outputs/logfloris.log 2>&1
 
+
+echo "Finished flexible interconnect simulation. Running unlimited interconnect baseline scenario."
+helics_broker -t zmq -f 2 --loglevel="debug" --local_port=$HELICS_PORT &
+python hercules_runscript_baseline.py inputs/hercules_input.yaml >> outputs/loghercules_baseline.log 2>&1 &
+python floris_runscript.py inputs/amr_input.inp inputs/amr_standin_data.csv >> outputs/logfloris_baseline.log 2>&1
+echo "Finished running unlimited interconnect baseline simulation."
+
+
 # Clean up helics output if there
 # Search for a file that begins with the current year
 # And ends with csv
@@ -51,7 +59,7 @@ for file in ${current_year}*.csv; do
 done
 
 # Report success and plot results
-echo "Finished running simulation. Plotting results."
+echo "Finished running simulations. Plotting results."
 python plot_output_data.py
 
 exit 0

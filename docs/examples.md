@@ -136,8 +136,15 @@ To run this example, navigate to the examples/single_turbine_flexible_interconne
 ```
 bash run_script.sh
 ```
-This will run a 24 hour simulation with 10s time steps of the turbine and controller tracking a flexible interconnect limit. The resulting trajectories are plotted, producing:
+This will run a 24 hour simulation with 10s time steps of the turbine and controller tracking a flexible interconnect limit. Also run is a simulation where the wind turbine power output is not constrained by the interconnect, providing a baseline to compute curtailment. The resulting trajectories are plotted, producing:
 ![Results of single_turbine_flexible_interconnect example](
     graphics/flexible-interconnect.png
 )
+as well printing
+```
+Curtailed energy: 1937.43 kWh (6.2% of available)
+Total time curtailed: 17.6 hours
+```
+to the console.
+
 The wind speed is low in the first 4 hours or so, and the turbine cannot use its full interconnect allocation. The wind speed then increases and the full hourly interconnect limit is used. Between hours 15 and 20, the wind speed is fluctuating around 10 m/s and the turbine is not fully reaching the interconnect allocation, but during periods of higher wind speeds the interconnect limit is adhered to.
