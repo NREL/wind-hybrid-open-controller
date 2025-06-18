@@ -28,21 +28,16 @@ ax[0].set_ylabel("Wind speed [m/s]")
 ax[0].grid()
 
 # Power output
-for t in range(n_turbines):
-    if t == 0:
-        line = ax[1].fill_between(time/3600, powers[:,t], label="T{0:03d} power".format(t))
-    else:
-        ax[1].fill_between(time/3600, powers[:,:t+1].sum(axis=1), powers[:,:t].sum(axis=1),
-            label="T{0:03d} power".format(t))
-ax[1].plot(time/3600, powers.sum(axis=1), color="black", label="Farm power")
-ax[1].plot(time/3600, ref, color="gray", linestyle="dashed", label="Ref. power")
+line = ax[1].fill_between(time/3600, powers[:,0], label="Turbine power")
+ax[1].plot(time/3600, powers.sum(axis=1), color="black", label="Total power")
+ax[1].plot(time/3600, ref, color="gray", linestyle="dashed", label="Flexible interconnect limit")
 
 # Plot aesthetics
 ax[1].grid()
 ax[1].set_ylabel("Power [kW]")
 ax[1].set_xlim([time[0]/3600, time[-1]/3600])
 ax[1].set_ylim([0, 2000])
-ax[1].legend(loc="lower left")
+ax[1].legend(loc="lower right")
 ax[1].set_xlabel("Time [hr]")
 
 # fig.savefig("../../docs/graphics/flexible-interconnect.png", dpi=300, format="png")
