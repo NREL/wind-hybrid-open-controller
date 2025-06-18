@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Controllers &#8212; Wind Hybrid Open Controller</title>
+    <title>Wake steering design &#8212; Wind Hybrid Open Controller</title>
   
   
   
@@ -70,11 +70,11 @@
                 gtag('config', 'G-BJZY823DHG');
             </script>
     <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"; const thebe_selector = ".thebe,.cell"; const thebe_selector_input = "pre"; const thebe_selector_output = ".output, .cell_output"</script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'controllers';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'wake_steering_design';</script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Interfaces" href="interfaces.html" />
-    <link rel="prev" title="Code development" href="code_development.html" />
+    <link rel="next" title="Examples" href="examples.html" />
+    <link rel="prev" title="Interfaces" href="interfaces.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -198,16 +198,16 @@
 <li class="toctree-l1"><a class="reference internal" href="code_development.html">Code development</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Controllers</span></p>
-<ul class="current nav bd-sidenav">
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Controllers</a></li>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="controllers.html">Controllers</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Interfaces</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="interfaces.html">Interfaces</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Design tools</span></p>
-<ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="wake_steering_design.html">Wake steering design</a></li>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Wake steering design</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Examples</span></p>
 <ul class="nav bd-sidenav">
@@ -283,7 +283,7 @@
       
       
       
-      <li><a href="https://github.com/NREL/wind-hybrid-open-controller/edit/main/docs/controllers.md" target="_blank"
+      <li><a href="https://github.com/NREL/wind-hybrid-open-controller/edit/main/docs/wake_steering_design.md" target="_blank"
    class="btn btn-sm btn-source-edit-button dropdown-item"
    title="Suggest edit"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -300,7 +300,7 @@
       
       
       
-      <li><a href="https://github.com/NREL/wind-hybrid-open-controller/issues/new?title=Issue%20on%20page%20%2Fcontrollers.html&body=Your%20issue%20content%20here." target="_blank"
+      <li><a href="https://github.com/NREL/wind-hybrid-open-controller/issues/new?title=Issue%20on%20page%20%2Fwake_steering_design.html&body=Your%20issue%20content%20here." target="_blank"
    class="btn btn-sm btn-source-issues-button dropdown-item"
    title="Open an issue"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -330,7 +330,7 @@
       
       
       
-      <li><a href="_sources/controllers.md" target="_blank"
+      <li><a href="_sources/wake_steering_design.md" target="_blank"
    class="btn btn-sm btn-download-source-button dropdown-item"
    title="Download source file"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -414,7 +414,7 @@ document.write(`
               
 
 <div id="jb-print-docs-body" class="onlyprint">
-    <h1>Controllers</h1>
+    <h1>Wake steering design</h1>
     <!-- Table of contents -->
     <div id="print-main-content">
         <div id="jb-print-toc">
@@ -424,16 +424,11 @@ document.write(`
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#available-controllers">Available controllers</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#lookupbasedwakesteeringcontroller">LookupBasedWakeSteeringController</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#wakesteeringroscostandin">WakeSteeringROSCOStandin</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#windfarmpowerdistributingcontroller">WindFarmPowerDistributingController</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#windfarmpowertrackingcontroller">WindFarmPowerTrackingController</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hybridsupervisorycontrollerbaseline">HybridSupervisoryControllerBaseline</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#batterycontroller">BatteryController</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hydrogenplantcontroller">HydrogenPlantController</a></li>
-</ul>
-</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#geometric-ramping-with-wind-speed">Geometric ramping with wind speed</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#yaw-offset-rate-limits">Yaw offset rate limits</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#finding-hysteresis-zones">Finding hysteresis zones</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#converting-yaw-offsets-dataframe-to-an-interpolant-function">Converting yaw offsets DataFrame to an interpolant function</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#wake-steering-offset-visualization">Wake steering offset visualization</a></li>
 </ul>
             </nav>
         </div>
@@ -445,98 +440,93 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section class="tex2jax_ignore mathjax_ignore" id="controllers">
-<h1>Controllers<a class="headerlink" href="#controllers" title="Link to this heading">#</a></h1>
-<p>The <code class="docutils literal notranslate"><span class="pre">whoc.controllers</span></code> module contains a library of wind and hybrid power plant
-controllers. Each controller must inherit from <code class="docutils literal notranslate"><span class="pre">ControllerBase</span></code> (see
-controller_base.py) and implement a
-mandatory <code class="docutils literal notranslate"><span class="pre">compute_controls()</span></code> method, which contains the relevant control
-algorithm. <code class="docutils literal notranslate"><span class="pre">compute_controls()</span></code> must accept a single argument dictionary
-(nominally called <code class="docutils literal notranslate"><span class="pre">measurement_dict</span></code>) that contains the necessary input
-signals and return a second dictionary (nominally called <code class="docutils literal notranslate"><span class="pre">controls_dict</span></code>) that
-returns the control actions. In the basic set up, <code class="docutils literal notranslate"><span class="pre">measurement_dict</span></code> is
-provided to <code class="docutils literal notranslate"><span class="pre">compute_controls()</span></code> by the <code class="docutils literal notranslate"><span class="pre">step()</span></code> method defined on
-<code class="docutils literal notranslate"><span class="pre">ControllerBase</span></code>, and the returned <code class="docutils literal notranslate"><span class="pre">controls_dict</span></code> is then passed via the
-interface at the conclusion of the <code class="docutils literal notranslate"><span class="pre">step()</span></code> method.</p>
-<section id="available-controllers">
-<h2>Available controllers<a class="headerlink" href="#available-controllers" title="Link to this heading">#</a></h2>
-<section id="lookupbasedwakesteeringcontroller">
-<span id="controllers-luwakesteer"></span><h3>LookupBasedWakeSteeringController<a class="headerlink" href="#lookupbasedwakesteeringcontroller" title="Link to this heading">#</a></h3>
-<p>Yaw controller that implements wake steering based on a lookup table.
-Requires a <code class="docutils literal notranslate"><span class="pre">df_opt</span></code> object produced by a FLORIS yaw optimization routine. See example
-lookup-based_wake_steering_florisstandin for example usage.</p>
-<p>Currently, yaw angles are set based purely on the (local turbine) wind direction. The lookup table
-is sampled at a hardcoded wind speed of 8 m/s. This will be updated in future when an interface is
-developed for a simulator that provides wind turbine wind speeds also.</p>
+  <section class="tex2jax_ignore mathjax_ignore" id="wake-steering-design">
+<h1>Wake steering design<a class="headerlink" href="#wake-steering-design" title="Link to this heading">#</a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">whoc.design_tools.wake_steering_design</span></code> module provides various tools for the design of yaw
+offset lookup tables for “open-loop” wake steering. The two primary functions are <code class="docutils literal notranslate"><span class="pre">build_simple_wake_steering_lookup_table</span></code> and <code class="docutils literal notranslate"><span class="pre">build_uncertain_wake_steering_lookup_table</span></code>, both of
+which take an instantiated
+<a class="reference external" href="https://nrel.github.io/floris/_autosummary/floris.floris_model.html"><code class="docutils literal notranslate"><span class="pre">FlorisModel</span></code></a>,
+along with various design parameters, and return a pandas DataFrame <code class="docutils literal notranslate"><span class="pre">df_opt</span></code> containing the optimal
+yaw offset angles for each wind turbine. Under the hood, both functions run an optimization using
+FLORIS’
+<a class="reference external" href="https://nrel.github.io/floris/_autosummary/floris.optimization.yaw_optimization.yaw_optimizer_sr.html"><code class="docutils literal notranslate"><span class="pre">YawOptimizerSR</span></code></a> methodology. The <code class="docutils literal notranslate"><span class="pre">uncertain</span></code> version takes into account wind direction
+uncertainty via the second required argument <code class="docutils literal notranslate"><span class="pre">wd_std</span></code>, representing the wind direction standard
+deviation.</p>
+<p>The output DataFrame of optimal yaw angles <code class="docutils literal notranslate"><span class="pre">df_opt</span></code> can then be passed to the
+<a class="reference internal" href="controllers.html#controllers-luwakesteer"><span class="std std-ref">LookupBasedWakeSteeringController</span></a>
+upon its instantiation.</p>
+<hr class="docutils" />
+<p>As well as these primary functions, several other functions are provided that modify the
+FLORIS-produced optimal offsets for various practical purposes, as described below.</p>
+<section id="geometric-ramping-with-wind-speed">
+<h2>Geometric ramping with wind speed<a class="headerlink" href="#geometric-ramping-with-wind-speed" title="Link to this heading">#</a></h2>
+<p>Generally speaking, while the dependency of optimal offsets on wind direction is complex,
+the dependency on wind speed is simpler. The <code class="docutils literal notranslate"><span class="pre">apply_wind_speed_ramps()</span></code> function allows users to
+define a simple heuristic relationship of the optimal offsets on wind speeds, given a set of
+yaw angles optimized for a single “middle” wind speed. Offsets are linearly “ramped up” between
+<code class="docutils literal notranslate"><span class="pre">ws_wake_steering_cut_in</span></code> and <code class="docutils literal notranslate"><span class="pre">ws_wake_steering_fully_engaged_low</span></code>; take the optimized value between
+<code class="docutils literal notranslate"><span class="pre">ws_wake_steering_fully_engaged_low</span></code> and <code class="docutils literal notranslate"><span class="pre">ws_wake_steering_fully_engaged_high</span></code>; and are linearly
+ramped down again between <code class="docutils literal notranslate"><span class="pre">ws_wake_steering_fully_engaged_high</span></code> and <code class="docutils literal notranslate"><span class="pre">ws_wake_steering_cut_out</span></code>.
+Additionally, the DataFrame produced pads with zero offsets between <code class="docutils literal notranslate"><span class="pre">ws_min</span></code> and
+<code class="docutils literal notranslate"><span class="pre">ws_wake_steering_cut_in</span></code> and between <code class="docutils literal notranslate"><span class="pre">ws_wake_steering_cut_out</span></code> and <code class="docutils literal notranslate"><span class="pre">ws_max</span></code>.</p>
 </section>
-<section id="wakesteeringroscostandin">
-<h3>WakeSteeringROSCOStandin<a class="headerlink" href="#wakesteeringroscostandin" title="Link to this heading">#</a></h3>
-<p>Not yet developed. May be combined into a universal simple LookupBasedWakeSteeringController.</p>
+<section id="yaw-offset-rate-limits">
+<h2>Yaw offset rate limits<a class="headerlink" href="#yaw-offset-rate-limits" title="Link to this heading">#</a></h2>
+<p>To limit the rate of change of the yaw offset as a function of wind direction, wind speed, or
+turbulence intensity, use the <code class="docutils literal notranslate"><span class="pre">apply_static_rate_limits()</span></code> function. This will “smooth” the yaw
+offsets to avoid high sensitivity to changes in the lookup table inputs (most obviously, to
+wind direction near the perfectly aligned directions, where optimal offsets often change from
+being at largest negative value to being at their largest positive value over a small wind
+direction window). Resulting offsets, however, will be suboptimal and produce significant
+performance reduction, and we generally recommend using time-based limitation instead, such as
+hysteresis zones or low-pass filtering the input wind directions.</p>
+<hr class="docutils" />
+<p>Two other wake steering-based utilities are provided in the <code class="docutils literal notranslate"><span class="pre">whoc.design_tools.wake_steering_design</span></code> module.</p>
 </section>
-<section id="windfarmpowerdistributingcontroller">
-<span id="controllers-wfpowerdistributing"></span><h3>WindFarmPowerDistributingController<a class="headerlink" href="#windfarmpowerdistributingcontroller" title="Link to this heading">#</a></h3>
-<p>Wind farm-level power controller that simply distributes a farm-level power
-reference between wind turbines evenly, without checking whether turbines are
-able to produce power at the requested level. Not expected to perform well when
-wind turbines are waked or cannot produce the desired power for other reasons.
-However, is a useful comparison case for the WindFarmPowerTrackingController
-(described below).</p>
+<section id="finding-hysteresis-zones">
+<h2>Finding hysteresis zones<a class="headerlink" href="#finding-hysteresis-zones" title="Link to this heading">#</a></h2>
+<p>If excessive yaw maneuvers are of concern, an alternative to
+<a class="reference internal" href="#yaw-offset-rate-limits"><span class="xref myst">rate limiting</span></a>
+the optimal offsets is to apply a hysteresis approach around the transition wind directions. This
+holds the yaw offset at a fixed value across the transition between negative and positive values,
+until a certain “large-enough” change in wind direction occurs. This prevents chattering between
+large positive and negative values. The <code class="docutils literal notranslate"><span class="pre">compute_hysteresis_zones()</span></code> function takes in a DataFrame
+of optimal yaw angles, and returns a list of wind direction bands where hysteresis should be applied
+based on transitions exceeding the <code class="docutils literal notranslate"><span class="pre">yaw_rate_threshold</span></code>. The width of the hysteresis region is defined
+by <code class="docutils literal notranslate"><span class="pre">min_zone_width</span></code>, unless zones overlap, in which case they are combined.
+The list of hysteresis zones can be provided to the <a class="reference internal" href="controllers.html#controllers-luwakesteer"><span class="std std-ref">LookupBasedWakeSteeringController</span></a>
+on instantiation, along with <code class="docutils literal notranslate"><span class="pre">df_opt</span></code>, to apply
+dynamic hysteresis to the yaw offsets. However, again, care should be taken with this approach as it
+can result in “wrong-way steering”.</p>
 </section>
-<section id="windfarmpowertrackingcontroller">
-<span id="controllers-wfpowertracking"></span><h3>WindFarmPowerTrackingController<a class="headerlink" href="#windfarmpowertrackingcontroller" title="Link to this heading">#</a></h3>
-<p>Closed-loop wind farm-level power controller that distributes a farm-level
-power reference among the wind turbines in a farm and adjusts the requests made
-from each turbine depending on whether the power reference has been met.
-Developed under the <a class="reference external" href="https://github.com/NREL/a2e2g">A2e2g project</a>, with
-further details provided in
-<a class="reference external" href="https://pubs.aip.org/aip/jrse/article/15/5/053304/2913100">Sinner et al.</a>.</p>
-<p>Integral action, as well as gain scheduling based on turbine saturation, has been disabled as
-simple proportional control appears sufficient currently. However, these may be enabled at a
-later date if needed. The <code class="docutils literal notranslate"><span class="pre">proportional_gain</span></code> for the controller may be provided on instantiation,
-and defaults to <code class="docutils literal notranslate"><span class="pre">proportional_gain</span> <span class="pre">=</span> <span class="pre">1</span></code>.</p>
+<section id="converting-yaw-offsets-dataframe-to-an-interpolant-function">
+<h2>Converting yaw offsets DataFrame to an interpolant function<a class="headerlink" href="#converting-yaw-offsets-dataframe-to-an-interpolant-function" title="Link to this heading">#</a></h2>
+<p>In many cases, including in the
+<a class="reference internal" href="controllers.html#controllers-luwakesteer"><span class="std std-ref">LookupBasedWakeSteeringController</span></a>,
+it is more convenient for the precomputed yaw offsets lookup table to be defined as a an
+interpolant than a DataFrame of optimal values. The <code class="docutils literal notranslate"><span class="pre">get_yaw_angles_interpolant</span></code> function takes in
+a DataFrame <code class="docutils literal notranslate"><span class="pre">df_opt</span></code> and returns a function that can be queried at any
+wind direction, wind speed, turbulence intensity combination to provide an interpolated set of
+offsets. Additionally, the wind direction, wind speed, and turbulence intensity can be queried
+using arrays of equal length to interpolate in a vectorized manner.</p>
+<p>Note that in <a class="reference internal" href="controllers.html#controllers-luwakesteer"><span class="std std-ref">LookupBasedWakeSteeringController</span></a>,
+the construction of the interpolator happens automatically based on the <code class="docutils literal notranslate"><span class="pre">df_opt</span></code> passed in on
+instantiation.</p>
+<hr class="docutils" />
 </section>
-<section id="hybridsupervisorycontrollerbaseline">
-<span id="controllers-simplehybrid"></span><h3>HybridSupervisoryControllerBaseline<a class="headerlink" href="#hybridsupervisorycontrollerbaseline" title="Link to this heading">#</a></h3>
-<p>Simple closed-loop supervisory controller for a hybrid wind/solar/battery plant.
-Reads in current power production from wind, solar, and battery, as well as a plant power reference. Contains logic to determine technology set points for wind, solar and battery technologies to follow the plant power reference. The control is based on a proportional gain based on the error between the wind and solar production and the plant power reference. The controller increases the power references sent to wind, solar, and battery if the power reference is not met. If there is a power surplus from wind and solar, the controller adjusts the power reference values to charge the battery up to the battery capacity.</p>
-<p>The power reference values for wind, solar and battery technologies are then handled by the operational controllers for wind, solar, and battery, which are assigned to the <code class="docutils literal notranslate"><span class="pre">HybridSupervisoryControllerBaseline</span></code> on instantiation to distribute the bulk references to each asset amongst the individual generators. Currently, only wind actually distributes the power.
-Intended as a baseline for comparison to more advanced supervisory controllers.</p>
-<p>This controller can also be run for a hybrid plant comprising wind or solar
-and/or a battery. At least one of the wind or solar components must be present,
-with the battery component optional. Upon instantiation, the user may set
-<code class="docutils literal notranslate"><span class="pre">wind_controller</span></code>, <code class="docutils literal notranslate"><span class="pre">solar_controller</span></code>, and/or <code class="docutils literal notranslate"><span class="pre">battery_controller</span></code> to <code class="docutils literal notranslate"><span class="pre">None</span></code> if
-no wind, solar, and/or battery component is available, respectively.</p>
-</section>
-<section id="batterycontroller">
-<span id="controllers-battery"></span><h3>BatteryController<a class="headerlink" href="#batterycontroller" title="Link to this heading">#</a></h3>
-<p>Controller to trade off battery demand response with battery degradation. The
-<code class="docutils literal notranslate"><span class="pre">BatteryController</span></code> takes as an input the higher-level battery power reference,
-and produces a modified (“input-shaped”) reference with the intention of
-reducing wear and tear on the battery. Designed to create a second-order closed-loop
-system response to reference inputs.
-Generally speaking, increasing the controller gain <code class="docutils literal notranslate"><span class="pre">k_batt</span></code> increases the natural
-frequency of the second-order system response, and if increased too far, can lead to
-instability. The default value for <code class="docutils literal notranslate"><span class="pre">k_batt</span></code> is 0.1.</p>
-<p>The <code class="docutils literal notranslate"><span class="pre">BatteryController</span></code> also enables clipping of the reference to throttle the
-battery at high and low states of charge (SOC). This throttling is applied by specifying
-four SOC thresholds between 0 and 1: below the first threshold, the reference is nullified;
-between the first and second, the output reference is linearly ramped up; between the second
-and third, the full reference is used; between the third and fourth, the output reference is
-linearly ramped down; and above the fourth, the reference is again nullified. Examples of
-this are shown below. These are specified by passing a four-element list of fractional
-SOCs to
-<code class="docutils literal notranslate"><span class="pre">clipping_thresholds</span></code>, e.g. <code class="docutils literal notranslate"><span class="pre">clipping_thresholds=[0.1,</span> <span class="pre">0.2,</span> <span class="pre">0.8,</span> <span class="pre">0.9]</span></code>.
-The default is to apply the full reference across the full range of SOCs, i.e.
-<code class="docutils literal notranslate"><span class="pre">clipping_thresholds=[0,</span> <span class="pre">0,</span> <span class="pre">1,</span> <span class="pre">1]</span></code>.</p>
-<p><img alt="soc clipping" src="_images/clipping-schedules.png" /></p>
-</section>
-<section id="hydrogenplantcontroller">
-<span id="controllers-hydrogen"></span><h3>HydrogenPlantController<a class="headerlink" href="#hydrogenplantcontroller" title="Link to this heading">#</a></h3>
-<p>Simple closed-loop controller for an off-grid power generation/hydrogen plant. The controller uses an external hydrogen reference signal to control the hydrogen production of the plant through setting the power reference signal.</p>
-<p>Reads in current power production from the generator(s), the current hydrogen production rate, and the hydrogen rate reference. Contains logic to set the generator power reference using a proportional gain applied to the error between the current hydrogen production rate and the hydrogen production reference. The proportional gain is scaled by the current power production to handle the difference of several magnitudes between the power and the hydrogen production rate.</p>
-<p>The power reference computed is then passed to a secondary power generation plant controller, which is assigned to the <code class="docutils literal notranslate"><span class="pre">HydrogenPlantController</span></code> on instantiation.
-This secondary power generation controller could be <a class="reference internal" href="#controllers-wfpowertracking"><span class="std std-ref">WindFarmPowerTrackingController</span></a> for a wind-only plant, <a class="reference internal" href="#controllers-simplehybrid"><span class="std std-ref">HybridSupervisoryControllerBaseline</span></a> for a hybrid generation plant, etc.</p>
-</section>
+<section id="wake-steering-offset-visualization">
+<h2>Wake steering offset visualization<a class="headerlink" href="#wake-steering-offset-visualization" title="Link to this heading">#</a></h2>
+<p>Visualization tools for wake steering lookup tables are provided in the
+<code class="docutils literal notranslate"><span class="pre">whoc.design_tools.wake_steering_visualization</span></code> module. There are currently two functions:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">plot_offsets_wswd_heatmap()</span></code> creates a heatmap of offsets by wind speed and wind direction based
+on <code class="docutils literal notranslate"><span class="pre">df_opt</span></code> for a given turbine index <code class="docutils literal notranslate"><span class="pre">turb_id</span></code>. Unless only a single TI value
+appears in <code class="docutils literal notranslate"><span class="pre">df_opt</span></code>, users will need to specify the turbulence intensity for the plot using <code class="docutils literal notranslate"><span class="pre">ti_plot</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">plot_offsets_wd()</span></code> plots the offsets from <code class="docutils literal notranslate"><span class="pre">df_opt</span></code> for turbine <code class="docutils literal notranslate"><span class="pre">turb_id</span></code> at a specified (set of) wind speeds <code class="docutils literal notranslate"><span class="pre">wd_plot</span></code>. Unless only a single TI value
+appears in <code class="docutils literal notranslate"><span class="pre">df_opt</span></code>, users will need to specify the turbulence intensity for the plot using <code class="docutils literal notranslate"><span class="pre">ti_plot</span></code>.</p></li>
+</ul>
+<p>Both functions, as well as many of the design functions described here, are demonstrated in the
+compare_yaw_offset_designs.py python script provided in <a class="reference internal" href="examples.html#examples-luwakesteer"><span class="std std-ref">lookup-based_wake_steering_florisstandin</span></a>.</p>
 </section>
 </section>
 
@@ -571,20 +561,20 @@ This secondary power generation controller could be <a class="reference internal
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="code_development.html"
+       href="interfaces.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Code development</p>
+        <p class="prev-next-title">Interfaces</p>
       </div>
     </a>
     <a class="right-next"
-       href="interfaces.html"
+       href="examples.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Interfaces</p>
+        <p class="prev-next-title">Examples</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -604,16 +594,11 @@ This secondary power generation controller could be <a class="reference internal
   </div>
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#available-controllers">Available controllers</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#lookupbasedwakesteeringcontroller">LookupBasedWakeSteeringController</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#wakesteeringroscostandin">WakeSteeringROSCOStandin</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#windfarmpowerdistributingcontroller">WindFarmPowerDistributingController</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#windfarmpowertrackingcontroller">WindFarmPowerTrackingController</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hybridsupervisorycontrollerbaseline">HybridSupervisoryControllerBaseline</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#batterycontroller">BatteryController</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hydrogenplantcontroller">HydrogenPlantController</a></li>
-</ul>
-</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#geometric-ramping-with-wind-speed">Geometric ramping with wind speed</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#yaw-offset-rate-limits">Yaw offset rate limits</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#finding-hysteresis-zones">Finding hysteresis zones</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#converting-yaw-offsets-dataframe-to-an-interpolant-function">Converting yaw offsets DataFrame to an interpolant function</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#wake-steering-offset-visualization">Wake steering offset visualization</a></li>
 </ul>
   </nav></div>
 
