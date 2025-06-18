@@ -423,6 +423,21 @@ def test_consolidate_hysteresis_zones():
     hysteresis_wds_test = consolidate_hysteresis_zones(hysteresis_wds_unconsolidated)
     assert hysteresis_wds_test == hysteresis_wds_base
 
+    # A few more edge cases
+    hysteresis_wds_unconsolidated = [(15, 30), (35, 50), (340, 355), (345, 0), (355, 10)]
+    hysteresis_wds_base = [(15, 30), (35, 50), (340, 10)]
+    assert consolidate_hysteresis_zones(hysteresis_wds_unconsolidated) == hysteresis_wds_base
+
+    hysteresis_wds_unconsolidated = [(15, 30), (35, 50)]
+    hysteresis_wds_base = hysteresis_wds_unconsolidated
+    assert consolidate_hysteresis_zones(hysteresis_wds_unconsolidated) == hysteresis_wds_base
+
+    hysteresis_wds_unconsolidated = [
+        (0, 15), (10, 25), (15, 30), (35, 50), (340, 355), (345, 0), (355, 10)
+    ]
+    hysteresis_wds_base = [(345, 30), (35, 50)]
+    assert consolidate_hysteresis_zones(hysteresis_wds_unconsolidated) == hysteresis_wds_base
+
 def test_create_uniform_wind_rose():
     wind_rose = create_uniform_wind_rose()
     frequencies = wind_rose.unpack_freq()
