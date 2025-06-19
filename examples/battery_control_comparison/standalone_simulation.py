@@ -51,7 +51,7 @@ def simulate(soc_0, clipping_thresholds, gain):
         "external_signals": {"plant_power_reference": 0},
         "py_sims": {
             "battery": {"outputs": {"power": 0, "soc": 0, "reject": 0}},
-            "inputs": {"battery_signal": 0, "available_power": 20000}
+            "inputs": {"battery_signal": 0, "locally_generated_power": 20000}
         }
     }
 
