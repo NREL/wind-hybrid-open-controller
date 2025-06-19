@@ -129,7 +129,7 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
 
         # Decide control gain:
         if (wind_power + solar_power) < (plant_power_reference+self.battery_charge_rate)\
-            and battery_power < 0:
+            and battery_power <= 0:
             if battery_soc>0.89:
                 K = ((wind_power + solar_power) - plant_power_reference) / 2
             else:
