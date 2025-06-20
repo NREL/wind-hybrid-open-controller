@@ -30,10 +30,12 @@ class HerculesADInterface(InterfaceBase):
         wind_power_reference = POWER_SETPOINT_DEFAULT
         forecast = {}
 
-        # Handle external signals
+        # Handle external signals. wind_power_reference takes precedence over plant_power_reference.
         if "external_signals" in hercules_dict:
             if "wind_power_reference" in hercules_dict["external_signals"]:
                 wind_power_reference = hercules_dict["external_signals"]["wind_power_reference"]
+            elif "plant_power_reference" in hercules_dict["external_signals"]:
+                wind_power_reference = hercules_dict["external_signals"]["plant_power_reference"]
 
             for k in hercules_dict["external_signals"].keys():
                 if "forecast" in k != "wind_power_reference":
