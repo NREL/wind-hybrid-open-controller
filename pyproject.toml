@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "whoc"
-version = "0.4"
+version = "0.5"
 description = "Wind Hybrid Open Controller."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -24,7 +24,6 @@ classifiers = [
 ]
 dependencies = [
     "numpy~=2.0",
-    "flasc~=2.3",
     "pandas~=2.0",
     "matplotlib~=3.0",
     "floris~=4.3",

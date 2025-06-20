@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Locate the scripts folder
+SCRIPTS_DIR="../../../hercules/scripts"
+
+# Kill any active helics jobs by calling the find_and_kill_helics script
+# within the scripts folder
+source $SCRIPTS_DIR/find_and_kill_helics.sh
+
 # Determine the base path for Conda initialization
 if [ -f "/home/$USER/anaconda3/etc/profile.d/conda.sh" ]; then
     # Common path for Anaconda on Linux
@@ -21,27 +28,34 @@ else
     exit 1
 fi
 
-# Source the Conda initialization script. Assumes the environment is named "hercules". Change if necessary.
-source "$CONDA_PATH"
-conda activate hercules
+# Kill any active helics jobs by calling the find_and_kill_helics script
+# within the scripts folder
+source $SCRIPTS_DIR/find_and_kill_helics.sh
+
+# Run the activate CONDA script within the scripts folder
+# to ensure the Hercules environment is active
+source $SCRIPTS_DIR/activate_conda.sh
+
+# Identify an available port for the HELICS broker.  This should
+# be the first in a sequence of 10 available ports
+# In case of comms trouble can be useful to change the first port
+# to check for availability
+first_port=32000
+source $SCRIPTS_DIR/get_helics_port.sh $first_port
 
 # Clean up existing outputs
 if [ -d outputs ]; then rm -r outputs; fi
 mkdir -p outputs
 
-# Create the yaw offset table. This is quick for a small farm. Output will be saved.
-echo "Creating yaw offset table and wind data input."
-python3 construct_yaw_offsets.py --yaw_offset_filename inputs/yaw_offsets.pkl --input_wind_filename inputs/amr_standin_data.csv
+# Generate input time series for hydrogen reference and wind resource
+echo "Generating input time series"
+python generate_input_timeseries.py
 
-# Set the helics port to use: 
-#make sure you use the same port number in the amr_input.inp and hercules_input_000.yaml files. 
-export HELICS_PORT=32000
-
-# Set up the helics broker and run the simulation
-echo "Running simulation."
-helics_broker -t zmq  -f 2 --loglevel="debug" --local_port=$HELICS_PORT &
-python hercules_runscript.py inputs/hercules_input.yaml >> outputs/loghercules.log 2>&1 &
-python floris_runscript.py inputs/amr_input.inp inputs/amr_standin_data.csv >> outputs/logfloris.log 2>&1
+# Set up the helics broker
+echo "Connecting helics broker to port $HELICS_PORT"
+helics_broker -t zmq  -f 2 --loglevel="debug" --local_port=$HELICS_PORT & 
+python hercules_runscript.py inputs/hercules_input.yaml $HELICS_PORT >> outputs/loghercules_cl.log 2>&1 &
+python floris_runscript.py inputs/amr_input.inp inputs/amr_standin_data.csv $HELICS_PORT >> outputs/logfloris_cl.log 2>&1
 
 # Clean up helics output if there
 # Search for a file that begins with the current year
@@ -54,8 +68,10 @@ for file in ${current_year}*.csv; do
     fi
 done
 
-# Report success and plot results
-echo "Finished running simulations. Plotting results."
+# If everything is successful
+echo "Finished running hercules"
+echo "Plotting outputs"
+
 python plot_output_data.py
 
 exit 0

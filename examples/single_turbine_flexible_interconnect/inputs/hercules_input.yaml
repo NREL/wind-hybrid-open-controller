@@ -1,22 +1,19 @@
-# Name
-name: lookup-based_wake_steering_florisstandin
+name: single_turbine_flexible_interconnect
 
 ###
 # Describe this emulator setup
-description: Two-turbine wind farm
+description: Single-turbine distributed generator
 
-dt: 0.5
+dt: 10
 
 hercules_comms:
 
   amr_wind:
-
     wind_farm_0:
       type: amr_wind_local #options are amr_wind or amr_wind_local
       amr_wind_input_file: inputs/amr_input.inp
 
   helics:
-
     config:
         name: hercules # What is the purpose of this name
         use_dash_frontend: False
@@ -31,20 +28,14 @@ hercules_comms:
         publication_interval: 1
         endpoint_interval: 1
         starttime: 0
-        stoptime: 100
-        
+        stoptime: 86400 # 24 hours
         Agent: ControlCenter
 
 py_sims:
 
 controller:
-  num_turbines: 2 # Should match AMR-Wind! Ideally, would come from AMR-wind
+  num_turbines: 1
   initial_conditions:
-      yaw: 270. # degrees (same for all turbines) (will this work?)
+      yaw: 270.
 
-
-
-
-
-
-
+external_data_file: inputs/wind_power_reference_data.csv
