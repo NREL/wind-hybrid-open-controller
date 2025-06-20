@@ -428,6 +428,7 @@ document.write(`
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#simple-hybrid-plant">simple_hybrid_plant</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#battery-control-comparison">battery_control_comparison</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#wind-hydrogen-tracking">wind_hydrogen_tracking</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#single-turbine-flexible-interconnect">single_turbine_flexible_interconnect</a></li>
 </ul>
             </nav>
         </div>
@@ -555,6 +556,29 @@ script run_script.sh:</p>
 production reference. The resulting trajectories are plotted, producing:
 <img alt="Results of wind_farm_power_tracking_florisstandin example" src="_images/wind-hydrogen-example-plot.png" /></p>
 </section>
+<section id="single-turbine-flexible-interconnect">
+<span id="examples-flexibleinterconnect"></span><h2>single_turbine_flexible_interconnect<a class="headerlink" href="#single-turbine-flexible-interconnect" title="Link to this heading">#</a></h2>
+<p>In this example, the a single roughly 1.5MW wind turbine generates power as a distributed power plant but must follow a flexible interconnect amount. The turbine is controlled to generated maximum power under the time-varying interconnect limit, which differs each hour of the day for 24 hours. Then, a 0.5MW, 4-hour battery is added to demonstrate the reduction in curtailed wind energy possible by adding a battery.</p>
+<p>To run this example, navigate to the examples/single_turbine_flexible_interconnect folder and execute the shell script run_script.sh:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bash</span> <span class="n">run_script</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>This will run a 24 hour simulation with 10s time steps of the turbine and controller tracking a flexible interconnect limit. The wind plus battery case
+is also run, and finally a simulation where the wind turbine power output is not constrained by the interconnect, providing a baseline to compute curtailment. The resulting trajectories are plotted, producing:
+<img alt="Results of single_turbine_flexible_interconnect example" src="_images/flexible-interconnect.png" />
+as well printing</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Results</span> <span class="k">for</span> <span class="n">wind</span> <span class="n">only</span> <span class="n">case</span>
+<span class="n">Curtailed</span> <span class="n">energy</span><span class="p">:</span> <span class="mf">1937.43</span> <span class="n">kWh</span> <span class="p">(</span><span class="mf">6.2</span><span class="o">%</span> <span class="n">of</span> <span class="n">available</span><span class="p">)</span>
+<span class="n">Total</span> <span class="n">time</span> <span class="n">curtailed</span><span class="p">:</span> <span class="mf">17.6</span> <span class="n">hours</span>
+
+<span class="n">Results</span> <span class="k">for</span> <span class="n">wind</span> <span class="o">+</span> <span class="n">battery</span> <span class="n">case</span>
+<span class="n">Curtailed</span> <span class="n">energy</span><span class="p">:</span> <span class="mf">0.00</span> <span class="n">kWh</span> <span class="p">(</span><span class="mf">0.0</span><span class="o">%</span> <span class="n">of</span> <span class="n">available</span><span class="p">)</span>
+<span class="n">Total</span> <span class="n">time</span> <span class="n">curtailed</span><span class="p">:</span> <span class="mf">0.0</span> <span class="n">hours</span>
+</pre></div>
+</div>
+<p>to the console.</p>
+<p>The wind speed is low in the first 4 hours or so, and the turbine cannot use its full interconnect allocation. However, since the battery has a nonzero initial state of charge, the battery can make up some of the miss. The wind speed then increases and the full hourly interconnect limit is used. When the available wind exceeds the interconnect limit and the battery is available, the battery charges (shown as a negative battery power). Between hours 15 and 20, the wind speed is fluctuating around 10 m/s and the turbine alone is not fully reaching the interconnect allocation, but during periods of higher wind speeds the interconnect limit is adhered to.</p>
+</section>
 </section>
 
     <script type="text/x-thebe-config">
@@ -617,6 +641,7 @@ production reference. The resulting trajectories are plotted, producing:
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#simple-hybrid-plant">simple_hybrid_plant</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#battery-control-comparison">battery_control_comparison</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#wind-hydrogen-tracking">wind_hydrogen_tracking</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#single-turbine-flexible-interconnect">single_turbine_flexible_interconnect</a></li>
 </ul>
   </nav></div>
 
