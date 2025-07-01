@@ -1,7 +1,7 @@
 import pytest
 from whoc.interfaces import (
-    HerculesLongRunInterface,
     HerculesHybridLongRunInterface,
+    HerculesLongRunInterface,
 )
 
 test_hercules_dict = {
