@@ -10,6 +10,10 @@ class HerculesLongRunInterface(InterfaceBase):
         self.dt = hercules_dict["dt"]
 
         # Wind farm parameters
+        if "wind_farm" not in hercules_dict:
+            raise ValueError(
+                "hercules_dict must contain 'wind_farm' key to use this interface."
+            )
         self.nameplate_capacity = hercules_dict["wind_farm"]["capacity"]
         self.n_turbines = hercules_dict["wind_farm"]["num_turbines"]
         self.turbines = range(self.n_turbines)
@@ -74,4 +78,36 @@ class HerculesLongRunInterface(InterfaceBase):
 
 class HerculesHybridLongRunInterface(InterfaceBase):
     def __init__(self, hercules_dict):
-        raise NotImplementedError("Hybrid interface not yet developed")
+        super().__init__()
+
+        # Simulation parameters
+        self.dt = hercules_dict["dt"]
+
+        # Determine which components are present in the simulation
+        self.contains_wind = "wind_farm" in hercules_dict
+        self.contains_solar = "solar_farm" in hercules_dict
+        self.contains_battery = "battery" in hercules_dict
+
+        # Wind farm parameters
+        if self.contains_wind:
+            self.wind_capacity = hercules_dict["wind_farm"]["capacity"]
+            self.n_turbines = hercules_dict["wind_farm"]["num_turbines"]
+            self.turbines = range(self.n_turbines)
+
+        # Solar farm parameters
+        if self.contains_solar:
+            self.solar_capacity = hercules_dict["solar_farm"]["capacity"]
+
+        # Battery parameters
+        if self.contains_battery:
+            self.battery_power_capacity = hercules_dict["battery"]["size"] * 1e3
+            self.battery_energy_capacity = hercules_dict["battery"]["energy_capacity"] * 1e3
+
+    def check_controls(self):
+        return None
+
+    def get_measurements(self):
+        return None
+
+    def send_controls(self):
+        return None
