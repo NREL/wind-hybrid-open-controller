@@ -6,29 +6,28 @@ class HerculesLongRunInterface(InterfaceBase):
     def __init__(self, hercules_dict):
         super().__init__()
 
+        # Simulation parameters
         self.dt = hercules_dict["dt"]
-        self.n_turbines = hercules_dict["controller"]["num_turbines"]
+
+        # Wind farm parameters
+        self.nameplate_capacity = hercules_dict["wind_farm"]["capacity"]
+        self.n_turbines = hercules_dict["wind_farm"]["num_turbines"]
         self.turbines = range(self.n_turbines)
 
-        # Grab name of wind farm (assumes there is only one!)
-        self.wf_name = [w for w in list(hercules_dict["py_sims"].keys()) if "wind_farm" in w][0]
-
     def get_measurements(self, hercules_dict):
-        wind_directions = [
-            hercules_dict['py_sims'][self.wf_name]['outputs']['floris_wind_direction']
-        ]*self.n_turbines
+        wind_directions = [hercules_dict["wind_farm"]["wind_direction"]]*self.n_turbines
         # wind_speeds = input_dict["hercules_comms"]\
         #                         ["amr_wind"]\
         #                         [self.wf_name]\
         #                         ["turbine_wind_speeds"]
-        turbine_powers = hercules_dict['py_sims'][self.wf_name]['outputs']['power']
+        turbine_powers = hercules_dict["wind_farm"]["turbine_powers"]
         time = hercules_dict["time"]
 
         # Defaults for external signals
         wind_power_reference = POWER_SETPOINT_DEFAULT
         forecast = {}
 
-        # Handle external signals
+        # Handle external signals and overwrite defaults
         if "external_signals" in hercules_dict:
             if "wind_power_reference" in hercules_dict["external_signals"]:
                 wind_power_reference = hercules_dict["external_signals"]["wind_power_reference"]
@@ -41,7 +40,7 @@ class HerculesLongRunInterface(InterfaceBase):
             "time": time,
             "wind_directions": wind_directions,
             # "wind_speeds":wind_speeds,
-            "turbine_powers": turbine_powers,
+            "wind_turbine_powers": turbine_powers,
             "wind_power_reference": wind_power_reference,
             "forecast": forecast,
         }
@@ -49,7 +48,8 @@ class HerculesLongRunInterface(InterfaceBase):
         return measurements
 
     def check_controls(self, controls_dict):
-        available_controls = ["yaw_angles", "power_setpoints"]
+        # TODO: Implement yaw angles for this interface
+        available_controls = ["power_setpoints"]
 
         for k in controls_dict.keys():
             if k not in available_controls:
@@ -60,14 +60,15 @@ class HerculesLongRunInterface(InterfaceBase):
                 )
 
     def send_controls(self, hercules_dict, yaw_angles=None, power_setpoints=None):
-        if yaw_angles is None:
-            raise NotImplementedError("TO DO: Implement yaw angles for LSAD interface")
-            yaw_angles = [-1000] * self.n_turbines
+        if yaw_angles is not None:
+            raise NotImplementedError("TO DO: Implement yaw angles for this interface")
+        # if yaw_angles is None:
+        #     yaw_angles = [-1000] * self.n_turbines
         if power_setpoints is None:
             power_setpoints = [POWER_SETPOINT_DEFAULT] * self.n_turbines
 
         for t_idx in range(self.n_turbines):
-            hercules_dict["py_sims"]["inputs"][f"derating_{t_idx:03d}"] = power_setpoints[t_idx]
+            hercules_dict["wind_farm"][f"derating_{t_idx:03d}"] = power_setpoints[t_idx]
 
         return hercules_dict
 

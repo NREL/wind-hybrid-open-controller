@@ -44,7 +44,6 @@ def test_interface_instantiation():
     _ = HerculesADInterface(hercules_dict=test_hercules_dict)
     _ = HerculesHybridADInterface(hercules_dict=test_hercules_dict)
     _ = HerculesBatteryInterface(hercules_dict=test_hercules_dict)
-    # _ = ROSCO_ZMQInterface()
 
 
 def test_HerculesADInterface():
