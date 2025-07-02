@@ -105,6 +105,17 @@ def test_HerculesADInterface():
         interface.send_controls(test_hercules_dict, **bad_controls_dict2)
     # bad_controls_dict3 would pass, but faile the check_controls step.
 
+    # test that both wind_power_reference and plant_power_reference work, and that
+    # wind_power_reference takes precedence
+    test_hercules_dict["external_signals"]["wind_power_reference"] = 500.0
+    test_hercules_dict["external_signals"]["plant_power_reference"] = 400.0
+    assert interface.get_measurements(test_hercules_dict)["power_reference"] == 500.0
+    del test_hercules_dict["external_signals"]["wind_power_reference"]
+    assert interface.get_measurements(test_hercules_dict)["power_reference"] == 400.0
+    # Reinstate original values for future tests
+    test_hercules_dict["external_signals"]["wind_power_reference"] = 1000.0
+    test_hercules_dict["external_signals"]["plant_power_reference"] = 1000.0
+
 def test_HerculesHybridADInterface():
     interface = HerculesHybridADInterface(hercules_dict=test_hercules_dict)
 

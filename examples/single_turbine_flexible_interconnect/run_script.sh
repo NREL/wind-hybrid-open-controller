@@ -29,19 +29,27 @@ conda activate hercules
 if [ -d outputs ]; then rm -r outputs; fi
 mkdir -p outputs
 
-# Create the yaw offset table. This is quick for a small farm. Output will be saved.
-echo "Creating yaw offset table and wind data input."
-python3 construct_yaw_offsets.py --yaw_offset_filename inputs/yaw_offsets.pkl --input_wind_filename inputs/amr_standin_data.csv
-
 # Set the helics port to use: 
 #make sure you use the same port number in the amr_input.inp and hercules_input_000.yaml files. 
 export HELICS_PORT=32000
 
-# Set up the helics broker and run the simulation
-echo "Running simulation."
-helics_broker -t zmq  -f 2 --loglevel="debug" --local_port=$HELICS_PORT &
-python hercules_runscript.py inputs/hercules_input.yaml >> outputs/loghercules.log 2>&1 &
-python floris_runscript.py inputs/amr_input.inp inputs/amr_standin_data.csv >> outputs/logfloris.log 2>&1
+# Set up the helics broker and run the simulations
+echo "Running flexible interconnect simulation."
+helics_broker -t zmq -f 2 --loglevel="debug" --local_port=$HELICS_PORT &
+python hercules_runscript_wind_only.py inputs/hercules_input.yaml >> outputs/loghercules_wind_only.log 2>&1 &
+python floris_runscript.py inputs/amr_input.inp inputs/amr_standin_data.csv >> outputs/logfloris_wind_only.log 2>&1
+
+echo "Finished flexible interconnect simulation. Running wind+battery flexible interconnect simulation"
+helics_broker -t zmq -f 2 --loglevel="debug" --local_port=$HELICS_PORT &
+python hercules_runscript_with_battery.py inputs/hercules_input.yaml >> outputs/loghercules_with_battery.log 2>&1 &
+python floris_runscript.py inputs/amr_input.inp inputs/amr_standin_data.csv >> outputs/logfloris_with_battery.log 2>&1
+
+echo "Finished wind+battery flexible interconnect simulation. Running unlimited interconnect baseline scenario."
+helics_broker -t zmq -f 2 --loglevel="debug" --local_port=$HELICS_PORT &
+python hercules_runscript_baseline.py inputs/hercules_input.yaml >> outputs/loghercules_baseline.log 2>&1 &
+python floris_runscript.py inputs/amr_input.inp inputs/amr_standin_data.csv >> outputs/logfloris_baseline.log 2>&1
+echo "Finished running unlimited interconnect baseline simulation."
+
 
 # Clean up helics output if there
 # Search for a file that begins with the current year

@@ -118,8 +118,8 @@ def test_LookupBasedWakeSteeringController():
     # wind directions
     test_offsets = np.array([20.0, 10.0])
     df_opt_test = pd.DataFrame(data={
-        "wind_direction":[220.0, 320.0, 220.0, 320.0],
-        "wind_speed":[0.0, 0.0, 20.0, 20.0],
+        "wind_direction":[220.0, 220.0, 320.0, 320.0],
+        "wind_speed":[0.0, 20.0, 0.0, 20.0],
         "yaw_angles_opt":[test_offsets]*4,
         "turbulence_intensity":[0.06]*4
     })
