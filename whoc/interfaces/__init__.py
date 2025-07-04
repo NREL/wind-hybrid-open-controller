@@ -5,6 +5,6 @@ from whoc.interfaces.hercules_v1_interface import (
 )
 from whoc.interfaces.hercules_v2_interface import (
     HerculesHybridLongRunInterface,
-    HerculesLongRunWindInterface,
+    HerculesWindLongRunInterface,
 )
 from whoc.interfaces.rosco_zmq_interface import ROSCO_ZMQInterface
