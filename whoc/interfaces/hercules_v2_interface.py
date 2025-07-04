@@ -1,13 +1,32 @@
 from whoc.controllers.wind_farm_power_tracking_controller import POWER_SETPOINT_DEFAULT
 from whoc.interfaces.interface_base import InterfaceBase
 
-
-class HerculesLongRunWindInterface(InterfaceBase):
+class HerculesInterfaceBase(InterfaceBase):
+    """
+    Base class for Hercules v2 interfaces.
+    This class is not intended to be instantiated directly.
+    It provides a common interface for all Hercules interfaces.
+    """
     def __init__(self, hercules_dict):
         super().__init__()
-
-        # Simulation parameters
         self.dt = hercules_dict["dt"]
+
+        # Controller parameters
+        if "controller" in hercules_dict:
+            self.controller_parameters = hercules_dict["controller"]
+        else:
+            self.controller_parameters = {}
+
+        # Plant parameters
+        if "plant" in hercules_dict:
+            self.plant_parameters = hercules_dict["plant"]
+        else:
+            self.plant_parameters = {}
+
+
+class HerculesLongRunWindInterface(HerculesInterfaceBase):
+    def __init__(self, hercules_dict):
+        super().__init__(hercules_dict)
 
         # Wind farm parameters
         if "wind_farm" not in hercules_dict:
@@ -76,12 +95,9 @@ class HerculesLongRunWindInterface(InterfaceBase):
 
         return hercules_dict
 
-class HerculesHybridLongRunInterface(InterfaceBase):
+class HerculesHybridLongRunInterface(HerculesInterfaceBase):
     def __init__(self, hercules_dict):
-        super().__init__()
-
-        # Simulation parameters
-        self.dt = hercules_dict["dt"]
+        super().__init__(hercules_dict)
 
         # Determine which components are present in the simulation
         self._has_wind_component = "wind_farm" in hercules_dict

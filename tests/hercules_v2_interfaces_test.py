@@ -11,6 +11,7 @@ test_hercules_dict = {
         "interconnect_limit"
     },
     "controller": {
+        "test_controller_parameter": 1.0,
     },
     "wind_farm": {
         "num_turbines": 2,
@@ -167,3 +168,7 @@ def test_HerculesHybridLongRunInterface():
         controls_dict["battery_power_setpoint"] == \
             -test_hercules_dict_out["battery"]["power_setpoint"] * 1e3
     )
+
+    # Check that controller and plant parameters are set correctly
+    assert interface.controller_parameters == test_hercules_dict["controller"]
+    assert interface.plant_parameters == test_hercules_dict["plant"]
