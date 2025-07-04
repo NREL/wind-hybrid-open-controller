@@ -1,7 +1,7 @@
 import pytest
 from whoc.interfaces import (
     HerculesHybridLongRunInterface,
-    HerculesLongRunWindInterface,
+    HerculesWindLongRunInterface,
 )
 
 test_hercules_dict = {
@@ -52,12 +52,12 @@ def test_interface_instantiation():
     each implement the required methods specified by InterfaceBase.
     """
 
-    _ = HerculesLongRunWindInterface(hercules_dict=test_hercules_dict)
+    _ = HerculesWindLongRunInterface(hercules_dict=test_hercules_dict)
     _ = HerculesHybridLongRunInterface(hercules_dict=test_hercules_dict)
 
-def test_HerculesLongRunWindInterface():
+def test_HerculesWindLongRunInterface():
     # Test instantiation
-    interface = HerculesLongRunWindInterface(hercules_dict=test_hercules_dict)
+    interface = HerculesWindLongRunInterface(hercules_dict=test_hercules_dict)
     assert interface.dt == test_hercules_dict["dt"]
     assert interface.nameplate_capacity == test_hercules_dict["wind_farm"]["capacity"]
     assert interface.n_turbines == test_hercules_dict["wind_farm"]["num_turbines"]

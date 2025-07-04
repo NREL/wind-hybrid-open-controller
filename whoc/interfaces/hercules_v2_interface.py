@@ -25,7 +25,7 @@ class HerculesInterfaceBase(InterfaceBase):
             self.plant_parameters = {}
 
 
-class HerculesLongRunWindInterface(HerculesInterfaceBase):
+class HerculesWindLongRunInterface(HerculesInterfaceBase):
     def __init__(self, hercules_dict):
         super().__init__(hercules_dict)
 
