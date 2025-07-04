@@ -179,3 +179,86 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
         self.battery_reference = battery_reference
 
         return wind_reference, solar_reference, battery_reference
+
+
+class HybridSupervisoryControllerMultiRef(HybridSupervisoryControllerBaseline):
+    """
+    Modified version of HybridSupervisoryControllerBaseline that accepts
+    individual references for wind and solar generation and respects an
+    interconnection limit.
+    """
+    def __init__(
+            self,
+            interface,
+            input_dict,
+            wind_controller=None,
+            solar_controller=None,
+            battery_controller=None,
+            verbose=False
+        ):
+        super().__init__(
+            interface=interface,
+            input_dict=input_dict,
+            wind_controller=wind_controller,
+            solar_controller=solar_controller,
+            battery_controller=battery_controller,
+            verbose=verbose
+        )
+
+        # Extract interconnection limit
+        if "interconnection_limit" in self.plant_parameters:
+            self.interconnection_limit = self.plant_parameters["interconnection_limit"]
+            if self.interconnection_limit <= 0:
+                raise ValueError("interconnection_limit must be positive.")
+        else:
+            raise KeyError("interconnection_limit must be specified to use this controller.")
+
+        if "curtailment_order" in self.controller_parameters:
+            self.curtailment_order = self.controller_parameters["curtailment_order"]
+        else:
+            self.curtailment_order = ["solar", "wind"]
+
+    def supervisory_control(self, measurements_dict):
+        """
+        Overwrite HybridSupervisoryControllerBaseline.supervisory_control()
+        with controller that follows separate setpoints and curtails in order.
+        """
+
+        # Extract measurements sent
+        if self._has_wind_controller:
+            wind_power = np.array(measurements_dict["wind_turbine_powers"]).sum()
+            wind_reference = measurements_dict["wind_power_reference"]
+
+        if self._has_solar_controller:
+            solar_power = measurements_dict["solar_power"]
+            solar_reference = measurements_dict["solar_power_reference"]
+
+        if self._has_battery_controller:
+            raise NotImplementedError("Logic for battery component not yet added.")
+
+        # Filter the wind and solar power measurements to reduce noise and improve closed-loop
+        # controller damping
+        a = 0.1
+        wind_power = (1-a)*self.prev_wind_power + a*wind_power
+        solar_power = (1-a)*self.prev_solar_power + a*solar_power
+
+        # Adjust references to respect capacities and interconnection limits
+        # TODO: pass through plant parameters so that we don't have to access ._s directly
+        wind_reference = np.minimum(wind_reference, self._s.wind_capacity)
+        solar_reference = np.minimum(solar_reference, self._s.solar_capacity)
+        if self.curtailment_order[0] == "solar":
+            # Give whole interconnection to wind if necessary
+            wind_reference = np.minimum(wind_reference, self.interconnection_limit)
+            solar_ref_temp = np.maximum(self.interconnection_limit - wind_power, 0)
+            solar_reference = np.minimum(solar_reference, solar_ref_temp)
+        elif self.curtailment_order[0] == "wind":
+            solar_reference = np.minimum(solar_reference, self.interconnection_limit)
+            wind_ref_temp = np.maximum(self.interconnection_limit - solar_power, 0)
+            wind_reference = np.minimum(wind_reference, wind_ref_temp)
+        else:
+            raise ValueError("Invalid generation type in curtailment_order.")
+
+        # TODO: add battery option
+        battery_reference = 0
+
+        return wind_reference, solar_reference, battery_reference

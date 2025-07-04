@@ -147,6 +147,9 @@ class HerculesHybridLongRunInterface(HerculesInterfaceBase):
         time = hercules_dict["time"]
 
         # Defaults for external signals
+        measurements = {
+            "time": time,
+        } 
         plant_power_reference = POWER_SETPOINT_DEFAULT
         forecast = {}
 
@@ -154,18 +157,26 @@ class HerculesHybridLongRunInterface(HerculesInterfaceBase):
         if "external_signals" in hercules_dict:
             if "plant_power_reference" in hercules_dict["external_signals"]:
                 plant_power_reference = hercules_dict["external_signals"]["plant_power_reference"]
+            else:
+                plant_power_reference = POWER_SETPOINT_DEFAULT
+            measurements["plant_power_reference"] = plant_power_reference
+
+            if "wind_power_reference" in hercules_dict["external_signals"]:
+                measurements["wind_power_reference"] = \
+                    hercules_dict["external_signals"]["wind_power_reference"]
+
+            if "solar_power_reference" in hercules_dict["external_signals"]:
+                measurements["solar_power_reference"] = \
+                    hercules_dict["external_signals"]["solar_power_reference"]
 
             for k in hercules_dict["external_signals"].keys():
                 if "forecast" in k != "wind_power_reference":
                     forecast[k] = hercules_dict["external_signals"][k]
+            measurements["forecast"] = forecast
 
         total_power = 0.0
 
-        measurements = {
-            "time": time,
-            "power_reference": plant_power_reference,
-            "forecast": forecast,
-        } 
+
 
         if self._has_wind_component:
             turbine_powers = hercules_dict["wind_farm"]["turbine_powers"]
