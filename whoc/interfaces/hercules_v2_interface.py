@@ -1,6 +1,7 @@
 from whoc.controllers.wind_farm_power_tracking_controller import POWER_SETPOINT_DEFAULT
 from whoc.interfaces.interface_base import InterfaceBase
 
+
 class HerculesInterfaceBase(InterfaceBase):
     """
     Base class for Hercules v2 interfaces.
