@@ -2,7 +2,7 @@ from whoc.controllers.wind_farm_power_tracking_controller import POWER_SETPOINT_
 from whoc.interfaces.interface_base import InterfaceBase
 
 
-class HerculesLongRunInterface(InterfaceBase):
+class HerculesLongRunWindInterface(InterfaceBase):
     def __init__(self, hercules_dict):
         super().__init__()
 
