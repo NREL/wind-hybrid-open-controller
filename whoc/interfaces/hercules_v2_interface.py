@@ -8,57 +8,65 @@ class HerculesInterfaceBase(InterfaceBase):
     This class is not intended to be instantiated directly.
     It provides a common interface for all Hercules interfaces.
     """
-    def __init__(self, hercules_dict):
+    def __init__(self, h_dict):
         super().__init__()
-        self.dt = hercules_dict["dt"]
+        self.dt = h_dict["dt"]
 
         # Controller parameters
-        if "controller" in hercules_dict:
-            self.controller_parameters = hercules_dict["controller"]
+        if "controller" in h_dict:
+            self.controller_parameters = h_dict["controller"]
         else:
             self.controller_parameters = {}
 
+        # Convert None to empty dict
+        if self.controller_parameters is None:
+            self.controller_parameters = {}
+
         # Plant parameters
-        if "plant" in hercules_dict:
-            self.plant_parameters = hercules_dict["plant"]
+        if "plant" in h_dict:
+            self.plant_parameters = h_dict["plant"]
         else:
+            self.plant_parameters = {}
+
+        # Convert None to empty dict
+        if self.plant_parameters is None:
             self.plant_parameters = {}
 
 
 class HerculesWindLongRunInterface(HerculesInterfaceBase):
-    def __init__(self, hercules_dict):
-        super().__init__(hercules_dict)
+    def __init__(self, h_dict):
+        super().__init__(h_dict)
 
         # Wind farm parameters
-        if "wind_farm" not in hercules_dict:
+        if "wind_farm" not in h_dict:
             raise ValueError(
-                "hercules_dict must contain 'wind_farm' key to use this interface."
+                "h_dict must contain 'wind_farm' key to use this interface."
             )
-        self.nameplate_capacity = hercules_dict["wind_farm"]["capacity"]
-        self.n_turbines = hercules_dict["wind_farm"]["num_turbines"]
+        self.nameplate_capacity = h_dict["wind_farm"]["capacity"]
+        self.n_turbines = h_dict["wind_farm"]["n_turbines"]
         self.turbines = range(self.n_turbines)
 
-    def get_measurements(self, hercules_dict):
-        wind_directions = [hercules_dict["wind_farm"]["wind_direction"]]*self.n_turbines
+    def get_measurements(self, h_dict):
+        wind_directions = [h_dict["wind_farm"]["wind_direction"]]*self.n_turbines
         # wind_speeds = input_dict["hercules_comms"]\
         #                         ["amr_wind"]\
         #                         [self.wf_name]\
         #                         ["turbine_wind_speeds"]
-        turbine_powers = hercules_dict["wind_farm"]["turbine_powers"]
-        time = hercules_dict["time"]
+        turbine_powers = h_dict["wind_farm"]["turbine_powers"]
+        time = h_dict["time"]
 
         # Defaults for external signals
         wind_power_reference = POWER_SETPOINT_DEFAULT
         forecast = {}
 
         # Handle external signals and overwrite defaults
-        if "external_signals" in hercules_dict:
-            if "wind_power_reference" in hercules_dict["external_signals"]:
-                wind_power_reference = hercules_dict["external_signals"]["wind_power_reference"]
+        if "external_signals" in h_dict:
+            if "wind_power_reference" in h_dict["external_signals"]:
+                wind_power_reference = h_dict["external_signals"]["wind_power_reference"]
 
-            for k in hercules_dict["external_signals"].keys():
+            for k in h_dict["external_signals"].keys():
                 if "forecast" in k != "wind_power_reference":
-                    forecast[k] = hercules_dict["external_signals"][k]
+                    forecast[k] = h_dict["external_signals"][k]
 
         measurements = {
             "time": time,
@@ -83,7 +91,7 @@ class HerculesWindLongRunInterface(HerculesInterfaceBase):
                     "Length of setpoint " + k + " does not match the number of turbines."
                 )
 
-    def send_controls(self, hercules_dict, yaw_angles=None, power_setpoints=None):
+    def send_controls(self, h_dict, yaw_angles=None, power_setpoints=None):
         if yaw_angles is not None:
             raise NotImplementedError("TO DO: Implement yaw angles for this interface")
         # if yaw_angles is None:
@@ -92,36 +100,36 @@ class HerculesWindLongRunInterface(HerculesInterfaceBase):
             power_setpoints = [POWER_SETPOINT_DEFAULT] * self.n_turbines
 
         for t_idx in range(self.n_turbines):
-            hercules_dict["wind_farm"][f"derating_{t_idx:03d}"] = power_setpoints[t_idx]
+            h_dict["wind_farm"][f"derating_{t_idx:03d}"] = power_setpoints[t_idx]
 
-        return hercules_dict
+        return h_dict
 
 class HerculesHybridLongRunInterface(HerculesInterfaceBase):
-    def __init__(self, hercules_dict):
-        super().__init__(hercules_dict)
+    def __init__(self, h_dict):
+        super().__init__(h_dict)
 
         # Determine which components are present in the simulation
-        self._has_wind_component = "wind_farm" in hercules_dict
-        self._has_solar_component = "solar_farm" in hercules_dict
-        self._has_battery_component = "battery" in hercules_dict
-        self._has_hydrogen_component = "electrolyzer" in hercules_dict
+        self._has_wind_component = "wind_farm" in h_dict
+        self._has_solar_component = "solar_farm" in h_dict
+        self._has_battery_component = "battery" in h_dict
+        self._has_hydrogen_component = "electrolyzer" in h_dict
 
         # Wind farm parameters
         if self._has_wind_component:
-            self.wind_capacity = hercules_dict["wind_farm"]["capacity"]
-            self.n_turbines = hercules_dict["wind_farm"]["num_turbines"]
+            self.wind_capacity = h_dict["wind_farm"]["capacity"]
+            self.n_turbines = h_dict["wind_farm"]["n_turbines"]
             self.turbines = range(self.n_turbines)
         else:
             self.n_turbines = 0
 
         # Solar farm parameters
         if self._has_solar_component:
-            self.solar_capacity = hercules_dict["solar_farm"]["capacity"]
+            self.solar_capacity = h_dict["solar_farm"]["capacity"]
 
         # Battery parameters
         if self._has_battery_component:
-            self.battery_power_capacity = hercules_dict["battery"]["size"] * 1e3
-            self.battery_energy_capacity = hercules_dict["battery"]["energy_capacity"] * 1e3
+            self.battery_power_capacity = h_dict["battery"]["size"] * 1e3
+            self.battery_energy_capacity = h_dict["battery"]["energy_capacity"] * 1e3
 
         # Electrolyzer parameters
         if self._has_hydrogen_component:
@@ -143,8 +151,8 @@ class HerculesHybridLongRunInterface(HerculesInterfaceBase):
                         "Number of wind power setpoints must match number of turbines."
                     )
 
-    def get_measurements(self, hercules_dict):
-        time = hercules_dict["time"]
+    def get_measurements(self, h_dict):
+        time = h_dict["time"]
 
         # Defaults for external signals
         measurements = {
@@ -154,24 +162,24 @@ class HerculesHybridLongRunInterface(HerculesInterfaceBase):
         forecast = {}
 
         # Handle external signals
-        if "external_signals" in hercules_dict:
-            if "plant_power_reference" in hercules_dict["external_signals"]:
-                plant_power_reference = hercules_dict["external_signals"]["plant_power_reference"]
+        if "external_signals" in h_dict:
+            if "plant_power_reference" in h_dict["external_signals"]:
+                plant_power_reference = h_dict["external_signals"]["plant_power_reference"]
             else:
                 plant_power_reference = POWER_SETPOINT_DEFAULT
             measurements["plant_power_reference"] = plant_power_reference
 
-            if "wind_power_reference" in hercules_dict["external_signals"]:
+            if "wind_power_reference" in h_dict["external_signals"]:
                 measurements["wind_power_reference"] = \
-                    hercules_dict["external_signals"]["wind_power_reference"]
+                    h_dict["external_signals"]["wind_power_reference"]
 
-            if "solar_power_reference" in hercules_dict["external_signals"]:
+            if "solar_power_reference" in h_dict["external_signals"]:
                 measurements["solar_power_reference"] = \
-                    hercules_dict["external_signals"]["solar_power_reference"]
+                    h_dict["external_signals"]["solar_power_reference"]
 
-            for k in hercules_dict["external_signals"].keys():
+            for k in h_dict["external_signals"].keys():
                 if "forecast" in k != "wind_power_reference":
-                    forecast[k] = hercules_dict["external_signals"][k]
+                    forecast[k] = h_dict["external_signals"][k]
             measurements["forecast"] = forecast
 
         total_power = 0.0
@@ -179,26 +187,26 @@ class HerculesHybridLongRunInterface(HerculesInterfaceBase):
 
 
         if self._has_wind_component:
-            turbine_powers = hercules_dict["wind_farm"]["turbine_powers"]
+            turbine_powers = h_dict["wind_farm"]["turbine_powers"]
             measurements["wind_turbine_powers"] =  turbine_powers
             measurements["wind_directions"] = \
-                [hercules_dict["wind_farm"]["wind_direction"]]*self.n_turbines
+                [h_dict["wind_farm"]["wind_direction"]]*self.n_turbines
             total_power += sum(turbine_powers)
         if self._has_solar_component:
-            measurements["solar_power"] = hercules_dict["solar_farm"]["power_mw"] * 1e3
-            measurements["solar_dni"] = hercules_dict["solar_farm"]["dni"]
-            measurements["solar_aoi"] = hercules_dict["solar_farm"]["aoi"]
+            measurements["solar_power"] = h_dict["solar_farm"]["power"]
+            measurements["solar_dni"] = h_dict["solar_farm"]["dni"]
+            measurements["solar_aoi"] = h_dict["solar_farm"]["aoi"]
             total_power += measurements["solar_power"]
         if self._has_battery_component:
-            measurements["battery_power"] = -hercules_dict["battery"]["power"] * 1e3
-            measurements["battery_soc"] = hercules_dict["battery"]["soc"]
+            measurements["battery_power"] = -h_dict["battery"]["power"] * 1e3
+            measurements["battery_soc"] = h_dict["battery"]["soc"]
             total_power += measurements["battery_power"]
         if self._has_hydrogen_component:
-            measurements["hydrogen_production_rate"] = hercules_dict["electrolyzer"]["H2_mfr"]
-            if "external_signals" in hercules_dict and \
-               "hydrogen_reference" in hercules_dict["external_signals"]:
+            measurements["hydrogen_production_rate"] = h_dict["electrolyzer"]["H2_mfr"]
+            if "external_signals" in h_dict and \
+               "hydrogen_reference" in h_dict["external_signals"]:
                 measurements["hydrogen_reference"] = \
-                    hercules_dict["external_signals"]["hydrogen_reference"]
+                    h_dict["external_signals"]["hydrogen_reference"]
             else:
                 measurements["hydrogen_reference"] = POWER_SETPOINT_DEFAULT
         measurements["total_power"] = total_power
@@ -207,7 +215,7 @@ class HerculesHybridLongRunInterface(HerculesInterfaceBase):
 
     def send_controls(
             self,
-            hercules_dict,
+            h_dict,
             wind_power_setpoints=None,
             solar_power_setpoint=None,
             battery_power_setpoint=None
@@ -222,14 +230,14 @@ class HerculesHybridLongRunInterface(HerculesInterfaceBase):
         if self._has_wind_component:
             for t_idx in range(self.n_turbines):
                 # Set wind power setpoints for each turbine
-                hercules_dict["wind_farm"][f"derating_{t_idx:03d}"] = wind_power_setpoints[t_idx]
+                h_dict["wind_farm"][f"derating_{t_idx:03d}"] = wind_power_setpoints[t_idx]
 
         if self._has_solar_component:
             # Set solar power setpoint
-            hercules_dict["solar_farm"]["power_setpoint_mw"] = solar_power_setpoint / 1e3
+            h_dict["solar_farm"]["power_setpoint"] = solar_power_setpoint
 
         if self._has_battery_component:
             # Set battery power setpoint (negative for discharge)
-            hercules_dict["battery"]["power_setpoint"] = -battery_power_setpoint / 1e3
+            h_dict["battery"]["power_setpoint"] = -battery_power_setpoint / 1e3
 
-        return hercules_dict
+        return h_dict
