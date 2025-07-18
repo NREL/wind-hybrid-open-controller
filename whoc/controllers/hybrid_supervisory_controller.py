@@ -34,6 +34,8 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
             )
 
         # Set constants
+        # TODO: Remove this direct py_sims dependence, shouldn't be needed.
+        # This will break the code and need to be fixed shortly.
         py_sims = list(input_dict["py_sims"].keys())
         if self.battery_controller:
             battery_name = [ps for ps in py_sims if "battery" in ps][0]
@@ -206,12 +208,12 @@ class HybridSupervisoryControllerMultiRef(HybridSupervisoryControllerBaseline):
         )
 
         # Extract interconnection limit
-        if "interconnection_limit" in self.plant_parameters:
-            self.interconnection_limit = self.plant_parameters["interconnection_limit"]
-            if self.interconnection_limit <= 0:
-                raise ValueError("interconnection_limit must be positive.")
+        if "interconnect_limit" in self.plant_parameters:
+            self.interconnect_limit = self.plant_parameters["interconnect_limit"]
+            if self.interconnect_limit <= 0:
+                raise ValueError("interconnect_limit must be positive.")
         else:
-            raise KeyError("interconnection_limit must be specified to use this controller.")
+            raise KeyError("interconnect_limit must be specified to use this controller.")
 
         if "curtailment_order" in self.controller_parameters:
             self.curtailment_order = self.controller_parameters["curtailment_order"]
@@ -238,7 +240,8 @@ class HybridSupervisoryControllerMultiRef(HybridSupervisoryControllerBaseline):
 
         # Filter the wind and solar power measurements to reduce noise and improve closed-loop
         # controller damping
-        a = 0.1
+        #TODO RECONSIDER THIS MAYBE MAKE MORE DEPENDENT ON THE TIME STEP
+        a = 1.0 #0.1 # FORCE THE FILTER TO BE 100% DEPENDENT ON THE CURRENT TIME STEP
         wind_power = (1-a)*self.prev_wind_power + a*wind_power
         solar_power = (1-a)*self.prev_solar_power + a*solar_power
 
@@ -248,17 +251,23 @@ class HybridSupervisoryControllerMultiRef(HybridSupervisoryControllerBaseline):
         solar_reference = np.minimum(solar_reference, self._s.solar_capacity)
         if self.curtailment_order[0] == "solar":
             # Give whole interconnection to wind if necessary
-            wind_reference = np.minimum(wind_reference, self.interconnection_limit)
-            solar_ref_temp = np.maximum(self.interconnection_limit - wind_power, 0)
+            wind_reference = np.minimum(wind_reference, self.interconnect_limit)
+            solar_ref_temp = np.maximum(self.interconnect_limit - wind_power, 0)
             solar_reference = np.minimum(solar_reference, solar_ref_temp)
         elif self.curtailment_order[0] == "wind":
-            solar_reference = np.minimum(solar_reference, self.interconnection_limit)
-            wind_ref_temp = np.maximum(self.interconnection_limit - solar_power, 0)
+            solar_reference = np.minimum(solar_reference, self.interconnect_limit)
+            wind_ref_temp = np.maximum(self.interconnect_limit - solar_power, 0)
             wind_reference = np.minimum(wind_reference, wind_ref_temp)
         else:
             raise ValueError("Invalid generation type in curtailment_order.")
 
         # TODO: add battery option
         battery_reference = 0
+
+        self.prev_solar_power = solar_power
+        self.prev_wind_power = wind_power
+        self.wind_reference = wind_reference
+        self.solar_reference = solar_reference
+        self.battery_reference = battery_reference
 
         return wind_reference, solar_reference, battery_reference
