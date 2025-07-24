@@ -14,6 +14,7 @@ class WindFarmPowerDistributingController(ControllerBase):
         super().__init__(interface, verbose=verbose)
 
         self.dt = input_dict["dt"]  # Won't be needed here, but generally good to have
+        # TODO: Extract from plant_parameters?
         self.n_turbines = input_dict["controller"]["num_turbines"]
         self.turbines = range(self.n_turbines)
 
@@ -52,7 +53,7 @@ class WindFarmPowerDistributingController(ControllerBase):
         # compatible with both power_setpoints and yaw_angles).
         controls_dict = {
             "wind_power_setpoints": [farm_power_reference/self.n_turbines]*self.n_turbines,
-            "yaw_angles": [-1000]*self.n_turbines
+            "yaw_angles": [-1000]*self.n_turbines # TODO: Deal with how to remove yaw_angles
         }
 
         return controls_dict
@@ -145,7 +146,7 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
         # power_setpoints and yaw_angles)
         controls_dict = {
             "wind_power_setpoints": list(turbine_power_setpoints),
-            "yaw_angles": [-1000]*self.n_turbines
+            "yaw_angles": [-1000]*self.n_turbines # TODO: Deal with how to remove yaw_angles
         }
 
         # Store error, control (only needed for integral action, which is disabled)
