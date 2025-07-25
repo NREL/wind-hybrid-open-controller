@@ -29,6 +29,7 @@ class StandinInterface(InterfaceBase):
 
     def __init__(self):
         super().__init__()
+        self.dt = 1.0
 
     def get_measurements(self):
         pass

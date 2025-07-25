@@ -51,3 +51,6 @@ class InterfaceBase(metaclass=ABCMeta):
             )
         return self._controller_parameters
 
+    @controller_parameters.setter
+    def controller_parameters(self, value):
+        self._controller_parameters = value

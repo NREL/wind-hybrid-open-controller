@@ -8,7 +8,7 @@ test_hercules_dict = {
     "dt": 1,
     "time": 0,
     "plant": {
-        "interconnect_limit"
+        "interconnect_limit": None
     },
     "controller": {
         "test_controller_parameter": 1.0,
@@ -22,7 +22,7 @@ test_hercules_dict = {
     },
     "solar_farm": {
         "capacity": 1000.0,
-        "power_mw": 1.0,
+        "power": 1000.0, # kW
         "dni": 1000.0,
         "aoi": 30.0,
     },
@@ -52,18 +52,22 @@ def test_interface_instantiation():
     each implement the required methods specified by InterfaceBase.
     """
 
-    _ = HerculesWindLongRunInterface(hercules_dict=test_hercules_dict)
-    _ = HerculesHybridLongRunInterface(hercules_dict=test_hercules_dict)
+    _ = HerculesWindLongRunInterface(h_dict=test_hercules_dict)
+    _ = HerculesHybridLongRunInterface(h_dict=test_hercules_dict)
 
 def test_HerculesWindLongRunInterface():
     # Test instantiation
-    interface = HerculesWindLongRunInterface(hercules_dict=test_hercules_dict)
+    interface = HerculesWindLongRunInterface(h_dict=test_hercules_dict)
     assert interface.dt == test_hercules_dict["dt"]
-    assert interface.nameplate_capacity == test_hercules_dict["wind_farm"]["capacity"]
-    assert interface.n_turbines == test_hercules_dict["wind_farm"]["num_turbines"]
+    assert interface.plant_parameters["nameplate_capacity"] == (
+        test_hercules_dict["wind_farm"]["capacity"]
+    )
+    assert interface.plant_parameters["n_turbines"] == (
+        test_hercules_dict["wind_farm"]["num_turbines"]
+    )
 
     # Test get_measurements()
-    measurements = interface.get_measurements(hercules_dict=test_hercules_dict)
+    measurements = interface.get_measurements(h_dict=test_hercules_dict)
     assert measurements["time"] == test_hercules_dict["time"]
     assert (
         measurements["wind_directions"] == [test_hercules_dict["wind_farm"]["wind_direction"]] * 2
@@ -92,9 +96,7 @@ def test_HerculesWindLongRunInterface():
         interface.check_controls(bad_controls_dict2)
 
     # test send_controls()
-    test_hercules_dict_out = interface.send_controls(
-        hercules_dict=test_hercules_dict, **controls_dict
-    )
+    test_hercules_dict_out = interface.send_controls(h_dict=test_hercules_dict, **controls_dict)
     output_setpoints = [
         test_hercules_dict_out["wind_farm"]["derating_{0:03d}".format(i)] for i in range(2)
     ]
@@ -107,18 +109,26 @@ def test_HerculesWindLongRunInterface():
 
 def test_HerculesHybridLongRunInterface():
     # Test instantiation
-    interface = HerculesHybridLongRunInterface(hercules_dict=test_hercules_dict)
+    interface = HerculesHybridLongRunInterface(h_dict=test_hercules_dict)
     assert interface.dt == test_hercules_dict["dt"]
-    assert interface.wind_capacity == test_hercules_dict["wind_farm"]["capacity"]
-    assert interface.solar_capacity == test_hercules_dict["solar_farm"]["capacity"]
-    assert interface.battery_power_capacity == test_hercules_dict["battery"]["size"] * 1e3
-    assert (
-        interface.battery_energy_capacity == test_hercules_dict["battery"]["energy_capacity"] * 1e3
+    assert interface.plant_parameters["wind_capacity"] == (
+        test_hercules_dict["wind_farm"]["capacity"]
     )
-    assert interface.n_turbines == test_hercules_dict["wind_farm"]["num_turbines"]
+    assert interface.plant_parameters["solar_capacity"] == (
+        test_hercules_dict["solar_farm"]["capacity"]
+    )
+    assert interface.plant_parameters["battery_power_capacity"] == (
+        test_hercules_dict["battery"]["size"] * 1e3
+    )
+    assert interface.plant_parameters["battery_energy_capacity"] == (
+        test_hercules_dict["battery"]["energy_capacity"] * 1e3
+    )
+    assert interface.plant_parameters["n_turbines"] == (
+        test_hercules_dict["wind_farm"]["num_turbines"]
+    )
 
     # Test get_measurements()
-    measurements = interface.get_measurements(hercules_dict=test_hercules_dict)
+    measurements = interface.get_measurements(h_dict=test_hercules_dict)
     assert measurements["time"] == test_hercules_dict["time"]
     assert (
         measurements["wind_directions"] == [test_hercules_dict["wind_farm"]["wind_direction"]] * 2
@@ -126,7 +136,7 @@ def test_HerculesHybridLongRunInterface():
     assert (
         measurements["wind_turbine_powers"] == test_hercules_dict["wind_farm"]["turbine_powers"]
     )
-    assert measurements["solar_power"] == test_hercules_dict["solar_farm"]["power_mw"] * 1e3
+    assert measurements["solar_power"] == test_hercules_dict["solar_farm"]["power"]
     assert measurements["battery_power"] == test_hercules_dict["battery"]["power"] * -1e3
     assert measurements["battery_soc"] == test_hercules_dict["battery"]["soc"]
 
@@ -151,7 +161,7 @@ def test_HerculesHybridLongRunInterface():
 
     # Test send_controls()
     test_hercules_dict_out = interface.send_controls(
-        hercules_dict=test_hercules_dict, **controls_dict
+        h_dict=test_hercules_dict, **controls_dict
     )
     wind_output_setpoints = [
         test_hercules_dict_out["wind_farm"]["derating_{0:03d}".format(i)]
@@ -162,7 +172,7 @@ def test_HerculesHybridLongRunInterface():
     )
     assert (
         controls_dict["solar_power_setpoint"] == \
-            test_hercules_dict_out["solar_farm"]["power_setpoint_mw"] * 1e3
+            test_hercules_dict_out["solar_farm"]["power_setpoint"]
     )
     assert (
         controls_dict["battery_power_setpoint"] == \
