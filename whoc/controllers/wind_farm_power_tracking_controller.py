@@ -49,11 +49,9 @@ class WindFarmPowerDistributingController(ControllerBase):
         - None (sets self.controls_dict)
         """
 
-        # Split farm power reference among turbines and set "no value" for yaw angles (Floris not
-        # compatible with both power_setpoints and yaw_angles).
+        # Split farm power reference among turbines.
         controls_dict = {
             "wind_power_setpoints": [farm_power_reference/self.n_turbines]*self.n_turbines,
-            "yaw_angles": [-1000]*self.n_turbines # TODO: Deal with how to remove yaw_angles
         }
 
         return controls_dict
@@ -141,12 +139,9 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
         delta_P_ref = u
 
         turbine_power_setpoints = np.array(turbine_powers) + delta_P_ref
-        
-        # set "no value" for yaw angles (Floris not compatible with both 
-        # power_setpoints and yaw_angles)
+
         controls_dict = {
             "wind_power_setpoints": list(turbine_power_setpoints),
-            "yaw_angles": [-1000]*self.n_turbines # TODO: Deal with how to remove yaw_angles
         }
 
         # Store error, control (only needed for integral action, which is disabled)
