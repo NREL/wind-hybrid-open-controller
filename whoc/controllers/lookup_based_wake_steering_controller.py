@@ -33,8 +33,10 @@ class LookupBasedWakeSteeringController(ControllerBase):
         """
         super().__init__(interface, verbose=verbose)
 
-        self.dt = input_dict["dt"]  # Won't be needed here, but generally good to have
-        self.n_turbines = input_dict["controller"]["num_turbines"]
+        try:
+            self.n_turbines = self.plant_parameters["n_turbines"]
+        except AttributeError:
+            self.n_turbines = input_dict["controller"]["num_turbines"]
         self.turbines = range(self.n_turbines)
 
         # Handle yaw optimizer object

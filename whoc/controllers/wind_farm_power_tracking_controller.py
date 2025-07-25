@@ -13,16 +13,11 @@ class WindFarmPowerDistributingController(ControllerBase):
     def __init__(self, interface, input_dict, verbose=False):
         super().__init__(interface, verbose=verbose)
 
-        self.dt = input_dict["dt"]  # Won't be needed here, but generally good to have
-        # TODO: Extract from plant_parameters?
-        self.n_turbines = input_dict["controller"]["num_turbines"]
+        try:
+            self.n_turbines = self.plant_parameters["n_turbines"]
+        except AttributeError:
+            self.n_turbines = input_dict["controller"]["num_turbines"]
         self.turbines = range(self.n_turbines)
-
-        # Set initial conditions
-        #self.controls_dict = {"power_setpoints": [POWER_SETPOINT_DEFAULT] * self.n_turbines}
-
-        # For startup
-
 
     def compute_controls(self, measurements_dict):
         if "power_reference" in measurements_dict:
@@ -83,7 +78,6 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
             verbose: Boolean flag for verbosity.
         """
         super().__init__(interface, input_dict, verbose=verbose)
-        self.dt = input_dict["dt"]
 
         # Proportional gain
         self.K_p = proportional_gain * 1/self.n_turbines
