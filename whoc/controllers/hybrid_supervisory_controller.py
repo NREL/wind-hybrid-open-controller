@@ -246,9 +246,8 @@ class HybridSupervisoryControllerMultiRef(HybridSupervisoryControllerBaseline):
         solar_power = (1-a)*self.prev_solar_power + a*solar_power
 
         # Adjust references to respect capacities and interconnection limits
-        # TODO: pass through plant parameters so that we don't have to access ._s directly
-        wind_reference = np.minimum(wind_reference, self._s.wind_capacity)
-        solar_reference = np.minimum(solar_reference, self._s.solar_capacity)
+        wind_reference = np.minimum(wind_reference, self.plant_parameters["wind_capacity"])
+        solar_reference = np.minimum(solar_reference, self.plant_parameters["solar_capacity"])
         if self.curtailment_order[0] == "solar":
             # Give whole interconnection to wind if necessary
             wind_reference = np.minimum(wind_reference, self.interconnect_limit)

@@ -141,7 +141,8 @@ class HerculesHybridLongRunInterface(HerculesInterfaceBase):
             if k == "wind_power_setpoints":
                 if len(controls_dict[k]) != self._n_turbines:
                     raise ValueError(
-                        "Number of wind power setpoints must match number of turbines."
+                        "Number of wind power setpoints ({0})".format(len(controls_dict[k])) +
+                        " must match number of turbines ({0}).".format(self._n_turbines)
                     )
 
     def get_measurements(self, h_dict):
