@@ -34,11 +34,11 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
             )
 
         # Set constants
-        # TODO: Remove this direct py_sims dependence, shouldn't be needed.
+        # TODO: Remove this direct component_names dependence, shouldn't be needed.
         # This will break the code and need to be fixed shortly.
-        py_sims = input_dict["py_sim_names"]
+        component_names = input_dict["component_names"]
         if self.battery_controller:
-            battery_name = [ps for ps in py_sims if "battery" in ps][0]
+            battery_name = [ps for ps in component_names if "battery" in ps][0]
             self.battery_charge_rate = input_dict[battery_name]["charge_rate"]*1000
         else:
             self.battery_charge_rate = 0
