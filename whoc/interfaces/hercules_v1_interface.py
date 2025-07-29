@@ -46,7 +46,7 @@ class HerculesADInterface(InterfaceBase):
             "wind_directions": wind_directions,
             # "wind_speeds":wind_speeds,
             "wind_turbine_powers": turbine_powers,
-            "power_reference": wind_power_reference,
+            "wind_power_reference": wind_power_reference,
             "forecast": forecast,
             "total_power": sum(turbine_powers),
         }

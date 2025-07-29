@@ -57,6 +57,8 @@ class HerculesWindLongRunInterface(HerculesInterfaceBase):
         if "external_signals" in h_dict:
             if "wind_power_reference" in h_dict["external_signals"]:
                 wind_power_reference = h_dict["external_signals"]["wind_power_reference"]
+            elif "plant_power_reference" in h_dict["external_signals"]:
+                wind_power_reference = h_dict["external_signals"]["plant_power_reference"]
 
             for k in h_dict["external_signals"].keys():
                 if "forecast" in k != "wind_power_reference":
