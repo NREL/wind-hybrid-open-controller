@@ -34,7 +34,7 @@ class HerculesWindLongRunInterface(HerculesInterfaceBase):
                 "h_dict must contain 'wind_farm' key to use this interface."
             )
         self.plant_parameters["nameplate_capacity"] = h_dict["wind_farm"]["capacity"]
-        self.plant_parameters["n_turbines"] = h_dict["wind_farm"]["num_turbines"]
+        self.plant_parameters["n_turbines"] = h_dict["wind_farm"]["n_turbines"]
         self.plant_parameters["turbines"] = range(self.plant_parameters["n_turbines"])
 
         # Also store n_turbines locally for convenience
@@ -75,7 +75,7 @@ class HerculesWindLongRunInterface(HerculesInterfaceBase):
 
     def check_controls(self, controls_dict):
         # TODO: Implement yaw angles for this interface
-        available_controls = ["power_setpoints"]
+        available_controls = ["wind_power_setpoints"]
 
         for k in controls_dict.keys():
             if k not in available_controls:
@@ -85,12 +85,12 @@ class HerculesWindLongRunInterface(HerculesInterfaceBase):
                     "Length of setpoint " + k + " does not match the number of turbines."
                 )
 
-    def send_controls(self, h_dict, power_setpoints=None):
-        if power_setpoints is None:
-            power_setpoints = [POWER_SETPOINT_DEFAULT] * self._n_turbines
+    def send_controls(self, h_dict, wind_power_setpoints=None):
+        if wind_power_setpoints is None:
+            wind_power_setpoints = [POWER_SETPOINT_DEFAULT] * self._n_turbines
 
         for t_idx in range(self._n_turbines):
-            h_dict["wind_farm"][f"derating_{t_idx:03d}"] = power_setpoints[t_idx]
+            h_dict["wind_farm"][f"derating_{t_idx:03d}"] = wind_power_setpoints[t_idx]
 
         return h_dict
 
@@ -107,7 +107,7 @@ class HerculesHybridLongRunInterface(HerculesInterfaceBase):
         # Wind farm parameters
         if self._has_wind_component:
             self.plant_parameters["wind_capacity"] = h_dict["wind_farm"]["capacity"]
-            self.plant_parameters["n_turbines"] = h_dict["wind_farm"]["num_turbines"]
+            self.plant_parameters["n_turbines"] = h_dict["wind_farm"]["n_turbines"]
             self._n_turbines = self.plant_parameters["n_turbines"]
             self.plant_parameters["turbines"] = range(self.plant_parameters["n_turbines"])
         else:
