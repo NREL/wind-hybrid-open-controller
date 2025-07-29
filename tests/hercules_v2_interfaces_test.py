@@ -14,7 +14,7 @@ test_hercules_dict = {
         "test_controller_parameter": 1.0,
     },
     "wind_farm": {
-        "num_turbines": 2,
+        "n_turbines": 2,
         "capacity": 10000.0,
         "wind_direction": 271.0,
         "turbine_powers": [4000.0, 4001.0],
@@ -63,7 +63,7 @@ def test_HerculesWindLongRunInterface():
         test_hercules_dict["wind_farm"]["capacity"]
     )
     assert interface.plant_parameters["n_turbines"] == (
-        test_hercules_dict["wind_farm"]["num_turbines"]
+        test_hercules_dict["wind_farm"]["n_turbines"]
     )
 
     # Test get_measurements()
@@ -81,12 +81,12 @@ def test_HerculesWindLongRunInterface():
     assert measurements["forecast"] == test_forecast
 
     # Test check_controls()
-    controls_dict = {"power_setpoints": [2000.0, 3000.0]}
+    controls_dict = {"wind_power_setpoints": [2000.0, 3000.0]}
     bad_controls_dict1 = {
-        "power_setpoints": [2000.0, 3000.0],
+        "wind_power_setpoints": [2000.0, 3000.0],
         "unavailable_control": [0.0, 0.0],
     }
-    bad_controls_dict2 = {"power_setpoints": [2000.0, 3000.0, 0.0]}  # Mismatched number of turbines
+    bad_controls_dict2 = {"wind_power_setpoints": [2000.0, 3000.0, 0.0]}  # Mismatched number of turbines
 
     interface.check_controls(controls_dict)
 
@@ -101,7 +101,7 @@ def test_HerculesWindLongRunInterface():
         test_hercules_dict_out["wind_farm"]["derating_{0:03d}".format(i)] for i in range(2)
     ]
     assert (
-        controls_dict["power_setpoints"] == output_setpoints
+        controls_dict["wind_power_setpoints"] == output_setpoints
     )
 
     with pytest.raises(TypeError):  # Bad kwarg
@@ -124,7 +124,7 @@ def test_HerculesHybridLongRunInterface():
         test_hercules_dict["battery"]["energy_capacity"] * 1e3
     )
     assert interface.plant_parameters["n_turbines"] == (
-        test_hercules_dict["wind_farm"]["num_turbines"]
+        test_hercules_dict["wind_farm"]["n_turbines"]
     )
 
     # Test get_measurements()
