@@ -92,6 +92,7 @@ class HerculesHybridADInterface(InterfaceBase):
         self._has_battery_component = False
         self._has_hydrogen_component = False
         # Grab name of wind, solar, and battery 
+        self.plant_parameters = {}
         for i in py_sims:
             if tech_keys[0] in i.split('_'):
                 self.solar_name = [ps for ps in py_sims if "solar" in ps][0]
@@ -99,6 +100,9 @@ class HerculesHybridADInterface(InterfaceBase):
             if tech_keys[1] in i.split('_'):
                 self.battery_name = [ps for ps in py_sims if "battery" in ps][0]
                 self._has_battery_component = True
+                self.plant_parameters["battery_charge_rate"] = (
+                    hercules_dict["py_sims"][self.battery_name]["charge_rate"]*1000
+                ) # Convert to kW
             if tech_keys[3] in i.split("_"):
                 self.hydrogen_name = [ps for ps in py_sims if "hydrogen" in ps][0]
                 self._has_hydrogen_component = True
@@ -109,6 +113,7 @@ class HerculesHybridADInterface(InterfaceBase):
                 self.n_turbines = hercules_dict["controller"]["num_turbines"]
                 self.turbines = range(self.n_turbines)
                 self._has_wind_component = True
+                self.plant_parameters["n_turbines"] = self.n_turbines
 
     def get_measurements(self, hercules_dict):
 

@@ -33,17 +33,6 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
                 " or a wind_controller be provided."
             )
 
-        # Set constants
-        # TODO: Remove this direct py_sims dependence, shouldn't be needed.
-        # This will break the code and need to be fixed shortly.
-        py_sims = input_dict["py_sim_names"]
-        if self.battery_controller:
-            battery_name = [ps for ps in py_sims if "battery" in ps][0]
-            self.battery_charge_rate = input_dict[battery_name]["charge_rate"]*1000
-        else:
-            self.battery_charge_rate = 0
-        # Change battery charge rate to kW
-
         # Initialize Power references
         self.wind_reference = 0
         self.solar_reference = 0
@@ -128,16 +117,20 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
         # Calculate battery reference value
         if self._has_battery_controller:
             battery_reference = plant_power_reference - (wind_power + solar_power)
+            battery_charge_rate = self.plant_parameters["battery_charge_rate"]
         else:
             battery_reference = 0
+            battery_charge_rate = 0
 
         # Decide control gain:
-        if (wind_power + solar_power) < (plant_power_reference+self.battery_charge_rate)\
-            and battery_power <= 0:
+        if (
+            (wind_power + solar_power) < (plant_power_reference+battery_charge_rate)
+            and battery_power <= 0
+            ):
             if battery_soc>0.89:
                 K = ((wind_power + solar_power) - plant_power_reference) / 2
             else:
-                K = ((wind_power+solar_power) - (plant_power_reference+self.battery_charge_rate))/2
+                K = ((wind_power+solar_power) - (plant_power_reference+battery_charge_rate))/2
         else:
             K = ((wind_power + solar_power) - plant_power_reference) / 2
 
@@ -145,9 +138,10 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
             # Only one type of generation available, double the control gain
             K = 2*K
 
-        if (wind_power + solar_power) > (plant_power_reference+self.battery_charge_rate) or \
-            ((wind_power + solar_power) > (plant_power_reference) and battery_soc>0.89):
-            
+        if (
+            (wind_power + solar_power) > (plant_power_reference+battery_charge_rate)
+            or ((wind_power + solar_power) > (plant_power_reference) and battery_soc>0.89)
+            ):
             # go down
             wind_reference = wind_power - K
             solar_reference = solar_power - K
@@ -211,8 +205,7 @@ class HybridSupervisoryControllerMultiRef(HybridSupervisoryControllerBaseline):
 
         # Extract interconnection limit
         if "interconnect_limit" in self.plant_parameters:
-            self.interconnect_limit = self.plant_parameters["interconnect_limit"]
-            if self.interconnect_limit <= 0:
+            if self.plant_parameters["interconnect_limit"] <= 0:
                 raise ValueError("interconnect_limit must be positive.")
         else:
             raise KeyError("interconnect_limit must be specified to use this controller.")
@@ -252,12 +245,14 @@ class HybridSupervisoryControllerMultiRef(HybridSupervisoryControllerBaseline):
         solar_reference = np.minimum(solar_reference, self.plant_parameters["solar_capacity"])
         if self.curtailment_order[0] == "solar":
             # Give whole interconnection to wind if necessary
-            wind_reference = np.minimum(wind_reference, self.interconnect_limit)
-            solar_ref_temp = np.maximum(self.interconnect_limit - wind_power, 0)
+            wind_reference = np.minimum(wind_reference, self.plant_parameters["interconnect_limit"])
+            solar_ref_temp = np.maximum(self.plant_parameters["interconnect_limit"] - wind_power, 0)
             solar_reference = np.minimum(solar_reference, solar_ref_temp)
         elif self.curtailment_order[0] == "wind":
-            solar_reference = np.minimum(solar_reference, self.interconnect_limit)
-            wind_ref_temp = np.maximum(self.interconnect_limit - solar_power, 0)
+            solar_reference = np.minimum(
+                solar_reference, self.plant_parameters["interconnect_limit"]
+            )
+            wind_ref_temp = np.maximum(self.plant_parameters["interconnect_limit"] - solar_power, 0)
             wind_reference = np.minimum(wind_reference, wind_ref_temp)
         else:
             raise ValueError("Invalid generation type in curtailment_order.")

@@ -125,6 +125,9 @@ class HerculesHybridLongRunInterface(HerculesInterfaceBase):
             self.plant_parameters["battery_energy_capacity"] = (
                 h_dict["battery"]["energy_capacity"] * 1e3
             )
+            self.plant_parameters["battery_charge_rate"] = (
+                h_dict["battery"]["charge_rate"] * 1e3
+            )
 
         # Electrolyzer parameters
         if self._has_hydrogen_component:
