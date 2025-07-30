@@ -13,6 +13,9 @@ class HerculesADInterface(InterfaceBase):
         # Grab name of wind farm (assumes there is only one!)
         self.wf_name = list(hercules_dict["hercules_comms"]["amr_wind"].keys())[0]
 
+        # Assign plant parameters for controller use
+        self.plant_parameters = {"n_turbines": self.n_turbines}
+
         pass
 
     def get_measurements(self, hercules_dict):

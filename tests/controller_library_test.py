@@ -30,6 +30,8 @@ class StandinInterface(InterfaceBase):
     def __init__(self):
         super().__init__()
         self.dt = 1.0
+        # Set up stand-in plant parameters
+        self.plant_parameters = {"n_turbines": 2}
 
     def get_measurements(self):
         pass

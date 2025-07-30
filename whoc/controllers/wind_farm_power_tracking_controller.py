@@ -13,10 +13,8 @@ class WindFarmPowerDistributingController(ControllerBase):
     def __init__(self, interface, input_dict, verbose=False):
         super().__init__(interface, verbose=verbose)
 
-        try:
-            self.n_turbines = self.plant_parameters["n_turbines"]
-        except AttributeError:
-            self.n_turbines = input_dict["controller"]["num_turbines"]
+        # Pull plant parameters for ease of use
+        self.n_turbines = self.plant_parameters["n_turbines"]
         self.turbines = range(self.n_turbines)
 
     def compute_controls(self, measurements_dict):
