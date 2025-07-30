@@ -86,7 +86,7 @@ def test_HerculesWindLongRunInterface():
         "wind_power_setpoints": [2000.0, 3000.0],
         "unavailable_control": [0.0, 0.0],
     }
-    bad_controls_dict2 = {"wind_power_setpoints": [2000.0, 3000.0, 0.0]}  # Mismatched number of turbines
+    bad_controls_dict2 = {"wind_power_setpoints": [2000.0, 3000.0, 0.0]} # Wrong number of turbines
 
     interface.check_controls(controls_dict)
 
