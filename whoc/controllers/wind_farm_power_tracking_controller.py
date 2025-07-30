@@ -13,19 +13,13 @@ class WindFarmPowerDistributingController(ControllerBase):
     def __init__(self, interface, input_dict, verbose=False):
         super().__init__(interface, verbose=verbose)
 
-        self.dt = input_dict["dt"]  # Won't be needed here, but generally good to have
-        self.n_turbines = input_dict["controller"]["num_turbines"]
+        # Pull plant parameters for ease of use
+        self.n_turbines = self.plant_parameters["n_turbines"]
         self.turbines = range(self.n_turbines)
 
-        # Set initial conditions
-        #self.controls_dict = {"power_setpoints": [POWER_SETPOINT_DEFAULT] * self.n_turbines}
-
-        # For startup
-
-
     def compute_controls(self, measurements_dict):
-        if "power_reference" in measurements_dict:
-            farm_power_reference = measurements_dict["power_reference"]
+        if "wind_power_reference" in measurements_dict:
+            farm_power_reference = measurements_dict["wind_power_reference"]
         else:
             farm_power_reference = POWER_SETPOINT_DEFAULT
         
@@ -48,11 +42,9 @@ class WindFarmPowerDistributingController(ControllerBase):
         - None (sets self.controls_dict)
         """
 
-        # Split farm power reference among turbines and set "no value" for yaw angles (Floris not
-        # compatible with both power_setpoints and yaw_angles).
+        # Split farm power reference among turbines.
         controls_dict = {
             "wind_power_setpoints": [farm_power_reference/self.n_turbines]*self.n_turbines,
-            "yaw_angles": [-1000]*self.n_turbines
         }
 
         return controls_dict
@@ -65,23 +57,31 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
     Inherits from WindFarmPowerDistributingController.
     """
 
-    def __init__(self, interface, input_dict, proportional_gain=1, verbose=False):
+    def __init__(
+            self,
+            interface, 
+            input_dict,
+            proportional_gain=1,
+            ramp_rate_limit=None,
+            verbose=False
+        ):
+        """
+        Constructor for WindFarmPowerTrackingController.
+
+        Args:
+            interface: WHOC Interface object for communication with the simulation environment.
+            input_dict: Dictionary containing input parameters for the controller.
+            proportional_gain: Proportional gain for the controller.
+            ramp_rate_limit: Ramp rate limit for the controller (kW/s). Defaults to None.
+            verbose: Boolean flag for verbosity.
+        """
         super().__init__(interface, input_dict, verbose=verbose)
 
-        # No integral action for now. beta and omega_n not used.
-        # beta=0.7
-        # omega_n=0.01
-        # integral_gain=0 
-
+        # Proportional gain
         self.K_p = proportional_gain * 1/self.n_turbines
-        # self.K_i = integral_gain *(4*beta*omega_n)
 
-        # Initialize controller (only used for integral action)
-        # self.e_prev = 0
-        # self.u_prev = 0
-        # self.u_i_prev = 0
-        # self.ai_prev = [0.33]*self.n_turbines # TODO: different method for anti-windup?
-        # self.n_saturated = 0 
+        # Ramp rate limit
+        self.ramp_rate_limit = ramp_rate_limit
 
     def turbine_power_references(
             self,
@@ -99,6 +99,14 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
         
         farm_current_power = np.sum(turbine_powers)
         farm_current_error = farm_power_reference - farm_current_power
+
+        # Apply ramp rate limit
+        if self.ramp_rate_limit is not None:
+            farm_current_error = np.clip(
+                farm_current_error,
+                farm_current_power - self.ramp_rate_limit * self.dt,
+                farm_current_power + self.ramp_rate_limit * self.dt
+            )
 
         self.n_saturated = 0 # TODO: determine whether to use gain scheduling
         if self.n_saturated < self.n_turbines:
@@ -123,12 +131,9 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
         delta_P_ref = u
 
         turbine_power_setpoints = np.array(turbine_powers) + delta_P_ref
-        
-        # set "no value" for yaw angles (Floris not compatible with both 
-        # power_setpoints and yaw_angles)
+
         controls_dict = {
             "wind_power_setpoints": list(turbine_power_setpoints),
-            "yaw_angles": [-1000]*self.n_turbines
         }
 
         # Store error, control (only needed for integral action, which is disabled)
