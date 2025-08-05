@@ -19,5 +19,19 @@ controllers, including:
 WHOC controllers will also call on design tools such as
 [FLORIS](https://github.com/NREL/floris).
 
-Documentation for WHOC can be found on 
-[nrel.github.io](https://nrel.github.io/wind-hybrid-open-controller/intro.html)
+## WETO software
+
+WHOC is primarily developed with the support from the U.S. Department of Energy and
+is part of the [WETO Software Stack](https://nrel.github.io/WETOStack).
+For more information and other integrated modeling software, see:
+
+- [Portfolio Overview](https://nrel.github.io/WETOStack/portfolio_analysis/overview.html)
+- [Entry Guide](https://nrel.github.io/WETOStack/_static/entry_guide/index.html)
+- [Wind Farm Controls Workshop](https://www.youtube.com/watch?v=f-w6whxIBrA&list=PL6ksUtsZI1dwRXeWFCmJT6cEN1xijsHJz)
+
+NREL's software record for WHOC is SWR-25-54.
+
+## Documentation
+
+Documentation for WHOC, including installation instructions, can be found
+[here](https://nrel.github.io/wind-hybrid-open-controller/intro.html).
