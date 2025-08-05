@@ -21,7 +21,7 @@ WHOC controllers will also call on design tools such as
 
 ## WETO software
 
-FLORIS is primarily developed with the support from the U.S. Department of Energy and
+WHOC is primarily developed with the support from the U.S. Department of Energy and
 is part of the [WETO Software Stack](https://nrel.github.io/WETOStack).
 For more information and other integrated modeling software, see:
 
