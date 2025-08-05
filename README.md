@@ -29,6 +29,8 @@ For more information and other integrated modeling software, see:
 - [Entry Guide](https://nrel.github.io/WETOStack/_static/entry_guide/index.html)
 - [Wind Farm Controls Workshop](https://www.youtube.com/watch?v=f-w6whxIBrA&list=PL6ksUtsZI1dwRXeWFCmJT6cEN1xijsHJz)
 
+NREL's software record for WHOC is SWR-25-54.
+
 ## Documentation
 
 Documentation for WHOC, including installation instructions, can be found
