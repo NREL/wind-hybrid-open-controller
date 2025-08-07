@@ -9,7 +9,7 @@ from whoc.controllers import (
     SolarPassthroughController,
     WindFarmPowerTrackingController,
 )
-from whoc.interfaces.hercules_hybrid_actuator_disk_interface import HerculesHybridADInterface
+from whoc.interfaces import HerculesHybridADInterface
 
 # User options
 include_solar = True

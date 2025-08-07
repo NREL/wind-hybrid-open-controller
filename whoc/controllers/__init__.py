@@ -1,5 +1,8 @@
 from whoc.controllers.battery_controller import BatteryController, BatteryPassthroughController
-from whoc.controllers.hybrid_supervisory_controller import HybridSupervisoryControllerBaseline
+from whoc.controllers.hybrid_supervisory_controller import (
+    HybridSupervisoryControllerBaseline,
+    HybridSupervisoryControllerMultiRef,
+)
 from whoc.controllers.hydrogen_plant_controller import HydrogenPlantController
 from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
 from whoc.controllers.solar_passthrough_controller import SolarPassthroughController

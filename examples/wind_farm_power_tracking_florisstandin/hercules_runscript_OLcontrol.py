@@ -3,8 +3,8 @@ import sys
 from hercules.emulator import Emulator
 from hercules.py_sims import PySims
 from hercules.utilities import load_yaml
-from whoc.controllers.wind_farm_power_tracking_controller import WindFarmPowerDistributingController
-from whoc.interfaces.hercules_actuator_disk_interface import HerculesADInterface
+from whoc.controllers import WindFarmPowerDistributingController
+from whoc.interfaces import HerculesADInterface
 
 input_dict = load_yaml(sys.argv[1])
 input_dict["output_file"] = "outputs/hercules_output_ol.csv"
