@@ -91,8 +91,7 @@ class HerculesWindLongRunInterface(HerculesInterfaceBase):
         if wind_power_setpoints is None:
             wind_power_setpoints = [POWER_SETPOINT_DEFAULT] * self._n_turbines
 
-        for t_idx in range(self._n_turbines):
-            h_dict["wind_farm"][f"derating_{t_idx:03d}"] = wind_power_setpoints[t_idx]
+        h_dict["wind_farm"]["turbine_power_setpoints"] = wind_power_setpoints
 
         return h_dict
 
@@ -227,9 +226,8 @@ class HerculesHybridLongRunInterface(HerculesInterfaceBase):
             battery_power_setpoint = 0.0
 
         if self._has_wind_component:
-            for t_idx in range(self._n_turbines):
-                # Set wind power setpoints for each turbine
-                h_dict["wind_farm"][f"derating_{t_idx:03d}"] = wind_power_setpoints[t_idx]
+            # Set wind power setpoints
+            h_dict["wind_farm"]["turbine_power_setpoints"] = wind_power_setpoints
 
         if self._has_solar_component:
             # Set solar power setpoint
