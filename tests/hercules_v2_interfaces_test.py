@@ -97,11 +97,9 @@ def test_HerculesWindLongRunInterface():
 
     # test send_controls()
     test_hercules_dict_out = interface.send_controls(h_dict=test_hercules_dict, **controls_dict)
-    output_setpoints = [
-        test_hercules_dict_out["wind_farm"]["derating_{0:03d}".format(i)] for i in range(2)
-    ]
     assert (
-        controls_dict["wind_power_setpoints"] == output_setpoints
+        controls_dict["wind_power_setpoints"]
+        == test_hercules_dict_out["wind_farm"]["turbine_power_setpoints"]
     )
 
     with pytest.raises(TypeError):  # Bad kwarg
@@ -163,20 +161,17 @@ def test_HerculesHybridLongRunInterface():
     test_hercules_dict_out = interface.send_controls(
         h_dict=test_hercules_dict, **controls_dict
     )
-    wind_output_setpoints = [
-        test_hercules_dict_out["wind_farm"]["derating_{0:03d}".format(i)]
-        for i in range(2)
-    ]
     assert (
-        controls_dict["wind_power_setpoints"] == wind_output_setpoints
+        controls_dict["wind_power_setpoints"]
+        == test_hercules_dict_out["wind_farm"]["turbine_power_setpoints"]
     )
     assert (
-        controls_dict["solar_power_setpoint"] == \
-            test_hercules_dict_out["solar_farm"]["power_setpoint"]
+        controls_dict["solar_power_setpoint"]
+        == test_hercules_dict_out["solar_farm"]["power_setpoint"]
     )
     assert (
-        controls_dict["battery_power_setpoint"] == \
-            -test_hercules_dict_out["battery"]["power_setpoint"] * 1e3
+        controls_dict["battery_power_setpoint"]
+        == -test_hercules_dict_out["battery"]["power_setpoint"] * 1e3
     )
 
     # Check that controller and plant parameters are set correctly
