@@ -213,7 +213,15 @@ class HybridSupervisoryControllerMultiRef(HybridSupervisoryControllerBaseline):
         if "curtailment_order" in self.controller_parameters:
             self.curtailment_order = self.controller_parameters["curtailment_order"]
         else:
-            self.curtailment_order = ["solar", "wind"]
+            self.curtailment_order = ["battery", "solar", "wind"]
+
+        # Limit curtailment order to the components that are available
+        if not self._has_battery_controller:
+            self.curtailment_order.remove("battery")
+        if not self._has_solar_controller:
+            self.curtailment_order.remove("solar")
+        if not self._has_wind_controller:
+            self.curtailment_order.remove("wind")
 
     def supervisory_control(self, measurements_dict):
         """
@@ -225,43 +233,74 @@ class HybridSupervisoryControllerMultiRef(HybridSupervisoryControllerBaseline):
         if self._has_wind_controller:
             wind_power = np.array(measurements_dict["wind_turbine_powers"]).sum()
             wind_reference = measurements_dict["wind_power_reference"]
+            wind_reference = np.minimum(wind_reference, self.plant_parameters["wind_capacity"])
+        else:
+            wind_power = 0
+            wind_reference = 0
 
         if self._has_solar_controller:
             solar_power = measurements_dict["solar_power"]
             solar_reference = measurements_dict["solar_power_reference"]
+            solar_reference = np.minimum(solar_reference, self.plant_parameters["solar_capacity"])
+        else:
+            solar_power = 0
+            solar_reference = 0
 
         if self._has_battery_controller:
-            raise NotImplementedError("Logic for battery component not yet added.")
+            battery_power = measurements_dict["battery_power"]
+            battery_reference = measurements_dict["battery_power_reference"]
+            battery_reference = np.minimum(
+                battery_reference, self.plant_parameters["battery_discharge_rate"]
+            )
+            battery_reference = np.maximum(
+                battery_reference, -1 * self.plant_parameters["battery_charge_rate"]
+            )
+        else:
+            battery_power = 0
+            battery_reference = 0
 
         # Filter the wind and solar power measurements to reduce noise and improve closed-loop
         # controller damping
-        #TODO RECONSIDER THIS MAYBE MAKE MORE DEPENDENT ON THE TIME STEP
-        a = 1.0 #0.1 # FORCE THE FILTER TO BE 100% DEPENDENT ON THE CURRENT TIME STEP
-        wind_power = (1-a)*self.prev_wind_power + a*wind_power
-        solar_power = (1-a)*self.prev_solar_power + a*solar_power
+        # TODO RECONSIDER THIS MAYBE MAKE MORE DEPENDENT ON THE TIME STEP
+        a = 1.0  # 0.1 # FORCE THE FILTER TO BE 100% DEPENDENT ON THE CURRENT TIME STEP
+        wind_power = (1 - a) * self.prev_wind_power + a * wind_power
+        solar_power = (1 - a) * self.prev_solar_power + a * solar_power
+        battery_power = (1 - a) * self.prev_battery_power + a * battery_power
 
-        # Adjust references to respect capacities and interconnection limits
-        wind_reference = np.minimum(wind_reference, self.plant_parameters["wind_capacity"])
-        solar_reference = np.minimum(solar_reference, self.plant_parameters["solar_capacity"])
-        if self.curtailment_order[0] == "solar":
-            # Give whole interconnection to wind if necessary
-            wind_reference = np.minimum(wind_reference, self.plant_parameters["interconnect_limit"])
-            solar_ref_temp = np.maximum(self.plant_parameters["interconnect_limit"] - wind_power, 0)
-            solar_reference = np.minimum(solar_reference, solar_ref_temp)
-        elif self.curtailment_order[0] == "wind":
-            solar_reference = np.minimum(
-                solar_reference, self.plant_parameters["interconnect_limit"]
-            )
-            wind_ref_temp = np.maximum(self.plant_parameters["interconnect_limit"] - solar_power, 0)
-            wind_reference = np.minimum(wind_reference, wind_ref_temp)
-        else:
-            raise ValueError("Invalid generation type in curtailment_order.")
+        # Loop over the curtailment order in reverse order to progressively reduce the reference
+        # of the first component in the order
+        unconstrained_power = 0.0
 
-        # TODO: add battery option
-        battery_reference = 0
+        # If battery power is negative (charging), immediately include it in the unconstrained power
+        if battery_power < 0:
+            unconstrained_power += battery_power
+
+        for component in reversed(self.curtailment_order):
+            if component == "wind":
+                wind_reference = np.minimum(
+                    wind_reference,
+                    self.plant_parameters["interconnect_limit"] - unconstrained_power,
+                )
+                unconstrained_power += wind_power
+            elif component == "solar":
+                solar_reference = np.minimum(
+                    solar_reference,
+                    self.plant_parameters["interconnect_limit"] - unconstrained_power,
+                )
+                unconstrained_power += solar_reference
+            elif component == "battery":
+                battery_reference = np.minimum(
+                    battery_reference,
+                    self.plant_parameters["interconnect_limit"] - unconstrained_power,
+                )
+                if battery_power > 0:  # Make sure not to double count battery power when charging
+                    unconstrained_power += battery_power
+            else:
+                raise ValueError(f"Invalid generation type {component} in curtailment_order.")
 
         self.prev_solar_power = solar_power
         self.prev_wind_power = wind_power
+        self.prev_battery_power = battery_power
         self.wind_reference = wind_reference
         self.solar_reference = solar_reference
         self.battery_reference = battery_reference
