@@ -24,15 +24,14 @@ class HerculesInterfaceBase(InterfaceBase):
         else:
             self.plant_parameters = {}
 
+
 class HerculesWindLongRunInterface(HerculesInterfaceBase):
     def __init__(self, h_dict):
         super().__init__(h_dict)
 
         # Wind farm parameters
         if "wind_farm" not in h_dict:
-            raise ValueError(
-                "h_dict must contain 'wind_farm' key to use this interface."
-            )
+            raise ValueError("h_dict must contain 'wind_farm' key to use this interface.")
         self.plant_parameters["nameplate_capacity"] = h_dict["wind_farm"]["capacity"]
         self.plant_parameters["n_turbines"] = h_dict["wind_farm"]["n_turbines"]
         self.plant_parameters["turbines"] = range(self.plant_parameters["n_turbines"])
@@ -124,8 +123,9 @@ class HerculesHybridLongRunInterface(HerculesInterfaceBase):
             self.plant_parameters["battery_energy_capacity"] = (
                 h_dict["battery"]["energy_capacity"] * 1e3
             )
-            self.plant_parameters["battery_charge_rate"] = (
-                h_dict["battery"]["charge_rate"] * 1e3
+            self.plant_parameters["battery_charge_rate"] = h_dict["battery"]["charge_rate"] * 1e3
+            self.plant_parameters["battery_discharge_rate"] = (
+                h_dict["battery"]["discharge_rate"] * 1e3
             )
 
         # Electrolyzer parameters
@@ -136,7 +136,7 @@ class HerculesHybridLongRunInterface(HerculesInterfaceBase):
         available_controls = [
             "wind_power_setpoints",
             "solar_power_setpoint",
-            "battery_power_setpoint"
+            "battery_power_setpoint",
         ]
 
         for k in controls_dict.keys():
@@ -168,12 +168,19 @@ class HerculesHybridLongRunInterface(HerculesInterfaceBase):
             measurements["plant_power_reference"] = plant_power_reference
 
             if "wind_power_reference" in h_dict["external_signals"]:
-                measurements["wind_power_reference"] = \
-                    h_dict["external_signals"]["wind_power_reference"]
+                measurements["wind_power_reference"] = h_dict["external_signals"][
+                    "wind_power_reference"
+                ]
 
             if "solar_power_reference" in h_dict["external_signals"]:
-                measurements["solar_power_reference"] = \
-                    h_dict["external_signals"]["solar_power_reference"]
+                measurements["solar_power_reference"] = h_dict["external_signals"][
+                    "solar_power_reference"
+                ]
+
+            if "battery_power_reference" in h_dict["external_signals"]:
+                measurements["battery_power_reference"] = h_dict["external_signals"][
+                    "battery_power_reference"
+                ]
 
             for k in h_dict["external_signals"].keys():
                 if "forecast" in k != "wind_power_reference":
