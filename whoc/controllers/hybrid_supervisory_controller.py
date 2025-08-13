@@ -37,7 +37,7 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
         self.wind_reference = 0
         self.solar_reference = 0
         self.battery_reference = 0
-
+        self.prev_battery_power = 0
         self.prev_wind_power = 0
         self.prev_solar_power = 0
 
@@ -172,6 +172,7 @@ class HybridSupervisoryControllerBaseline(ControllerBase):
 
         self.prev_solar_power = solar_power
         self.prev_wind_power = wind_power
+        self.prev_battery_power = battery_power
         self.wind_reference = wind_reference
         self.solar_reference = solar_reference
         self.battery_reference = battery_reference
