@@ -119,13 +119,13 @@ class HerculesHybridLongRunInterface(HerculesInterfaceBase):
 
         # Battery parameters
         if self._has_battery_component:
-            self.plant_parameters["battery_power_capacity"] = h_dict["battery"]["size"] * 1e3
+            self.plant_parameters["battery_power_capacity"] = h_dict["battery"]["size"] 
             self.plant_parameters["battery_energy_capacity"] = (
-                h_dict["battery"]["energy_capacity"] * 1e3
+                h_dict["battery"]["energy_capacity"] 
             )
-            self.plant_parameters["battery_charge_rate"] = h_dict["battery"]["charge_rate"] * 1e3
+            self.plant_parameters["battery_charge_rate"] = h_dict["battery"]["charge_rate"]
             self.plant_parameters["battery_discharge_rate"] = (
-                h_dict["battery"]["discharge_rate"] * 1e3
+                h_dict["battery"]["discharge_rate"] 
             )
 
         # Electrolyzer parameters
@@ -203,7 +203,7 @@ class HerculesHybridLongRunInterface(HerculesInterfaceBase):
             measurements["solar_aoi"] = h_dict["solar_farm"]["aoi"]
             total_power += measurements["solar_power"]
         if self._has_battery_component:
-            measurements["battery_power"] = -h_dict["battery"]["power"] * 1e3
+            measurements["battery_power"] = -h_dict["battery"]["power"] 
             measurements["battery_soc"] = h_dict["battery"]["soc"]
             total_power += measurements["battery_power"]
         if self._has_hydrogen_component:
@@ -242,6 +242,6 @@ class HerculesHybridLongRunInterface(HerculesInterfaceBase):
 
         if self._has_battery_component:
             # Set battery power setpoint (negative for discharge)
-            h_dict["battery"]["power_setpoint"] = -battery_power_setpoint / 1e3
+            h_dict["battery"]["power_setpoint"] = -battery_power_setpoint
 
         return h_dict
