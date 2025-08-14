@@ -211,18 +211,29 @@ class HybridSupervisoryControllerMultiRef(HybridSupervisoryControllerBaseline):
         else:
             raise KeyError("interconnect_limit must be specified to use this controller.")
 
+        # Establish curtailment protocols
+        default_curtailment_order = ["battery", "solar", "wind"]
+        default_curtailment_order = [
+            c for c, a in zip(
+                default_curtailment_order,
+                [self._has_battery_controller,
+                 self._has_solar_controller,
+                 self._has_wind_controller
+                ]
+            ) if a
+        ]
         if "curtailment_order" in self.controller_parameters:
+            # Check that curtailment order does not contain any invalid components
+            for component in self.controller_parameters["curtailment_order"]:
+                if component not in default_curtailment_order:
+                    raise ValueError(
+                        f"Invalid component {component} in curtailment_order. "
+                        "Valid components based on configuration provided are: "
+                        ", ".join(default_curtailment_order)
+                    )
             self.curtailment_order = self.controller_parameters["curtailment_order"]
         else:
-            self.curtailment_order = ["battery", "solar", "wind"]
-
-        # Limit curtailment order to the components that are available
-        if not self._has_battery_controller:
-            self.curtailment_order.remove("battery")
-        if not self._has_solar_controller:
-            self.curtailment_order.remove("solar")
-        if not self._has_wind_controller:
-            self.curtailment_order.remove("wind")
+            self.curtailment_order = default_curtailment_order
 
     def supervisory_control(self, measurements_dict):
         """
