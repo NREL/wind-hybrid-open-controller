@@ -294,7 +294,7 @@ class HybridSupervisoryControllerMultiRef(HybridSupervisoryControllerBaseline):
                     battery_reference,
                     self.plant_parameters["interconnect_limit"] - unconstrained_power,
                 )
-                if battery_power > 0:  # Make sure not to double count battery power when charging
+                if battery_power < 0:  # Make sure not to double count battery power when charging
                     unconstrained_power += battery_power
             else:
                 raise ValueError(f"Invalid generation type {component} in curtailment_order.")

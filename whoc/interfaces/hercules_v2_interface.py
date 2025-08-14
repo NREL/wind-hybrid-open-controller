@@ -203,7 +203,7 @@ class HerculesHybridLongRunInterface(HerculesInterfaceBase):
             measurements["solar_aoi"] = h_dict["solar_farm"]["aoi"]
             total_power += measurements["solar_power"]
         if self._has_battery_component:
-            measurements["battery_power"] = -h_dict["battery"]["power"] 
+            measurements["battery_power"] = h_dict["battery"]["power"] 
             measurements["battery_soc"] = h_dict["battery"]["soc"]
             total_power += measurements["battery_power"]
         if self._has_hydrogen_component:
@@ -241,7 +241,7 @@ class HerculesHybridLongRunInterface(HerculesInterfaceBase):
             h_dict["solar_farm"]["power_setpoint"] = solar_power_setpoint
 
         if self._has_battery_component:
-            # Set battery power setpoint (negative for discharge)
-            h_dict["battery"]["power_setpoint"] = -battery_power_setpoint
+            # Set battery power setpoint (positive for discharge)
+            h_dict["battery"]["power_setpoint"] = battery_power_setpoint
 
         return h_dict
