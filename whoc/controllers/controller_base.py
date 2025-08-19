@@ -33,6 +33,24 @@ class ControllerBase(metaclass=ABCMeta):
 
         return output_dict
 
+    @property
+    def controller_parameters(self):
+        return self._s.controller_parameters
+
+    @property
+    def plant_parameters(self):
+        return self._s.plant_parameters
+
+    @property
+    def dt(self):
+        return self._s.dt
+
+    @dt.setter
+    def dt(self, _):
+        print(
+            "Warning: Setting dt directly is deprecated. Use the interface's dt property instead."
+        )
+
     @abstractmethod
     def compute_controls(self, measurements_dict: dict) -> dict:
         pass  # Control algorithms should be implemented in the compute_controls 

@@ -2,6 +2,85 @@ from whoc.controllers.wind_farm_power_tracking_controller import POWER_SETPOINT_
 from whoc.interfaces.interface_base import InterfaceBase
 
 
+class HerculesADInterface(InterfaceBase):
+    def __init__(self, hercules_dict):
+        super().__init__()
+
+        self.dt = hercules_dict["dt"]
+        self.n_turbines = hercules_dict["controller"]["num_turbines"]
+        self.turbines = range(self.n_turbines)
+
+        # Grab name of wind farm (assumes there is only one!)
+        self.wf_name = list(hercules_dict["hercules_comms"]["amr_wind"].keys())[0]
+
+        # Assign plant parameters for controller use
+        self.plant_parameters = {"n_turbines": self.n_turbines}
+
+        pass
+
+    def get_measurements(self, hercules_dict):
+        wind_directions = hercules_dict["hercules_comms"]["amr_wind"][self.wf_name][
+            "turbine_wind_directions"
+        ]
+        # wind_speeds = input_dict["hercules_comms"]\
+        #                         ["amr_wind"]\
+        #                         [self.wf_name]\
+        #                         ["turbine_wind_speeds"]
+        turbine_powers = hercules_dict["hercules_comms"]["amr_wind"][self.wf_name]["turbine_powers"]
+        time = hercules_dict["time"]
+
+        # Defaults for external signals
+        wind_power_reference = POWER_SETPOINT_DEFAULT
+        forecast = {}
+
+        # Handle external signals. wind_power_reference takes precedence over plant_power_reference.
+        if "external_signals" in hercules_dict:
+            if "wind_power_reference" in hercules_dict["external_signals"]:
+                wind_power_reference = hercules_dict["external_signals"]["wind_power_reference"]
+            elif "plant_power_reference" in hercules_dict["external_signals"]:
+                wind_power_reference = hercules_dict["external_signals"]["plant_power_reference"]
+
+            for k in hercules_dict["external_signals"].keys():
+                if "forecast" in k != "wind_power_reference":
+                    forecast[k] = hercules_dict["external_signals"][k]
+
+        measurements = {
+            "time": time,
+            "wind_directions": wind_directions,
+            # "wind_speeds":wind_speeds,
+            "wind_turbine_powers": turbine_powers,
+            "wind_power_reference": wind_power_reference,
+            "forecast": forecast,
+            "total_power": sum(turbine_powers),
+        }
+
+        return measurements
+
+    def check_controls(self, controls_dict):
+        available_controls = ["yaw_angles", "wind_power_setpoints"]
+
+        for k in controls_dict.keys():
+            if k not in available_controls:
+                raise ValueError("Setpoint " + k + " is not available in this configuration.")
+            if len(controls_dict[k]) != self.n_turbines:
+                raise ValueError(
+                    "Length of setpoint " + k + " does not match the number of turbines."
+                )
+
+    def send_controls(self, hercules_dict, yaw_angles=None, wind_power_setpoints=None):
+        if yaw_angles is None:
+            yaw_angles = [-1000] * self.n_turbines
+        if wind_power_setpoints is None:
+            wind_power_setpoints = [POWER_SETPOINT_DEFAULT] * self.n_turbines
+
+        hercules_dict["hercules_comms"]["amr_wind"][self.wf_name]["turbine_yaw_angles"] = yaw_angles
+        hercules_dict["hercules_comms"]["amr_wind"][self.wf_name][
+            "turbine_power_setpoints"
+        ] = wind_power_setpoints
+
+        return hercules_dict
+
+
 class HerculesHybridADInterface(InterfaceBase):
     def __init__(self, hercules_dict):
         super().__init__()
@@ -16,6 +95,7 @@ class HerculesHybridADInterface(InterfaceBase):
         self._has_battery_component = False
         self._has_hydrogen_component = False
         # Grab name of wind, solar, and battery 
+        self.plant_parameters = {}
         for i in py_sims:
             if tech_keys[0] in i.split('_'):
                 self.solar_name = [ps for ps in py_sims if "solar" in ps][0]
@@ -23,6 +103,9 @@ class HerculesHybridADInterface(InterfaceBase):
             if tech_keys[1] in i.split('_'):
                 self.battery_name = [ps for ps in py_sims if "battery" in ps][0]
                 self._has_battery_component = True
+                self.plant_parameters["battery_charge_rate"] = (
+                    hercules_dict["py_sims"][self.battery_name]["charge_rate"]*1000
+                ) # Convert to kW
             if tech_keys[3] in i.split("_"):
                 self.hydrogen_name = [ps for ps in py_sims if "hydrogen" in ps][0]
                 self._has_hydrogen_component = True
@@ -33,6 +116,7 @@ class HerculesHybridADInterface(InterfaceBase):
                 self.n_turbines = hercules_dict["controller"]["num_turbines"]
                 self.turbines = range(self.n_turbines)
                 self._has_wind_component = True
+                self.plant_parameters["n_turbines"] = self.n_turbines
 
     def get_measurements(self, hercules_dict):
 

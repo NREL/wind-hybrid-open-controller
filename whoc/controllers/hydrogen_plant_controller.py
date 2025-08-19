@@ -82,7 +82,7 @@ class HydrogenPlantController(ControllerBase):
             # Create exhaustive generator measurements dict to handle variety
             # of possible lower-level controllers
             generator_measurements_dict = copy.deepcopy(measurements_dict)
-            generator_measurements_dict["power_reference"] = power_reference
+            generator_measurements_dict["wind_power_reference"] = power_reference
             generator_controls_dict = self.generator_controller.compute_controls(
                 generator_measurements_dict
             )
