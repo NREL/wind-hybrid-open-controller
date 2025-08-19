@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+from whoc.controllers import YawSetpointPassthroughController
 from whoc.controllers.controller_base import ControllerBase
+from whoc.estimators import WindDirectionPassthroughEstimator
 from whoc.estimators.estimator_base import EstimatorBase
 from whoc.interfaces.interface_base import InterfaceBase
 
 
 class WindFarmYawController(ControllerBase):
+    """
+    WindFarmYawController is a top-level controller that manages a combined wind estimator
+    and yaw setpoint controller for a wind farm.
+    """
     def __init__(
             self,
             interface: InterfaceBase,
@@ -15,9 +21,6 @@ class WindFarmYawController(ControllerBase):
         ):
         """
         Constructor for WindFarmYawController. 
-
-        WindFarmYawController is a top-level controller that manages a combined wind estimator
-        and yaw setpoint controller for a wind farm.
 
         Args:
             interface (InterfaceBase): Interface object for communicating with the plant.
@@ -30,7 +33,11 @@ class WindFarmYawController(ControllerBase):
         """
         super().__init__(interface, verbose=verbose)
 
-        # Store controller and estimator
+        # Establish defaults for yaw setpoint controller and wind estimator and store on self
+        if yaw_setpoint_controller is None:
+            yaw_setpoint_controller = YawSetpointPassthroughController(interface, verbose=verbose)
+        if wind_estimator is None:
+            wind_estimator = WindDirectionPassthroughEstimator(interface, verbose=verbose)
         self.yaw_setpoint_controller = yaw_setpoint_controller
         self.wind_estimator = wind_estimator
 
