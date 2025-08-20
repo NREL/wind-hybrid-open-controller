@@ -1,0 +1,1 @@
+from whoc.estimators.wind_direction_estimator import WindDirectionPassthroughEstimator
