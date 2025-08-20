@@ -15,10 +15,10 @@ class EstimatorBase(metaclass=ABCMeta):
 
     def _send_estimates(self, input_dict=None):
         # TODO: how should I use this? Could just return an empty dict for estimates, presumably.
-        self._s.check_estimates(self._estimates_dict) # _s.check_controls? 
-        output_dict = self._s.send_estimates(input_dict, **self._estimates_dict) # send_controls?
+        #self._s.check_estimates(self._estimates_dict) # _s.check_controls? 
+        #output_dict = self._s.send_estimates(input_dict, **self._estimates_dict) # send_controls?
 
-        return output_dict # Or simply return input_dict? May work.
+        return input_dict # output_dict # Or simply return input_dict? May work.
 
     def step(self, input_dict=None):
         """
