@@ -12,6 +12,7 @@ from whoc.controllers import (
     SolarPassthroughController,
     WindFarmPowerDistributingController,
     WindFarmPowerTrackingController,
+    YawSetpointPassthroughController,
 )
 from whoc.controllers.wind_farm_power_tracking_controller import POWER_SETPOINT_DEFAULT
 from whoc.interfaces import (
@@ -92,6 +93,7 @@ def test_controller_instantiation():
     _ = SolarPassthroughController(interface=test_interface, input_dict=test_hercules_dict)
     _ = BatteryPassthroughController(interface=test_interface, input_dict=test_hercules_dict)
     _ = BatteryController(interface=test_interface, input_dict=test_hercules_dict)
+    _ = YawSetpointPassthroughController(interface=test_interface)
 
 
 def test_LookupBasedWakeSteeringController():
@@ -645,4 +647,21 @@ def test_HydrogenPlantController():
         input_dict=test_hercules_dict,
         generator_controller=hybrid_controller,
         controller_parameters=external_controller_parameters
+    )
+
+def test_YawSetpointPassthroughController():
+    """
+    Tests that the YawSetpointPassthroughController simply passes through the yaw setpoints
+    from the interface.
+    """
+    test_interface = HerculesADInterface(test_hercules_dict)
+    test_controller = YawSetpointPassthroughController(test_interface, test_hercules_dict)
+
+    # Check that the controller can be stepped
+    test_hercules_dict["time"] = 20
+    test_hercules_dict_out = test_controller.step(input_dict=test_hercules_dict)
+
+    assert np.allclose(
+        test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_yaw_angles"],
+        test_hercules_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_wind_directions"]
     )

@@ -100,6 +100,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
                 wind_speeds,
                 None
             )
+            # TODO: option to return as offsets, rather than absolute angles
             yaw_offsets = np.diag(interpolated_angles)
             yaw_setpoint = (np.array(wind_directions) - yaw_offsets).tolist()
 

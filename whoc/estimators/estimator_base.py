@@ -14,15 +14,21 @@ class EstimatorBase(metaclass=ABCMeta):
         return None
 
     def _send_estimates(self, input_dict=None):
-        self._s.check_estimates(self._estimates_dict)
-        output_dict = self._s.send_estimates(input_dict, **self._controls_dict)
+        # TODO: how should I use this? Could just return an empty dict for estimates, presumably.
+        self._s.check_estimates(self._estimates_dict) # _s.check_controls? 
+        output_dict = self._s.send_estimates(input_dict, **self._estimates_dict) # send_controls?
 
-        return output_dict
+        return output_dict # Or simply return input_dict? May work.
 
     def step(self, input_dict=None):
+        """
+        Only used if an estimator alone is being run (without an overarching controller).
+        """
         self._receive_measurements(input_dict)
 
-        output_dict = self.compute_estimates(self._measurements_dict)
+        self._estimates_dict = self.compute_estimates(self._measurements_dict)
+
+        output_dict = self._send_estimates(input_dict)
 
         return output_dict
 
