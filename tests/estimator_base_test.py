@@ -1,24 +1,5 @@
 import pytest
 from whoc.estimators.estimator_base import EstimatorBase
-from whoc.interfaces.interface_base import InterfaceBase
-
-
-class StandinInterface(InterfaceBase):
-    """
-    Empty class to test controllers.
-    """
-
-    def __init__(self):
-        super().__init__()
-
-    def get_measurements(self):
-        pass
-
-    def check_controls(self):
-        pass
-
-    def send_controls(self):
-        pass
 
 
 class InheritanceTestClassBad(EstimatorBase):
@@ -42,26 +23,22 @@ class InheritanceTestClassGood(EstimatorBase):
         pass
 
 
-def test_EstimatorBase_methods():
+def test_EstimatorBase_methods(test_interface_standin):
     """
     Check that the base interface class establishes the correct methods.
     """
-    test_interface = StandinInterface()
-
-    estimator_base = InheritanceTestClassGood(test_interface)
+    estimator_base = InheritanceTestClassGood(test_interface_standin)
     assert hasattr(estimator_base, "_receive_measurements")
     # assert hasattr(estimator_base, "_send_estimates") # Not yet sure we want this.
     assert hasattr(estimator_base, "step")
     assert hasattr(estimator_base, "compute_estimates")
 
 
-def test_inherited_methods():
+def test_inherited_methods(test_interface_standin):
     """
     Check that a subclass of InterfaceBase inherits methods correctly.
     """
-    test_interface = StandinInterface()
-
     with pytest.raises(TypeError):
-        _ = InheritanceTestClassBad(test_interface)
+        _ = InheritanceTestClassBad(test_interface_standin)
 
-    _ = InheritanceTestClassGood(test_interface)
+    _ = InheritanceTestClassGood(test_interface_standin)

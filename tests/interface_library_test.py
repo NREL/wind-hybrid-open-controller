@@ -5,37 +5,8 @@ from whoc.interfaces import (
     HerculesHybridADInterface,
 )
 
-test_hercules_dict = {
-    "dt": 1,
-    "time": 0,
-    "controller": {"num_turbines": 2, "wind_capacity_MW": 10},
-    "hercules_comms": {
-        "amr_wind": {
-            "test_farm": {
-                "turbine_wind_directions": [271.0, 272.5],
-                "turbine_powers": [4000.0, 4001.0],
-                "wind_speed": 10.0,
-            }
-        }
-    },
-    "py_sims": {
-        "test_battery": {"outputs": {"power": 10.0, "soc": 0.3}, "charge_rate":20},
-        "test_solar": {"outputs": {"power_mw": 1.0, "dni": 1000.0, "aoi": 30.0}},
-        "test_hydrogen": {"outputs": {"H2_mfr": 0.03} },
-        "inputs": {},
-    },
-    "external_signals": {
-        "wind_power_reference": 1000.0,
-        "plant_power_reference": 1000.0,
-        "forecast_ws_mean_0": 8.0,
-        "forecast_ws_mean_1": 8.1,
-        "ws_median_0": 8.1,
-        "hydrogen_reference": 0.02,
-    },
-}
 
-
-def test_interface_instantiation():
+def test_interface_instantiation(test_hercules_dict):
     """
     Tests whether all interfaces can be imported correctly and that they
     each implement the required methods specified by InterfaceBase.
@@ -47,7 +18,7 @@ def test_interface_instantiation():
     # _ = ROSCO_ZMQInterface()
 
 
-def test_HerculesADInterface():
+def test_HerculesADInterface(test_hercules_dict):
     interface = HerculesADInterface(hercules_dict=test_hercules_dict)
 
     # Test get_measurements()
@@ -117,7 +88,7 @@ def test_HerculesADInterface():
     test_hercules_dict["external_signals"]["wind_power_reference"] = 1000.0
     test_hercules_dict["external_signals"]["plant_power_reference"] = 1000.0
 
-def test_HerculesHybridADInterface():
+def test_HerculesHybridADInterface(test_hercules_dict):
     interface = HerculesHybridADInterface(hercules_dict=test_hercules_dict)
 
     # Test get_measurements()
@@ -202,7 +173,7 @@ def test_HerculesHybridADInterface():
     with pytest.raises(TypeError):  # Bad kwarg
         interface.send_controls(test_hercules_dict, **bad_controls_dict)
 
-def test_HerculesBatteryInterface():
+def test_HerculesBatteryInterface(test_hercules_dict):
 
     interface = HerculesBatteryInterface(hercules_dict=test_hercules_dict)
 

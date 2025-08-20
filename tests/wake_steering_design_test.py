@@ -19,6 +19,7 @@ TEST_DATA = Path(__file__).resolve().parent
 YAML_INPUT = TEST_DATA / "floris_input.yaml"
 
 def generic_df_opt(
+        floris_dictionary,
         wd_resolution=4.0,
         wd_min=220.0,
         wd_max=310.0,
@@ -34,7 +35,7 @@ def generic_df_opt(
         kwargs_UncertainFlorisModel = {},
     ):
 
-    fmodel_test = FlorisModel(YAML_INPUT)
+    fmodel_test = FlorisModel(floris_dictionary)
 
     if wd_std is None:
         return build_simple_wake_steering_lookup_table(
@@ -67,7 +68,7 @@ def generic_df_opt(
             kwargs_UncertainFlorisModel=kwargs_UncertainFlorisModel,
         )
 
-def test_build_simple_wake_steering_lookup_table():
+def test_build_simple_wake_steering_lookup_table(floris_dict):
 
     # Start with the simple case
     wd_resolution = 4.0
@@ -82,6 +83,7 @@ def test_build_simple_wake_steering_lookup_table():
     minimum_yaw_angle = -20
     maximum_yaw_angle = 20
     df_opt = generic_df_opt(
+        floris_dict,
         wd_resolution=wd_resolution,
         wd_min=wd_min,
         wd_max=wd_max,
@@ -94,7 +96,7 @@ def test_build_simple_wake_steering_lookup_table():
     )
 
 
-    df_opt = generic_df_opt()
+    df_opt = generic_df_opt(floris_dict)
 
     opt_yaw_angles = np.vstack(df_opt["yaw_angles_opt"])
 
@@ -113,6 +115,7 @@ def test_build_simple_wake_steering_lookup_table():
     wd_max = 360.0
     minimum_yaw_angle = -5 # Positive numbers DO NOT WORK. FLORIS bug?
     df_opt = generic_df_opt(
+        floris_dict,
         wd_resolution=wd_resolution,
         wd_min=wd_min,
         wd_max=wd_max,
@@ -142,6 +145,7 @@ def test_build_simple_wake_steering_lookup_table():
     wd_min = 2.0
     wd_max = 360.0 # Shouldn't appear in output; max should be 358.0
     df_opt = generic_df_opt(
+        floris_dict,
         wd_resolution=wd_resolution,
         wd_min=wd_min,
         wd_max=wd_max,
@@ -149,12 +153,12 @@ def test_build_simple_wake_steering_lookup_table():
     assert df_opt.wind_direction.min() == wd_min
     assert df_opt.wind_direction.max() == 358.0
 
-def test_build_uncertain_wake_steering_lookup_table():
+def test_build_uncertain_wake_steering_lookup_table(floris_dict):
 
     max_yaw_angle = 35 # To force split between basic and uncertain
 
-    df_opt_simple = generic_df_opt(wd_std=None, maximum_yaw_angle=max_yaw_angle)
-    df_opt_uncertain = generic_df_opt(wd_std=3.0, maximum_yaw_angle=max_yaw_angle)
+    df_opt_simple = generic_df_opt(floris_dict, wd_std=None, maximum_yaw_angle=max_yaw_angle)
+    df_opt_uncertain = generic_df_opt(floris_dict, wd_std=3.0, maximum_yaw_angle=max_yaw_angle)
 
     max_offset_simple = df_opt_simple.yaw_angles_opt.apply(lambda x: np.max(x)).max()
     max_offset_uncertain = df_opt_uncertain.yaw_angles_opt.apply(lambda x: np.max(x)).max()
@@ -162,19 +166,21 @@ def test_build_uncertain_wake_steering_lookup_table():
 
     # Check that kwargs are passed correctly (results not identical)
     df_opt_uncertain_fixed = generic_df_opt(
+        floris_dict,
         wd_std=3.0,
         maximum_yaw_angle=max_yaw_angle,
         kwargs_UncertainFlorisModel={"fix_yaw_to_nominal_direction": True}
     )
     assert not np.allclose(df_opt_uncertain.farm_power_opt, df_opt_uncertain_fixed.farm_power_opt)
 
-def test_apply_static_rate_limits():
+def test_apply_static_rate_limits(floris_dict):
     eps = 1e-4
 
     wd_resolution = 4
     ws_resolution = 0.5
     ti_resolution = 0.01
     df_opt = generic_df_opt(
+        floris_dict,
         wd_resolution=wd_resolution,
         ws_resolution=ws_resolution,
         ti_resolution=ti_resolution
@@ -212,12 +218,12 @@ def test_apply_static_rate_limits():
     assert not (np.abs(np.diff(offsets_unlimited, axis=1)) <= ws_rate_limit*ws_resolution).all()
     assert not (np.abs(np.diff(offsets_unlimited, axis=2)) <= ti_rate_limit*ti_resolution).all()
 
-def test_apply_wind_speed_ramps():
+def test_apply_wind_speed_ramps(floris_dict):
 
     ws_specified = 8.0
     ws_wake_steering_cut_out = 13.0
     ws_wake_steering_fully_engaged_high = 10.0
-    df_opt_single_ws = generic_df_opt(ws_min=ws_specified, ws_max=ws_specified)
+    df_opt_single_ws = generic_df_opt(floris_dict, ws_min=ws_specified, ws_max=ws_specified)
 
     df_opt_ramps = apply_wind_speed_ramps(
         df_opt_single_ws,
@@ -252,9 +258,9 @@ def test_apply_wind_speed_ramps():
         )/2
     )
 
-def test_wake_steering_interpolant():
+def test_wake_steering_interpolant(floris_dict):
 
-    df_opt = generic_df_opt()
+    df_opt = generic_df_opt(floris_dict)
 
     yaw_interpolant = get_yaw_angles_interpolant(df_opt)
 
@@ -284,8 +290,8 @@ def test_wake_steering_interpolant():
     with pytest.raises(ValueError):
         _ = yaw_interpolant(200.0, 8.0, 0.06) # min specified wd is 220
 
-    # Check wrapping works
-    df_0_270 = generic_df_opt(wd_min=0.0, wd_max=270.0, wd_resolution=10.0) # Includes 0 degree WD
+    # Check wrapping works (includes 0 degree wind direction)
+    df_0_270 = generic_df_opt(floris_dict, wd_min=0.0, wd_max=270.0, wd_resolution=10.0)
     yaw_interpolant = get_yaw_angles_interpolant(df_0_270)
     _ = yaw_interpolant(0.0, 8.0, 0.06)
     _ = yaw_interpolant(355.0, 8.0, 0.06)
@@ -295,9 +301,9 @@ def test_wake_steering_interpolant():
     with pytest.raises(ValueError):
         _ = yaw_interpolant(361.0, 8.0, 0.06)
 
-def test_hysteresis_zones():
+def test_hysteresis_zones(floris_dict):
 
-    df_opt = generic_df_opt()
+    df_opt = generic_df_opt(floris_dict)
     min_zone_width = 4.0
 
     hysteresis_dict_base = {"T000": [(270-min_zone_width/2, 270+min_zone_width/2)]}
@@ -307,12 +313,12 @@ def test_hysteresis_zones():
     assert hysteresis_dict_test == hysteresis_dict_base
 
     # Check angle wrapping works (runs through)
-    df_opt = generic_df_opt(wd_min=0.0, wd_max=360.0)
+    df_opt = generic_df_opt(floris_dict, wd_min=0.0, wd_max=360.0)
     hysteresis_dict_test = compute_hysteresis_zones(df_opt, min_zone_width=min_zone_width)
     assert hysteresis_dict_test["T000"] == hysteresis_dict_base["T000"]
 
     # Limited wind directions that span 360/0 \
-    df_opt_2 = generic_df_opt()
+    df_opt_2 = generic_df_opt(floris_dict)
     df_opt_2.wind_direction = (df_opt_2.wind_direction + 90.0) % 360.0
     df_opt_2 = df_opt_2.sort_values(by=["wind_direction", "wind_speed", "turbulence_intensity"])
     hysteresis_dict_test = compute_hysteresis_zones(df_opt_2, min_zone_width=min_zone_width)
@@ -320,21 +326,21 @@ def test_hysteresis_zones():
             == np.array(hysteresis_dict_base["T000"][0])).all()
 
     # Check 0 low end, less than 360 upper end
-    df_opt = generic_df_opt(wd_min=0.0, wd_max=300.0)
+    df_opt = generic_df_opt(floris_dict, wd_min=0.0, wd_max=300.0)
     hysteresis_dict_test = compute_hysteresis_zones(df_opt, min_zone_width=min_zone_width)
     assert hysteresis_dict_test["T000"] == hysteresis_dict_base["T000"]
 
     # Check nonzero low end, 360 upper end
-    df_opt = generic_df_opt(wd_min=200.0, wd_max=360.0)
+    df_opt = generic_df_opt(floris_dict, wd_min=200.0, wd_max=360.0)
     hysteresis_dict_test = compute_hysteresis_zones(df_opt, min_zone_width=min_zone_width)
     assert hysteresis_dict_test["T000"] == hysteresis_dict_base["T000"]
 
     # Close to zero low end, 360 upper end
-    df_opt = generic_df_opt(wd_min=2.0, wd_max=360.0)
+    df_opt = generic_df_opt(floris_dict, wd_min=2.0, wd_max=360.0)
     _ = compute_hysteresis_zones(df_opt)
 
     # Check grouping of regions by reducing yaw rate threshold
-    df_opt = generic_df_opt()
+    df_opt = generic_df_opt(floris_dict)
     hysteresis_dict_test = compute_hysteresis_zones(
         df_opt,
         min_zone_width=3*min_zone_width, # Force regions to be grouped
@@ -443,10 +449,10 @@ def test_create_uniform_wind_rose():
     frequencies = wind_rose.unpack_freq()
     assert (frequencies == frequencies[0]).all()
 
-def test_check_df_opt_ordering():
+def test_check_df_opt_ordering(floris_dict):
 
     # Pass tests
-    df_opt = generic_df_opt()
+    df_opt = generic_df_opt(floris_dict)
     check_df_opt_ordering(df_opt)
 
     # Remove a row so that not all data is present
