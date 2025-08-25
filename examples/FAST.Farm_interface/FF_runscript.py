@@ -11,12 +11,16 @@ input_dict = load_yaml(os.path.join("inputs", "hercules_input.yaml"))
 # Load the optimal yaw angle lookup table for controller us
 df_opt = pd.read_pickle("yaw_offsets.pkl")
 
-network_address = "tcp://*:5555"
-timeout = 600.0
-verbose = False
+zmq_dict = {
+    "network_address": "tcp://*:5555",
+    "timeout": 600.0,
+    "verbose": False,
+}
 
-interface = ROSCO_ZMQInterface(network_address, timeout, verbose)
-controller = LookupBasedWakeSteeringController(interface, input_dict, df_yaw=df_opt)
-emulator = ROSCO_ZMQEmulator(controller,input_dict)
+interface = ROSCO_ZMQInterface(input_dict,zmq_dict)
+controller = LookupBasedWakeSteeringController(
+    interface, input_dict, df_yaw=df_opt
+)
+emulator = ROSCO_ZMQEmulator(controller, input_dict)
 
 print("runscript complete.")

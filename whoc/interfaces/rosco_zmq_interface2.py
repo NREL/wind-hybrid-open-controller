@@ -1,21 +1,29 @@
-import zmq
-
 from whoc.interfaces.interface_base import InterfaceBase
 from rosco.toolbox.control_interface import wfc_zmq_server, wfc_zmq_connections
 
 
 
 class ROSCO_ZMQInterface(InterfaceBase):
-    def __init__(
-        self, network_address="tcp://*:5555", timeout=600.0, verbose=False
-    ):
+    def __init__(self, h_dict, zmq_dict):
         super().__init__()
         
-        self.network_address = network_address
-        self.timeout = timeout
-        self.verbose = verbose
+        # Controller parameters
+        if "controller" in h_dict and h_dict["controller"] is not None:
+            self.controller_parameters = h_dict["controller"]
+        else:
+            self.controller_parameters = {}
+
+        # Plant parameters
+        if "plant" in h_dict and h_dict["plant"] is not None:
+            self.plant_parameters = h_dict["plant"]
+        else:
+            self.plant_parameters = {}
+        
+        self.network_address = zmq_dict['network_address']
+        self.timeout = zmq_dict['timeout']
+        self.verbose = zmq_dict['verbose']
         self.wfc_zmq_server = wfc_zmq_server(self.network_address,self.timeout,self.verbose)
-        self._plant_parameters = [0]
+        
 
     def _connect(self):
         """
