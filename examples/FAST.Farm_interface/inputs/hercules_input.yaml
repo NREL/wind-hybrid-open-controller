@@ -11,12 +11,12 @@ description: Just a solar plant
 dt: 0.5
 
 controller:
-
   controller_type: SimpleYawController # This may not be needed
   initial_conditions:
       yaw: 270. # degrees (same for all turbines) (will this work?)
 
 plant:
   n_turbines: 2
+  fstffile: inputs/FFFiles/Case0_wdirp00/Seed_0/FFarm_mod.fstf
 
 external_data_file: inputs/wind_power_reference_data.csv

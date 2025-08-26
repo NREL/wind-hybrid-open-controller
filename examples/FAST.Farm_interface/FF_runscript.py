@@ -12,9 +12,10 @@ input_dict = load_yaml(os.path.join("inputs", "hercules_input.yaml"))
 df_opt = pd.read_pickle("yaw_offsets.pkl")
 
 zmq_dict = {
-    "network_address": "tcp://*:5555",
-    "timeout": 600.0,
-    "verbose": False,
+    'port' : 5559,
+    "timeout": 120.0,
+    "verbose": True,
+    "logfile": "log.txt",
 }
 
 interface = ROSCO_ZMQInterface(input_dict,zmq_dict)
@@ -22,5 +23,6 @@ controller = LookupBasedWakeSteeringController(
     interface, input_dict, df_yaw=df_opt
 )
 emulator = ROSCO_ZMQEmulator(controller, input_dict)
+emulator.run()
 
 print("runscript complete.")

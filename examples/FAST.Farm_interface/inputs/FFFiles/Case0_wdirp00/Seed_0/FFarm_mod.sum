@@ -1,0 +1,113 @@
+FAST.Farm Summary File
+
+Predictions were generated on 25-Aug-2025 at 03:29:08 using FAST.Farm, compiled as a 64-bit application using single precision
+  compiled with
+    NWTC Subroutine Library
+    Super Controller (unknown version, unknown date)
+    FASTWrapper
+    WakeDynamics
+    AWAE
+
+Description from the FAST.Farm input file: Sample        FAST.Farm     - input file
+
+Ambient Wind:
+  Ambient wind model: One InflowWind Module
+  InflowWind module input file: ././NRELOffshrBsline5MW_InflowWind_Steady8mps.dat
+
+Wind Turbines: 3
+  Turbine Number  Output Turbine Number      X          Y          Z   OpenFAST Time Step  OpenFAST SubCycles  OpenFAST Input File
+        (-)                (-)              (m)        (m)        (m)          (S)             (-)                (-)
+         1                 T1               0.000      0.000      0.000        0.00625         480          ./../5MW_Land_DLL_WTurb.T1.fst
+         2                 T2             504.000      0.000      0.000        0.00625         480          ./../5MW_Land_DLL_WTurb.T2.fst
+         3                 T3            1008.000      0.000      0.000        0.00625         480          ./../5MW_Land_DLL_WTurb.T3.fst
+
+Wake Dynamics Finite-Difference Grid: 42 Radii, 126 Planes
+  Radial Node Number  Output Node Number    Radius
+         (-)                (-)              (m) 
+           0                 -               0.000
+           1                 -               4.650
+           2                 -               9.300
+           3                 -              13.950
+           4                 -              18.600
+           5                 -              23.250
+           6                 -              27.900
+           7                 -              32.550
+           8                 -              37.200
+           9                 -              41.850
+          10                 -              46.500
+          11                 -              51.150
+          12                 -              55.800
+          13                 -              60.450
+          14                 -              65.100
+          15                 -              69.750
+          16                 -              74.400
+          17                 -              79.050
+          18                 -              83.700
+          19                 -              88.350
+          20                 -              93.000
+          21                 -              97.650
+          22                 -             102.300
+          23                 -             106.950
+          24                 -             111.600
+          25                 -             116.250
+          26                 -             120.900
+          27                 -             125.550
+          28                 -             130.200
+          29                 -             134.850
+          30                 -             139.500
+          31                 -             144.150
+          32                 -             148.800
+          33                 -             153.450
+          34                 -             158.100
+          35                 -             162.750
+          36                 -             167.400
+          37                 -             172.050
+          38                 -             176.700
+          39                 -             181.350
+          40                 -             186.000
+          41                 -             190.650
+
+Wake Dynamics Parameters
+  Cut-off (corner) frequency of the low-pass time-filter for the wake advection, deflection, and meandering model (Hz): 0.19201
+    ( low-pass time-filter parameter (-): 2.68002E-02 )
+  Calibrated parameter in the correction for wake deflection defining the horizontal offset at the rotor (m): 0
+  Calibrated parameter in the correction for wake deflection defining the horizontal offset at the rotor scaled with yaw error (m/deg): 0.3
+  Calibrated parameter in the correction for wake deflection defining the horizontal offset scaled with downstream distance (-):  0
+  Calibrated parameter in the correction for wake deflection defining the horizontal offset scaled with downstream distance and yaw error (1/deg):  -4.00000E-03
+  Calibrated parameter for near-wake correction (-): 1.8
+  Calibrated parameter for the influence of ambient turbulence in the eddy viscosity (-):  5.00000E-02
+  Calibrated parameter for the influence of the shear layer in the eddy viscosity (-):  1.60000E-02
+  Calibrated parameter in the eddy viscosity filter function for ambient turbulence defining the transitional diameter fraction between the minimum and exponential regions (-):  0
+  Calibrated parameter in the eddy viscosity filter function for ambient turbulence defining the transitional diameter fraction between the exponential and maximum regions (-):  1
+  Calibrated parameter in the eddy viscosity filter function for ambient turbulence defining the value in the minimum region (-):  1
+  Calibrated parameter in the eddy viscosity filter function for ambient turbulence defining the exponent in the exponential region (-):  1.00000E-02
+  Calibrated parameter in the eddy viscosity filter function for the shear layer defining the transitional diameter fraction between the minimum and exponential regions (-):  3
+  Calibrated parameter in the eddy viscosity filter function for the shear layer defining the transitional diameter fraction between the exponential and maximum regions (-): 25
+  Calibrated parameter in the eddy viscosity filter function for the shear layer defining the functional value in the minimum region (-):  0.2
+  Calibrated parameter in the eddy viscosity filter function for the shear layer defining the exponent in the exponential region (-):  0.1
+  Wake diameter calculation model (-): 1
+    ( rotor diameter )
+  Calibrated parameter for wake diameter calculation (-): -         
+  Spatial filter model for wake meandering (-): 3
+    ( windowed jinc )
+  Calibrated parameter for wake meandering (-): 1.9
+
+Time Steps
+  Component                        Time Step         Subcyles
+    (-)                                (s)             (-)
+  FAST.Farm (glue code)              3.0000             1
+  Super Controller                   3.0000             1
+  FAST Wrapper                       3.0000             1 (See table above for OpenFAST.)
+  Wake Dynamics                      3.0000             1
+  Ambient Wind and Array Effects     3.0000             1
+  Low -resolution wind input         3.0000             1
+  High-resolution wind input         0.2500            12
+  Wind visualization output          3.0000             1^-1
+  FAST.Farm output files             3.0000             1
+
+Requested Channels in FAST.Farm Output Files: 4
+  Number     Name         Units
+     0       Time          (s)
+     1       RtAxsXT1      (-)           
+     2       RtAxsXT2      (-)           
+     3       RtAxsXT3      (-)           

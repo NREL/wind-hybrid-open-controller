@@ -23,7 +23,7 @@ True          Clockwise     - Clockwise rotation looking downwind? (used only fo
 "ALL"         UsableTime    - Usable length of output time series [seconds] (program will add GridWidth/MeanHHWS seconds unless UsableTime is "ALL")
 177.7         HubHt         - Hub height [m] (should be > 0.5*GridHeight)
 353.4         GridHeight    - Grid height [m]
-762.6         GridWidth     - Grid width [m] (should be >= 2*(RotorRadius+ShaftLength))
+770           GridWidth     - Grid width [m] (should be >= 2*(RotorRadius+ShaftLength))
 0             VFlowAng      - Vertical mean flow (uptilt) angle [degrees]
 0             HFlowAng      - Horizontal mean flow (skew) angle [degrees]
 

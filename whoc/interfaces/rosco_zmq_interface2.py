@@ -1,6 +1,7 @@
-from whoc.interfaces.interface_base import InterfaceBase
-from rosco.toolbox.control_interface import wfc_zmq_server, wfc_zmq_connections
+import zmq
+from rosco.toolbox.control_interface import wfc_zmq_server
 
+from whoc.interfaces.interface_base import InterfaceBase
 
 
 class ROSCO_ZMQInterface(InterfaceBase):
@@ -18,37 +19,18 @@ class ROSCO_ZMQInterface(InterfaceBase):
             self.plant_parameters = h_dict["plant"]
         else:
             self.plant_parameters = {}
-        
-        self.network_address = zmq_dict['network_address']
+       
+        self.port = zmq_dict['port']
+        self.network_address = f"tcp://*:{self.port}"
         self.timeout = zmq_dict['timeout']
         self.verbose = zmq_dict['verbose']
-        self.wfc_zmq_server = wfc_zmq_server(self.network_address,self.timeout,self.verbose)
+        self.logfile = zmq_dict['logfile']
+        self.wfc_zmq_server = wfc_zmq_server(
+            self.network_address, self.timeout, self.verbose, self.logfile
+        )
         
 
-    def _connect(self):
-        """
-        Connect to zmq server
-        """
-        address = self.network_address
-
-        # Connect socket
-        context = zmq.Context()
-        self.socket = context.socket(zmq.REP)
-        self.socket.setsockopt(zmq.LINGER, 0)
-        self.socket.bind(address)
-
-        if self.verbose:
-            print("[%s] Successfully established connection with %s" % (self.identifier, address))
-
-    def _disconnect(self):
-        """
-        Disconnect from zmq server
-        """
-        self.socket.close()
-        context = zmq.Context()
-        context.term()
-
-    def get_measurements(self, _):
+    def get_measurements(self):
         """
         Receive measurements from ROSCO .dll
         """
