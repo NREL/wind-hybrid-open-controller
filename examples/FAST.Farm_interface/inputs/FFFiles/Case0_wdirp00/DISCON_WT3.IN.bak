@@ -184,7 +184,7 @@
 "DISCON"            ! DLL_ProcName        - Name of procedure in DLL to be called (-) 
 
 !------- ZeroMQ Interface ---------------------------------------------------------
-"tcp://localhost:5555"            ! ZMQ_CommAddress     - Communication address for ZMQ server, (e.g. "tcp://localhost:5555") 
+"tcp://localhost:5556"            ! ZMQ_CommAddress     - Communication address for ZMQ server, (e.g. "tcp://localhost:5555") 
 1.000000            ! ZMQ_UpdatePeriod    - Update period at zmq interface to send measurements and wait for setpoint [sec.]
 3                   ! ZMQ_ID       - Integer identifier of turbine
 

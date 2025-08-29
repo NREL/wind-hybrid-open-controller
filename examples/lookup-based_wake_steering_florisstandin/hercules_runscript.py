@@ -8,7 +8,7 @@ from whoc.controllers import LookupBasedWakeSteeringController
 from whoc.design_tools.wake_steering_design import compute_hysteresis_zones
 from whoc.interfaces import HerculesADInterface
 
-input_dict = load_yaml(sys.argv[1])
+input_dict = load_yaml("inputs/hercules_input.yaml")
 
 use_hysteresis = False
 

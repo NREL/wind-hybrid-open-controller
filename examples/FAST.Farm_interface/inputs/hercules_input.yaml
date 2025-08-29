@@ -16,7 +16,13 @@ controller:
       yaw: 270. # degrees (same for all turbines) (will this work?)
 
 plant:
-  n_turbines: 2
-  fstffile: inputs/FFFiles/Case0_wdirp00/Seed_0/FFarm_mod.fstf
+  n_turbines: 3
 
-external_data_file: inputs/wind_power_reference_data.csv
+emulator:
+  port : 5556
+  timeout: 120.0
+  verbose: true
+  logfile: log.txt
+  simtype: FAST.Farm # FAST.Farm or amr-wind
+  siminput: inputs/FFFiles/Case0_wdirp00/Seed_0/FFarm_mod.fstf
+  simexe: /home/abhineet/MySoftware/miniforge3/envs/MySci/bin/FAST.Farm
