@@ -22,7 +22,7 @@ class ROSCO_ZMQInterface(InterfaceBase):
             self.emulator_parameters = h_dict["emulator"]
         else:
             self.emulator_parameters = {}
-    def get_measurements(self):
+    def get_measurements(self,h_dict):
         pass
 
     def check_controls(self):

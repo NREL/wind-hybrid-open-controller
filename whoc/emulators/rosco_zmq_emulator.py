@@ -54,15 +54,17 @@ class ROSCO_ZMQEmulator:
         timeout = self.interface.emulator_parameters["timeout"]
         verbose = self.interface.emulator_parameters["verbose"]
         logfile = self.interface.emulator_parameters["logfile"]
+        self.controller.step(self.input_dict)
 
-        p_server = mp.Process(target=startzmqserver, args=(port, timeout, verbose, logfile))
-        p_sim = mp.Process(target=run_sim, args=(self,))
-
-        p_server.start()
-        p_sim.start()
-
-        p_server.join()
-        p_sim.join()
+        # p_server = mp.Process(target=startzmqserver, args=(port, timeout, verbose, logfile))
+        # p_sim = mp.Process(target=run_sim, args=(self,))
+        #
+        # p_server.start()
+        # p_sim.start()
+        #
+        # p_server.join()
+        # p_sim.join()
+        #
     def formattedcontroller(self,id, current_time, measurements):
         pass
         
