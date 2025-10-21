@@ -4,29 +4,15 @@ import subprocess
 # from rosco.toolbox.control_interface import wfc_zmq_connections, wfc_zmq_server
 from openfast_toolbox.fastfarm.ROSCOControllerInterface import ROSCOControllerInterface
 from rosco.toolbox.control_interface import wfc_zmq_server
+from whoc.interfaces.rosco_zmq_interface2 import ROSCO_ZMQInterface
 
 # mp.set_start_method('spawn', force=True)
-
-
-def wfc_controller(id, current_time, measurements):
-    DESIRED_YAW_OFFSET = [10, -10]
-    if current_time <= 10.0:
-        YawOffset = 0.0
-    else:
-        if id == 1:
-            YawOffset = DESIRED_YAW_OFFSET[0]
-        else:
-            YawOffset = DESIRED_YAW_OFFSET[1]
-
-    setpoints = {}
-    setpoints["ZMQ_YawOffset"] = YawOffset
-    return setpoints
 
 
 def startzmqserver(port, timeout, verbose, logfile):
     """Start the ZeroMQ server for wind farm control"""
     zmqserver = wfc_zmq_server(f"tcp://*:{port}", timeout, verbose, logfile)
-    zmqserver.wfc_controller = wfc_controller
+    zmqserver.wfc_controller = ROSCO_ZMQInterface
     zmqserver.runserver()
 
 
@@ -54,17 +40,14 @@ class ROSCO_ZMQEmulator:
         timeout = self.interface.emulator_parameters["timeout"]
         verbose = self.interface.emulator_parameters["verbose"]
         logfile = self.interface.emulator_parameters["logfile"]
-        self.controller.step(self.input_dict)
+        self.controller.step()
 
-        # p_server = mp.Process(target=startzmqserver, args=(port, timeout, verbose, logfile))
+        p_server = mp.Process(target=startzmqserver, args=(port, timeout, verbose, logfile))
         # p_sim = mp.Process(target=run_sim, args=(self,))
-        #
-        # p_server.start()
+
+        p_server.start()
         # p_sim.start()
-        #
-        # p_server.join()
-        # p_sim.join()
-        #
+
     def formattedcontroller(self,id, current_time, measurements):
         pass
         

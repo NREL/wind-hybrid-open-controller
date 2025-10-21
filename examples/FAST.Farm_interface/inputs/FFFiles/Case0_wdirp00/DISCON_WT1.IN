@@ -1,5 +1,5 @@
 ! Controller parameter input file for the FAST.Farm wind turbine
-!    - File written using ROSCO version 2.9.4 controller tuning logic on 08/27/25
+!    - File written using ROSCO version 2.9.4 controller tuning logic on 10/11/25
 
 !------- SIMULATION CONTROL ------------------------------------------------------------
 1                   ! LoggingLevel		- {0: write no debug files, 1: write standard output .dbg-file, 2: LoggingLevel 1 + ROSCO LocalVars (.dbg2) 3: LoggingLevel 2 + complete avrSWAP-array (.dbg3)}
@@ -186,7 +186,7 @@
 !------- ZeroMQ Interface ---------------------------------------------------------
 "tcp://localhost:5556"            ! ZMQ_CommAddress     - Communication address for ZMQ server, (e.g. "tcp://localhost:5555") 
 1.000000            ! ZMQ_UpdatePeriod    - Update period at zmq interface to send measurements and wait for setpoint [sec.]
-1                   ! ZMQ_ID       - Integer identifier of turbine
+0                   ! ZMQ_ID       - Integer identifier of turbine
 
 !------- Cable Control ---------------------------------------------------------
 1                   ! CC_Group_N        - Number of cable control groups

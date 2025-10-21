@@ -22,11 +22,29 @@ class ROSCO_ZMQInterface(InterfaceBase):
             self.emulator_parameters = h_dict["emulator"]
         else:
             self.emulator_parameters = {}
-    def get_measurements(self,h_dict):
-        pass
+
+    def get_measurements(self):
+        measurements = self.measurements
+
+        return measurements
 
     def check_controls(self):
         pass
+    
+    def update_setpoints(self, id, current_time, measurements):
+        self.measurements = measurements
+        if current_time <= 10.0:
+            YawOffset = 0.0
+        else:
+            if id == 1:
+                YawOffset = DESIRED_YAW_OFFSET[0]
+            else:
+                YawOffset = DESIRED_YAW_OFFSET[1]
+
+
+        setpoints = {}
+        setpoints["ZMQ_YawOffset"] = YawOffset
+        return setpoints
 
     def send_controls(
         self, turbine_ID=0, genTorque=0.0, nacelleHeading=0.0, bladePitch=[0.0, 0.0, 0.0]

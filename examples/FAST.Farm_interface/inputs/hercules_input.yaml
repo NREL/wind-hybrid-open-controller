@@ -25,4 +25,4 @@ emulator:
   logfile: log.txt
   simtype: FAST.Farm # FAST.Farm or amr-wind
   siminput: inputs/FFFiles/Case0_wdirp00/Seed_0/FFarm_mod.fstf
-  simexe: /home/abhineet/MySoftware/miniforge3/envs/MySci/bin/FAST.Farm
+  simexe: /home/abhineet/MySoftware/conda/envs/MySci/bin/FAST.Farm
