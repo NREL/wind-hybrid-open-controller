@@ -10,6 +10,7 @@ class BatteryController(ControllerBase):
     In particular, ensures smoothness in battery reference signal to avoid rapid
     changes in power reference, which can lead to degradation.
     """
+
     def __init__(self, interface, input_dict, controller_parameters={}, verbose=True):
         """
         Instantiate BatteryController.
@@ -34,7 +35,7 @@ class BatteryController(ControllerBase):
             for cp in controller_parameters.keys():
                 if cp in input_dict["controller"]:
                     raise KeyError(
-                        "Found key \""+cp+"\" in both input_dict[\"controller\"] and"
+                        'Found key "' + cp + '" in both input_dict["controller"] and'
                         " in controller_parameters."
                     )
             controller_parameters = {**controller_parameters, **input_dict["controller"]}
@@ -47,7 +48,7 @@ class BatteryController(ControllerBase):
         self,
         k_batt=0.1,
         clipping_thresholds=[0, 0, 1, 1],
-        **_ # <- Allows arbitrary additional parameters to be passed, which are ignored
+        **_,  # <- Allows arbitrary additional parameters to be passed, which are ignored
     ):
         """
         Set gains and threshold limits for BatteryController.
@@ -68,7 +69,7 @@ class BatteryController(ControllerBase):
             k_batt (float): Gain for controller.
             clipping_thresholds (list): SOC thresholds for clipping reference power. Should be a
                 list of four values: [soc_min, soc_min_clip, soc_max_clip, soc_max].
-        """        
+        """
         zeta = 2
         omega = 2 * np.pi * k_batt
 
@@ -76,8 +77,8 @@ class BatteryController(ControllerBase):
         p = np.exp(-2 * zeta * omega * self.dt)
         self.a = p
         self.b = 1
-        self.c = omega / (2 * zeta) * (1-p)/2 * (p + 1)
-        self.d = omega / (2 * zeta) * (1-p)/2
+        self.c = omega / (2 * zeta) * (1 - p) / 2 * (p + 1)
+        self.d = omega / (2 * zeta) * (1 - p) / 2
 
         self.clipping_thresholds = clipping_thresholds
 
@@ -92,13 +93,7 @@ class BatteryController(ControllerBase):
         Returns:
             float: Clipped reference power.
         """
-        clip_fraction = np.interp(
-            soc,
-            self.clipping_thresholds,
-            [0, 1, 1, 0],
-            left=0,
-            right=0
-        )
+        clip_fraction = np.interp(soc, self.clipping_thresholds, [0, 1, 1, 0], left=0, right=0)
 
         r_charge = clip_fraction * self.plant_parameters["battery"]["charge_rate"]
         r_discharge = clip_fraction * self.plant_parameters["battery"]["discharge_rate"]
@@ -128,18 +123,20 @@ class BatteryController(ControllerBase):
 
         return controls_dict
 
+
 class BatteryPassthroughController(ControllerBase):
     """
     Simply passes power reference down to (single) battery.
     """
+
     def __init__(self, interface, input_dict, verbose=True):
-        """"
+        """ "
         Instantiate BatteryPassthroughController."
         """
         super().__init__(interface, verbose)
 
     def compute_controls(self, measurements_dict):
-        """"
+        """ "
         Main compute_controls method for BatteryPassthroughController.
         """
         return {"power_setpoint": measurements_dict["battery"]["power_reference"]}
@@ -149,6 +146,7 @@ class BatteryPriceSOCController(ControllerBase):
     """
     Controller considers price and SOC to determine power setpoint.
     """
+
     def __init__(self, interface, input_dict, controller_parameters={}, verbose=True):
         super().__init__(interface, verbose)
 
@@ -158,7 +156,7 @@ class BatteryPriceSOCController(ControllerBase):
             for cp in controller_parameters.keys():
                 if cp in input_dict["controller"]:
                     raise KeyError(
-                        "Found key \""+cp+"\" in both input_dict[\"controller\"] and"
+                        'Found key "' + cp + '" in both input_dict["controller"] and'
                         " in controller_parameters."
                     )
             controller_parameters = {**controller_parameters, **input_dict["controller"]}
@@ -171,7 +169,7 @@ class BatteryPriceSOCController(ControllerBase):
         self,
         high_soc=0.8,
         low_soc=0.2,
-        **_ # <- Allows arbitrary additional parameters to be passed, which are ignored
+        **_,  # <- Allows arbitrary additional parameters to be passed, which are ignored
     ):
         """
         Set parameters for BatteryPriceSOCController.
@@ -190,7 +188,6 @@ class BatteryPriceSOCController(ControllerBase):
         self.low_soc = low_soc
 
     def compute_controls(self, measurements_dict):
-
         day_ahead_lmps = np.array(measurements_dict["DA_LMP_24hours"])
         sorted_day_ahead_lmps = np.sort(day_ahead_lmps)
         real_time_lmp = measurements_dict["RT_LMP"]
@@ -205,7 +202,7 @@ class BatteryPriceSOCController(ControllerBase):
         soc = measurements_dict["battery"]["state_of_charge"]
 
         # Note that the convention is followed where charging is negative power
-        # This matches what is in place in the hercules/hybrid_plant level and 
+        # This matches what is in place in the hercules/hybrid_plant level and
         # will be inverted before passing into the battery modules
         if real_time_lmp > top_1:
             power_setpoint = self.rated_power_discharging

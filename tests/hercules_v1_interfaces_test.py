@@ -21,11 +21,11 @@ test_hercules_dict = {
     "py_sims": {
         "test_battery": {
             "outputs": {"power": 10.0, "soc": 0.3},
-            "charge_rate":20,
-            "discharge_rate":20,
+            "charge_rate": 20,
+            "discharge_rate": 20,
         },
         "test_solar": {"outputs": {"power_mw": 1.0, "dni": 1000.0, "aoi": 30.0}},
-        "test_hydrogen": {"outputs": {"H2_mfr": 0.03} },
+        "test_hydrogen": {"outputs": {"H2_mfr": 0.03}},
         "inputs": {},
     },
     "external_signals": {
@@ -120,6 +120,7 @@ def test_HerculesADInterface():
     test_hercules_dict["external_signals"]["wind_power_reference"] = 1000.0
     test_hercules_dict["external_signals"]["plant_power_reference"] = 1000.0
 
+
 def test_HerculesHybridADInterface():
     interface = HerculesV1HybridADInterface(hercules_dict=test_hercules_dict)
 
@@ -207,8 +208,8 @@ def test_HerculesHybridADInterface():
     with pytest.raises(TypeError):  # Bad kwarg
         interface.send_controls(test_hercules_dict, **bad_controls_dict)
 
-def test_HerculesBatteryInterface():
 
+def test_HerculesBatteryInterface():
     interface = HerculesV1BatteryInterface(hercules_dict=test_hercules_dict)
 
     # Check instantiation with no battery raises and error

@@ -4,7 +4,6 @@ various capabilities of the wake_steering_design toolbox in Hycon by designing
 a range of offset lookup tables and comparing them to one-another.
 """
 
-
 import matplotlib.pyplot as plt
 from floris import FlorisModel
 from hycon.design_tools import wake_steering_design as wsd, wake_steering_visualization as wsv
@@ -77,8 +76,8 @@ if __name__ == "__main__":
     wd_std = 3.0
     ws_main = 8.0
     wd_rate_limit = 3.0
-    ws_rate_limit = 100.0 # No rate limit on wind speed
-    ti_rate_limit = 1e3 # No rate limit on turbulence intensity
+    ws_rate_limit = 100.0  # No rate limit on wind speed
+    ti_rate_limit = 1e3  # No rate limit on turbulence intensity
     plot_turbine = 0
     plot_wd_lims = (240, 300)
 
@@ -87,7 +86,7 @@ if __name__ == "__main__":
     col_unc = "C0"
     col_rate_limited = "C1"
     col_ws_ramps = "C2"
-    
+
     fmodel = FlorisModel(floris_dict)
 
     print("Building simple lookup table.")
@@ -149,7 +148,7 @@ if __name__ == "__main__":
         ws_wake_steering_cut_in=3.0,
         ws_wake_steering_fully_engaged_low=4.0,
         ws_wake_steering_fully_engaged_high=11.0,
-        ws_wake_steering_cut_out=13.0
+        ws_wake_steering_cut_out=13.0,
     )
 
     # Plot various designs
@@ -162,7 +161,7 @@ if __name__ == "__main__":
         ti_plot=ti_min,
         color=col_simple,
         label="Simple",
-        ax=ax
+        ax=ax,
     )
 
     wsv.plot_offsets_wd(
@@ -172,7 +171,7 @@ if __name__ == "__main__":
         ti_plot=ti_min,
         color=col_unc,
         label="Uncertain",
-        ax=ax
+        ax=ax,
     )
 
     wsv.plot_offsets_wd(
@@ -182,7 +181,7 @@ if __name__ == "__main__":
         ti_plot=ti_min,
         color=col_rate_limited,
         label="Rate limited",
-        ax=ax
+        ax=ax,
     )
 
     wsv.plot_offsets_wd(
@@ -193,7 +192,7 @@ if __name__ == "__main__":
         color=col_ws_ramps,
         label="Single wind speed",
         linestyle="dotted",
-        ax=ax
+        ax=ax,
     )
 
     ax.set_title("Yaw offsets at {} m/s".format(ws_main))
@@ -204,52 +203,52 @@ if __name__ == "__main__":
     ax.legend()
 
     # Also, plot heatmap of offsets for Simple design
-    fig, ax = plt.subplots(2, 2, sharex=True, sharey=True, figsize=(10,10))
+    fig, ax = plt.subplots(2, 2, sharex=True, sharey=True, figsize=(10, 10))
     _, cbar = wsv.plot_offsets_wdws_heatmap(
         df_opt_simple,
         plot_turbine,
         ti_plot=ti_min,
         vmax=maximum_yaw_angle,
         vmin=minimum_yaw_angle,
-        ax=ax[0,0]
+        ax=ax[0, 0],
     )
     cbar.set_label("Yaw offset [deg]")
-    ax[0,0].set_title("Simple")
+    ax[0, 0].set_title("Simple")
     _, cbar = wsv.plot_offsets_wdws_heatmap(
         df_opt_unc,
         plot_turbine,
         ti_plot=ti_min,
         vmax=maximum_yaw_angle,
         vmin=minimum_yaw_angle,
-        ax=ax[0,1]
+        ax=ax[0, 1],
     )
     cbar.set_label("Yaw offset [deg]")
-    ax[0,1].set_title("Uncertain")
+    ax[0, 1].set_title("Uncertain")
     _, cbar = wsv.plot_offsets_wdws_heatmap(
         df_opt_rate_limited,
         plot_turbine,
         ti_plot=ti_min,
         vmax=maximum_yaw_angle,
         vmin=minimum_yaw_angle,
-        ax=ax[1,0]
+        ax=ax[1, 0],
     )
     cbar.set_label("Yaw offset [deg]")
-    ax[1,0].set_title("Rate limited")
+    ax[1, 0].set_title("Rate limited")
     _, cbar = wsv.plot_offsets_wdws_heatmap(
         df_opt_ws_ramps,
         plot_turbine,
         ti_plot=ti_min,
         vmax=maximum_yaw_angle,
         vmin=minimum_yaw_angle,
-        ax=ax[1,1]
+        ax=ax[1, 1],
     )
     cbar.set_label("Yaw offset [deg]")
-    ax[1,1].set_title("Single wind speed heuristic")
+    ax[1, 1].set_title("Single wind speed heuristic")
 
-    for ax_ in ax[:,0]:
+    for ax_ in ax[:, 0]:
         ax_.set_ylabel("Wind speed [m/s]")
-    for ax_ in ax[-1,:]:
+    for ax_ in ax[-1, :]:
         ax_.set_xlabel("Wind direction [deg]")
-    ax[0,0].set_xlim(plot_wd_lims)
+    ax[0, 0].set_xlim(plot_wd_lims)
 
     plt.show()

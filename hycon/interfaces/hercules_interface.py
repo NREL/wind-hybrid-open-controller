@@ -8,6 +8,7 @@ class HerculesInterface(InterfaceBase):
     """
     Class for interfacing with Hercules v2 simulator.
     """
+
     def __init__(self, h_dict):
         super().__init__()
         self.dt = h_dict["dt"]
@@ -43,9 +44,7 @@ class HerculesInterface(InterfaceBase):
 
         # Solar farm parameters
         if self._has_solar_component:
-            self.plant_parameters["solar_farm"] = {
-                "capacity": h_dict["solar_farm"]["capacity"]
-            }
+            self.plant_parameters["solar_farm"] = {"capacity": h_dict["solar_farm"]["capacity"]}
 
         # Battery parameters
         if self._has_battery_component:
@@ -55,9 +54,8 @@ class HerculesInterface(InterfaceBase):
                 "charge_rate": h_dict["battery"]["charge_rate"],
                 "discharge_rate": h_dict["battery"]["discharge_rate"],
                 "allow_grid_power_consumption": h_dict["battery"].get(
-                    "allow_grid_power_consumption",
-                    False
-                )
+                    "allow_grid_power_consumption", False
+                ),
             }
 
         # Electrolyzer parameters (placeholder for future electrolyzer parameters)
@@ -80,8 +78,8 @@ class HerculesInterface(InterfaceBase):
             if k == "wind_power_setpoints":
                 if len(controls_dict[k]) != self._n_turbines:
                     raise ValueError(
-                        "Number of wind power setpoints ({0})".format(len(controls_dict[k])) +
-                        " must match number of turbines ({0}).".format(self._n_turbines)
+                        "Number of wind power setpoints ({0})".format(len(controls_dict[k]))
+                        + " must match number of turbines ({0}).".format(self._n_turbines)
                     )
 
     def get_measurements(self, h_dict):
@@ -99,7 +97,7 @@ class HerculesInterface(InterfaceBase):
         if self._has_wind_component:
             measurements["wind_farm"] = {
                 "turbine_powers": h_dict["wind_farm"]["turbine_powers"],
-                "wind_directions": [h_dict["wind_farm"]["wind_direction_mean"]]*self._n_turbines,
+                "wind_directions": [h_dict["wind_farm"]["wind_direction_mean"]] * self._n_turbines,
                 # TODO: wind_speeds?
             }
             total_power += sum(measurements["wind_farm"]["turbine_powers"])
@@ -171,12 +169,12 @@ class HerculesInterface(InterfaceBase):
         return measurements
 
     def send_controls(
-            self,
-            h_dict,
-            wind_power_setpoints=None,
-            solar_power_setpoint=None,
-            battery_power_setpoint=None
-        ):
+        self,
+        h_dict,
+        wind_power_setpoints=None,
+        solar_power_setpoint=None,
+        battery_power_setpoint=None,
+    ):
         if wind_power_setpoints is None:
             wind_power_setpoints = [POWER_SETPOINT_DEFAULT] * self._n_turbines
         if solar_power_setpoint is None:
