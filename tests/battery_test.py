@@ -91,7 +91,7 @@ def test_BatteryPriceSOCController_compute_controls_2_hour_duration(test_hercule
 
     DA_LMP_test = [i for i in range(24)]  # Price is from 0 to 23
 
-    # Test the bottom 1 price
+    # Test the in-between bottom 1 and bottom d prices
     measurement_dict = {
         "battery": {"state_of_charge": 0.5},
         "RT_LMP": 0.5,

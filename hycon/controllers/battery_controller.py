@@ -200,7 +200,7 @@ class BatteryPriceSOCController(ControllerBase):
         if self.duration >= 12:
             raise ValueError(
                 f"Battery duration is {self.duration} hours, which is not "
-                " supported by BatteryPriceSOCController."
+                "supported by BatteryPriceSOCController."
                 " This controller is only intended for durations shorter than 12 hours."
             )
 
