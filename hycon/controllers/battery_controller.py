@@ -165,6 +165,20 @@ class BatteryPriceSOCController(ControllerBase):
         self.rated_power_charging = input_dict["battery"]["charge_rate"]
         self.rated_power_discharging = input_dict["battery"]["discharge_rate"]
 
+        # Save the duration rounded to nearest hour
+        self.duration = int(
+            interface.plant_parameters["battery"]["energy_capacity"]
+            / interface.plant_parameters["battery"]["power_capacity"]
+        )
+
+        # Raise if duration makes this controller implausible
+        if self.duration >= 12:
+            raise ValueError(
+                f"Battery duration is {self.duration} hours, which is not "
+                " supported by BatteryPriceSOCController."
+                " This controller is only intended for durations shorter than 12 hours."
+            )
+
     def set_controller_parameters(
         self,
         high_soc=0.8,
@@ -193,8 +207,8 @@ class BatteryPriceSOCController(ControllerBase):
         real_time_lmp = measurements_dict["RT_LMP"]
 
         # Extract limits
-        bottom_4 = sorted_day_ahead_lmps[3]
-        top_4 = sorted_day_ahead_lmps[-4]
+        bottom_d = sorted_day_ahead_lmps[self.duration - 1]
+        top_d = sorted_day_ahead_lmps[-self.duration]
         bottom_1 = sorted_day_ahead_lmps[0]
         top_1 = sorted_day_ahead_lmps[-1]
 
@@ -206,11 +220,11 @@ class BatteryPriceSOCController(ControllerBase):
         # will be inverted before passing into the battery modules
         if real_time_lmp > top_1:
             power_setpoint = self.rated_power_discharging
-        elif (real_time_lmp > top_4) & (soc < self.high_soc):
+        elif (real_time_lmp > top_d) & (soc > self.low_soc):
             power_setpoint = self.rated_power_discharging
         elif real_time_lmp < bottom_1:
             power_setpoint = -self.rated_power_charging
-        elif (real_time_lmp < bottom_4) & (soc > self.low_soc):
+        elif (real_time_lmp < bottom_d) & (soc < self.high_soc):
             power_setpoint = -self.rated_power_charging
         else:
             power_setpoint = 0.0
