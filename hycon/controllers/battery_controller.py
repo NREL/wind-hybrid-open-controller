@@ -204,6 +204,13 @@ class BatteryPriceSOCController(ControllerBase):
                 " This controller is only intended for durations shorter than 12 hours."
             )
 
+        if self.duration < 1:
+            raise ValueError(
+                f"Battery duration is {self.duration} hours, which is not "
+                "supported by BatteryPriceSOCController."
+                " This controller is only intended for durations of at least 1 hour."
+            )
+
     def set_controller_parameters(
         self,
         high_soc=0.8,
