@@ -7,6 +7,7 @@ class HybridSupervisoryControllerBase(ControllerBase):
     """
     Base class for hybrid supervisory controllers, implementing shared functionality.
     """
+
     def __init__(
         self,
         interface,
@@ -14,12 +15,9 @@ class HybridSupervisoryControllerBase(ControllerBase):
         wind_controller=None,
         solar_controller=None,
         battery_controller=None,
-        verbose=False
+        verbose=False,
     ):
-        super().__init__(
-            interface=interface,
-            verbose=verbose
-        )
+        super().__init__(interface=interface, verbose=verbose)
 
         self.dt = input_dict["dt"]  # Won't be needed here, but generally good to have
 
@@ -57,29 +55,30 @@ class HybridSupervisoryControllerBase(ControllerBase):
             solar_controls_dict = self.solar_controller.compute_controls(measurements_dict)
             controls_dict["solar_power_setpoint"] = solar_controls_dict["power_setpoint"]
         if self._has_battery_controller:
-            measurements_dict["battery"]["power_reference"] = battery_reference 
+            measurements_dict["battery"]["power_reference"] = battery_reference
             battery_controls_dict = self.battery_controller.compute_controls(measurements_dict)
             controls_dict["battery_power_setpoint"] = battery_controls_dict["power_setpoint"]
 
         return controls_dict
 
+
 class HybridSupervisoryControllerBaseline(HybridSupervisoryControllerBase):
     def __init__(
-            self,
-            interface,
-            input_dict,
-            wind_controller=None,
-            solar_controller=None,
-            battery_controller=None,
-            verbose=False
-        ):
+        self,
+        interface,
+        input_dict,
+        wind_controller=None,
+        solar_controller=None,
+        battery_controller=None,
+        verbose=False,
+    ):
         super().__init__(
             interface=interface,
             input_dict=input_dict,
             wind_controller=wind_controller,
             solar_controller=solar_controller,
             battery_controller=battery_controller,
-            verbose=verbose
+            verbose=verbose,
         )
 
         if not self._has_wind_controller and not self._has_solar_controller:
@@ -123,8 +122,7 @@ class HybridSupervisoryControllerBaseline(HybridSupervisoryControllerBase):
                 " in measurements_dict."
             )
         elif (
-            "power_reference" in measurements_dict
-            and "plant_power_reference" in measurements_dict
+            "power_reference" in measurements_dict and "plant_power_reference" in measurements_dict
         ):
             raise KeyError(
                 "Found both 'power_reference' and 'plant_power_reference' in measurements_dict."
@@ -134,8 +132,8 @@ class HybridSupervisoryControllerBaseline(HybridSupervisoryControllerBase):
         # Filter the wind and solar power measurements to reduce noise and improve closed-loop
         # controller damping
         a = 0.1
-        wind_power = (1-a)*self.prev_wind_power + a*wind_power
-        solar_power = (1-a)*self.prev_solar_power + a*solar_power
+        wind_power = (1 - a) * self.prev_wind_power + a * wind_power
+        solar_power = (1 - a) * self.prev_solar_power + a * solar_power
 
         # Calculate battery reference value
         if self._has_battery_controller:
@@ -146,38 +144,36 @@ class HybridSupervisoryControllerBaseline(HybridSupervisoryControllerBase):
             battery_charge_rate = 0
 
         # Decide control gain:
-        if (
-            (wind_power + solar_power) < (plant_power_reference+battery_charge_rate)
-            and battery_power <= 0
-            ):
-            if battery_soc>0.89:
+        if (wind_power + solar_power) < (
+            plant_power_reference + battery_charge_rate
+        ) and battery_power <= 0:
+            if battery_soc > 0.89:
                 K = ((wind_power + solar_power) - plant_power_reference) / 2
             else:
-                K = ((wind_power+solar_power) - (plant_power_reference+battery_charge_rate))/2
+                K = ((wind_power + solar_power) - (plant_power_reference + battery_charge_rate)) / 2
         else:
             K = ((wind_power + solar_power) - plant_power_reference) / 2
 
         if not (self._has_wind_controller & self._has_solar_controller):
             # Only one type of generation available, double the control gain
-            K = 2*K
+            K = 2 * K
 
-        if (
-            (wind_power + solar_power) > (plant_power_reference+battery_charge_rate)
-            or ((wind_power + solar_power) > (plant_power_reference) and battery_soc>0.89)
-            ):
+        if (wind_power + solar_power) > (plant_power_reference + battery_charge_rate) or (
+            (wind_power + solar_power) > (plant_power_reference) and battery_soc > 0.89
+        ):
             # go down
             wind_reference = wind_power - K
             solar_reference = solar_power - K
-        else: 
+        else:
             # go up
             # Is the resource saturated?
-            if self.solar_reference > (self.prev_solar_power+0.05*self.solar_reference):
+            if self.solar_reference > (self.prev_solar_power + 0.05 * self.solar_reference):
                 solar_reference = self.solar_reference
             else:
                 # If not, ask for more power
                 solar_reference = solar_power - K
 
-            if self.wind_reference > (self.prev_wind_power+0.05*self.wind_reference):
+            if self.wind_reference > (self.prev_wind_power + 0.05 * self.wind_reference):
                 wind_reference = self.wind_reference
             else:
                 wind_reference = wind_power - K
@@ -204,28 +200,31 @@ class HybridSupervisoryControllerMultiRef(HybridSupervisoryControllerBase):
     individual references for wind and solar generation and respects an
     interconnection limit.
     """
+
     def __init__(
-            self,
-            interface,
-            input_dict,
-            wind_controller=None,
-            solar_controller=None,
-            battery_controller=None,
-            verbose=False
-        ):
+        self,
+        interface,
+        input_dict,
+        wind_controller=None,
+        solar_controller=None,
+        battery_controller=None,
+        verbose=False,
+    ):
         super().__init__(
             interface=interface,
             input_dict=input_dict,
             wind_controller=wind_controller,
             solar_controller=solar_controller,
             battery_controller=battery_controller,
-            verbose=verbose
+            verbose=verbose,
         )
 
         # Extract interconnection limit
         if "interconnect_limit" in self.plant_parameters:
-            if (not isinstance(self.plant_parameters["interconnect_limit"], (float, int))
-                or self.plant_parameters["interconnect_limit"] <= 0):
+            if (
+                not isinstance(self.plant_parameters["interconnect_limit"], (float, int))
+                or self.plant_parameters["interconnect_limit"] <= 0
+            ):
                 raise ValueError("interconnect_limit must be a positive value.")
         else:
             raise KeyError("interconnect_limit must be specified to use this controller.")
@@ -233,13 +232,16 @@ class HybridSupervisoryControllerMultiRef(HybridSupervisoryControllerBase):
         # Establish curtailment protocols
         default_curtailment_order = ["battery", "solar", "wind"]
         default_curtailment_order = [
-            c for c, a in zip(
+            c
+            for c, a in zip(
                 default_curtailment_order,
-                [self._has_battery_controller,
-                 self._has_solar_controller,
-                 self._has_wind_controller
-                ]
-            ) if a
+                [
+                    self._has_battery_controller,
+                    self._has_solar_controller,
+                    self._has_wind_controller,
+                ],
+            )
+            if a
         ]
         if "curtailment_order" in self.controller_parameters:
             # Check that curtailment order does not contain any invalid components
@@ -267,8 +269,7 @@ class HybridSupervisoryControllerMultiRef(HybridSupervisoryControllerBase):
                 "power_reference", self.plant_parameters["wind_farm"]["capacity"]
             )
             wind_reference = np.minimum(
-                wind_reference,
-                self.plant_parameters["wind_farm"]["capacity"]
+                wind_reference, self.plant_parameters["wind_farm"]["capacity"]
             )
         else:
             wind_power = 0
@@ -289,9 +290,7 @@ class HybridSupervisoryControllerMultiRef(HybridSupervisoryControllerBase):
         if self._has_battery_controller:
             battery_power = measurements_dict["battery"]["power"]
             if "power_reference" in measurements_dict["battery"]:
-                battery_reference = measurements_dict["battery"].get(
-                    "power_reference", 0
-                )
+                battery_reference = measurements_dict["battery"].get("power_reference", 0)
             else:
                 battery_reference = 0
             battery_reference = np.minimum(

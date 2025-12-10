@@ -27,25 +27,27 @@ def test_hercules_v1_dict():
         "py_sims": {
             "test_battery": {
                 "outputs": {"power": 10.0, "soc": 0.3},
-                "charge_rate":20,
-                "discharge_rate":20
+                "charge_rate": 20,
+                "discharge_rate": 20,
             },
             "test_solar": {"outputs": {"power_mw": 1.0, "dni": 1000.0, "aoi": 30.0}},
             "test_hydrogen": {"outputs": {"H2_mfr": 0.03}},
             "inputs": {},
         },
-        "external_signals": {"wind_power_reference": 1000.0, "plant_power_reference": 1000.0,
-                            "hydrogen_reference": 0.02},
+        "external_signals": {
+            "wind_power_reference": 1000.0,
+            "plant_power_reference": 1000.0,
+            "hydrogen_reference": 0.02,
+        },
     }
+
 
 @pytest.fixture
 def test_hercules_dict():
     return {
         "dt": 1,
         "time": 0,
-        "plant": {
-            "interconnect_limit": None
-        },
+        "plant": {"interconnect_limit": None},
         "controller": {
             "test_controller_parameter": 1.0,
         },
@@ -58,7 +60,7 @@ def test_hercules_dict():
         },
         "solar_farm": {
             "capacity": 1000.0,
-            "power": 1000.0, # kW
+            "power": 1000.0,  # kW
             "dni": 1000.0,
             "aoi": 30.0,
         },
@@ -85,6 +87,7 @@ def test_hercules_dict():
         },
     }
 
+
 class StandinInterface(InterfaceBase):
     """
     Empty class to test controllers.
@@ -106,9 +109,11 @@ class StandinInterface(InterfaceBase):
     def send_controls(self):
         pass
 
+
 @pytest.fixture
 def test_interface_standin():
     return StandinInterface()
+
 
 @pytest.fixture
 def test_interface_hercules(test_hercules_dict):
@@ -117,12 +122,14 @@ def test_interface_hercules(test_hercules_dict):
     """
     return HerculesInterface(test_hercules_dict)
 
+
 @pytest.fixture
 def test_interface_hercules_ad(test_hercules_v1_dict):
     """
     Fixture to create a HerculesADInterface for testing.
     """
     return HerculesADInterface(test_hercules_v1_dict)
+
 
 @pytest.fixture
 def test_interface_hercules_hybrid_ad(test_hercules_v1_dict):
@@ -132,6 +139,7 @@ def test_interface_hercules_hybrid_ad(test_hercules_v1_dict):
     test_hercules_v1_dict["controller"]["num_batteries"] = 1
     test_hercules_v1_dict["controller"]["num_solar"] = 1
     return HerculesHybridADInterface(test_hercules_v1_dict)
+
 
 @pytest.fixture
 def floris_dict():

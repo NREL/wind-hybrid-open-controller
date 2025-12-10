@@ -71,9 +71,9 @@ class HerculesV1ADInterface(InterfaceBase):
             power_setpoints = [POWER_SETPOINT_DEFAULT] * self.n_turbines
 
         hercules_dict["hercules_comms"]["amr_wind"][self.wf_name]["turbine_yaw_angles"] = yaw_angles
-        hercules_dict["hercules_comms"]["amr_wind"][self.wf_name][
-            "turbine_power_setpoints"
-        ] = power_setpoints
+        hercules_dict["hercules_comms"]["amr_wind"][self.wf_name]["turbine_power_setpoints"] = (
+            power_setpoints
+        )
 
         return hercules_dict
 
@@ -91,37 +91,34 @@ class HerculesV1HybridADInterface(InterfaceBase):
         self._has_wind_component = False
         self._has_battery_component = False
         self._has_hydrogen_component = False
-        # Grab name of wind, solar, and battery 
+        # Grab name of wind, solar, and battery
         self.plant_parameters = {}
         for i in py_sims:
-            if tech_keys[0] in i.split('_'):
+            if tech_keys[0] in i.split("_"):
                 self.solar_name = [ps for ps in py_sims if "solar" in ps][0]
                 self._has_solar_component = True
-            if tech_keys[1] in i.split('_'):
+            if tech_keys[1] in i.split("_"):
                 self.battery_name = [ps for ps in py_sims if "battery" in ps][0]
                 self._has_battery_component = True
                 self.plant_parameters["battery"] = {
-                    "charge_rate": hercules_dict["py_sims"][self.battery_name]\
-                        ["charge_rate"]*1000,
-                    "discharge_rate": hercules_dict["py_sims"][self.battery_name]\
-                        ["discharge_rate"]*1000,
-                 } # Convert to kW
+                    "charge_rate": hercules_dict["py_sims"][self.battery_name]["charge_rate"]
+                    * 1000,
+                    "discharge_rate": hercules_dict["py_sims"][self.battery_name]["discharge_rate"]
+                    * 1000,
+                }  # Convert to kW
             if tech_keys[3] in i.split("_"):
                 self.hydrogen_name = [ps for ps in py_sims if "hydrogen" in ps][0]
                 self._has_hydrogen_component = True
 
         for i in hercules_comms:
-            if tech_keys[2] in i.split('_'):
+            if tech_keys[2] in i.split("_"):
                 self.wind_name = list(hercules_dict["hercules_comms"]["amr_wind"].keys())[0]
                 self.n_turbines = hercules_dict["controller"]["num_turbines"]
                 self.turbines = range(self.n_turbines)
                 self._has_wind_component = True
-                self.plant_parameters["wind_farm"] = {
-                    "n_turbines": self.n_turbines
-                }
+                self.plant_parameters["wind_farm"] = {"n_turbines": self.n_turbines}
 
     def get_measurements(self, hercules_dict):
-
         time = hercules_dict["time"]
 
         # Defaults for external signals
@@ -147,9 +144,9 @@ class HerculesV1HybridADInterface(InterfaceBase):
             if "solar_power_reference" in hercules_dict["external_signals"]:
                 solar_power_reference = hercules_dict["external_signals"]["solar_power_reference"]
             if "battery_power_reference" in hercules_dict["external_signals"]:
-                battery_power_reference = (
-                    hercules_dict["external_signals"]["battery_power_reference"]
-                )
+                battery_power_reference = hercules_dict["external_signals"][
+                    "battery_power_reference"
+                ]
             if "hydrogen_reference" in hercules_dict["external_signals"]:
                 hydrogen_power_reference = hercules_dict["external_signals"]["hydrogen_reference"]
 
@@ -159,24 +156,26 @@ class HerculesV1HybridADInterface(InterfaceBase):
             "time": time,
             "plant_power_reference": plant_power_reference,
             "forecast": forecast,
-        } 
+        }
 
         if self._has_wind_component:
-            turbine_powers = (
-                hercules_dict["hercules_comms"]["amr_wind"][self.wind_name]["turbine_powers"]
-            )
+            turbine_powers = hercules_dict["hercules_comms"]["amr_wind"][self.wind_name][
+                "turbine_powers"
+            ]
             measurements["wind_farm"] = {
                 "turbine_powers": turbine_powers,
-                "wind_speed": hercules_dict["hercules_comms"]["amr_wind"][self.wind_name]\
-                    ["wind_speed"],
+                "wind_speed": hercules_dict["hercules_comms"]["amr_wind"][self.wind_name][
+                    "wind_speed"
+                ],
                 "power_reference": wind_power_reference,
             }
             total_power += sum(turbine_powers)
         if self._has_solar_component:
             measurements["solar_farm"] = {
                 "power": hercules_dict["py_sims"][self.solar_name]["outputs"]["power_mw"] * 1000,
-                "direct_normal_irradiance": hercules_dict["py_sims"][self.solar_name]["outputs"]\
-                    ["dni"],
+                "direct_normal_irradiance": hercules_dict["py_sims"][self.solar_name]["outputs"][
+                    "dni"
+                ],
                 "angle_of_incidence": hercules_dict["py_sims"][self.solar_name]["outputs"]["aoi"],
                 "power_reference": solar_power_reference,
             }
@@ -191,8 +190,9 @@ class HerculesV1HybridADInterface(InterfaceBase):
         if self._has_hydrogen_component:
             # hydrogen production rate in kg/s
             measurements["hydrogen"] = {
-                "production_rate": hercules_dict["py_sims"][self.hydrogen_name]["outputs"]\
-                    ["H2_mfr"],
+                "production_rate": hercules_dict["py_sims"][self.hydrogen_name]["outputs"][
+                    "H2_mfr"
+                ],
                 "power_reference": hydrogen_power_reference,
             }
         measurements["total_power"] = total_power
@@ -203,7 +203,7 @@ class HerculesV1HybridADInterface(InterfaceBase):
         available_controls = [
             "wind_power_setpoints",
             "solar_power_setpoint",
-            "battery_power_setpoint"
+            "battery_power_setpoint",
         ]
 
         for k in controls_dict.keys():
@@ -216,12 +216,12 @@ class HerculesV1HybridADInterface(InterfaceBase):
                     )
 
     def send_controls(
-            self,
-            hercules_dict,
-            wind_power_setpoints=None,
-            solar_power_setpoint=None,
-            battery_power_setpoint=None
-        ):
+        self,
+        hercules_dict,
+        wind_power_setpoints=None,
+        solar_power_setpoint=None,
+        battery_power_setpoint=None,
+    ):
         if wind_power_setpoints is None:
             wind_power_setpoints = [POWER_SETPOINT_DEFAULT] * self.n_turbines
         if solar_power_setpoint is None:
@@ -229,15 +229,18 @@ class HerculesV1HybridADInterface(InterfaceBase):
         if battery_power_setpoint is None:
             battery_power_setpoint = 0.0
 
-        hercules_dict["hercules_comms"]["amr_wind"][self.wind_name][
-            "turbine_power_setpoints"
-        ] = wind_power_setpoints
+        hercules_dict["hercules_comms"]["amr_wind"][self.wind_name]["turbine_power_setpoints"] = (
+            wind_power_setpoints
+        )
         hercules_dict["py_sims"]["inputs"].update(
-            {"battery_signal": -battery_power_setpoint,
-             "solar_setpoint_mw": solar_power_setpoint / 1000} # Convert to MW
+            {
+                "battery_signal": -battery_power_setpoint,
+                "solar_setpoint_mw": solar_power_setpoint / 1000,
+            }  # Convert to MW
         )
 
         return hercules_dict
+
 
 class HerculesV1BatteryInterface(InterfaceBase):
     def __init__(self, hercules_dict):
@@ -256,17 +259,18 @@ class HerculesV1BatteryInterface(InterfaceBase):
 
         self.plant_parameters = {
             "battery": {
-                "charge_rate": hercules_dict["py_sims"][self.battery_name]\
-                    ["charge_rate"]*1000,
-                "discharge_rate": hercules_dict["py_sims"][self.battery_name]\
-                    ["discharge_rate"]*1000,
+                "charge_rate": hercules_dict["py_sims"][self.battery_name]["charge_rate"] * 1000,
+                "discharge_rate": hercules_dict["py_sims"][self.battery_name]["discharge_rate"]
+                * 1000,
             }
         }
 
     def get_measurements(self, hercules_dict):
         # Extract externally-provided power signal
-        if ("external_signals" in hercules_dict
-            and "plant_power_reference" in hercules_dict["external_signals"]):
+        if (
+            "external_signals" in hercules_dict
+            and "plant_power_reference" in hercules_dict["external_signals"]
+        ):
             plant_power_reference = hercules_dict["external_signals"]["plant_power_reference"]
         else:
             plant_power_reference = 0
@@ -290,10 +294,10 @@ class HerculesV1BatteryInterface(InterfaceBase):
                 raise ValueError("Setpoint " + k + " is not available in this configuration.")
 
     def send_controls(self, hercules_dict, power_setpoint=0):
-
         hercules_dict["py_sims"]["inputs"].update({"battery_signal": -power_setpoint})
 
         return hercules_dict
+
 
 # Aliases for backward compatibility
 HerculesBatteryInterface = HerculesV1BatteryInterface
