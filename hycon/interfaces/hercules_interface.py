@@ -62,6 +62,9 @@ class HerculesInterface(InterfaceBase):
         if self._has_hydrogen_component:
             self.plant_parameters["hydrogen"] = {}
 
+        # Pre-compute LMP keys to avoid string formatting in get_measurements
+        self._lmp_da_keys = tuple(f"lmp_da_{h:02d}" for h in range(24))
+
     def check_controls(self, controls_dict):
         available_controls = [
             "wind_power_setpoints",
@@ -150,10 +153,10 @@ class HerculesInterface(InterfaceBase):
                     "hydrogen_reference"
                 ]
 
-            # Grid price information
+            # Grid price information (using pre-computed keys for performance)
             if "lmp_da_00" in h_dict["external_signals"]:
                 measurements["DA_LMP_24hours"] = [
-                    h_dict["external_signals"]["lmp_da_{:02d}".format(h)] for h in range(24)
+                    h_dict["external_signals"][k] for k in self._lmp_da_keys
                 ]
             if "lmp_da" in h_dict["external_signals"]:
                 measurements["DA_LMP"] = h_dict["external_signals"]["lmp_da"]
