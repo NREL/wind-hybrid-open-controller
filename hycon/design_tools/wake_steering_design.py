@@ -251,7 +251,7 @@ def compute_hysteresis_zones(
     min_zone_width: float = 2.0,
     yaw_rate_threshold: float = 10.0,
     verbose: bool = False,
-) -> dict[str : list[tuple[float, float]]]:
+) -> dict[str, list[tuple[float, float]]]:
     """
     Compute wind direction sectors where hysteresis is applied.
 
@@ -627,7 +627,7 @@ def create_uniform_wind_rose(
     ti_min: float = 0.06,
     ti_max: float = 0.06,
 ):
-    """ "
+    """
     Create a uniform wind rose to use for wake steering optimizations.
 
     Args:

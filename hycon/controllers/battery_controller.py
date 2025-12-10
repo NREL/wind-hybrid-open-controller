@@ -130,13 +130,13 @@ class BatteryPassthroughController(ControllerBase):
     """
 
     def __init__(self, interface, input_dict, verbose=True):
-        """ "
+        """
         Instantiate BatteryPassthroughController."
         """
         super().__init__(interface, verbose)
 
     def compute_controls(self, measurements_dict):
-        """ "
+        """
         Main compute_controls method for BatteryPassthroughController.
         """
         return {"power_setpoint": measurements_dict["battery"]["power_reference"]}
