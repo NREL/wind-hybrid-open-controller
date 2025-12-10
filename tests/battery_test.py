@@ -3,25 +3,8 @@ from hycon.controllers.battery_controller import (
 )
 from hycon.interfaces import HerculesInterface
 
-test_hercules_dict = {
-    "dt": 1,
-    "time": 0,
-    "plant": {"interconnect_limit": 10},
-    "battery": {
-        "size": 100.0,
-        "energy_capacity": 400.0,
-        "power": 100.0,
-        "soc": 0.5,
-        "charge_rate": 50.0 * 1e3,
-        "discharge_rate": 100.0 * 1e3,
-    },
-    "external_signals": {
-        "RT_LMP": 10.0,
-    },
-}
 
-
-def test_BatteryPriceSOCController_init():
+def test_BatteryPriceSOCController_init(test_hercules_dict):
     test_interface = HerculesInterface(test_hercules_dict)
 
     # Initialize controller
@@ -34,7 +17,7 @@ def test_BatteryPriceSOCController_init():
     )
 
 
-def test_BatteryPriceSOCController_compute_controls():
+def test_BatteryPriceSOCController_compute_controls(test_hercules_dict):
     test_interface = HerculesInterface(test_hercules_dict)
 
     # Initialize controller
