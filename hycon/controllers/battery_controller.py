@@ -145,6 +145,31 @@ class BatteryPassthroughController(ControllerBase):
 class BatteryPriceSOCController(ControllerBase):
     """
     Controller considers price and SOC to determine power setpoint.
+
+    This controller implements a price-arbitrage strategy that uses day-ahead (DA)
+    locational marginal prices (LMPs) and real-time (RT) LMPs to decide when to
+    charge or discharge the battery. The algorithm identifies the top and bottom
+    price hours of the day based on battery duration (e.g., for a 4-hour battery,
+    it targets the 4 highest and 4 lowest priced hours).
+
+    The decision logic is as follows:
+        1. If RT price exceeds the highest DA price: discharge at full rate
+           (unconditionally).
+        2. Else if RT price is in the top-d highest DA prices AND SOC > low_soc:
+           discharge at full rate.
+        3. Else if RT price is below the lowest DA price: charge at full rate
+           (unconditionally).
+        4. Else if RT price is in the bottom-d lowest DA prices AND SOC < high_soc:
+           charge at full rate.
+        5. Otherwise: hold (power setpoint = 0).
+
+    The SOC thresholds (high_soc, low_soc) prevent over-charging or over-discharging
+    during moderate price signals, while still allowing full charge/discharge when
+    prices move outside the expected DA range.
+
+    Note:
+        Charging power is represented as negative values, matching the convention
+        used at the Hercules/hybrid_plant level.
     """
 
     def __init__(self, interface, input_dict, controller_parameters={}, verbose=True):
