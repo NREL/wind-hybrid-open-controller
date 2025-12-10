@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import numpy as np
 import pytest
 from floris import FlorisModel
@@ -14,9 +12,6 @@ from hycon.design_tools.wake_steering_design import (
     create_uniform_wind_rose,
     get_yaw_angles_interpolant,
 )
-
-TEST_DATA = Path(__file__).resolve().parent
-YAML_INPUT = TEST_DATA / "floris_input.yaml"
 
 
 def generic_df_opt(
