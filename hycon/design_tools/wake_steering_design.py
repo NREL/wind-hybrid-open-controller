@@ -627,7 +627,7 @@ def create_uniform_wind_rose(
     ti_min: float = 0.06,
     ti_max: float = 0.06,
 ):
-    """ "
+    """
     Create a uniform wind rose to use for wake steering optimizations.
 
     Args:
