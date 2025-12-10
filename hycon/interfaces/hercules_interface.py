@@ -158,7 +158,9 @@ class HerculesInterface(InterfaceBase):
 
             # Grid price information (using pre-computed keys for performance)
             if "lmp_da_00" in h_dict["external_signals"]:
-                measurements["DA_LMP_24hours"] = [h_dict["external_signals"][k] for k in self._lmp_da_keys]
+                measurements["DA_LMP_24hours"] = [
+                    h_dict["external_signals"][k] for k in self._lmp_da_keys
+                ]
             if "lmp_da" in h_dict["external_signals"]:
                 measurements["DA_LMP"] = h_dict["external_signals"]["lmp_da"]
             if "lmp_rt" in h_dict["external_signals"]:
