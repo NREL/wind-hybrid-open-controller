@@ -3,19 +3,21 @@ import numpy as np
 from hycon.controllers.controller_base import ControllerBase
 
 # Default power setpoint in kW (meant to ensure power maximization)
-POWER_SETPOINT_DEFAULT = 1e9 
+POWER_SETPOINT_DEFAULT = 1e9
+
 
 class WindFarmPowerDistributingController(ControllerBase):
     """
-    Evenly distributes wind farm power reference between turbines without 
+    Evenly distributes wind farm power reference between turbines without
     feedback on current power generation.
     """
+
     def __init__(self, interface, input_dict, verbose=False):
         super().__init__(interface, verbose=verbose)
 
         # Pull plant parameters for ease of use
         self.cname = "wind_farm"
-        
+
         if self.cname in self.plant_parameters:
             self.n_turbines = self.plant_parameters[self.cname]["n_turbines"]
         else:
@@ -34,7 +36,8 @@ class WindFarmPowerDistributingController(ControllerBase):
         if ref_in_lower_dict and ref_in_upper_dict:
             raise KeyError(
                 "Found 'power_reference' in both measurements_dict['"
-                +self.cname+"'] and measurements_dict."
+                + self.cname
+                + "'] and measurements_dict."
             )
         elif ref_in_lower_dict:
             farm_power_reference = measurements_dict[self.cname]["power_reference"]
@@ -45,14 +48,12 @@ class WindFarmPowerDistributingController(ControllerBase):
 
         return self.turbine_power_references(
             farm_power_reference=farm_power_reference,
-            turbine_powers=measurements_dict[self.cname]["turbine_powers"]
+            turbine_powers=measurements_dict[self.cname]["turbine_powers"],
         )
 
     def turbine_power_references(
-            self,
-            farm_power_reference=POWER_SETPOINT_DEFAULT,
-            turbine_powers=None
-        ):
+        self, farm_power_reference=POWER_SETPOINT_DEFAULT, turbine_powers=None
+    ):
         """
         Compute turbine-level power setpoints based on farm-level power
         reference signal.
@@ -64,10 +65,11 @@ class WindFarmPowerDistributingController(ControllerBase):
 
         # Split farm power reference among turbines.
         controls_dict = {
-            "power_setpoints": [farm_power_reference/self.n_turbines]*self.n_turbines,
+            "power_setpoints": [farm_power_reference / self.n_turbines] * self.n_turbines,
         }
 
         return controls_dict
+
 
 class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
     """
@@ -78,13 +80,8 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
     """
 
     def __init__(
-            self,
-            interface, 
-            input_dict,
-            proportional_gain=1,
-            ramp_rate_limit=None,
-            verbose=False
-        ):
+        self, interface, input_dict, proportional_gain=1, ramp_rate_limit=None, verbose=False
+    ):
         """
         Constructor for WindFarmPowerTrackingController.
 
@@ -98,16 +95,14 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
         super().__init__(interface, input_dict, verbose=verbose)
 
         # Proportional gain
-        self.K_p = proportional_gain * 1/self.n_turbines
+        self.K_p = proportional_gain * 1 / self.n_turbines
 
         # Ramp rate limit
         self.ramp_rate_limit = ramp_rate_limit
 
     def turbine_power_references(
-            self,
-            farm_power_reference=POWER_SETPOINT_DEFAULT,
-            turbine_powers=None
-        ):
+        self, farm_power_reference=POWER_SETPOINT_DEFAULT, turbine_powers=None
+    ):
         """
         Compute turbine-level power setpoints based on farm-level power
         reference signal.
@@ -116,7 +111,7 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
         Outputs:
         - None (sets self.controls_dict)
         """
-        
+
         farm_current_power = np.sum(turbine_powers)
         farm_current_error = farm_power_reference - farm_current_power
 
@@ -125,29 +120,29 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
             farm_current_error = np.clip(
                 farm_current_error,
                 farm_current_power - self.ramp_rate_limit * self.dt,
-                farm_current_power + self.ramp_rate_limit * self.dt
+                farm_current_power + self.ramp_rate_limit * self.dt,
             )
 
-        self.n_saturated = 0 # TODO: determine whether to use gain scheduling
+        self.n_saturated = 0  # TODO: determine whether to use gain scheduling
         if self.n_saturated < self.n_turbines:
             # with self.n_saturated = 0, gain_adjustment = 1
-            gain_adjustment = self.n_turbines/(self.n_turbines-self.n_saturated)
+            gain_adjustment = self.n_turbines / (self.n_turbines - self.n_saturated)
         else:
             gain_adjustment = self.n_turbines
-        K_p_gs = gain_adjustment*self.K_p
-        #K_i_gs = gain_adjustment*self.K_i
+        K_p_gs = gain_adjustment * self.K_p
+        # K_i_gs = gain_adjustment*self.K_i
 
         # Discretize and apply difference equation (trapezoid rule)
-        u_p = K_p_gs*farm_current_error
-        #u_i = self.dt/2*K_i_gs * (farm_current_error + self.e_prev) + self.u_i_prev
+        u_p = K_p_gs * farm_current_error
+        # u_i = self.dt/2*K_i_gs * (farm_current_error + self.e_prev) + self.u_i_prev
 
         # Apply integral anti-windup
-        #eps = 0.0001 # Threshold for anti-windup
-        #if (np.array(self.ai_prev) > 1/3-eps).all() or \
+        # eps = 0.0001 # Threshold for anti-windup
+        # if (np.array(self.ai_prev) > 1/3-eps).all() or \
         #   (np.array(self.ai_prev) < 0+eps).all():
         #   u_i = 0
-        
-        u = u_p #+ u_i
+
+        u = u_p  # + u_i
         delta_P_ref = u
 
         turbine_power_setpoints = np.array(turbine_powers) + delta_P_ref

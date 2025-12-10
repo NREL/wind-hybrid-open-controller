@@ -110,14 +110,14 @@ def plot_outputs():
     ax = axarr[1]
     ax.plot(
         df["time"],
-        df["battery.power"]/1e3, # Base unit: kW
+        df["battery.power"] / 1e3,  # Base unit: kW
         label="Battery output",
         color="k",
         linewidth=1.0,
     )
     ax.plot(
         df["time"],
-        df["battery.power_setpoint"]/1e3, # Base unit: kW
+        df["battery.power_setpoint"] / 1e3,  # Base unit: kW
         label="Battery setpoint",
         color="k",
         linestyle=":",
@@ -129,11 +129,7 @@ def plot_outputs():
 
     color = "C0"
     ax2.set_ylabel("State of charge [-]", color=color)
-    ax2.plot(
-        df["time"],
-        df["battery.soc"],
-        color=color
-    )
+    ax2.plot(df["time"], df["battery.soc"], color=color)
     ax2.tick_params(axis="y", labelcolor=color)
 
     for ax in axarr:
@@ -141,14 +137,11 @@ def plot_outputs():
         ax.legend(loc="upper right")
 
     # Compute total revenue on real-time market
-    df["revenue_rt"] = (
-        df["battery.power"]/1e3
-        * df["external_signals.lmp_rt"]
-        / 3600
-    )
+    df["revenue_rt"] = df["battery.power"] / 1e3 * df["external_signals.lmp_rt"] / 3600
     print("Real-time revenue over simulation: ${:.1f}".format(df["revenue_rt"].sum()))
 
     return fig
+
 
 if __name__ == "__main__":
     fig = plot_outputs()

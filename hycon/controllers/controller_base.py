@@ -2,7 +2,7 @@ from abc import ABCMeta, abstractmethod
 
 
 class ControllerBase(metaclass=ABCMeta):
-    def __init__(self, interface, verbose = True):
+    def __init__(self, interface, verbose=True):
         self._s = interface
         self.verbose = verbose
 
@@ -64,5 +64,5 @@ class ControllerBase(metaclass=ABCMeta):
 
     @abstractmethod
     def compute_controls(self, measurements_dict: dict) -> dict:
-        pass  # Control algorithms should be implemented in the compute_controls 
-        # method of the child class. 
+        pass  # Control algorithms should be implemented in the compute_controls
+        # method of the child class.

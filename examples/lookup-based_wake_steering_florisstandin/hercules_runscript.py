@@ -23,10 +23,7 @@ else:
 
 interface = HerculesADInterface(input_dict)
 controller = LookupBasedWakeSteeringController(
-    interface, input_dict,
-    df_yaw=df_opt,
-    hysteresis_dict=hysteresis_dict,
-    verbose=True
+    interface, input_dict, df_yaw=df_opt, hysteresis_dict=hysteresis_dict, verbose=True
 )
 
 py_sims = PySims(input_dict)
