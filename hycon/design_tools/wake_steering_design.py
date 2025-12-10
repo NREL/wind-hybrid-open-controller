@@ -251,7 +251,7 @@ def compute_hysteresis_zones(
     min_zone_width: float = 2.0,
     yaw_rate_threshold: float = 10.0,
     verbose: bool = False,
-) -> dict[str : list[tuple[float, float]]]:
+) -> dict[str, list[tuple[float, float]]]:
     """
     Compute wind direction sectors where hysteresis is applied.
 
