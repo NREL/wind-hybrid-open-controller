@@ -5,13 +5,13 @@ from hycon.controllers.controller_base import ControllerBase
 
 class HydrogenPlantController(ControllerBase):
     def __init__(
-            self,
-            interface,
-            input_dict,
-            generator_controller=None,
-            controller_parameters={},
-            verbose=False
-        ):
+        self,
+        interface,
+        input_dict,
+        generator_controller=None,
+        controller_parameters={},
+        verbose=False,
+    ):
         super().__init__(interface, verbose=verbose)
 
         self.dt = input_dict["dt"]  # Won't be needed here, but generally good to have
@@ -24,7 +24,7 @@ class HydrogenPlantController(ControllerBase):
         for cp in controller_parameters.keys():
             if cp in input_dict["controller"]:
                 raise KeyError(
-                    "Found key \""+cp+"\" in both input_dict[\"controller\"] and"
+                    'Found key "' + cp + '" in both input_dict["controller"] and'
                     " in controller_parameters."
                 )
         controller_parameters = {**controller_parameters, **input_dict["controller"]}
@@ -38,7 +38,7 @@ class HydrogenPlantController(ControllerBase):
         nominal_plant_power_kW,
         nominal_hydrogen_rate_kgps,
         hydrogen_controller_gain=1.0,
-        **_ # <- Allows arbitrary additional parameters to be passed, which are ignored
+        **_,  # <- Allows arbitrary additional parameters to be passed, which are ignored
     ):
         """
         Set gains and threshold limits for HydrogenPlantController.
@@ -82,9 +82,9 @@ class HydrogenPlantController(ControllerBase):
             if "yaw_angles" in generator_controls_dict:
                 del generator_controls_dict["yaw_angles"]
             if "power_setpoints" in generator_controls_dict:
-                generator_controls_dict["wind_power_setpoints"] = (
-                    generator_controls_dict["power_setpoints"]
-                )
+                generator_controls_dict["wind_power_setpoints"] = generator_controls_dict[
+                    "power_setpoints"
+                ]
                 del generator_controls_dict["power_setpoints"]
 
         return generator_controls_dict
@@ -97,7 +97,7 @@ class HydrogenPlantController(ControllerBase):
 
         # Input filtering
         a = 0.05
-        filtered_power = (1-a/self.dt)*self.filtered_power_prev + a/self.dt*current_power
+        filtered_power = (1 - a / self.dt) * self.filtered_power_prev + a / self.dt * current_power
 
         # Calculate difference between hydrogen reference and hydrogen actual
         hydrogen_error = hydrogen_reference - hydrogen_output
@@ -107,7 +107,7 @@ class HydrogenPlantController(ControllerBase):
 
         if power_reference < 0:
             power_reference = 0
-            
+
         self.filtered_power_prev = filtered_power
 
         return power_reference

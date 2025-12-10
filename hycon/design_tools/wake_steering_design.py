@@ -176,7 +176,7 @@ def apply_static_rate_limits(
             wind speed [deg / m/s]. Defaults to 10.
         ti_rate_limit (float, optional): The maximum rate of change in yaw offset per change in
             turbulence intensity [deg / -]. Defaults to 500.
-    
+
     Returns:
         pd.DataFrame: A yaw offset lookup table with rate limits applied.
     """
@@ -200,45 +200,45 @@ def apply_static_rate_limits(
     # Apply wd rate limits
     offsets_limited_lr = offsets_array.copy()
     for i in range(1, len(wd_array)):
-        delta_yaw = offsets_limited_lr[i, :, :, :] - offsets_limited_lr[i-1, :, :, :]
-        delta_yaw = np.clip(delta_yaw, -wd_rate_limit*wd_step, wd_rate_limit*wd_step)
-        offsets_limited_lr[i, :, :, :] = offsets_limited_lr[i-1, :, :, :] + delta_yaw
+        delta_yaw = offsets_limited_lr[i, :, :, :] - offsets_limited_lr[i - 1, :, :, :]
+        delta_yaw = np.clip(delta_yaw, -wd_rate_limit * wd_step, wd_rate_limit * wd_step)
+        offsets_limited_lr[i, :, :, :] = offsets_limited_lr[i - 1, :, :, :] + delta_yaw
     offsets_limited_rl = offsets_array.copy()
-    for i in range(len(wd_array)-2, -1, -1):
-        delta_yaw = offsets_limited_rl[i, :, :, :] - offsets_limited_rl[i+1, :, :, :]
-        delta_yaw = np.clip(delta_yaw, -wd_rate_limit*wd_step, wd_rate_limit*wd_step)
-        offsets_limited_rl[i, :, :, :] = offsets_limited_rl[i+1, :, :, :] + delta_yaw
+    for i in range(len(wd_array) - 2, -1, -1):
+        delta_yaw = offsets_limited_rl[i, :, :, :] - offsets_limited_rl[i + 1, :, :, :]
+        delta_yaw = np.clip(delta_yaw, -wd_rate_limit * wd_step, wd_rate_limit * wd_step)
+        offsets_limited_rl[i, :, :, :] = offsets_limited_rl[i + 1, :, :, :] + delta_yaw
     offsets_array = (offsets_limited_lr + offsets_limited_rl) / 2
 
     # Apply ws rate limits
     offsets_limited_lr = offsets_array.copy()
     for j in range(1, len(ws_array)):
-        delta_yaw = offsets_limited_lr[:, j, :, :] - offsets_limited_lr[:, j-1, :, :]
-        delta_yaw = np.clip(delta_yaw, -ws_rate_limit*ws_step, ws_rate_limit*ws_step)
-        offsets_limited_lr[:, j, :, :] = offsets_limited_lr[:, j-1, :, :] + delta_yaw
+        delta_yaw = offsets_limited_lr[:, j, :, :] - offsets_limited_lr[:, j - 1, :, :]
+        delta_yaw = np.clip(delta_yaw, -ws_rate_limit * ws_step, ws_rate_limit * ws_step)
+        offsets_limited_lr[:, j, :, :] = offsets_limited_lr[:, j - 1, :, :] + delta_yaw
     offsets_limited_rl = offsets_array.copy()
-    for j in range(len(ws_array)-2, -1, -1):
-        delta_yaw = offsets_limited_rl[:, j, :, :] - offsets_limited_rl[:, j+1, :, :]
-        delta_yaw = np.clip(delta_yaw, -ws_rate_limit*ws_step, ws_rate_limit*ws_step)
-        offsets_limited_rl[:, j, :, :] = offsets_limited_rl[:, j+1, :, :] + delta_yaw
+    for j in range(len(ws_array) - 2, -1, -1):
+        delta_yaw = offsets_limited_rl[:, j, :, :] - offsets_limited_rl[:, j + 1, :, :]
+        delta_yaw = np.clip(delta_yaw, -ws_rate_limit * ws_step, ws_rate_limit * ws_step)
+        offsets_limited_rl[:, j, :, :] = offsets_limited_rl[:, j + 1, :, :] + delta_yaw
     offsets_array = (offsets_limited_lr + offsets_limited_rl) / 2
 
     # Apply ti rate limits
     offsets_limited_lr = offsets_array.copy()
     for k in range(1, len(ti_array)):
-        delta_yaw = offsets_limited_lr[:, :, k, :] - offsets_limited_lr[:, :, k-1, :]
-        delta_yaw = np.clip(delta_yaw, -ti_rate_limit*ti_step, ti_rate_limit*ti_step)
-        offsets_limited_lr[:, :, k, :] = offsets_limited_lr[:, :, k-1, :] + delta_yaw
+        delta_yaw = offsets_limited_lr[:, :, k, :] - offsets_limited_lr[:, :, k - 1, :]
+        delta_yaw = np.clip(delta_yaw, -ti_rate_limit * ti_step, ti_rate_limit * ti_step)
+        offsets_limited_lr[:, :, k, :] = offsets_limited_lr[:, :, k - 1, :] + delta_yaw
     offsets_limited_rl = offsets_array.copy()
-    for k in range(len(ti_array)-2, -1, -1):
-        delta_yaw = offsets_limited_rl[:, :, k, :] - offsets_limited_rl[:, :, k+1, :]
-        delta_yaw = np.clip(delta_yaw, -ti_rate_limit*ti_step, ti_rate_limit*ti_step)
-        offsets_limited_rl[:, :, k, :] = offsets_limited_rl[:, :, k+1, :] + delta_yaw
+    for k in range(len(ti_array) - 2, -1, -1):
+        delta_yaw = offsets_limited_rl[:, :, k, :] - offsets_limited_rl[:, :, k + 1, :]
+        delta_yaw = np.clip(delta_yaw, -ti_rate_limit * ti_step, ti_rate_limit * ti_step)
+        offsets_limited_rl[:, :, k, :] = offsets_limited_rl[:, :, k + 1, :] + delta_yaw
     offsets_array = (offsets_limited_lr + offsets_limited_rl) / 2
 
     # Flatten array back into 2D array for dataframe
     offsets_all_limited = offsets_array.reshape(
-        (len(wd_array)*len(ws_array)*len(ti_array), offsets_all.shape[-1])
+        (len(wd_array) * len(ws_array) * len(ti_array), offsets_all.shape[-1])
     )
     df_opt_rate_limited = df_opt.copy()
     df_opt_rate_limited["yaw_angles_opt"] = [*offsets_all_limited]
@@ -251,7 +251,7 @@ def compute_hysteresis_zones(
     min_zone_width: float = 2.0,
     yaw_rate_threshold: float = 10.0,
     verbose: bool = False,
-) -> dict[str: list[tuple[float, float]]]:
+) -> dict[str, list[tuple[float, float]]]:
     """
     Compute wind direction sectors where hysteresis is applied.
 
@@ -284,33 +284,29 @@ def compute_hysteresis_zones(
     offsets = offsets_stacked.reshape(
         len(wind_directions),
         len(np.unique(df_opt.wind_speed)),
-        len(np.unique(df_opt.turbulence_intensity)), 
-        offsets_stacked.shape[1]
+        len(np.unique(df_opt.turbulence_intensity)),
+        offsets_stacked.shape[1],
     )
 
     # Add 360 to end, if full wind rose and wraps
     if len(wind_directions) == 1:
         raise ValueError("Cannot compute hysteresis regions for single wind direction.")
-    wd_steps = wind_directions[1:]-wind_directions[:-1]
-    if ((wind_directions[0] - wd_steps[0] < 0)
-        & (wind_directions[-1] + wd_steps[-1] >= 360)
-    ):
+    wd_steps = wind_directions[1:] - wind_directions[:-1]
+    if (wind_directions[0] - wd_steps[0] < 0) & (wind_directions[-1] + wd_steps[-1] >= 360):
         offsets = np.concatenate((offsets, offsets[0:1, :, :, :]), axis=0)
         wind_directions = np.concatenate((wind_directions, [wind_directions[-1] + wd_steps[-1]]))
-        wd_steps = wind_directions[1:]-wind_directions[:-1]
+        wd_steps = wind_directions[1:] - wind_directions[:-1]
     wd_centers = wind_directions[:-1] + 0.5 * wd_steps
 
     # Define function that identifies hysteresis zones
-    jump_threshold = yaw_rate_threshold*wd_steps[:,None,None,None]
+    jump_threshold = yaw_rate_threshold * wd_steps[:, None, None, None]
     jump_idx = np.argwhere(np.abs(np.diff(offsets, axis=0)) >= jump_threshold)
     # Drop information about ws, ti
     jump_idx = np.unique(jump_idx[:, [0, 3]], axis=0)
     # Convert to a per-turbine dictionary of switching wind directions
     centers_dict = {}
-    for t in np.unique(jump_idx[:,1]):
-        centers_dict["T{:03d}".format(t)] = (
-            wd_centers[jump_idx[jump_idx[:,1] == t][:,0]]
-        )
+    for t in np.unique(jump_idx[:, 1]):
+        centers_dict["T{:03d}".format(t)] = wd_centers[jump_idx[jump_idx[:, 1] == t][:, 0]]
     if verbose:
         print("Center wind directions for hysteresis, per turbine: {}".format(centers_dict))
         print("Computing hysteresis regions.")
@@ -322,8 +318,8 @@ def compute_hysteresis_zones(
         for wd_switch_point in centers_dict[turbine_tag]:
             t = int(turbine_tag[1:])
             # Create region of minimum width
-            lb = wrap_360(wd_switch_point - min_zone_width/2)
-            ub = wrap_360(wd_switch_point + min_zone_width/2)
+            lb = wrap_360(wd_switch_point - min_zone_width / 2)
+            ub = wrap_360(wd_switch_point + min_zone_width / 2)
             hysteresis_wds.append((lb, ub))
 
         # Consolidate regions
@@ -333,6 +329,7 @@ def compute_hysteresis_zones(
         print("Identified hysteresis zones: {}".format(hysteresis_dict))
 
     return hysteresis_dict
+
 
 def consolidate_hysteresis_zones(hysteresis_wds):
     """
@@ -355,35 +352,32 @@ def consolidate_hysteresis_zones(hysteresis_wds):
     hysteresis_wds = sorted(hysteresis_wds, key=lambda x: x[0])
 
     i_h = 0
-    while i_h < len(hysteresis_wds)-1:
+    while i_h < len(hysteresis_wds) - 1:
         # Continue merging into the ith until no more overlaps with the ith
-        while ((hysteresis_wds[i_h+1][0] <= hysteresis_wds[i_h][1])
-                or ((hysteresis_wds[i_h][1] < hysteresis_wds[i_h][0])
-                    and (hysteresis_wds[i_h+1][0] > hysteresis_wds[i_h+1][1])
-                    )
-              ):
+        while (hysteresis_wds[i_h + 1][0] <= hysteresis_wds[i_h][1]) or (
+            (hysteresis_wds[i_h][1] < hysteresis_wds[i_h][0])
+            and (hysteresis_wds[i_h + 1][0] > hysteresis_wds[i_h + 1][1])
+        ):
             # Merge regions
-            hysteresis_wds[i_h] = (
-                hysteresis_wds[i_h][0],
-                hysteresis_wds[i_h+1][1]
-            )
+            hysteresis_wds[i_h] = (hysteresis_wds[i_h][0], hysteresis_wds[i_h + 1][1])
             # Remove next region
-            hysteresis_wds.pop(i_h+1)
-            if len(hysteresis_wds) <= i_h+1:
+            hysteresis_wds.pop(i_h + 1)
+            if len(hysteresis_wds) <= i_h + 1:
                 break
         i_h += 1
 
     # Handle wrap-around at 360 degrees
-    for _ in range(len(hysteresis_wds)): # Multiple loops in case multiple overlaps
-        if ((hysteresis_wds[-1][1] >= hysteresis_wds[0][0])
-            and (hysteresis_wds[-1][1] < hysteresis_wds[-1][0])
-           ):
+    for _ in range(len(hysteresis_wds)):  # Multiple loops in case multiple overlaps
+        if (hysteresis_wds[-1][1] >= hysteresis_wds[0][0]) and (
+            hysteresis_wds[-1][1] < hysteresis_wds[-1][0]
+        ):
             # Merge last and first regions
             hysteresis_wds[0] = (hysteresis_wds[-1][0], hysteresis_wds[0][1])
             if len(hysteresis_wds) > 1:
                 hysteresis_wds.pop(-1)
 
     return hysteresis_wds
+
 
 def apply_wind_speed_ramps(
     df_opt: pd.DataFrame,
@@ -420,10 +414,12 @@ def apply_wind_speed_ramps(
     check_df_opt_ordering(df_opt)
 
     # Check valid ordering of wind speeds
-    if (ws_wake_steering_cut_in
+    if (
+        ws_wake_steering_cut_in
         <= ws_wake_steering_fully_engaged_low
         <= ws_wake_steering_fully_engaged_high
-        <= ws_wake_steering_cut_out):
+        <= ws_wake_steering_cut_out
+    ):
         pass
     else:
         raise ValueError(
@@ -440,13 +436,13 @@ def apply_wind_speed_ramps(
         ws_specified = df_opt["wind_speed"].unique()
 
     # Check that provided wind speed is between the fully engaged limits
-    if (ws_specified < ws_wake_steering_fully_engaged_low
-        or ws_specified > ws_wake_steering_fully_engaged_high):
-        raise ValueError(
-            "Provided wind speed must be between fully engaged limits."
-        )
+    if (
+        ws_specified < ws_wake_steering_fully_engaged_low
+        or ws_specified > ws_wake_steering_fully_engaged_high
+    ):
+        raise ValueError("Provided wind speed must be between fully engaged limits.")
 
-    offsets_specified = np.vstack(df_opt.yaw_angles_opt.to_numpy())[None,:,:]
+    offsets_specified = np.vstack(df_opt.yaw_angles_opt.to_numpy())[None, :, :]
 
     # Pack offsets with zero values at the cut in, start, finish, and cut out wind speeds
     offsets_ramps = np.concatenate(
@@ -456,18 +452,20 @@ def apply_wind_speed_ramps(
             offsets_specified,
             offsets_specified,
             np.zeros_like(offsets_specified),
-            np.zeros_like(offsets_specified)
+            np.zeros_like(offsets_specified),
         ),
-        axis=0
+        axis=0,
     )
-    wind_speed_ramps = np.array([
-        ws_min,
-        ws_wake_steering_cut_in,
-        ws_wake_steering_fully_engaged_low,
-        ws_wake_steering_fully_engaged_high,
-        ws_wake_steering_cut_out,
-        ws_max
-    ])
+    wind_speed_ramps = np.array(
+        [
+            ws_min,
+            ws_wake_steering_cut_in,
+            ws_wake_steering_fully_engaged_low,
+            ws_wake_steering_fully_engaged_high,
+            ws_wake_steering_cut_out,
+            ws_max,
+        ]
+    )
 
     # Build interpolator and interpolate to desired wind speeds
     interp = interp1d(
@@ -475,7 +473,7 @@ def apply_wind_speed_ramps(
         offsets_ramps,
         axis=0,
         bounds_error=False,
-        fill_value=np.zeros_like(offsets_ramps[0,:,:])
+        fill_value=np.zeros_like(offsets_ramps[0, :, :]),
     )
     wind_speed_all = np.arange(ws_min, ws_max, ws_resolution)
     offsets_stacked = interp(wind_speed_all).reshape(-1, offsets_ramps.shape[2])
@@ -484,12 +482,14 @@ def apply_wind_speed_ramps(
     wind_speed_stacked = np.repeat(wind_speed_all, len(df_opt))
     turbulence_intensity_stacked = np.tile(df_opt.turbulence_intensity, len(wind_speed_all))
 
-    return pd.DataFrame({
-        "wind_direction": wind_direction_stacked,
-        "wind_speed": wind_speed_stacked,
-        "turbulence_intensity": turbulence_intensity_stacked,
-        "yaw_angles_opt": [offsets_stacked[i,:] for i in range(offsets_stacked.shape[0])]
-    })
+    return pd.DataFrame(
+        {
+            "wind_direction": wind_direction_stacked,
+            "wind_speed": wind_speed_stacked,
+            "turbulence_intensity": turbulence_intensity_stacked,
+            "yaw_angles_opt": [offsets_stacked[i, :] for i in range(offsets_stacked.shape[0])],
+        }
+    )
 
 
 def get_yaw_angles_interpolant(df_opt):
@@ -509,7 +509,7 @@ def get_yaw_angles_interpolant(df_opt):
 
     Wind speeds and turbulence intensities are extended to include all reasonable values
     by copying the first and last values. Wind directions are extended to handle wind directions
-    up to 360 degrees only if the first value is 0 degrees. 
+    up to 360 degrees only if the first value is 0 degrees.
 
     An error is raised if the resulting interpolant is queried outside of the extended
     wind direction, wind speed, or turbulence intensity ranges.
@@ -556,23 +556,21 @@ def get_yaw_angles_interpolant(df_opt):
     # Create lower and upper wind speed and turbulence intensity bounds
     wind_speeds = np.concatenate([[-1.0], wind_speeds, [999.0]])
     yaw_offsets = np.concatenate(
-        [yaw_offsets[:, 0:1, :, :], yaw_offsets, yaw_offsets[:, -1:, :, :]],
-        axis=1
+        [yaw_offsets[:, 0:1, :, :], yaw_offsets, yaw_offsets[:, -1:, :, :]], axis=1
     )
     turbulence_intensities = np.concatenate([[-1.0], turbulence_intensities, [999.0]])
     yaw_offsets = np.concatenate(
-        [yaw_offsets[:, :, 0:1, :], yaw_offsets, yaw_offsets[:, :, -1:, :]],
-        axis=2
+        [yaw_offsets[:, :, 0:1, :], yaw_offsets, yaw_offsets[:, :, -1:, :]], axis=2
     )
 
     # Linear interpolant for the yaw angles
     interpolant = RegularGridInterpolator(
         points=(wind_directions, wind_speeds, turbulence_intensities),
         values=yaw_offsets,
-        bounds_error=True
+        bounds_error=True,
     )
 
-    # Store for bounds checks 
+    # Store for bounds checks
     wd_min = wind_directions.min()
     wd_max = wind_directions.max()
     ws_min = wind_speeds.min()
@@ -592,18 +590,23 @@ def get_yaw_angles_interpolant(df_opt):
         ti_array = np.array(ti_array, dtype=float)
 
         # Check inputs are within bounds
-        if (np.any(wd_array < wd_min) or np.any(wd_array > wd_max)
-            or np.any(ws_array < ws_min) or np.any(ws_array > ws_max)
-            or np.any(ti_array < ti_min) or np.any(ti_array > ti_max)):
+        if (
+            np.any(wd_array < wd_min)
+            or np.any(wd_array > wd_max)
+            or np.any(ws_array < ws_min)
+            or np.any(ws_array > ws_max)
+            or np.any(ti_array < ti_min)
+            or np.any(ti_array > ti_max)
+        ):
             err_msg = (
                 "Interpolator queried outside of allowable bounds:\n"
-                "Wind direction bounds: ["+str(wd_min)+", "+str(wd_max)+"]\n"
-                "Wind speed bounds: ["+str(ws_min)+", "+str(ws_max)+"]\n"
-                "Turbulence intensity bounds: ["+str(ti_min)+", "+str(ti_max)+"]\n\n"
+                "Wind direction bounds: [" + str(wd_min) + ", " + str(wd_max) + "]\n"
+                "Wind speed bounds: [" + str(ws_min) + ", " + str(ws_max) + "]\n"
+                "Turbulence intensity bounds: [" + str(ti_min) + ", " + str(ti_max) + "]\n\n"
                 "Queried at:\n"
-                "Wind directions: "+str(wd_array)+" \n"
-                "Wind speeds: "+str(ws_array)+" \n"
-                "Turbulence intensities: "+str(ti_array)
+                "Wind directions: " + str(wd_array) + " \n"
+                "Wind speeds: " + str(ws_array) + " \n"
+                "Turbulence intensities: " + str(ti_array)
             )
             raise ValueError(err_msg)
 
@@ -624,7 +627,7 @@ def create_uniform_wind_rose(
     ti_min: float = 0.06,
     ti_max: float = 0.06,
 ):
-    """"
+    """
     Create a uniform wind rose to use for wake steering optimizations.
 
     Args:
@@ -641,9 +644,9 @@ def create_uniform_wind_rose(
 
     if wd_min == 0 and wd_max == 360:
         wd_max = wd_max - wd_resolution
-    wind_directions = np.arange(wd_min, wd_max+0.001, wd_resolution)
-    
-    wind_speeds = np.arange(ws_min, ws_max+0.001, ws_resolution)
+    wind_directions = np.arange(wd_min, wd_max + 0.001, wd_resolution)
+
+    wind_speeds = np.arange(ws_min, ws_max + 0.001, ws_resolution)
 
     if ti_min == ti_max:
         return WindRose(
@@ -652,13 +655,14 @@ def create_uniform_wind_rose(
             ti_table=ti_min,
         )
     else:
-        turbulence_intensities = np.arange(ti_min, ti_max+0.0001, ti_resolution)
+        turbulence_intensities = np.arange(ti_min, ti_max + 0.0001, ti_resolution)
 
         return WindTIRose(
             wind_speeds=wind_speeds,
             wind_directions=wind_directions,
             turbulence_intensities=turbulence_intensities,
         )
+
 
 def check_df_opt_ordering(df_opt):
     """
@@ -677,20 +681,22 @@ def check_df_opt_ordering(df_opt):
     ti_unique = np.unique(df_opt["turbulence_intensity"])
 
     # Check full
-    if not inputs_all.shape[0] == len(wd_unique)*len(ws_unique)*len(ti_unique):
+    if not inputs_all.shape[0] == len(wd_unique) * len(ws_unique) * len(ti_unique):
         raise ValueError(
             "All combinations of wind direction, wind speed, and turbulence intensity "
             "must be specified."
         )
 
     # Check order is correct
-    wds_reshaped = inputs_all[:,0].reshape((len(wd_unique), len(ws_unique), len(ti_unique)))
-    wss_reshaped = inputs_all[:,1].reshape((len(wd_unique), len(ws_unique), len(ti_unique)))
-    tis_reshaped = inputs_all[:,2].reshape((len(wd_unique), len(ws_unique), len(ti_unique)))
+    wds_reshaped = inputs_all[:, 0].reshape((len(wd_unique), len(ws_unique), len(ti_unique)))
+    wss_reshaped = inputs_all[:, 1].reshape((len(wd_unique), len(ws_unique), len(ti_unique)))
+    tis_reshaped = inputs_all[:, 2].reshape((len(wd_unique), len(ws_unique), len(ti_unique)))
 
-    if (not np.all(wds_reshaped == wd_unique[:,None,None])
-        or not np.all(wss_reshaped == ws_unique[None,:,None])
-        or not np.all(tis_reshaped == ti_unique[None,None,:])):
+    if (
+        not np.all(wds_reshaped == wd_unique[:, None, None])
+        or not np.all(wss_reshaped == ws_unique[None, :, None])
+        or not np.all(tis_reshaped == ti_unique[None, None, :])
+    ):
         raise ValueError(
             "df_opt must be ordered first by wind direction, then by wind speed, "
             "then by turbulence intensity."

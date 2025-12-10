@@ -93,6 +93,7 @@ def test_HerculesADInterface(test_hercules_v1_dict):
     test_hercules_v1_dict["external_signals"]["wind_power_reference"] = 1000.0
     test_hercules_v1_dict["external_signals"]["plant_power_reference"] = 1000.0
 
+
 def test_HerculesHybridADInterface(test_hercules_v1_dict):
     interface = HerculesV1HybridADInterface(hercules_dict=test_hercules_v1_dict)
 
@@ -180,8 +181,8 @@ def test_HerculesHybridADInterface(test_hercules_v1_dict):
     with pytest.raises(TypeError):  # Bad kwarg
         interface.send_controls(test_hercules_v1_dict, **bad_controls_dict)
 
-def test_HerculesBatteryInterface(test_hercules_v1_dict):
 
+def test_HerculesBatteryInterface(test_hercules_v1_dict):
     interface = HerculesV1BatteryInterface(hercules_dict=test_hercules_v1_dict)
 
     # Check instantiation with no battery raises and error

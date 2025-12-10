@@ -10,15 +10,18 @@ def test_interface_instantiation(test_hercules_dict):
 
     _ = HerculesInterface(h_dict=test_hercules_dict)
 
+
 def test_HerculesInterface_windonly(test_hercules_dict):
     # Test instantiation
     interface = HerculesInterface(h_dict=test_hercules_dict)
     assert interface.dt == test_hercules_dict["dt"]
-    assert interface.plant_parameters["wind_farm"]["capacity"] == (
-        test_hercules_dict["wind_farm"]["capacity"]
+    assert (
+        interface.plant_parameters["wind_farm"]["capacity"]
+        == (test_hercules_dict["wind_farm"]["capacity"])
     )
-    assert interface.plant_parameters["wind_farm"]["n_turbines"] == (
-        test_hercules_dict["wind_farm"]["n_turbines"]
+    assert (
+        interface.plant_parameters["wind_farm"]["n_turbines"]
+        == (test_hercules_dict["wind_farm"]["n_turbines"])
     )
 
     # Test get_measurements()
@@ -43,7 +46,7 @@ def test_HerculesInterface_windonly(test_hercules_dict):
         "wind_power_setpoints": [2000.0, 3000.0],
         "unavailable_control": [0.0, 0.0],
     }
-    bad_controls_dict2 = {"wind_power_setpoints": [2000.0, 3000.0, 0.0]} # Wrong number of turbines
+    bad_controls_dict2 = {"wind_power_setpoints": [2000.0, 3000.0, 0.0]}  # Wrong number of turbines
 
     interface.check_controls(controls_dict)
 
@@ -62,24 +65,30 @@ def test_HerculesInterface_windonly(test_hercules_dict):
     with pytest.raises(TypeError):  # Bad kwarg
         interface.send_controls(test_hercules_dict, **bad_controls_dict1)
 
+
 def test_HerculesInterface_hybrid(test_hercules_dict):
     # Test instantiation
     interface = HerculesInterface(h_dict=test_hercules_dict)
     assert interface.dt == test_hercules_dict["dt"]
-    assert interface.plant_parameters["wind_farm"]["capacity"] == (
-        test_hercules_dict["wind_farm"]["capacity"]
+    assert (
+        interface.plant_parameters["wind_farm"]["capacity"]
+        == (test_hercules_dict["wind_farm"]["capacity"])
     )
-    assert interface.plant_parameters["solar_farm"]["capacity"] == (
-        test_hercules_dict["solar_farm"]["capacity"]
+    assert (
+        interface.plant_parameters["solar_farm"]["capacity"]
+        == (test_hercules_dict["solar_farm"]["capacity"])
     )
-    assert interface.plant_parameters["battery"]["power_capacity"] == (
-        test_hercules_dict["battery"]["size"]
+    assert (
+        interface.plant_parameters["battery"]["power_capacity"]
+        == (test_hercules_dict["battery"]["size"])
     )
-    assert interface.plant_parameters["battery"]["energy_capacity"] == (
-        test_hercules_dict["battery"]["energy_capacity"]
+    assert (
+        interface.plant_parameters["battery"]["energy_capacity"]
+        == (test_hercules_dict["battery"]["energy_capacity"])
     )
-    assert interface.plant_parameters["wind_farm"]["n_turbines"] == (
-        test_hercules_dict["wind_farm"]["n_turbines"]
+    assert (
+        interface.plant_parameters["wind_farm"]["n_turbines"]
+        == (test_hercules_dict["wind_farm"]["n_turbines"])
     )
 
     # Test get_measurements()
@@ -117,9 +126,7 @@ def test_HerculesInterface_hybrid(test_hercules_dict):
         interface.check_controls(bad_controls_dict1)
 
     # Test send_controls()
-    test_hercules_dict_out = interface.send_controls(
-        h_dict=test_hercules_dict, **controls_dict
-    )
+    test_hercules_dict_out = interface.send_controls(h_dict=test_hercules_dict, **controls_dict)
     assert (
         controls_dict["wind_power_setpoints"]
         == test_hercules_dict_out["wind_farm"]["turbine_power_setpoints"]

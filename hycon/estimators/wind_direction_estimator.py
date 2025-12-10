@@ -7,6 +7,7 @@ class WindDirectionPassthroughEstimator(EstimatorBase):
     WindDirectionPassthroughEstimator is a simple estimator that passes through the wind
     direction measurements without modification.
     """
+
     def __init__(self, interface: InterfaceBase, verbose: bool = False):
         super().__init__(interface, verbose=verbose)
 

@@ -12,15 +12,16 @@ class WindFarmYawController(ControllerBase):
     WindFarmYawController is a top-level controller that manages a combined wind estimator
     and yaw setpoint controller for a wind farm.
     """
+
     def __init__(
-            self,
-            interface: InterfaceBase,
-            yaw_setpoint_controller: ControllerBase | None = None,
-            wind_estimator: EstimatorBase | None = None,
-            verbose: bool = False
-        ):
+        self,
+        interface: InterfaceBase,
+        yaw_setpoint_controller: ControllerBase | None = None,
+        wind_estimator: EstimatorBase | None = None,
+        verbose: bool = False,
+    ):
         """
-        Constructor for WindFarmYawController. 
+        Constructor for WindFarmYawController.
 
         Args:
             interface (InterfaceBase): Interface object for communicating with the plant.
