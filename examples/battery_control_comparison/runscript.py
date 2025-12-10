@@ -44,7 +44,6 @@ def simulate(soc_0, clipping_thresholds, gain):
     controller = HybridSupervisoryControllerMultiRef(
         battery_controller=battery_controller, interface=interface, input_dict=hmodel.h_dict
     )
-    
 
     hmodel.assign_controller(controller)
 
