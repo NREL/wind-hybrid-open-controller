@@ -5,13 +5,7 @@ import numpy as np
 
 
 def plot_offsets_wdws_heatmap(
-    df_opt,
-    turb_id,
-    ti_plot=None,
-    vmin=None,
-    vmax=None,
-    cmap="coolwarm",
-    ax=None
+    df_opt, turb_id, ti_plot=None, vmin=None, vmax=None, cmap="coolwarm", ax=None
 ):
     """Plot offsets for a single turbine as a heatmap in wind speed.
 
@@ -89,12 +83,12 @@ def plot_offsets_wd(
     df_opt,
     turb_id,
     ws_plot,
-    ti_plot = None,
-    color = "black",
-    linestyle = "-",
-    alpha = 1.0,
-    label = None,
-    ax = None
+    ti_plot=None,
+    color="black",
+    linestyle="-",
+    alpha=1.0,
+    label=None,
+    ax=None,
 ):
     """Plot offsets for a single turbine as a function of wind direction.
 
@@ -153,7 +147,7 @@ def plot_offsets_wd(
         pass
     else:
         raise ValueError("One or more ws_plot values not found in df_opt.wind_speed.")
-    
+
     if set(ti_plot) <= set(df_opt.turbulence_intensity):
         pass
     else:
