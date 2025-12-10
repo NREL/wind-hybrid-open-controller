@@ -129,42 +129,45 @@ class HerculesInterface(InterfaceBase):
 
         # Handle external signals (parse and pass to individual components)
         if "external_signals" in h_dict:
-            external_signals = h_dict["external_signals"]
 
-            if "plant_power_reference" in external_signals:
-                measurements["plant_power_reference"] = external_signals["plant_power_reference"]
+            if "plant_power_reference" in h_dict["external_signals"]:
+                measurements["plant_power_reference"] = (
+                    h_dict["external_signals"]["plant_power_reference"]
+                )
 
-            if "wind_power_reference" in external_signals and self._has_wind_component:
-                measurements["wind_farm"]["power_reference"] = external_signals[
-                    "wind_power_reference"
-                ]
+            if "wind_power_reference" in h_dict["external_signals"] and self._has_wind_component:
+                measurements["wind_farm"]["power_reference"] = (
+                    h_dict["external_signals"]["wind_power_reference"]
+                )
 
-            if "solar_power_reference" in external_signals and self._has_solar_component:
-                measurements["solar_farm"]["power_reference"] = external_signals[
-                    "solar_power_reference"
-                ]
+            if "solar_power_reference" in h_dict["external_signals"] and self._has_solar_component:
+                measurements["solar_farm"]["power_reference"] = (
+                    h_dict["external_signals"]["solar_power_reference"]
+                )
 
             if self._has_battery_component:
-                if "battery_power_reference" in external_signals:
-                    measurements["battery"]["power_reference"] = external_signals[
-                        "battery_power_reference"
-                    ]
+                if "battery_power_reference" in h_dict["external_signals"]:
+                    measurements["battery"]["power_reference"] = (
+                        h_dict["external_signals"]["battery_power_reference"]
+                    )
 
-            if "hydrogen_reference" in external_signals and self._has_hydrogen_component:
-                measurements["hydrogen"]["power_reference"] = external_signals["hydrogen_reference"]
+            if "hydrogen_reference" in h_dict["external_signals"] and self._has_hydrogen_component:
+                measurements["hydrogen"]["power_reference"] = (
+                    h_dict["external_signals"]["hydrogen_reference"]
+                )
 
             # Grid price information (using pre-computed keys for performance)
-            if "lmp_da_00" in external_signals:
-                measurements["DA_LMP_24hours"] = [external_signals[k] for k in self._lmp_da_keys]
-            if "lmp_da" in external_signals:
-                measurements["DA_LMP"] = external_signals["lmp_da"]
-            if "lmp_rt" in external_signals:
-                measurements["RT_LMP"] = external_signals["lmp_rt"]
+            if "lmp_da_00" in h_dict["external_signals"]:
+                measurements["DA_LMP_24hours"] = [h_dict["external_signals"][k] for k in self._lmp_da_keys]
+            if "lmp_da" in h_dict["external_signals"]:
+                measurements["DA_LMP"] = h_dict["external_signals"]["lmp_da"]
+            if "lmp_rt" in h_dict["external_signals"]:
+                measurements["RT_LMP"] = h_dict["external_signals"]["lmp_rt"]
 
             # Special handling for forecast elements
-            for k, v in external_signals.items():
+            for k in h_dict["external_signals"].keys():
                 if "forecast" in k:
-                    measurements["forecast"][k] = v
+                    measurements["forecast"][k] = h_dict["external_signals"][k]
 
         measurements["total_power"] = total_power
 
