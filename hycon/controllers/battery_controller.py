@@ -145,6 +145,31 @@ class BatteryPassthroughController(ControllerBase):
 class BatteryPriceSOCController(ControllerBase):
     """
     Controller considers price and SOC to determine power setpoint.
+
+    This controller implements a price-arbitrage strategy that uses day-ahead (DA)
+    locational marginal prices (LMPs) and real-time (RT) LMPs to decide when to
+    charge or discharge the battery. The algorithm identifies the top and bottom
+    price hours of the day based on battery duration (e.g., for a 4-hour battery,
+    it targets the "top_d" = 4 highest and "bottom_d" = 4 lowest priced hours).
+
+    The decision logic is as follows:
+        1. If RT price exceeds the highest DA price: discharge at full rate
+           (unconditionally).
+        2. Else if RT price is in the top-d highest DA prices AND SOC > low_soc:
+           discharge at full rate.
+        3. Else if RT price is below the lowest DA price: charge at full rate
+           (unconditionally).
+        4. Else if RT price is in the bottom-d lowest DA prices AND SOC < high_soc:
+           charge at full rate.
+        5. Otherwise: hold (power setpoint = 0).
+
+    The SOC thresholds (high_soc, low_soc) prevent over-charging or over-discharging
+    during moderate price signals, while still allowing full charge/discharge when
+    prices move outside the expected DA range.
+
+    Note:
+        Charging power is represented as negative values, matching the convention
+        used at the Hercules/hybrid_plant level.
     """
 
     def __init__(self, interface, input_dict, controller_parameters={}, verbose=True):
@@ -164,6 +189,27 @@ class BatteryPriceSOCController(ControllerBase):
 
         self.rated_power_charging = input_dict["battery"]["charge_rate"]
         self.rated_power_discharging = input_dict["battery"]["discharge_rate"]
+
+        # Save the duration rounded to nearest hour
+        self.duration = round(
+            interface.plant_parameters["battery"]["energy_capacity"]
+            / interface.plant_parameters["battery"]["power_capacity"]
+        )
+
+        # Raise if duration makes this controller implausible
+        if self.duration >= 12:
+            raise ValueError(
+                f"Battery duration is {self.duration} hours, which is not "
+                "supported by BatteryPriceSOCController."
+                " This controller is only intended for durations shorter than 12 hours."
+            )
+
+        if self.duration < 1:
+            raise ValueError(
+                f"Battery duration is {self.duration} hours, which is not "
+                "supported by BatteryPriceSOCController."
+                " This controller is only intended for durations of at least 1 hour."
+            )
 
     def set_controller_parameters(
         self,
@@ -193,8 +239,8 @@ class BatteryPriceSOCController(ControllerBase):
         real_time_lmp = measurements_dict["RT_LMP"]
 
         # Extract limits
-        bottom_4 = sorted_day_ahead_lmps[3]
-        top_4 = sorted_day_ahead_lmps[-4]
+        bottom_d = sorted_day_ahead_lmps[self.duration - 1]
+        top_d = sorted_day_ahead_lmps[-self.duration]
         bottom_1 = sorted_day_ahead_lmps[0]
         top_1 = sorted_day_ahead_lmps[-1]
 
@@ -206,11 +252,11 @@ class BatteryPriceSOCController(ControllerBase):
         # will be inverted before passing into the battery modules
         if real_time_lmp > top_1:
             power_setpoint = self.rated_power_discharging
-        elif (real_time_lmp > top_4) & (soc < self.high_soc):
+        elif (real_time_lmp > top_d) & (soc > self.low_soc):
             power_setpoint = self.rated_power_discharging
         elif real_time_lmp < bottom_1:
             power_setpoint = -self.rated_power_charging
-        elif (real_time_lmp < bottom_4) & (soc > self.low_soc):
+        elif (real_time_lmp < bottom_d) & (soc < self.high_soc):
             power_setpoint = -self.rated_power_charging
         else:
             power_setpoint = 0.0
