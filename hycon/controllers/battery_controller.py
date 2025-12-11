@@ -150,7 +150,7 @@ class BatteryPriceSOCController(ControllerBase):
     locational marginal prices (LMPs) and real-time (RT) LMPs to decide when to
     charge or discharge the battery. The algorithm identifies the top and bottom
     price hours of the day based on battery duration (e.g., for a 4-hour battery,
-    it targets the 4 highest and 4 lowest priced hours).
+    it targets the "top_d" = 4 highest and "bottom_d" = 4 lowest priced hours).
 
     The decision logic is as follows:
         1. If RT price exceeds the highest DA price: discharge at full rate
