@@ -191,7 +191,7 @@ class BatteryPriceSOCController(ControllerBase):
         self.rated_power_discharging = input_dict["battery"]["discharge_rate"]
 
         # Save the duration rounded to nearest hour
-        self.duration = int(
+        self.duration = round(
             interface.plant_parameters["battery"]["energy_capacity"]
             / interface.plant_parameters["battery"]["power_capacity"]
         )
