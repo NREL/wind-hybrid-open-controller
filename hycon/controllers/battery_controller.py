@@ -226,7 +226,7 @@ class BatteryPriceSOCController(ControllerBase):
         low_soc is the SOC threshold below which the battery will only discharge if the price is
         above the highest (hourly) DA price of the day.  Defaults to 0.2.
 
-        Note high_soc defaults to 1.0 (effictively disabled) since experience suggests waiting for
+        Note high_soc defaults to 1.0 (effectively disabled) since experience suggests waiting for
         very low prices is not worthwhile.  On the other hand,
         low_soc defaults to 0.2 since experience suggests waiting for
         very high prices is worthwhile.
