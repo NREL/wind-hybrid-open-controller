@@ -232,8 +232,8 @@ class BatteryPriceSOCController(ControllerBase):
         very high prices is worthwhile.
 
         Args:
-            high_soc (float): High SOC threshold (0 to 1).
-            low_soc (float): Low SOC threshold (0 to 1).
+            high_soc (float): High SOC threshold (0 to 1).  Defaults to 1.0.
+            low_soc (float): Low SOC threshold (0 to 1).  Defaults to 0.2.
         """
         self.high_soc = high_soc
         self.low_soc = low_soc
