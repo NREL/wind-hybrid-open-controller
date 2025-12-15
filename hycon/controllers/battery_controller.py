@@ -213,18 +213,23 @@ class BatteryPriceSOCController(ControllerBase):
 
     def set_controller_parameters(
         self,
-        high_soc=0.8,
+        high_soc=1.0,
         low_soc=0.2,
         **_,  # <- Allows arbitrary additional parameters to be passed, which are ignored
     ):
         """
         Set parameters for BatteryPriceSOCController.
 
-        high_soc is the SOC threshold above which the battery will only charge if the price is above
-        the highest (hourly) DA price of the day.
+        high_soc is the SOC threshold above which the battery will only charge if the price is below
+        the lowest (hourly) DA price of the day.  Defaults to 1.0.
 
         low_soc is the SOC threshold below which the battery will only discharge if the price is
-        below the lowest (hourly) DA price of the day.
+        above the highest (hourly) DA price of the day.  Defaults to 0.2.
+
+        Note high_soc defaults to 1.0 (effictively disabled) since experience suggests waiting for 
+        very low prices is not worthwhile.  On the other hand, 
+        low_soc defaults to 0.2 since experience suggests waiting for 
+        very high prices is worthwhile.
 
         Args:
             high_soc (float): High SOC threshold (0 to 1).
