@@ -43,7 +43,7 @@ However, is a useful comparison case for the WindFarmPowerTrackingController
 Closed-loop wind farm-level power controller that distributes a farm-level 
 power reference among the wind turbines in a farm and adjusts the requests made
 from each turbine depending on whether the power reference has been met. 
-Developed under the [A2e2g project](https://github.com/NREL/a2e2g), with 
+Developed under the [A2e2g project](https://github.com/NatLabRockies/a2e2g), with 
 further details provided in 
 [Sinner et al.](https://pubs.aip.org/aip/jrse/article/15/5/053304/2913100).
 
