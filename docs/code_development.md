@@ -1,6 +1,6 @@
 # Code development
 To contribute to Hycon, please consider forking the main github repository,
-with the [NLR repo](https://github.com/NREL/hycon) as an 
+with the [NLR repo](https://github.com/NatLabRockies/hycon) as an 
 upstream remote. See the [Installation instructions](install_instructions) 
 for details about how to set up your repository as a developer.
 
