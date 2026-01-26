@@ -3,9 +3,9 @@
 
 Hycon is _not_ designed to be used as a stand-alone package. Most likely, 
 you'll want to add Hycon to an existing conda environment that contains your
-simulation testbed, such as [Hercules](https://github.com/NREL/hercules). 
+simulation testbed, such as [Hercules](https://github.com/NatLabRockies/hercules). 
 For example, see the 
-[Hercules installation instructions](https://nrel.github.io/hercules/install_instructions.html)
+[Hercules installation instructions](https://natlabrockies.github.io/hercules/install_instructions.html)
 for how to set up an appropriate conda environment.
 
 (installation_general_users)=
@@ -16,7 +16,7 @@ be sufficient to install Hycon (presumably, after activating your conda
 environment):
 
 ```
-git clone https://github.com/NREL/hycon
+git clone https://github.com/NatLabRockies/hycon
 pip install hycon/
 ```
 
@@ -32,7 +32,7 @@ git clone https://github.com/your-github-id/hycon
 pip install -e "hycon/[develop]"
 ```
 To contribute back to the base repository 
-https://github.com/NREL/hycon, please do the following:
+https://github.com/NatLabRockies/hycon, please do the following:
 - Create a branch from the base repository's `develop` branch on your fork 
 containing your code changes (e.g. `your-github-id:feature/your-new-feature`)
 - Open a pull request into the base repository's `NREL:develop` branch, and provide 
@@ -49,7 +49,7 @@ For more information on what your pull request should contain, see
 (installation_examples)=
 ## To run examples
 
-All Hycon examples run in the [Hercules](https://github.com/NREL/hercules) simulation environment.
+All Hycon examples run in the [Hercules](https://github.com/NatLabRockies/hercules) simulation environment.
 To run the examples, you will need to additionally install Hercules. See the 
-[Hercules installation instructions](https://nrel.github.io/hercules/install_instructions.html)
+[Hercules installation instructions](https://natlabrockies.github.io/hercules/install_instructions.html)
 for details.
