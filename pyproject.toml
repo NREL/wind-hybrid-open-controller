@@ -11,7 +11,7 @@ description = "Hybrid power plant controller."
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
-    { name = "Michael (Misha) Sinner", email = "Michael.Sinner@nrel.gov" },
+    { name = "Michael (Misha) Sinner", email = "michael.sinner@nlr.gov" },
 ]
 license = { file = "LICENSE.txt" }
 keywords = ["hycon"]
