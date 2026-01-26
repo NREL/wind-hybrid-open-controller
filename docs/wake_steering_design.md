@@ -3,11 +3,11 @@
 The `hycon.design_tools.wake_steering_design` module provides various tools for the design of yaw
 offset lookup tables for "open-loop" wake steering. The two primary functions are `build_simple_wake_steering_lookup_table` and `build_uncertain_wake_steering_lookup_table`, both of
 which take an instantiated
-[`FlorisModel`](https://nrel.github.io/floris/_autosummary/floris.floris_model.html),
+[`FlorisModel`](https://natlabrockies.github.io/floris/_autosummary/floris.floris_model.html),
 along with various design parameters, and return a pandas DataFrame `df_opt` containing the optimal
 yaw offset angles for each wind turbine. Under the hood, both functions run an optimization using
 FLORIS'
-[`YawOptimizerSR`](https://nrel.github.io/floris/_autosummary/floris.optimization.yaw_optimization.yaw_optimizer_sr.html) methodology. The `uncertain` version takes into account wind direction
+[`YawOptimizerSR`](https://natlabrockies.github.io/floris/_autosummary/floris.optimization.yaw_optimization.yaw_optimizer_sr.html) methodology. The `uncertain` version takes into account wind direction
 uncertainty via the second required argument `wd_std`, representing the wind direction standard
 deviation.
 

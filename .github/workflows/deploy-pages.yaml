@@ -27,9 +27,8 @@ jobs:
 
     # Build the book
     - name: Build the book
-      working-directory: ${{runner.workspace}}/hycon/docs/
       run: |
-        jupyter-book build .
+        jupyter-book build docs/
 
     # Push the book's HTML to github-pages
     - name: GitHub Pages action

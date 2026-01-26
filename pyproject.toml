@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hycon"
-version = "0.6"
+version = "0.7"
 description = "Hybrid power plant controller."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -32,7 +32,7 @@ dependencies = [
 
 [project.optional-dependencies]
 docs = [
-    "jupyter-book",
+    "jupyter-book==1.0.4",
     "sphinx-book-theme",
 ]
 develop = [
@@ -46,8 +46,8 @@ develop = [
 include = ["hycon*"]
 
 [project.urls]
-Homepage = "https://github.com/NREL/hycon"
-Documentation = "https://nrel.github.io/hycon/intro.html"
+Homepage = "https://github.com/NatLabRockies/hycon"
+Documentation = "https://natlabrockies.github.io/hycon/intro.html"
 
 [coverage.run]
 # Coverage.py configuration file

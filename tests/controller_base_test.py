@@ -1,24 +1,5 @@
 import pytest
 from hycon.controllers.controller_base import ControllerBase
-from hycon.interfaces.interface_base import InterfaceBase
-
-
-class StandinInterface(InterfaceBase):
-    """
-    Empty class to test controllers.
-    """
-
-    def __init__(self):
-        super().__init__()
-
-    def get_measurements(self):
-        pass
-
-    def check_controls(self):
-        pass
-
-    def send_controls(self):
-        pass
 
 
 class InheritanceTestClassBad(ControllerBase):
@@ -42,26 +23,22 @@ class InheritanceTestClassGood(ControllerBase):
         pass
 
 
-def test_ControllerBase_methods():
+def test_ControllerBase_methods(test_interface_standin):
     """
     Check that the base interface class establishes the correct methods.
     """
-    test_interface = StandinInterface()
-
-    controller_base = InheritanceTestClassGood(test_interface)
+    controller_base = InheritanceTestClassGood(test_interface_standin)
     assert hasattr(controller_base, "_receive_measurements")
     assert hasattr(controller_base, "_send_controls")
     assert hasattr(controller_base, "step")
     assert hasattr(controller_base, "compute_controls")
 
 
-def test_inherited_methods():
+def test_inherited_methods(test_interface_standin):
     """
     Check that a subclass of InterfaceBase inherits methods correctly.
     """
-    test_interface = StandinInterface()
-
     with pytest.raises(TypeError):
-        _ = InheritanceTestClassBad(test_interface)
+        _ = InheritanceTestClassBad(test_interface_standin)
 
-    _ = InheritanceTestClassGood(test_interface)
+    _ = InheritanceTestClassGood(test_interface_standin)
