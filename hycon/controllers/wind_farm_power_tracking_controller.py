@@ -67,6 +67,7 @@ class WindFarmPowerDistributingController(ControllerBase):
         controls_dict = {
             "power_setpoints": [farm_power_reference / self.n_turbines] * self.n_turbines,
         }
+        print(np.sum([farm_power_reference / self.n_turbines] * self.n_turbines))
 
         return controls_dict
 
@@ -115,14 +116,6 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
         farm_current_power = np.sum(turbine_powers)
         farm_current_error = farm_power_reference - farm_current_power
 
-        # Apply ramp rate limit
-        if self.ramp_rate_limit is not None:
-            farm_current_error = np.clip(
-                farm_current_error,
-                farm_current_power - self.ramp_rate_limit * self.dt,
-                farm_current_power + self.ramp_rate_limit * self.dt,
-            )
-
         self.n_saturated = 0  # TODO: determine whether to use gain scheduling
         if self.n_saturated < self.n_turbines:
             # with self.n_saturated = 0, gain_adjustment = 1
@@ -144,6 +137,14 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
 
         u = u_p  # + u_i
         delta_P_ref = u
+        
+        # Apply ramp rate limit
+        if self.ramp_rate_limit is not None:
+            delta_P_ref = np.clip(
+                delta_P_ref,
+                - self.ramp_rate_limit * self.dt,
+                self.ramp_rate_limit * self.dt,
+            )
 
         turbine_power_setpoints = np.array(turbine_powers) + delta_P_ref
 
