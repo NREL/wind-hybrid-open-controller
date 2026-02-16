@@ -44,7 +44,7 @@ def plot_outputs():
         ax[case].set_ylabel("Power [kW]")
     ax[0].set_xlim([time[0], time[-1]])
     ax[0].legend(loc="lower left")
-    ax[1].set_xlabel("Time [s]")
+    ax[1].set_xlabel("Time [mins]")
 
     return fig
 
