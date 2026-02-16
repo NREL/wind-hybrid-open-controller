@@ -17,6 +17,7 @@ examples/*/logfloris*
 *.h5
 
 # Exceptions
+!examples/example_inputs/*.csv
 !examples/*/inputs/*.csv
 examples/lookup-based_wake_steering_florisstandin/inputs/amr_standin_data.csv
 

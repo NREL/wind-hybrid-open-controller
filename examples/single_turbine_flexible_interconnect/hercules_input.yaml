@@ -16,7 +16,7 @@ plant:
 wind_farm:
   component_type: Wind_MesoToPowerPrecomFloris
   floris_input_file: floris_input.yaml
-  wind_input_filename: noisy_wind_input.csv
+  wind_input_filename: ../example_inputs/noisy_wind_input.csv
   turbine_file_name: ../example_inputs/turbine_filter_model.yaml
   log_file_name: outputs/log_wind_sim.log
   log_channels:
