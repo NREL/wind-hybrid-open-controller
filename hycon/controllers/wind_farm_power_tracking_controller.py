@@ -67,7 +67,6 @@ class WindFarmPowerDistributingController(ControllerBase):
         controls_dict = {
             "power_setpoints": [farm_power_reference / self.n_turbines] * self.n_turbines,
         }
-        print(np.sum([farm_power_reference / self.n_turbines] * self.n_turbines))
 
         return controls_dict
 
