@@ -136,12 +136,12 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
 
         u = u_p  # + u_i
         delta_P_ref = u
-        
+
         # Apply ramp rate limit
         if self.ramp_rate_limit is not None:
             delta_P_ref = np.clip(
                 delta_P_ref,
-                - self.ramp_rate_limit * self.dt,
+                -self.ramp_rate_limit * self.dt,
                 self.ramp_rate_limit * self.dt,
             )
 
