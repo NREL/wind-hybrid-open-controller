@@ -26,7 +26,7 @@ class WindFarmPowerDistributingController(ControllerBase):
 
         # Ramp rate limit
         if ramp_rate_limit is None:
-           ramp_rate_limit = np.inf
+            ramp_rate_limit = np.inf
         self.turbine_ramp_rate_limit = ramp_rate_limit / self.n_turbines
 
         # Used for initialization purposes
@@ -96,8 +96,8 @@ class WindFarmPowerDistributingController(ControllerBase):
         else:
             turbine_power_setpoints = np.clip(
                 unclipped_setpoints,
-                self._unclipped_prev-self.turbine_ramp_rate_limit * self.dt,
-                self._unclipped_prev+self.turbine_ramp_rate_limit * self.dt,
+                self._unclipped_prev - self.turbine_ramp_rate_limit * self.dt,
+                self._unclipped_prev + self.turbine_ramp_rate_limit * self.dt,
             )
 
         self._unclipped_prev = turbine_power_setpoints
