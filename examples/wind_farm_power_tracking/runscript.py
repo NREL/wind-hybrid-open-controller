@@ -11,6 +11,7 @@ from hycon.interfaces import HerculesInterface
 from plot_outputs import plot_outputs
 
 generate_output_plots = True
+ramp_rate_limit = 200  # kW/s, set to None for no ramp rate limit
 
 prepare_output_directory()
 
@@ -24,7 +25,9 @@ interface = HerculesInterface(hmodel.h_dict)
 
 print("Running open-loop controller...")
 controller = HybridSupervisoryControllerMultiRef(
-    wind_controller=WindFarmPowerDistributingController(interface, hmodel.h_dict),
+    wind_controller=WindFarmPowerDistributingController(
+        interface, hmodel.h_dict, ramp_rate_limit=ramp_rate_limit
+    ),
     interface=interface,
     input_dict=hmodel.h_dict,
 )
@@ -41,9 +44,11 @@ hmodel = HerculesModel(h_dict)
 
 interface = HerculesInterface(hmodel.h_dict)
 
-print("Running open-loop controller...")
+print("Running closed-loop controller...")
 controller = HybridSupervisoryControllerMultiRef(
-    wind_controller=WindFarmPowerTrackingController(interface, hmodel.h_dict),
+    wind_controller=WindFarmPowerTrackingController(
+        interface, hmodel.h_dict, ramp_rate_limit=ramp_rate_limit
+    ),
     interface=interface,
     input_dict=hmodel.h_dict,
 )

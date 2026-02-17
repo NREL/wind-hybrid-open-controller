@@ -26,7 +26,7 @@ def plot_outputs():
         time = df["time"].to_numpy()
         powers = df[pow_cols].to_numpy()
         ref = df[ref_col].to_numpy()
-        modref = df[mod_ref_cols].to_numpy()
+        mod_ref = df[mod_ref_cols].to_numpy().sum(axis=1)
 
         # Direction
         for t in range(n_turbines):
@@ -40,9 +40,9 @@ def plot_outputs():
                     label="T{0:03d} power".format(t),
                 )
         ax[case].plot(time, powers.sum(axis=1), color="black", label="Farm power")
-        ax[case].plot(time, ref, color="gray", linestyle="dashed", label="Ref. power")
+        ax[case].plot(time, ref, color="gray", linestyle="dashed", label="Power reference")
         ax[case].plot(
-            time, modref.sum(axis=1), color="red", linestyle="dashed", label="Mod. ref. power"
+            time, mod_ref, color="gray", linestyle="dotted", label="Ramp-limited reference"
         )
 
         # Plot aesthetics
@@ -51,7 +51,7 @@ def plot_outputs():
         ax[case].set_ylabel("Power [kW]")
     ax[0].set_xlim([time[0], time[-1]])
     ax[0].legend(loc="lower left")
-    ax[1].set_xlabel("Time [mins]")
+    ax[1].set_xlabel("Time [s]")
 
     return fig
 
