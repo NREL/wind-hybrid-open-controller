@@ -41,7 +41,9 @@ def plot_outputs():
                 )
         ax[case].plot(time, powers.sum(axis=1), color="black", label="Farm power")
         ax[case].plot(time, ref, color="gray", linestyle="dashed", label="Ref. power")
-        ax[case].plot(time, modref.sum(axis=1), color="red", linestyle="dashed", label="Mod. ref. power")
+        ax[case].plot(
+            time, modref.sum(axis=1), color="red", linestyle="dashed", label="Mod. ref. power"
+        )
 
         # Plot aesthetics
         ax[case].grid()
