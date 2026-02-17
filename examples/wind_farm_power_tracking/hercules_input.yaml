@@ -22,6 +22,7 @@ wind_farm:
   log_channels:
     - power
     - turbine_powers
+    - turbine_power_setpoints
   floris_update_time_s: 300.0 # Update wakes every 5 minutes
 
 external_data:
