@@ -13,7 +13,8 @@ plant:
   interconnect_limit: 10000.0
 
 wind_farm:
-  component_type: Wind_MesoToPowerPrecomFloris
+  component_type: WindFarm
+  wake_method: precomputed
   floris_input_file: ../example_inputs/floris_input_2turbine.yaml
   wind_input_filename: wind_input.csv
   turbine_file_name: ../example_inputs/turbine_filter_model.yaml
@@ -21,6 +22,7 @@ wind_farm:
   log_channels:
     - power
     - turbine_powers
+    - turbine_power_setpoints
   floris_update_time_s: 300.0 # Update wakes every 5 minutes
 
 external_data:

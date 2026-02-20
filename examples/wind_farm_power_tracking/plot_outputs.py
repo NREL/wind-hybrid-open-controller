@@ -13,6 +13,9 @@ def plot_outputs():
     n_turbines = 2
     pow_cols = ["wind_farm.turbine_powers.{0:03d}".format(t) for t in range(n_turbines)]
     ref_col = "external_signals.wind_power_reference"
+    mod_ref_cols = [
+        "wind_farm.turbine_power_setpoints.{0:03d}".format(t) for t in range(n_turbines)
+    ]
 
     # Create plots
     fig, ax = plt.subplots(2, 1, sharex=True, sharey=True)
@@ -23,6 +26,7 @@ def plot_outputs():
         time = df["time"].to_numpy()
         powers = df[pow_cols].to_numpy()
         ref = df[ref_col].to_numpy()
+        mod_ref = df[mod_ref_cols].to_numpy().sum(axis=1)
 
         # Direction
         for t in range(n_turbines):
@@ -36,7 +40,10 @@ def plot_outputs():
                     label="T{0:03d} power".format(t),
                 )
         ax[case].plot(time, powers.sum(axis=1), color="black", label="Farm power")
-        ax[case].plot(time, ref, color="gray", linestyle="dashed", label="Ref. power")
+        ax[case].plot(time, ref, color="gray", linestyle="dashed", label="Power reference")
+        ax[case].plot(
+            time, mod_ref, color="gray", linestyle="dotted", label="Ramp-limited reference"
+        )
 
         # Plot aesthetics
         ax[case].grid()
