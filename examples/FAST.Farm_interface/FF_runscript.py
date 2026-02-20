@@ -2,9 +2,11 @@ import os
 
 import pandas as pd
 from hercules.utilities import load_yaml
-from whoc.controllers.lookup_based_wake_steering_controller import LookupBasedWakeSteeringController
-from whoc.emulators.rosco_zmq_emulator import ROSCO_ZMQEmulator
-from whoc.interfaces.rosco_zmq_interface2 import ROSCO_ZMQInterface
+from hycon.controllers.lookup_based_wake_steering_controller import (
+    LookupBasedWakeSteeringController,
+)
+from hycon.emulators.rosco_zmq_emulator import ROSCO_ZMQEmulator
+from hycon.interfaces.rosco_zmq_interface2 import ROSCO_ZMQInterface
 
 input_dict = load_yaml(os.path.join("inputs", "hercules_input.yaml"))
 
