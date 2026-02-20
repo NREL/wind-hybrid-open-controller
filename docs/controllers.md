@@ -1,6 +1,6 @@
 # Controllers
 
-The `whoc.controllers` module contains a library of wind and hybrid power plant
+The `hycon.controllers` module contains a library of wind and hybrid power plant
 controllers. Each controller must inherit from `ControllerBase` (see 
 controller_base.py) and implement a
 mandatory `compute_controls()` method, which contains the relevant control 
@@ -43,8 +43,7 @@ However, is a useful comparison case for the WindFarmPowerTrackingController
 Closed-loop wind farm-level power controller that distributes a farm-level 
 power reference among the wind turbines in a farm and adjusts the requests made
 from each turbine depending on whether the power reference has been met. 
-Developed under the [A2e2g project](https://github.com/NREL/a2e2g), with 
-further details provided in 
+Further details provided in 
 [Sinner et al.](https://pubs.aip.org/aip/jrse/article/15/5/053304/2913100).
 
 Integral action, as well as gain scheduling based on turbine saturation, has been disabled as 
@@ -103,3 +102,15 @@ Reads in current power production from the generator(s), the current hydrogen pr
 
 The power reference computed is then passed to a secondary power generation plant controller, which is assigned to the `HydrogenPlantController` on instantiation.
 This secondary power generation controller could be {ref}`controllers_wfpowertracking` for a wind-only plant, {ref}`controllers_simplehybrid` for a hybrid generation plant, etc.
+
+(controllers_batterymarket)=
+### BatteryPriceSOCController
+Controller to capture revenues in the real-time market using a battery. The
+controller uses the day-ahead market prices to set threshold prices for charging
+and discharging in the real-time market. When the real-time price exceeds the
+4th-highest hourly prices from the day-ahead market, the battery is instructed to
+discharge (if possible). When the real-time price is below the 4th-lowest hourly
+prices from the day-ahead market, the battery is instructed to charge (if
+possible). Otherwise, the battery remains idle.
+
+When the battery is close to fully depleted or fully charge, the threshold for charging/discharging changes to the lowest and highest day-ahead price, respectively.

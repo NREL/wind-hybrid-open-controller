@@ -1,9 +1,9 @@
 # Book settings
 # Learn more at https://jupyterbook.org/customize/config.html
 
-title: Wind Hybrid Open Controller
-author: National Renewable Energy Laboratory
-logo: graphics/whoc.png
+title: Hycon
+author: National Laboratory of the Rockies
+logo: graphics/hycon.png
 copyright: '2024'
 only_build_toc_files: false
 
@@ -23,7 +23,7 @@ bibtex_bibfiles:
 
 # Information about where the book exists on the web
 repository:
-  url: https://github.com/NREL/wind-hybrid-open-controller
+  url: https://github.com/NatLabRockies/hycon
   path_to_book: docs
   branch: main
 

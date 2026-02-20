@@ -1,0 +1,27 @@
+name: wind_farm_power_tracking_florisstandin
+
+###
+# Describe this emulator setup
+description: Two-turbine wind farm
+
+dt: 0.5
+starttime_utc: "2018-05-10T12:31:00.00Z"
+endtime_utc: "2018-05-10T12:32:20.00Z"
+verbose: False
+
+plant: 
+  interconnect_limit: 10000.0
+
+wind_farm:
+  component_type: Wind_MesoToPowerPrecomFloris
+  floris_input_file: ../example_inputs/floris_input_2turbine.yaml
+  wind_input_filename: wind_input.csv
+  turbine_file_name: ../example_inputs/turbine_filter_model.yaml
+  log_file_name: outputs/log_wind_sim.log
+  log_channels:
+    - power
+    - turbine_powers
+  floris_update_time_s: 300.0 # Update wakes every 5 minutes
+
+external_data:
+  external_data_file: wind_power_reference.csv

@@ -1,0 +1,63 @@
+# Name
+name: simple_hybrid_plant
+
+###
+# Describe this emulator setup
+description: Floris, Solar PV and Battery Plant Example
+
+dt: 0.5
+starttime_utc: "2018-05-10T12:31:00.00Z"
+endtime_utc: "2018-05-10T14:30:00.00Z"
+verbose: False
+
+plant: 
+  interconnect_limit: -1
+
+wind_farm:
+  component_type: Wind_MesoToPowerPrecomFloris
+  floris_input_file: ../example_inputs/floris_input_10turbine.yaml
+  wind_input_filename: ../example_inputs/wind_input.csv
+  turbine_file_name: ../example_inputs/turbine_filter_model.yaml
+  log_file_name: outputs/log_wind_sim.log
+  log_channels:
+    - power
+    - turbine_powers
+  floris_update_time_s: 300.0 # Update wakes every 5 minutes
+
+solar_farm:
+    component_type: SolarPySAMPVWatts
+    solar_input_filename: ../example_inputs/NonAnnualSimulation-sample_data-interpolated-daytime.csv
+    system_info_file_name: ../example_inputs/100MW_1axis_pvsamv1.json
+    lat: 39.7442
+    lon: -105.1778
+    elev: 1829
+    system_capacity: 100000 # kW
+    tilt: 0  # degrees
+    losses: 0
+    log_channels:
+      - power
+      - dni
+      - aoi
+
+    initial_conditions:
+      power: 25000 # kW
+      dni: 1000
+      poa: 1000
+
+battery:
+  component_type: BatterySimple
+  size: 20000  # kW size of the battery 
+  energy_capacity: 80000 # total capacity of the battery in kWh (4-hour 20 MW battery)
+  charge_rate: 20000 # charge rate of the battery in kW
+  discharge_rate: 20000 # discharge rate of the battery in kW
+  max_SOC: 0.9 # upper boundary on battery SOC
+  min_SOC: 0.1 # lower boundary on battery SOC
+  allow_grid_power_consumption: True
+  initial_conditions:
+    SOC: 0.88   # initial state of charge of the battery in percentage of total size
+  log_channels:
+    - power
+    - soc
+
+external_data:
+  external_data_file: plant_power_reference.csv

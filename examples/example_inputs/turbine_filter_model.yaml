@@ -1,0 +1,12 @@
+# Input YAML for turbine model
+
+# Name
+name: NREL 5MW - Filter Model
+
+
+turbine_model_type: filter_model # Can be filter_model or dof1_model
+
+
+filter_model:
+
+  time_constant: 12 # [s] 

@@ -1,0 +1,46 @@
+# Name
+name: single_turbine_flexible_interconnect
+
+###
+# Describe this emulator setup
+description: Floris, Solar PV and Battery Plant Example
+
+dt: 0.5
+starttime_utc: "2018-05-10T00:00:00.00Z"
+endtime_utc: "2018-05-11T00:00:00.00Z"
+verbose: False
+
+plant: 
+  interconnect_limit: 15000
+
+wind_farm:
+  component_type: Wind_MesoToPowerPrecomFloris
+  floris_input_file: floris_input.yaml
+  wind_input_filename: noisy_wind_input.csv
+  turbine_file_name: ../example_inputs/turbine_filter_model.yaml
+  log_file_name: outputs/log_wind_sim.log
+  log_channels:
+    - power
+    - turbine_powers.000
+    - wind_speeds_withwakes.000
+  floris_update_time_s: 300.0 # Update wakes every 5 minutes
+
+battery:
+  component_type: BatterySimple
+  size: 500  # kW size of the battery 
+  energy_capacity: 2000 # total capacity of the battery in kWh (4-hour 500 kW battery)
+  charge_rate: 500 # charge rate of the battery in kW
+  discharge_rate: 500 # discharge rate of the battery in kW
+  max_SOC: 0.9 # upper boundary on battery SOC
+  min_SOC: 0.1 # lower boundary on battery SOC
+  allow_grid_power_consumption: True
+  initial_conditions:
+    SOC: 0.88   # initial state of charge of the battery in percentage of total size
+  log_channels:
+    - power
+    - soc
+
+external_data:
+  external_data_file: flexible_interconnect_limit.csv
+  log_channels:
+    - plant_power_reference

@@ -1,0 +1,38 @@
+# Input YAML for hercules
+
+# Name
+name: battery_control_comparison
+
+###
+# Describe this emulator setup
+description: Battery alone
+
+dt: 0.5
+starttime_utc: "2020-04-01T00:00:00Z"
+endtime_utc: "2020-04-01T01:20:00Z"
+verbose: False
+
+
+plant:
+  interconnect_limit: 20000 # kW
+
+battery:
+  component_type: BatterySimple
+  size: 20000 # kW size of the battery
+  energy_capacity: 80000 # total capacity of the battery in kWh
+  charge_rate: 20000 # charge rate in kW
+  discharge_rate: 20000 # discharge rate in kW
+  max_SOC: 0.9
+  min_SOC: 0.1
+  allow_grid_power_consumption: True
+  initial_conditions:
+    SOC: 0.5
+  log_channels:
+    - power
+    - soc
+    - power_setpoint
+
+external_data:
+  external_data_file: power_reference.csv
+  log_channels:
+    - battery_power_reference

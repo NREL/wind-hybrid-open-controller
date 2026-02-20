@@ -1,0 +1,36 @@
+# Input YAML for hercules
+
+# Name
+name: battery_market_revenue_control
+
+###
+# Describe this emulator setup
+description: Battery alone
+
+dt: 1.0
+starttime_utc: "2020-04-01T00:00:00Z"
+endtime_utc: "2020-04-07T23:55:00Z"
+verbose: False
+
+
+plant:
+  interconnect_limit: 10000 # kW
+
+battery:
+  component_type: BatterySimple
+  size: 10000 # kW size of the battery (10 MW)
+  energy_capacity: 40000 # total capacity of the battery in kWh (10 MWh)
+  charge_rate: 10000 # charge rate in kW (10 MW)
+  discharge_rate: 10000 # discharge rate in kW (10 MW)
+  max_SOC: 0.9
+  min_SOC: 0.1
+  allow_grid_power_consumption: True
+  initial_conditions:
+    SOC: 0.5
+  log_channels:
+    - power
+    - soc
+    - power_setpoint
+
+external_data:
+  external_data_file: lmp_data.csv

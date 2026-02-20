@@ -1,12 +1,12 @@
 # Code development
-To contribute to WHOC, please consider forking the main github repository,
-with the [NREL repo](https://github.com/NREL/wind-hybrid-open-controller) as an 
+To contribute to Hycon, please consider forking the main github repository,
+with the [NLR repo](https://github.com/NatLabRockies/hycon) as an 
 upstream remote. See the [Installation instructions](install_instructions) 
 for details about how to set up your repository as a developer.
 
 To submit a new feature or bug fix, create a new branch 
 in your fork and submit a pull request back to the `develop` branch in the 
-main repo. The pull request will be reviewed by other WHOC maintainers and 
+main repo. The pull request will be reviewed by other Hycon maintainers and 
 merged (using "squash and merge") into the `develop` branch. Periodically, 
 the `develop` branch will be merged into the `main` branch and a version 
 number will be assigned.

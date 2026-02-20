@@ -8,7 +8,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
         os: [ubuntu-latest]
       fail-fast: False
 
@@ -26,7 +26,7 @@ jobs:
     - name: Run ruff
       run: |
         ruff check .
-        ruff format
+        ruff format --check
     - name: Run tests and collect coverage
       run: |
         # -rA displays the captured output for all tests after they're run

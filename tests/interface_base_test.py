@@ -1,7 +1,7 @@
 import pytest
-from whoc.interfaces.interface_base import InterfaceBase
+from hycon.interfaces.interface_base import InterfaceBase
 
-# import whoc.interfaces
+# import hycon.interfaces
 
 
 class InheritanceTestClassBad(InterfaceBase):
@@ -57,6 +57,6 @@ def test_all_interfaces_implement_methods():
     # inputs that they require on __init__ is currently a roadblock, so I'll just
     # explicitly instantiate each interface class for the time being.
 
-    # class_dict = dict(inspect.getmembers(whoc.interfaces, inspect.isclass))
+    # class_dict = dict(inspect.getmembers(hycon.interfaces, inspect.isclass))
 
     pass

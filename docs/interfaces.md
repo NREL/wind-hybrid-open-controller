@@ -1,7 +1,7 @@
 # Interfaces
 
-The `whoc.interfaces` module contains a library of interfaces for connecting 
-WHOC with various simulation platforms and other repositories. Each controller
+The `hycon.interfaces` module contains a library of interfaces for connecting 
+Hycon with various simulation platforms and other repositories. Each controller
 run will require an `interface`, which is an instantiated object of a class
 in this library. All interface classes should inherit from `InterfaceBase`, 
 which can be found n interface_base.py, and should implement three methods:
@@ -24,7 +24,7 @@ These methods will all be called in the `step()` method of `ControllerBase`.
 ### HerculesADInterface
 For direct python communication with Hercules. This should be instantiated 
 in a runscript that is running Hercules; used to generate a `controller` from 
-the WHOC controllers submodule; and that `controller` should be passed to the
+the Hycon controllers submodule; and that `controller` should be passed to the
 Hercules `Emulator` upon its instantiation. Support transmitting yaw angles 
 and power setpoints to wind turbines.
 
