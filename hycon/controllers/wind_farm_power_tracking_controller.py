@@ -96,11 +96,11 @@ class WindFarmPowerDistributingController(ControllerBase):
         else:
             turbine_power_setpoints = np.clip(
                 unclipped_setpoints,
-                self._unclipped_prev - self.turbine_ramp_rate_limit * self.dt,
-                self._unclipped_prev + self.turbine_ramp_rate_limit * self.dt,
+                self._setpoints_prev - self.turbine_ramp_rate_limit * self.dt,
+                self._setpoints_prev + self.turbine_ramp_rate_limit * self.dt,
             )
 
-        self._unclipped_prev = turbine_power_setpoints
+        self._setpoints_prev = turbine_power_setpoints
 
         return turbine_power_setpoints
 
