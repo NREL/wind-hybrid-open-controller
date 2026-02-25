@@ -2,22 +2,28 @@ import os
 
 import pandas as pd
 from hercules.utilities import load_yaml
-from hycon.controllers.lookup_based_wake_steering_controller import (
-    LookupBasedWakeSteeringController,
-)
-from hycon.emulators.rosco_zmq_emulator import ROSCO_ZMQEmulator
+from hycon.controllers import LookupBasedWakeSteeringController
+from hycon.design_tools.wake_steering_design import compute_hysteresis_zones
 from hycon.interfaces.rosco_zmq_interface2 import ROSCO_ZMQInterface
 
-input_dict = load_yaml(os.path.join("inputs", "hercules_input.yaml"))
+input_dict = load_yaml(os.path.join("inputs", 'hercules_input.yaml'))
 
-# Load the optimal yaw angle lookup table for controller us
-df_opt = pd.read_pickle("yaw_offsets.pkl")
+use_hysteresis = False
+
+# Load the optimal yaw angle lookup table for controller use.
+df_opt = pd.read_pickle(os.path.join("inputs","yaw_offsets.pkl"))
+
+# Optionally, add hysteresis
+if use_hysteresis:
+    hysteresis_dict = compute_hysteresis_zones(df_opt, min_zone_width=8.0, verbose=True)
+else:
+    hysteresis_dict = None
 
 interface = ROSCO_ZMQInterface(input_dict)
 controller = LookupBasedWakeSteeringController(
-    interface, input_dict, df_yaw=df_opt
+    interface, input_dict, df_yaw=df_opt, hysteresis_dict=hysteresis_dict, verbose=True
 )
-emulator = ROSCO_ZMQEmulator(controller, input_dict)
-emulator.run()
+
+interface.runsim(controller)
 
 print("runscript complete.")

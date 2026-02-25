@@ -50,3 +50,7 @@ class ROSCO_ZMQInterface(InterfaceBase):
         self, turbine_ID=0, genTorque=0.0, nacelleHeading=0.0, bladePitch=[0.0, 0.0, 0.0]
     ):
         pass
+
+    def runsim(self,controller):
+        controller.compute_controls(self, self.measurements_dict)
+        

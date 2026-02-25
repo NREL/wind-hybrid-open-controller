@@ -1,17 +1,14 @@
-
-# Input YAML for emy_python
-
 # Name
-name: example_000
+name: lookup-based_wake_steering_FAST.Farm
 
 ###
 # Describe this emulator setup
-description: Just a solar plant
+description: FAST.Farm simulation with wake steering controller
 
 dt: 0.5
 
 controller:
-  controller_type: SimpleYawController # This may not be needed
+  num_turbines: 2
   initial_conditions:
       yaw: 270. # degrees (same for all turbines) (will this work?)
 
