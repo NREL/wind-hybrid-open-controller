@@ -1,3 +1,3 @@
-There are more than 50 completions that can be used in this file.
-But there are all of these comp
-However, out of all these completions I only want to use one which is the:qq
+2026-02-26 02:14:36,477: Successfully established connection a ZeroMQ server at tcp://*:5556
+2026-02-26 02:14:37,149: Received message (formatted): {'ZMQ_ID': 0.0, 'iStatus': 0.0, 'Time': 0.0, 'VS_MechGenPwr': 0.1511519, 'VS_GenPwr': 487735.0, 'GenSpeed': 61.83063, 'RotSpeed': 0.6374292, 'GenTqMeas': 0.0, 'NacHeading': 0.0, 'NacVane': -2.022221, 'HorWindV': 8.404438, 'rootMOOP(1)': 114350.4, 'rootMOOP(2)': 50175.39, 'rootMOOP(3)': 84256.25, 'FA_Acc_TT': 0.0, 'NacIMU_FA_RAcc': 0.0, 'Azimuth': 4.834562}
+2026-02-26 02:14:37,149: Connected to a new ROSCO with id = 0

@@ -21,5 +21,5 @@ emulator:
   verbose: true
   logfile: log.txt
   simtype: FAST.Farm # FAST.Farm or amr-wind
-  siminput: inputs/FFFiles/Case0_wdirp00/Seed_0/FFarm_mod.fstf
-  simexe: /home/abhineet/MySoftware/conda/envs/MySci/bin/FAST.Farm
+  siminput: inputs/FFFiles/FFarm_mod.fstf
+  simexe: /home/abhineet/MySoftware/MicroMamba/envs/MySci/bin/FAST.Farm
