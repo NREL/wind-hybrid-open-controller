@@ -43,8 +43,8 @@ class ROSCO_ZMQInterface(InterfaceBase):
         pass
 
 
-class ROSCO_Emulator():
-    def __init__(self,interface,controller):
+class ROSCO_Emulator:
+    def __init__(self, interface, controller):
         self.interface = interface
         self.controller = controller
 
@@ -66,12 +66,12 @@ class ROSCO_Emulator():
         server = wfc_zmq_server(network_address, timeout=60.0, verbose=False, logfile="log.txt")
 
         # Provide the wind farm control algorithm as the wfc_controller method of the server
-        i_wfc_cont = intermediate_wfc_controller(self.interface,self.controller)
+        i_wfc_cont = intermediate_wfc_controller(self.interface, self.controller)
         server.wfc_controller = i_wfc_cont
 
         # Run the server to receive measurements and send setpoints
         server.runserver()
-    
+
     def rumfarmsim(self):
         simexe = self.interface.emulator_parameters["simexe"]
         siminput = self.interface.emulator_parameters["siminput"]
@@ -79,21 +79,22 @@ class ROSCO_Emulator():
         print(f"Running simulation with command '{simcmd}'")
         subprocess.run(simcmd, shell=True, check=True)
 
+
 class intermediate_wfc_controller:
-    def __init__(self,interface,controller):
+    def __init__(self, interface, controller):
         self.interface = interface
         self.controller = controller
         self.n_turbines = self.interface.plant_parameters["n_turbines"]
-        self.measurements_to_hycon_controller = {k:0 for k in range(self.n_turbines)}
+        self.measurements_to_hycon_controller = {k: 0 for k in range(self.n_turbines)}
         self.controls_from_hycon_controller = {}
-    
+
     def update_setpoints(self, id, current_time, measurements):
         if len(self.measurements_to_hycon_controller) == self.n_turbines:
             self.controls_from_hycon_controller = self.getcontrolsfromhycon()
             self.measurements_to_hycon_controller = {}
-        
-        self.measurements_to_hycon_controller[id] = measurements['NacVane']
-        
+
+        self.measurements_to_hycon_controller[id] = measurements["NacVane"]
+
         setpoints = {}
         setpoints["ZMQ_YawOffset"] = self.controls_from_hycon_controller[id]
         return setpoints
@@ -105,5 +106,3 @@ class intermediate_wfc_controller:
             self.measurements_to_hycon_controller[i] for i in range(self.n_turbines)
         ]
         self.controller.compute_controls(measurements_dict)
-
-
