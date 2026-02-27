@@ -74,6 +74,8 @@ producing:
     graphics/wf-power-tracking-plot.png
 )
 
+Ramp rate limits are also applied in this example, but can be modified by changing the `ramp_rate_limit` variable in runscript.py or switched off by setting `ramp_rate_limit = None`.
+
 (examples_simplehybrid)=
 ## simple_hybrid_plant
 Example of a wind + solar + battery hybrid power plant using the 

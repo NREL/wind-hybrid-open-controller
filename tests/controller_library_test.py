@@ -118,6 +118,26 @@ def test_WindFarmPowerDistributingController(test_hercules_v1_dict, test_interfa
     )
     assert np.allclose(test_power_setpoints, 500)
 
+    # Test that ramp rate limits are applied
+    test_controller = WindFarmPowerDistributingController(
+        interface=test_interface_hercules_ad, input_dict=test_hercules_v1_dict, ramp_rate_limit=200
+    )
+    test_hercules_v1_dict["external_signals"]["wind_power_reference"] = 1000
+    test_controller.step(input_dict=test_hercules_v1_dict)  # To initialize previous power setpoints
+    test_hercules_v1_dict["external_signals"]["wind_power_reference"] = 500
+    test_dict_out = test_controller.step(input_dict=test_hercules_v1_dict)
+    test_power_setpoints = np.array(
+        test_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
+    )
+    assert np.allclose(test_power_setpoints, (1000 - 200) / 2)
+
+    test_hercules_v1_dict["external_signals"]["wind_power_reference"] = 2000
+    test_dict_out = test_controller.step(input_dict=test_hercules_v1_dict)
+    test_power_setpoints = np.array(
+        test_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
+    )
+    assert np.allclose(test_power_setpoints, 1000 / 2)
+
 
 def test_WindFarmPowerTrackingController(test_hercules_v1_dict, test_interface_hercules_ad):
     test_controller = WindFarmPowerTrackingController(
