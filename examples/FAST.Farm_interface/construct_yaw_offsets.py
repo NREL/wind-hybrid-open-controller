@@ -1,11 +1,11 @@
 import argparse
+import os
 
 import numpy as np
-import os
 import pandas as pd
 import yaml
 from floris import FlorisModel
-from whoc.design_tools.wake_steering_design import build_simple_wake_steering_lookup_table
+from hycon.design_tools.wake_steering_design import build_simple_wake_steering_lookup_table
 
 with open(os.path.join('inputs','gch_whoc_example.yaml'),'r') as f:
     floris_dict = yaml.safe_load(f)

@@ -1,7 +1,9 @@
-from hycon.interfaces.interface_base import InterfaceBase
-from rosco.toolbox.control_interface import wfc_zmq_server
 import multiprocessing as mp
 import subprocess
+
+from rosco.toolbox.control_interface import wfc_zmq_server
+
+from hycon.interfaces.interface_base import InterfaceBase
 
 
 class ROSCO_ZMQInterface(InterfaceBase):
@@ -47,7 +49,6 @@ class ROSCO_Emulator():
         self.controller = controller
 
     def startserverandsim(self):
-        port = self.interface.emulator_parameters["port"]
         pserver = mp.Process(target=self.run_zmq, args=())
         psim = mp.Process(target=self.rumfarmsim, args=())
 

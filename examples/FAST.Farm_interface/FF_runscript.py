@@ -4,7 +4,7 @@ import pandas as pd
 from hercules.utilities import load_yaml
 from hycon.controllers import LookupBasedWakeSteeringController
 from hycon.design_tools.wake_steering_design import compute_hysteresis_zones
-from hycon.interfaces.rosco_zmq_interface2 import ROSCO_ZMQInterface, ROSCO_Emulator
+from hycon.interfaces.rosco_zmq_interface import ROSCO_Emulator, ROSCO_ZMQInterface
 
 input_dict = load_yaml(os.path.join("inputs", "hercules_input.yaml"))
 
