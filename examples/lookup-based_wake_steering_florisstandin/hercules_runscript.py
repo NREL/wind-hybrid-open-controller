@@ -8,7 +8,7 @@ from hycon.controllers import LookupBasedWakeSteeringController
 from hycon.design_tools.wake_steering_design import compute_hysteresis_zones
 from hycon.interfaces import HerculesADInterface
 
-input_dict = load_yaml("inputs/hercules_input.yaml")
+input_dict = load_yaml(sys.argv[1])
 
 use_hysteresis = False
 
