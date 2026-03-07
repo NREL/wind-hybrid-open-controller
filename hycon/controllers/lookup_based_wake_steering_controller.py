@@ -113,3 +113,17 @@ class LookupBasedWakeSteeringController(ControllerBase):
         self.controls_dict = {"yaw_angles": yaw_setpoint}
 
         return {"yaw_angles": yaw_setpoint}
+
+
+class YawSetpointPassthroughController(ControllerBase):
+    """
+    YawSetpointPassthroughController is a simple controller that passes through wind directions
+    as yaw setpoints without modification.
+    """
+
+    def __init__(self, interface: InterfaceBase, verbose: bool = False):
+        super().__init__(interface, verbose=verbose)
+
+    def compute_controls(self, measurements_dict):
+        # Simply pass through the yaw setpoints as the received wind directions
+        return {"yaw_angles": measurements_dict["wind_farm"]["wind_directions"]}

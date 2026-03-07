@@ -1,0 +1,1 @@
+from hycon.estimators.wind_direction_estimator import WindDirectionPassthroughEstimator
