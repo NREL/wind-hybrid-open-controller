@@ -352,3 +352,112 @@ class HybridSupervisoryControllerMultiRef(HybridSupervisoryControllerBase):
         return wind_reference, solar_reference, battery_reference
 
     # TODO: Need to add it's own compute_controls method that ensures interconnect is satisfied
+
+
+class HybridSupervisoryControllerGeneric(ControllerBase):
+    """
+    HybridSupervisoryControllerGeneric is a supervisory controller for a hyrbid
+    plant with an arbitrary set of components. These components may be heterogeneous
+    or homegeneous (e.g. multiple solar farms), or a mixture (e.g. two solar farms combined with
+    one natural gas plant).
+    """
+    
+    def __init__(
+        self,
+        interface,
+        input_dict,
+        component_controllers=[],
+        component_names=[],
+        curtailment_order=[],
+        verbose=False
+    ):
+        """
+
+        Args:
+            interface: The controller's interface to the plant.
+            input_dict: Dictionary containing any additional information needed to initialize the
+                controller.
+            component_controllers: List of controllers for the individual components in the plant.
+                Must be in the same order as the components are listed in the plant parameters.
+            curtailment_order: List of component names corresponding to the order in which
+                components should be curtailed to satisfy interconnection limits. The first element
+                in the list will be curtailed first.
+            verbose: Whether to print additional information during controller operation.
+        """
+        super().__init__(interface=interface, verbose=verbose)
+
+        # Check valid component_controllers
+        if len(component_controllers) == 0:
+            raise ValueError(
+                "component_controllers cannot be empty. "
+                "At least one component controller must be provided."
+            )
+        else:
+            self.component_controllers = component_controllers
+
+        # Check valid curtailment_order
+        if len(curtailment_order) == 0:
+            # Default is reverse order of component_controllers
+            self.curtailment_order = list(range(len(component_controllers)-1, -1, -1))
+        elif len(curtailment_order) != len(component_controllers):
+            raise ValueError(
+                "curtailment_order must be the same length as component_controllers."
+            )
+        elif (not all([type(c) is int and c >= 0 for c in curtailment_order])):
+            raise ValueError(
+                "All entries in curtailment_order must be non-negative integers corresponding to "
+                "indices of component_controllers."
+            )
+        elif max(curtailment_order) != len(component_controllers)-1 or min(curtailment_order) != 0:
+            raise ValueError(
+                "curtailment_order must contain integers corresponding to indices of "
+                "component_controllers."
+            )
+        elif len(curtailment_order) != len(set(curtailment_order)):
+            raise ValueError(
+                "curtailment_order must not contain duplicate entries."
+            )
+        else:
+            self.curtailment_order = curtailment_order
+
+        # Extract interconnection limit, if specified
+        self.static_interconnect_limit = self.plant_parameters.get("interconnect_limit", np.inf)
+        if (
+            not isinstance(self.plant_parameters["interconnect_limit"], (float, int))
+            or self.plant_parameters["interconnect_limit"] <= 0
+        ):
+            raise ValueError("interconnect_limit must be a positive value.")
+
+    def compute_controls(self, measurements_dict):
+        """
+        Pass necessary information to each component controller, and apply power
+        capping/curtailment. 
+
+        TODO: Add forcing of power reference tracking, as needed.
+        """
+
+        # Get dynamic upper limit
+        interconnect_limit = min(
+            self.static_interconnect_limit,
+            measurements_dict.get("dynamic_interconnect_limit", np.inf)
+        )
+
+        # Initialize overall quantities
+        total_local_power_export = 0.0
+        controls_dict = {}
+    
+        # Loop over curtailment order in reverse to bring in power for each component until we hit
+        # the interconnection limit, then curtail as needed according to the order.
+        for cidx in self.curtailment_order[::-1]:
+            cc = self.component_controllers[cidx]
+
+            # Pass component upper limit (or power reference? Not sure)
+            measurements_dict[cc.cname]["power_limit_upper"] = (
+                interconnect_limit - total_local_power_export
+            )
+            component_controls_dict = cc.compute_controls(measurements_dict)
+            controls_dict[cc.cname] = component_controls_dict
+
+            total_local_power_export += measurements_dict[cc.cname]["power"]
+
+        return controls_dict

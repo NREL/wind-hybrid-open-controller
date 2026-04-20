@@ -6,6 +6,7 @@ from hycon.controllers.battery_controller import (
 from hycon.controllers.hybrid_supervisory_controller import (
     HybridSupervisoryControllerBaseline,
     HybridSupervisoryControllerMultiRef,
+    HybridSupervisoryControllerGeneric,
 )
 from hycon.controllers.hydrogen_plant_controller import HydrogenPlantController
 from hycon.controllers.lookup_based_wake_steering_controller import (

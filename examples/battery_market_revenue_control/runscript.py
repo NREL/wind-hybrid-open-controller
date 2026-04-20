@@ -7,7 +7,7 @@ from hercules.grid.grid_utilities import (
 )
 from hercules.hercules_model import HerculesModel
 from hercules.utilities_examples import prepare_output_directory
-from hycon.controllers import BatteryPriceSOCController, HybridSupervisoryControllerMultiRef
+from hycon.controllers import BatteryPriceSOCController, HybridSupervisoryControllerGeneric
 from hycon.interfaces import HerculesInterface
 from plot_outputs import plot_outputs
 
@@ -26,10 +26,12 @@ hmodel = HerculesModel("hercules_input.yaml")
 
 # Establish the interface and controller, assign to the Hercules model
 interface = HerculesInterface(hmodel.h_dict)
-controller = HybridSupervisoryControllerMultiRef(
-    battery_controller=BatteryPriceSOCController(interface=interface, input_dict=hmodel.h_dict),
+controller = HybridSupervisoryControllerGeneric(
     interface=HerculesInterface(hmodel.h_dict),
     input_dict=hmodel.h_dict,
+    component_controllers=[
+        BatteryPriceSOCController(interface=interface, input_dict=hmodel.h_dict, cname="battery")
+    ],
 )
 hmodel.assign_controller(controller)
 

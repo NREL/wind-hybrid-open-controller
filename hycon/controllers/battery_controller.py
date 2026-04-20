@@ -95,8 +95,8 @@ class BatteryController(ControllerBase):
         """
         clip_fraction = np.interp(soc, self.clipping_thresholds, [0, 1, 1, 0], left=0, right=0)
 
-        r_charge = clip_fraction * self.plant_parameters["battery"]["charge_rate"]
-        r_discharge = clip_fraction * self.plant_parameters["battery"]["discharge_rate"]
+        r_charge = clip_fraction * self.plant_parameters[self.cname]["charge_rate"]
+        r_discharge = clip_fraction * self.plant_parameters[self.cname]["discharge_rate"]
 
         return np.clip(reference_power, -r_discharge, r_charge)
 
@@ -104,9 +104,9 @@ class BatteryController(ControllerBase):
         """
         Main compute_controls method for BatteryController.
         """
-        reference_power = measurements_dict["battery"]["power_reference"]
-        current_power = measurements_dict["battery"]["power"]
-        soc = measurements_dict["battery"]["state_of_charge"]
+        reference_power = measurements_dict[self.cname]["power_reference"]
+        current_power = measurements_dict[self.cname]["power"]
+        soc = measurements_dict[self.cname]["state_of_charge"]
 
         # Apply reference clipping
         reference_power = self.soc_clipping(soc, reference_power)
@@ -129,17 +129,17 @@ class BatteryPassthroughController(ControllerBase):
     Simply passes power reference down to (single) battery.
     """
 
-    def __init__(self, interface, input_dict, verbose=True):
+    def __init__(self, interface, input_dict, cname, verbose=True):
         """
         Instantiate BatteryPassthroughController."
         """
-        super().__init__(interface, verbose)
+        super().__init__(interface, cname, verbose)
 
     def compute_controls(self, measurements_dict):
         """
         Main compute_controls method for BatteryPassthroughController.
         """
-        return {"power_setpoint": measurements_dict["battery"]["power_reference"]}
+        return {"power_setpoint": measurements_dict[self.cname]["power_reference"]}
 
 
 class BatteryPriceSOCController(ControllerBase):
@@ -172,8 +172,8 @@ class BatteryPriceSOCController(ControllerBase):
         used at the Hercules/hybrid_plant level.
     """
 
-    def __init__(self, interface, input_dict, controller_parameters={}, verbose=True):
-        super().__init__(interface, verbose)
+    def __init__(self, interface, input_dict, cname, controller_parameters={}, verbose=True):
+        super().__init__(interface, cname, verbose)
 
         # Check that parameters are not specified both in input file
         # and in controller_parameters
@@ -187,13 +187,14 @@ class BatteryPriceSOCController(ControllerBase):
             controller_parameters = {**controller_parameters, **input_dict["controller"]}
         self.set_controller_parameters(**controller_parameters)
 
-        self.rated_power_charging = input_dict["battery"]["charge_rate"]
-        self.rated_power_discharging = input_dict["battery"]["discharge_rate"]
+        self.rated_power_charging = input_dict[self.cname]["charge_rate"]
+        self.rated_power_discharging = input_dict[self.cname]["discharge_rate"]
 
         # Save the duration rounded to nearest hour
+        # TODO: WILL NEED TO GET THE NAME!
         self.duration = round(
-            interface.plant_parameters["battery"]["energy_capacity"]
-            / interface.plant_parameters["battery"]["power_capacity"]
+            interface.plant_parameters[self.cname]["energy_capacity"]
+            / interface.plant_parameters[self.cname]["power_capacity"]
         )
 
         # Raise if duration makes this controller implausible
@@ -249,7 +250,7 @@ class BatteryPriceSOCController(ControllerBase):
         top_1 = sorted_day_ahead_lmps[-1]
 
         # Access the state of charge and LMP in real-time
-        soc = measurements_dict["battery"]["state_of_charge"]
+        soc = measurements_dict[self.cname]["state_of_charge"]
 
         # Note that the convention is followed where charging is negative power
         # This matches what is in place in the hercules/hybrid_plant level and

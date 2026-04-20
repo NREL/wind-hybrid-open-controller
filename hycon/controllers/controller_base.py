@@ -2,9 +2,11 @@ from abc import ABCMeta, abstractmethod
 
 
 class ControllerBase(metaclass=ABCMeta):
-    def __init__(self, interface, verbose=True):
+    def __init__(self, interface, cname=None, verbose=True):
         self._s = interface
         self.verbose = verbose
+
+        self.cname = cname
 
         # Initialize measurements and controls to send
         self._measurements_dict = {}
@@ -18,7 +20,7 @@ class ControllerBase(metaclass=ABCMeta):
 
     def _send_controls(self, input_dict=None):
         self._s.check_controls(self._controls_dict)
-        output_dict = self._s.send_controls(input_dict, **self._controls_dict)
+        output_dict = self._s.send_controls(input_dict, self._controls_dict)
 
         return output_dict
 
@@ -54,12 +56,17 @@ class ControllerBase(metaclass=ABCMeta):
     @property
     def cname(self):
         if hasattr(self, "_cname"):
-            return self._cname
+            if self._cname is None:
+                raise ValueError("cname has been set to None for this controller.")
+            else:
+                return self._cname
         else:
             return ValueError("cname has not been set for this controller.")
 
     @cname.setter
     def cname(self, value):
+        if not isinstance(value, (str, type(None))):
+            raise ValueError("cname must be a string.")
         self._cname = value
 
     @abstractmethod

@@ -67,20 +67,15 @@ class HerculesInterface(InterfaceBase):
 
     def check_controls(self, controls_dict):
         available_controls = [
-            "wind_power_setpoints",
-            "solar_power_setpoint",
-            "battery_power_setpoint",
+            "power_setpoint",
+            "power_setpoints",
         ]
 
-        for k in controls_dict.keys():
-            if k not in available_controls:
-                raise ValueError("Setpoint " + k + " is not available in this configuration.")
-            if k == "wind_power_setpoints":
-                if len(controls_dict[k]) != self._n_turbines:
-                    raise ValueError(
-                        "Number of wind power setpoints ({0})".format(len(controls_dict[k]))
-                        + " must match number of turbines ({0}).".format(self._n_turbines)
-                    )
+        # Check valid control keys _for each component_ on the hybrid plant
+        for c in controls_dict.keys():
+            for k in controls_dict[c].keys():
+                if k not in available_controls:
+                    raise ValueError("Setpoint " + k + " is not available in this configuration.")
 
     def get_measurements(self, h_dict):
         time = h_dict["time"]
@@ -175,27 +170,9 @@ class HerculesInterface(InterfaceBase):
     def send_controls(
         self,
         h_dict,
-        wind_power_setpoints=None,
-        solar_power_setpoint=None,
-        battery_power_setpoint=None,
+        controls_dict,
     ):
-        if wind_power_setpoints is None:
-            wind_power_setpoints = [POWER_SETPOINT_DEFAULT] * self._n_turbines
-        if solar_power_setpoint is None:
-            solar_power_setpoint = POWER_SETPOINT_DEFAULT
-        if battery_power_setpoint is None:
-            battery_power_setpoint = 0.0
-
-        if self._has_wind_component:
-            # Set wind power setpoints
-            h_dict["wind_farm"]["turbine_power_setpoints"] = wind_power_setpoints
-
-        if self._has_solar_component:
-            # Set solar power setpoint
-            h_dict["solar_farm"]["power_setpoint"] = solar_power_setpoint
-
-        if self._has_battery_component:
-            # Set battery power setpoint (positive for discharge)
-            h_dict["battery"]["power_setpoint"] = battery_power_setpoint
+        # Overwrite h_dict elements with controls_dict
+        h_dict = h_dict | controls_dict
 
         return h_dict
