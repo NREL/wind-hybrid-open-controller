@@ -5,14 +5,14 @@ from hycon.interfaces.interface_base import InterfaceBase
 # List of channels that may be present in the hercules component data that the controller needs.
 # Key: Hercules name. Value: Name to use in controller measurements dictionary
 hercules_data_channel_map = {
-    "power" : "power",
-    "soc" : "state_of_charge",
-    "turbine_powers" : "turbine_powers",
-    "turbine_speeds" : "turbine_speeds",
-    "wind_direction_mean" : "wind_direction_mean",
-    "dni" : "direct_normal_irradiance",
-    "aoi" : "angle_of_incidence",
-    "H2_mfr" : "production_rate",
+    "power": "power",
+    "soc": "state_of_charge",
+    "turbine_powers": "turbine_powers",
+    "turbine_speeds": "turbine_speeds",
+    "wind_direction_mean": "wind_direction_mean",
+    "dni": "direct_normal_irradiance",
+    "aoi": "angle_of_incidence",
+    "H2_mfr": "production_rate",
 }
 
 # List of valid Hercules component types recognized by Hycon
@@ -53,7 +53,7 @@ class HerculesInterface(InterfaceBase):
             c_type = self.component_types[c]
             if c_type in hercules_wind_types:
                 self.plant_parameters[c] = {
-                    "type": "wind", # needed?
+                    "type": "wind",  # needed?
                     "capacity": h_dict["wind_farm"]["capacity"],
                     "n_turbines": h_dict["wind_farm"]["n_turbines"],
                     "turbines": range(h_dict["wind_farm"]["n_turbines"]),
@@ -61,7 +61,7 @@ class HerculesInterface(InterfaceBase):
             elif c_type in hercules_solar_types:
                 self.plant_parameters[c] = {
                     "type": "solar",
-                    "capacity": h_dict["solar_farm"]["capacity"]
+                    "capacity": h_dict["solar_farm"]["capacity"],
                 }
             elif c_type in hercules_battery_types:
                 self.plant_parameters[c] = {
@@ -73,7 +73,7 @@ class HerculesInterface(InterfaceBase):
                     "allow_grid_power_consumption": h_dict["battery"].get(
                         "allow_grid_power_consumption", False
                     ),
-            }
+                }
             elif c_type in hercules_hydrogen_types:
                 self.plant_parameters[c] = {"type": "hydrogen"}
             elif c_type in hercules_thermal_types:
@@ -111,7 +111,7 @@ class HerculesInterface(InterfaceBase):
         for c in h_dict["component_names"]:
             component_power = h_dict[c]["power"]
             total_power += component_power
-            component_measurements = {"power" : component_power}
+            component_measurements = {"power": component_power}
             for k, v in hercules_data_channel_map.items():
                 if k in h_dict[c]:
                     component_measurements[v] = h_dict[c][k]
@@ -137,7 +137,7 @@ class HerculesInterface(InterfaceBase):
             measurements["DA_LMP_24hours"] = [
                 h_dict["external_signals"][k] for k in self._lmp_da_keys
             ]
-        measurements["DA_LMP"] = h_dict["external_signals"].get("lmp_da", None) # TODO: used?
+        measurements["DA_LMP"] = h_dict["external_signals"].get("lmp_da", None)  # TODO: used?
         measurements["RT_LMP"] = h_dict["external_signals"].get("lmp_rt", None)
 
         # Special handling for forecast elements
@@ -146,7 +146,6 @@ class HerculesInterface(InterfaceBase):
                 measurements["forecast"][k] = h_dict["external_signals"][k]
 
         # TODO: How to prescribe an override signal for one or more components?
-        
 
         return measurements
 

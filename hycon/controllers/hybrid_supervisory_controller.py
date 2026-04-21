@@ -361,14 +361,9 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
     or homegeneous (e.g. multiple solar farms), or a mixture (e.g. two solar farms combined with
     one natural gas plant).
     """
-    
+
     def __init__(
-        self,
-        interface,
-        input_dict,
-        component_controllers=[],
-        curtailment_order=None,
-        verbose=False
+        self, interface, input_dict, component_controllers=[], curtailment_order=None, verbose=False
     ):
         """
 
@@ -397,25 +392,23 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
         # Check valid curtailment_order
         if curtailment_order is None:
             # Default is reverse order of component_controllers
-            self.curtailment_order = list(range(len(component_controllers)-1, -1, -1))
+            self.curtailment_order = list(range(len(component_controllers) - 1, -1, -1))
         elif len(curtailment_order) != len(component_controllers):
-            raise ValueError(
-                "curtailment_order must be the same length as component_controllers."
-            )
-        elif (not all([type(c) is int and c >= 0 for c in curtailment_order])):
+            raise ValueError("curtailment_order must be the same length as component_controllers.")
+        elif not all([type(c) is int and c >= 0 for c in curtailment_order]):
             raise ValueError(
                 "All entries in curtailment_order must be non-negative integers corresponding to "
                 "indices of component_controllers."
             )
-        elif max(curtailment_order) != len(component_controllers)-1 or min(curtailment_order) != 0:
+        elif (
+            max(curtailment_order) != len(component_controllers) - 1 or min(curtailment_order) != 0
+        ):
             raise ValueError(
                 "curtailment_order must contain integers corresponding to indices of "
                 "component_controllers."
             )
         elif len(curtailment_order) != len(set(curtailment_order)):
-            raise ValueError(
-                "curtailment_order must not contain duplicate entries."
-            )
+            raise ValueError("curtailment_order must not contain duplicate entries.")
         else:
             self.curtailment_order = curtailment_order
 
@@ -434,20 +427,20 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
     def compute_controls(self, measurements_dict):
         """
         Pass necessary information to each component controller, and apply power
-        capping/curtailment. 
+        capping/curtailment.
         """
 
         # Establish dynamic upper limit
         power_reference_total = min(
             self.static_interconnect_limit,
             measurements_dict.get("dynamic_interconnect_limit", np.inf),
-            measurements_dict.get("plant_power_reference", np.inf)
+            measurements_dict.get("plant_power_reference", np.inf),
         )
 
         # Initialize overall quantities
         power_export_total = 0.0
         controls_dict = {}
-    
+
         # Loop over curtailment order in reverse to bring in power for each component until we hit
         # the interconnection limit, then curtail as needed according to the order.
         for cidx in self.curtailment_order[::-1]:
@@ -459,7 +452,7 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
             # as well as the power reference. Component controllers can then chose which to use.
             measurements_dict[cc.cname]["power_limit_upper"] = power_reference_component
             measurements_dict[cc.cname]["power_reference"] = power_reference_component
-            
+
             component_controls_dict = cc.compute_controls(measurements_dict)
             controls_dict[cc.cname] = component_controls_dict
 

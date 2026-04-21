@@ -110,9 +110,7 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
     Inherits from WindFarmPowerDistributingController.
     """
 
-    def __init__(
-        self, interface, input_dict, cname, controller_parameters={}, verbose=False
-    ):
+    def __init__(self, interface, input_dict, cname, controller_parameters={}, verbose=False):
         """
         Constructor for WindFarmPowerTrackingController.
 
@@ -129,11 +127,7 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
 
         # TODO: convert to controller_parameters setup
         super().__init__(
-            interface,
-            input_dict,
-            cname,
-            ramp_rate_limit=ramp_rate_limit,
-            verbose=verbose
+            interface, input_dict, cname, ramp_rate_limit=ramp_rate_limit, verbose=verbose
         )
 
         # Proportional gain
