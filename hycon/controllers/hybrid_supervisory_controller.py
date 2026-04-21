@@ -363,7 +363,13 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
     """
 
     def __init__(
-        self, interface, input_dict, component_controllers=[], curtailment_order=None, verbose=False
+        self,
+        interface,
+        input_dict,
+        cname="supervisor",
+        component_controllers=[],
+        curtailment_order=None,
+        verbose=False,
     ):
         """
 
@@ -378,7 +384,7 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
                 in the list will be curtailed first.
             verbose: Whether to print additional information during controller operation.
         """
-        super().__init__(interface=interface, verbose=verbose)
+        super().__init__(interface=interface, cname=cname, verbose=verbose)
 
         # Check valid component_controllers
         if len(component_controllers) == 0:
@@ -430,13 +436,25 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
         capping/curtailment.
         """
 
+        # Compute available storage for charging
+        total_available_storage_for_charging = 0.0
+        for cc in self.component_controllers:
+            if cc.plant_parameters[cc.cname]["component_category"] == "storage" and not np.isclose(
+                measurements_dict[cc.cname]["state_of_charge"],
+                cc.plant_parameters[cc.cname].get("state_of_charge_max", 1.0),
+                atol=1e-2,  # Within 1% of max SOC, assume storage is fully charged
+            ):
+                # TODO: Check if the controller _wants_ to charge
+                total_available_storage_for_charging += cc.plant_parameters[cc.cname]["charge_rate"]
+
         # Establish dynamic upper limit
         provided_power_reference = measurements_dict["plant_power_reference"]
         power_reference_total = min(
             self.static_interconnect_limit,
             measurements_dict.get("dynamic_interconnect_limit", np.inf),
-            provided_power_reference if provided_power_reference is not None else np.inf
+            provided_power_reference if provided_power_reference is not None else np.inf,
         )
+        power_reference_with_storage = power_reference_total + total_available_storage_for_charging
 
         # Initialize overall quantities
         power_export_total = 0.0
@@ -447,7 +465,10 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
         for cidx in self.curtailment_order[::-1]:
             cc = self.component_controllers[cidx]
 
-            power_reference_component = power_reference_total - power_export_total
+            if cc.plant_parameters[cc.cname]["component_category"] == "generator":
+                power_reference_component = power_reference_with_storage - power_export_total
+            elif cc.plant_parameters[cc.cname]["component_category"] == "storage":
+                power_reference_component = power_reference_total - power_export_total
 
             # Assign power_reference_component the upper limit for the component's power output,
             # as well as the power reference. Component controllers can then chose which to use.

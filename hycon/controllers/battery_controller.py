@@ -26,9 +26,6 @@ class BatteryController(ControllerBase):
         """
         super().__init__(interface, cname, verbose)
 
-        # Extract global parameters
-        self.dt = input_dict["dt"]
-
         # Check that parameters are not specified both in input file
         # and in controller_parameters
         if "controller" in input_dict:

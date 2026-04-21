@@ -20,10 +20,10 @@ def plot_outputs():
 
     print(df_batt["battery.power"].head())
 
-    pow_col = "wind_farm.turbine_powers.000"
+    pow_col = "distributed_wind.turbine_powers.000"
     ref_col = "external_signals.plant_power_reference"
     batt_col = "battery.power"
-    ws_col = "wind_farm.wind_speeds_withwakes.000"
+    ws_col = "distributed_wind.wind_speeds_withwakes.000"
 
     # Create plots
     fig, ax = plt.subplots(3, 1, sharex=True)

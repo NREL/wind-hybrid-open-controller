@@ -54,30 +54,35 @@ class HerculesInterface(InterfaceBase):
             if c_type in hercules_wind_types:
                 self.plant_parameters[c] = {
                     "type": "wind",  # needed?
-                    "capacity": h_dict["wind_farm"]["capacity"],
-                    "n_turbines": h_dict["wind_farm"]["n_turbines"],
-                    "turbines": range(h_dict["wind_farm"]["n_turbines"]),
+                    "component_category": "generator",
+                    "capacity": h_dict[c]["capacity"],
+                    "n_turbines": h_dict[c]["n_turbines"],
+                    "turbines": range(h_dict[c]["n_turbines"]),
                 }
             elif c_type in hercules_solar_types:
                 self.plant_parameters[c] = {
                     "type": "solar",
-                    "capacity": h_dict["solar_farm"]["capacity"],
+                    "component_category": "generator",
+                    "capacity": h_dict[c]["capacity"],
                 }
             elif c_type in hercules_battery_types:
                 self.plant_parameters[c] = {
                     "type": "battery",
-                    "power_capacity": h_dict["battery"]["size"],
-                    "energy_capacity": h_dict["battery"]["energy_capacity"],
-                    "charge_rate": h_dict["battery"]["charge_rate"],
-                    "discharge_rate": h_dict["battery"]["discharge_rate"],
-                    "allow_grid_power_consumption": h_dict["battery"].get(
+                    "component_category": "storage",
+                    "power_capacity": h_dict[c]["size"],
+                    "energy_capacity": h_dict[c]["energy_capacity"],
+                    "charge_rate": h_dict[c]["charge_rate"],
+                    "discharge_rate": h_dict[c]["discharge_rate"],
+                    "allow_grid_power_consumption": h_dict[c].get(
                         "allow_grid_power_consumption", False
                     ),
+                    "state_of_charge_max": h_dict[c].get("max_SOC", 1.0),
+                    "state_of_charge_min": h_dict[c].get("min_SOC", 0.0),
                 }
             elif c_type in hercules_hydrogen_types:
-                self.plant_parameters[c] = {"type": "hydrogen"}
+                self.plant_parameters[c] = {"type": "hydrogen", "component_category": "load"}
             elif c_type in hercules_thermal_types:
-                self.plant_parameters[c] = {"type": "thermal"}
+                self.plant_parameters[c] = {"type": "thermal", "component_category": "generator"}
             else:
                 raise ValueError("Component type " + type + " not recognized by Hycon.")
 

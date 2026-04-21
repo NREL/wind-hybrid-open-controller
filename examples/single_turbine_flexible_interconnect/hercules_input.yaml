@@ -13,7 +13,7 @@ verbose: False
 plant: 
   interconnect_limit: 15000
 
-wind_farm:
+distributed_wind:
   component_type: WindFarm
   wake_method: precomputed
   floris_input_file: floris_input.yaml

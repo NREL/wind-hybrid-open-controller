@@ -5,8 +5,7 @@ from hercules.utilities import load_hercules_input
 from hercules.utilities_examples import prepare_output_directory
 from hycon.controllers import (
     BatteryController,
-    HybridSupervisoryControllerBaseline,
-    HybridSupervisoryControllerMultiRef,
+    HybridSupervisoryControllerGeneric,
     WindFarmPowerTrackingController,
 )
 from hycon.interfaces import HerculesInterface
@@ -63,10 +62,12 @@ h_dict["output_file"] = "outputs/hercules_output_baseline.h5"
 
 hmodel = HerculesModel(h_dict)
 interface = HerculesInterface(hmodel.h_dict)
-controller = HybridSupervisoryControllerMultiRef(
-    wind_controller=WindFarmPowerTrackingController(interface, hmodel.h_dict),
+wind_controller = WindFarmPowerTrackingController(interface, hmodel.h_dict, "distributed_wind")
+controller = HybridSupervisoryControllerGeneric(
     interface=interface,
     input_dict=hmodel.h_dict,
+    cname="supervisory_controller",
+    component_controllers=[wind_controller]
 )
 hmodel.assign_controller(controller)
 
@@ -81,10 +82,11 @@ h_dict["output_file"] = "outputs/hercules_output_wind_only.h5"
 
 hmodel = HerculesModel(h_dict)
 interface = HerculesInterface(hmodel.h_dict)
-controller = HybridSupervisoryControllerBaseline(
-    wind_controller=WindFarmPowerTrackingController(interface, hmodel.h_dict),
+controller = HybridSupervisoryControllerGeneric(
     interface=interface,
     input_dict=hmodel.h_dict,
+    cname="supervisory_controller",
+    component_controllers=[wind_controller]
 )
 hmodel.assign_controller(controller)
 
@@ -97,11 +99,11 @@ h_dict = load_hercules_input("hercules_input.yaml")
 h_dict["output_file"] = "outputs/hercules_output_with_battery.h5"
 hmodel = HerculesModel(h_dict)
 interface = HerculesInterface(hmodel.h_dict)
-controller = HybridSupervisoryControllerBaseline(
-    wind_controller=WindFarmPowerTrackingController(interface, hmodel.h_dict),
-    battery_controller=BatteryController(interface, hmodel.h_dict),
+controller = HybridSupervisoryControllerGeneric(
     interface=interface,
     input_dict=hmodel.h_dict,
+    cname="supervisory_controller",
+    component_controllers=[wind_controller, BatteryController(interface, hmodel.h_dict, "battery")],
 )
 hmodel.assign_controller(controller)
 
