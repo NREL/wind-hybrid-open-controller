@@ -38,7 +38,8 @@ solar_controller = (
     SolarPassthroughController(interface, hmodel.h_dict, "solar_farm") if include_solar else None
 )
 battery_controller = (
-    BatteryController(interface, hmodel.h_dict, "battery", {"k_batt": 0.1}) if include_battery
+    BatteryController(interface, hmodel.h_dict, "battery", {"k_batt": 0.1})
+    if include_battery
     else None
 )
 component_controllers = [wind_controller]

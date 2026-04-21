@@ -35,4 +35,4 @@ battery:
 external_data:
   external_data_file: power_reference.csv
   log_channels:
-    - battery_power_reference
+    - plant_power_reference
