@@ -67,7 +67,7 @@ controller = HybridSupervisoryControllerGeneric(
     interface=interface,
     input_dict=hmodel.h_dict,
     cname="supervisory_controller",
-    component_controllers=[wind_controller]
+    component_controllers=[wind_controller],
 )
 hmodel.assign_controller(controller)
 
@@ -86,7 +86,7 @@ controller = HybridSupervisoryControllerGeneric(
     interface=interface,
     input_dict=hmodel.h_dict,
     cname="supervisory_controller",
-    component_controllers=[wind_controller]
+    component_controllers=[wind_controller],
 )
 hmodel.assign_controller(controller)
 
