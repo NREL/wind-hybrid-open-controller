@@ -82,7 +82,7 @@ def test_LookupBasedWakeSteeringController(test_hercules_v1_dict, test_interface
         interface=test_interface_hercules_ad,
         input_dict=test_hercules_v1_dict,
         cname="wind_farm",
-        df_yaw=df_opt_test
+        df_yaw=df_opt_test,
     )
 
     test_hercules_v1_dict["time"] = 20
@@ -126,7 +126,7 @@ def test_WindFarmPowerDistributingController(test_hercules_v1_dict, test_interfa
         interface=test_interface_hercules_ad,
         input_dict=test_hercules_v1_dict,
         cname="wind_farm",
-        ramp_rate_limit=200
+        ramp_rate_limit=200,
     )
     test_hercules_v1_dict["external_signals"]["wind_power_reference"] = 1000
     test_controller.step(input_dict=test_hercules_v1_dict)  # To initialize previous power setpoints
@@ -557,7 +557,7 @@ def test_BatteryController(test_hercules_v1_dict):
         test_interface,
         test_hercules_v1_dict,
         "battery",
-        {"clipping_thresholds": clipping_threshold_0}
+        {"clipping_thresholds": clipping_threshold_0},
     )
     test_controller_0.step(test_hercules_v1_dict)
     out_0 = test_controller_0._controls_dict["power_setpoint"]
@@ -566,7 +566,7 @@ def test_BatteryController(test_hercules_v1_dict):
         test_interface,
         test_hercules_v1_dict,
         "battery",
-        {"clipping_thresholds": clipping_threshold_1}
+        {"clipping_thresholds": clipping_threshold_1},
     )
     test_controller_1.step(test_hercules_v1_dict)
     out_1 = test_controller_1._controls_dict["power_setpoint"]
@@ -575,7 +575,7 @@ def test_BatteryController(test_hercules_v1_dict):
         test_interface,
         test_hercules_v1_dict,
         "battery",
-        {"clipping_thresholds": clipping_threshold_2}
+        {"clipping_thresholds": clipping_threshold_2},
     )
     test_controller_2.step(test_hercules_v1_dict)
     out_2 = test_controller_2._controls_dict["power_setpoint"]
