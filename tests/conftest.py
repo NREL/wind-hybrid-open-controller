@@ -57,12 +57,16 @@ def test_hercules_dict():
             "wind_direction_mean": 271.0,
             "turbine_powers": [4000.0, 4001.0],
             "wind_speed": 10.0,
+            "component_type": "WindFarm",
+            "component_category": "generator",
         },
         "solar_farm": {
             "capacity": 1000.0,
             "power": 1000.0,  # kW
             "dni": 1000.0,
             "aoi": 30.0,
+            "component_type": "SolarPySAMPVWatts",
+            "component_category": "generator",
         },
         "battery": {
             "size": 10.0e3,
@@ -71,9 +75,13 @@ def test_hercules_dict():
             "soc": 0.3,
             "charge_rate": 20e3,
             "discharge_rate": 15e3,
+            "component_type": "BatterySimple",
+            "component_category": "storage",
         },
         "electrolyzer": {
             "H2_mfr": 0.03,
+            "component_type": "ElectrolyzerPlant",
+            "component_category": "load",
         },
         "external_signals": {
             "wind_power_reference": 1000.0,
@@ -85,6 +93,7 @@ def test_hercules_dict():
             "ws_median_0": 8.1,
             "hydrogen_reference": 0.02,
         },
+        "component_names": ["wind_farm", "solar_farm", "battery", "electrolyzer"],
     }
 
 

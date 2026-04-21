@@ -19,8 +19,6 @@ class HybridSupervisoryControllerBase(ControllerBase):
     ):
         super().__init__(interface=interface, verbose=verbose)
 
-        self.dt = input_dict["dt"]  # Won't be needed here, but generally good to have
-
         # Assign the individual asset controllers
         self.wind_controller = wind_controller
         self.solar_controller = solar_controller
@@ -49,15 +47,15 @@ class HybridSupervisoryControllerBase(ControllerBase):
         if self._has_wind_controller:
             measurements_dict["wind_farm"]["power_reference"] = wind_reference
             wind_controls_dict = self.wind_controller.compute_controls(measurements_dict)
-            controls_dict["wind_power_setpoints"] = wind_controls_dict["power_setpoints"]
+            controls_dict["wind_farm"] = {"power_setpoints": wind_controls_dict["power_setpoints"]}
         if self._has_solar_controller:
             measurements_dict["solar_farm"]["power_reference"] = solar_reference
             solar_controls_dict = self.solar_controller.compute_controls(measurements_dict)
-            controls_dict["solar_power_setpoint"] = solar_controls_dict["power_setpoint"]
+            controls_dict["solar_farm"] = {"power_setpoint": solar_controls_dict["power_setpoint"]}
         if self._has_battery_controller:
             measurements_dict["battery"]["power_reference"] = battery_reference
             battery_controls_dict = self.battery_controller.compute_controls(measurements_dict)
-            controls_dict["battery_power_setpoint"] = battery_controls_dict["power_setpoint"]
+            controls_dict["battery"] = {"power_setpoint": battery_controls_dict["power_setpoint"]}
 
         return controls_dict
 
@@ -356,9 +354,9 @@ class HybridSupervisoryControllerMultiRef(HybridSupervisoryControllerBase):
 
 class HybridSupervisoryControllerGeneric(ControllerBase):
     """
-    HybridSupervisoryControllerGeneric is a supervisory controller for a hyrbid
+    HybridSupervisoryControllerGeneric is a supervisory controller for a hybrid
     plant with an arbitrary set of components. These components may be heterogeneous
-    or homegeneous (e.g. multiple solar farms), or a mixture (e.g. two solar farms combined with
+    or homogeneous (e.g. multiple solar farms), or a mixture (e.g. two solar farms combined with
     one natural gas plant).
     """
 

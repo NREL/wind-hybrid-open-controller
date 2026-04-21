@@ -14,6 +14,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
         self,
         interface: InterfaceBase,
         input_dict: dict,
+        cname: str,
         df_yaw: pd.DataFrame | None = None,
         hysteresis_dict: dict | None = None,
         verbose: bool = False,
@@ -31,7 +32,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
                 Defaults to None.
             verbose (bool): Verbosity flag.
         """
-        super().__init__(interface, verbose=verbose)
+        super().__init__(interface, cname, verbose=verbose)
 
         # Pull plant parameters for ease of use
         self.n_turbines = self.plant_parameters["n_turbines"]
