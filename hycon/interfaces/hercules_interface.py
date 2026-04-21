@@ -1,7 +1,19 @@
 import copy
 
-from hycon.controllers.wind_farm_power_tracking_controller import POWER_SETPOINT_DEFAULT
 from hycon.interfaces.interface_base import InterfaceBase
+
+# List of channels that may be present in the hercules component data that the controller needs.
+# Key: Hercules name. Value: Name to use in controller measurements dictionary
+hercules_data_channel_map = {
+    "power" : "power",
+    "soc" : "state_of_charge",
+    "turbine_powers" : "turbine_powers",
+    "turbine_speeds" : "turbine_speeds",
+    "wind_direction_mean" : "wind_direction_mean",
+    "dni" : "direct_normal_irradiance",
+    "aoi" : "angle_of_incidence",
+    "H2_mfr" : "production_rate",
+}
 
 
 class HerculesInterface(InterfaceBase):
@@ -88,82 +100,45 @@ class HerculesInterface(InterfaceBase):
 
         total_power = 0.0
 
-        # Basic wind quantities
-        if self._has_wind_component:
-            measurements["wind_farm"] = {
-                "turbine_powers": h_dict["wind_farm"]["turbine_powers"],
-                "wind_directions": [h_dict["wind_farm"]["wind_direction_mean"]] * self._n_turbines,
-                # TODO: wind_speeds?
-            }
-            total_power += sum(measurements["wind_farm"]["turbine_powers"])
+        # Loop over components in simulation
+        for c in h_dict["component_names"]:
+            component_power = h_dict[c]["power"]
+            total_power += component_power
+            component_measurements = {"power" : component_power}
+            for k, v in hercules_data_channel_map.items():
+                if k in h_dict[c]:
+                    component_measurements[v] = h_dict[c][k]
 
-        # Basic solar quantities
-        if self._has_solar_component:
-            measurements["solar_farm"] = {
-                "power": h_dict["solar_farm"]["power"],
-                "direct_normal_irradiance": h_dict["solar_farm"]["dni"],
-                "angle_of_incidence": h_dict["solar_farm"]["aoi"],
-            }
-            total_power += measurements["solar_farm"]["power"]
+            # Assign to main measurements dictionary
+            measurements[c] = component_measurements
 
-        # Basic battery quantities
-        if self._has_battery_component:
-            measurements["battery"] = {
-                "power": h_dict["battery"]["power"],
-                "state_of_charge": h_dict["battery"]["soc"],
-            }
-            total_power += measurements["battery"]["power"]
-
-        # Basic hydrogen quantities
-        if self._has_hydrogen_component:
-            measurements["hydrogen"] = {
-                "production_rate": h_dict["electrolyzer"]["H2_mfr"],
-            }
-
-        # Handle external signals (parse and pass to individual components)
-        if "external_signals" in h_dict:
-            if "plant_power_reference" in h_dict["external_signals"]:
-                measurements["plant_power_reference"] = h_dict["external_signals"][
-                    "plant_power_reference"
-                ]
-
-            if "wind_power_reference" in h_dict["external_signals"] and self._has_wind_component:
-                measurements["wind_farm"]["power_reference"] = h_dict["external_signals"][
-                    "wind_power_reference"
-                ]
-
-            if "solar_power_reference" in h_dict["external_signals"] and self._has_solar_component:
-                measurements["solar_farm"]["power_reference"] = h_dict["external_signals"][
-                    "solar_power_reference"
-                ]
-
-            if self._has_battery_component:
-                if "battery_power_reference" in h_dict["external_signals"]:
-                    measurements["battery"]["power_reference"] = h_dict["external_signals"][
-                        "battery_power_reference"
-                    ]
-
-            if "hydrogen_reference" in h_dict["external_signals"] and self._has_hydrogen_component:
-                measurements["hydrogen"]["power_reference"] = h_dict["external_signals"][
-                    "hydrogen_reference"
-                ]
-
-            # Grid price information (using pre-computed keys for performance)
-            if "lmp_da_00" in h_dict["external_signals"]:
-                measurements["DA_LMP_24hours"] = [
-                    h_dict["external_signals"][k] for k in self._lmp_da_keys
-                ]
-            if "lmp_da" in h_dict["external_signals"]:
-                measurements["DA_LMP"] = h_dict["external_signals"]["lmp_da"]
-            if "lmp_rt" in h_dict["external_signals"]:
-                measurements["RT_LMP"] = h_dict["external_signals"]["lmp_rt"]
-
-            # Special handling for forecast elements
-            for k in h_dict["external_signals"].keys():
-                if "forecast" in k:
-                    measurements["forecast"][k] = h_dict["external_signals"][k]
-
+        # Record total power
         measurements["total_power"] = total_power
+
+        ## Handle external signals (somewhat hardcoded; can add more as needed)
+        measurements["plant_power_reference"] = h_dict["external_signals"].get(
+            "plant_power_reference", None
+        )
+
+        # TODO: how to pass hydrogen reference to the particular component?
+        # measurements["hydrogen"]["power_reference"] = h_dict["external_signals"].get(
+        #     "hydrogen_reference", 0
+        # )
+
+        # Grid price information (using pre-computed keys for performance)
+        if "lmp_da_00" in h_dict["external_signals"]:
+            measurements["DA_LMP_24hours"] = [
+                h_dict["external_signals"][k] for k in self._lmp_da_keys
+            ]
+        measurements["DA_LMP"] = h_dict["external_signals"].get("lmp_da", None) # TODO: used?
+        measurements["RT_LMP"] = h_dict["external_signals"].get("lmp_rt", None)
+
+        # Special handling for forecast elements
+        for k in h_dict["external_signals"].keys():
+            if "forecast" in k:
+                measurements["forecast"][k] = h_dict["external_signals"][k]
+
+        # TODO: How to prescribe an override signal for one or more components?
 
         return measurements
 
