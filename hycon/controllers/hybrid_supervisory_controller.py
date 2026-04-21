@@ -431,10 +431,11 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
         """
 
         # Establish dynamic upper limit
+        provided_power_reference = measurements_dict["plant_power_reference"]
         power_reference_total = min(
             self.static_interconnect_limit,
             measurements_dict.get("dynamic_interconnect_limit", np.inf),
-            measurements_dict.get("plant_power_reference", np.inf),
+            provided_power_reference if provided_power_reference is not None else np.inf
         )
 
         # Initialize overall quantities
