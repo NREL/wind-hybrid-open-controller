@@ -12,11 +12,8 @@ class WindFarmPowerDistributingController(ControllerBase):
     feedback on current power generation.
     """
 
-    def __init__(self, interface, input_dict, ramp_rate_limit=None, verbose=False):
-        super().__init__(interface, verbose=verbose)
-
-        # Pull plant parameters for ease of use
-        self.cname = "wind_farm"
+    def __init__(self, interface, input_dict, cname, ramp_rate_limit=None, verbose=False):
+        super().__init__(interface, cname, verbose=verbose)
 
         if self.cname in self.plant_parameters:
             self.n_turbines = self.plant_parameters[self.cname]["n_turbines"]
@@ -114,7 +111,7 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
     """
 
     def __init__(
-        self, interface, input_dict, proportional_gain=1, ramp_rate_limit=None, verbose=False
+        self, interface, input_dict, cname, controller_parameters={}, verbose=False
     ):
         """
         Constructor for WindFarmPowerTrackingController.
@@ -126,7 +123,18 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
             ramp_rate_limit: Ramp rate limit for the controller (kW/s). Defaults to None.
             verbose: Boolean flag for verbosity.
         """
-        super().__init__(interface, input_dict, ramp_rate_limit=ramp_rate_limit, verbose=verbose)
+        # TODO: unpack properly from controller_parameters and input_dict
+        proportional_gain = controller_parameters.get("proportional_gain", 1)
+        ramp_rate_limit = controller_parameters.get("ramp_rate_limit", None)
+
+        # TODO: convert to controller_parameters setup
+        super().__init__(
+            interface,
+            input_dict,
+            cname,
+            ramp_rate_limit=ramp_rate_limit,
+            verbose=verbose
+        )
 
         # Proportional gain
         self.K_p = proportional_gain * 1 / self.n_turbines

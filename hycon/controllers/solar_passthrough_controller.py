@@ -6,8 +6,8 @@ class SolarPassthroughController(ControllerBase):
     Simply passes power reference down to (scalar) solar simulator.
     """
 
-    def __init__(self, interface, input_dict, verbose=True):
-        super().__init__(interface, verbose)
+    def __init__(self, interface, input_dict, cname, controller_parameters={}, verbose=True):
+        super().__init__(interface, cname, verbose)
 
     def compute_controls(self, measurements_dict):
         return {"power_setpoint": measurements_dict["solar_farm"]["power_reference"]}

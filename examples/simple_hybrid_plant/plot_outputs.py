@@ -7,13 +7,10 @@ def plot_outputs():
     # Read the Hercules output file using HerculesOutput
     ho = HerculesOutput("outputs/hercules_output.h5")
 
-    # Print metadata information
-    print("Simulation Metadata:")
-    ho.print_metadata()
-    print()
-
     df = ho.df
-    print(df.columns)
+    print("Available columns in the output DataFrame:")
+    for c in df.columns.tolist():
+        print(c)
 
     # Get high-level signals
     power_output = df["plant.power"]

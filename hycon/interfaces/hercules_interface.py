@@ -15,6 +15,13 @@ hercules_data_channel_map = {
     "H2_mfr" : "production_rate",
 }
 
+# List of valid Hercules component types recognized by Hycon
+hercules_wind_types = ["WindFarm"]
+hercules_solar_types = ["SolarPySAMPVWatts"]
+hercules_battery_types = ["BatteryLithiumIon", "BatterySimple"]
+hercules_hydrogen_types = ["ElectrolyzerPlant"]
+hercules_thermal_types = ["HardCoalSteamTurbine", "OpenCycleGasTurbine"]
+
 
 class HerculesInterface(InterfaceBase):
     """
@@ -38,41 +45,41 @@ class HerculesInterface(InterfaceBase):
             self.plant_parameters = {}
 
         # Determine which components are present in the simulation
-        self._has_wind_component = "wind_farm" in h_dict
-        self._has_solar_component = "solar_farm" in h_dict
-        self._has_battery_component = "battery" in h_dict
-        self._has_hydrogen_component = "electrolyzer" in h_dict
+        self.component_names = h_dict["component_names"]
+        self.component_types = {c: h_dict[c]["component_type"] for c in self.component_names}
 
-        # Wind farm parameters
-        if self._has_wind_component:
-            self.plant_parameters["wind_farm"] = {
-                "capacity": h_dict["wind_farm"]["capacity"],
-                "n_turbines": h_dict["wind_farm"]["n_turbines"],
-                "turbines": range(h_dict["wind_farm"]["n_turbines"]),
+        # Extract parameters for various component types
+        for c in self.component_names:
+            c_type = self.component_types[c]
+            if c_type in hercules_wind_types:
+                self.plant_parameters[c] = {
+                    "type": "wind", # needed?
+                    "capacity": h_dict["wind_farm"]["capacity"],
+                    "n_turbines": h_dict["wind_farm"]["n_turbines"],
+                    "turbines": range(h_dict["wind_farm"]["n_turbines"]),
+                }
+            elif c_type in hercules_solar_types:
+                self.plant_parameters[c] = {
+                    "type": "solar",
+                    "capacity": h_dict["solar_farm"]["capacity"]
+                }
+            elif c_type in hercules_battery_types:
+                self.plant_parameters[c] = {
+                    "type": "battery",
+                    "power_capacity": h_dict["battery"]["size"],
+                    "energy_capacity": h_dict["battery"]["energy_capacity"],
+                    "charge_rate": h_dict["battery"]["charge_rate"],
+                    "discharge_rate": h_dict["battery"]["discharge_rate"],
+                    "allow_grid_power_consumption": h_dict["battery"].get(
+                        "allow_grid_power_consumption", False
+                    ),
             }
-            self._n_turbines = self.plant_parameters["wind_farm"]["n_turbines"]
-        else:
-            self._n_turbines = 0
-
-        # Solar farm parameters
-        if self._has_solar_component:
-            self.plant_parameters["solar_farm"] = {"capacity": h_dict["solar_farm"]["capacity"]}
-
-        # Battery parameters
-        if self._has_battery_component:
-            self.plant_parameters["battery"] = {
-                "power_capacity": h_dict["battery"]["size"],
-                "energy_capacity": h_dict["battery"]["energy_capacity"],
-                "charge_rate": h_dict["battery"]["charge_rate"],
-                "discharge_rate": h_dict["battery"]["discharge_rate"],
-                "allow_grid_power_consumption": h_dict["battery"].get(
-                    "allow_grid_power_consumption", False
-                ),
-            }
-
-        # Electrolyzer parameters (placeholder for future electrolyzer parameters)
-        if self._has_hydrogen_component:
-            self.plant_parameters["hydrogen"] = {}
+            elif c_type in hercules_hydrogen_types:
+                self.plant_parameters[c] = {"type": "hydrogen"}
+            elif c_type in hercules_thermal_types:
+                self.plant_parameters[c] = {"type": "thermal"}
+            else:
+                raise ValueError("Component type " + type + " not recognized by Hycon.")
 
         # Pre-compute LMP keys to avoid string formatting in get_measurements
         self._lmp_da_keys = tuple(f"lmp_da_{h:02d}" for h in range(24))
@@ -139,6 +146,7 @@ class HerculesInterface(InterfaceBase):
                 measurements["forecast"][k] = h_dict["external_signals"][k]
 
         # TODO: How to prescribe an override signal for one or more components?
+        
 
         return measurements
 
@@ -147,6 +155,14 @@ class HerculesInterface(InterfaceBase):
         h_dict,
         controls_dict,
     ):
+        # Translate controls_dict as needed
+        for c in self.component_names:
+            c_type = self.component_types[c]
+            if c_type in hercules_wind_types:
+                controls_dict[c]["turbine_power_setpoints"] = controls_dict[c].pop(
+                    "power_setpoints"
+                )
+
         # Overwrite h_dict elements with controls_dict
         h_dict = h_dict | controls_dict
 

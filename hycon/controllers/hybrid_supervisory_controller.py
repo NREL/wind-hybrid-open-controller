@@ -367,8 +367,7 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
         interface,
         input_dict,
         component_controllers=[],
-        component_names=[],
-        curtailment_order=[],
+        curtailment_order=None,
         verbose=False
     ):
         """
@@ -396,7 +395,7 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
             self.component_controllers = component_controllers
 
         # Check valid curtailment_order
-        if len(curtailment_order) == 0:
+        if curtailment_order is None:
             # Default is reverse order of component_controllers
             self.curtailment_order = list(range(len(component_controllers)-1, -1, -1))
         elif len(curtailment_order) != len(component_controllers):
@@ -422,28 +421,31 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
 
         # Extract interconnection limit, if specified
         self.static_interconnect_limit = self.plant_parameters.get("interconnect_limit", np.inf)
+        if self.static_interconnect_limit == -1:
+            self.static_interconnect_limit = np.inf
         if (
             not isinstance(self.plant_parameters["interconnect_limit"], (float, int))
-            or self.plant_parameters["interconnect_limit"] <= 0
+            or self.plant_parameters["interconnect_limit"] < -1
         ):
-            raise ValueError("interconnect_limit must be a positive value.")
+            raise ValueError(
+                "interconnect_limit must be a positive value (or -1, indicating no limit)."
+            )
 
     def compute_controls(self, measurements_dict):
         """
         Pass necessary information to each component controller, and apply power
         capping/curtailment. 
-
-        TODO: Add forcing of power reference tracking, as needed.
         """
 
-        # Get dynamic upper limit
-        interconnect_limit = min(
+        # Establish dynamic upper limit
+        power_reference_total = min(
             self.static_interconnect_limit,
-            measurements_dict.get("dynamic_interconnect_limit", np.inf)
+            measurements_dict.get("dynamic_interconnect_limit", np.inf),
+            measurements_dict.get("plant_power_reference", np.inf)
         )
 
         # Initialize overall quantities
-        total_local_power_export = 0.0
+        power_export_total = 0.0
         controls_dict = {}
     
         # Loop over curtailment order in reverse to bring in power for each component until we hit
@@ -451,13 +453,16 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
         for cidx in self.curtailment_order[::-1]:
             cc = self.component_controllers[cidx]
 
-            # Pass component upper limit (or power reference? Not sure)
-            measurements_dict[cc.cname]["power_limit_upper"] = (
-                interconnect_limit - total_local_power_export
-            )
+            power_reference_component = power_reference_total - power_export_total
+
+            # Assign power_reference_component the upper limit for the component's power output,
+            # as well as the power reference. Component controllers can then chose which to use.
+            measurements_dict[cc.cname]["power_limit_upper"] = power_reference_component
+            measurements_dict[cc.cname]["power_reference"] = power_reference_component
+            
             component_controls_dict = cc.compute_controls(measurements_dict)
             controls_dict[cc.cname] = component_controls_dict
 
-            total_local_power_export += measurements_dict[cc.cname]["power"]
+            power_export_total += measurements_dict[cc.cname]["power"]
 
         return controls_dict

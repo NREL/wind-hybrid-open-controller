@@ -11,7 +11,7 @@ class BatteryController(ControllerBase):
     changes in power reference, which can lead to degradation.
     """
 
-    def __init__(self, interface, input_dict, controller_parameters={}, verbose=True):
+    def __init__(self, interface, input_dict, cname, controller_parameters={}, verbose=True):
         """
         Instantiate BatteryController.
 
@@ -24,7 +24,7 @@ class BatteryController(ControllerBase):
                 the latter will take precedence.
             verbose (bool): If True, print debug information.
         """
-        super().__init__(interface, verbose)
+        super().__init__(interface, cname, verbose)
 
         # Extract global parameters
         self.dt = input_dict["dt"]
