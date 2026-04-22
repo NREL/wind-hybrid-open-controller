@@ -137,6 +137,13 @@ class HerculesInterface(InterfaceBase):
         #     "hydrogen_reference", 0
         # )
 
+        # Special handling for wind directions
+        for c in h_dict["component_names"]:
+            if self.component_types[c] in hercules_wind_types:
+                measurements[c]["wind_directions"] = [
+                    h_dict[c]["wind_direction_mean"]
+                ] * self.plant_parameters[c]["n_turbines"]
+
         # Grid price information (using pre-computed keys for performance)
         if "lmp_da_00" in h_dict["external_signals"]:
             measurements["DA_LMP_24hours"] = [
@@ -159,6 +166,7 @@ class HerculesInterface(InterfaceBase):
         h_dict,
         controls_dict,
     ):
+        controls_dict = copy.deepcopy(controls_dict)
         # Translate controls_dict as needed
         for c in self.component_names:
             c_type = self.component_types[c]

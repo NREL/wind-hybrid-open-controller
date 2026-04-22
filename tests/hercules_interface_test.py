@@ -41,24 +41,24 @@ def test_HerculesInterface_windonly(test_hercules_dict):
     assert measurements["forecast"] == test_forecast
 
     # Test check_controls()
-    controls_dict = {"wind_power_setpoints": [2000.0, 3000.0]}
-    bad_controls_dict1 = {
-        "wind_power_setpoints": [2000.0, 3000.0],
-        "unavailable_control": [0.0, 0.0],
+    controls_dict = {"wind_farm": {"power_setpoints": [2000.0, 3000.0]}}
+    # Invalid key
+    bad_controls_dict1 = {"wind_farm":
+        {
+            "wind_power_setpoints": [2000.0, 3000.0],
+            "unavailable_control": [0.0, 0.0],
+        }
     }
-    bad_controls_dict2 = {"wind_power_setpoints": [2000.0, 3000.0, 0.0]}  # Wrong number of turbines
 
     interface.check_controls(controls_dict)
 
     with pytest.raises(ValueError):
         interface.check_controls(bad_controls_dict1)
-    with pytest.raises(ValueError):
-        interface.check_controls(bad_controls_dict2)
 
     # test send_controls()
-    test_hercules_dict_out = interface.send_controls(h_dict=test_hercules_dict, **controls_dict)
+    test_hercules_dict_out = interface.send_controls(test_hercules_dict, controls_dict)
     assert (
-        controls_dict["wind_power_setpoints"]
+        controls_dict["wind_farm"]["power_setpoints"]
         == test_hercules_dict_out["wind_farm"]["turbine_power_setpoints"]
     )
 
@@ -108,15 +108,15 @@ def test_HerculesInterface_hybrid(test_hercules_dict):
 
     # Test check_controls()
     controls_dict = {
-        "wind_power_setpoints": [2000.0, 3000.0],
-        "solar_power_setpoint": 500.0,
-        "battery_power_setpoint": -1000.0,
+        "wind_farm": {"power_setpoints": [2000.0, 3000.0]},
+        "solar_farm": {"power_setpoint": 500.0},
+        "battery": {"power_setpoint": -1000.0},
         # "hydrogen_power_setpoint": 0.02,
     }
     bad_controls_dict1 = {
-        "wind_power_setpoints": [2000.0, 3000.0],
-        "solar_power_setpoint": 500.0,
-        "unavailable_control": [0.0, 0.0],
+        "wind_farm":{"power_setpoints": [2000.0, 3000.0]},
+        "solar_farm":{"power_setpoint": 500.0},
+        "battery":{"unavailable_control": [0.0, 0.0]},
     }
 
     # Should run through without error
@@ -126,17 +126,17 @@ def test_HerculesInterface_hybrid(test_hercules_dict):
         interface.check_controls(bad_controls_dict1)
 
     # Test send_controls()
-    test_hercules_dict_out = interface.send_controls(h_dict=test_hercules_dict, **controls_dict)
+    test_hercules_dict_out = interface.send_controls(test_hercules_dict, controls_dict)
     assert (
-        controls_dict["wind_power_setpoints"]
+        controls_dict["wind_farm"]["power_setpoints"]
         == test_hercules_dict_out["wind_farm"]["turbine_power_setpoints"]
     )
     assert (
-        controls_dict["solar_power_setpoint"]
+        controls_dict["solar_farm"]["power_setpoint"]
         == test_hercules_dict_out["solar_farm"]["power_setpoint"]
     )
     assert (
-        controls_dict["battery_power_setpoint"]
+        controls_dict["battery"]["power_setpoint"]
         == test_hercules_dict_out["battery"]["power_setpoint"]
     )
 

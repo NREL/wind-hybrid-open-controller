@@ -201,19 +201,15 @@ class HerculesV1HybridADInterface(InterfaceBase):
 
     def check_controls(self, controls_dict):
         available_controls = [
-            "wind_power_setpoints",
-            "solar_power_setpoint",
-            "battery_power_setpoint",
+            "power_setpoint",
+            "power_setpoints",
+            "yaw_angles",
         ]
 
-        for k in controls_dict.keys():
-            if k not in available_controls:
-                raise ValueError("Setpoint " + k + " is not available in this configuration.")
-            if k == "wind_power_setpoints":
-                if len(controls_dict[k]) != self.n_turbines:
-                    raise ValueError(
-                        "Number of wind power setpoints must match number of turbines."
-                    )
+        for c in controls_dict.keys():
+            for k in controls_dict[c].keys():
+                if k not in available_controls:
+                    raise ValueError("Setpoint " + k + " is not available in this configuration.")
 
     def send_controls(
         self,

@@ -56,6 +56,7 @@ def test_hercules_dict():
             "capacity": 10000.0,
             "wind_direction_mean": 271.0,
             "turbine_powers": [4000.0, 4001.0],
+            "power": 8001.0,
             "wind_speed": 10.0,
             "component_type": "WindFarm",
             "component_category": "generator",
@@ -82,6 +83,7 @@ def test_hercules_dict():
             "H2_mfr": 0.03,
             "component_type": "ElectrolyzerPlant",
             "component_category": "load",
+            "power": 500.0,
         },
         "external_signals": {
             "wind_power_reference": 1000.0,
