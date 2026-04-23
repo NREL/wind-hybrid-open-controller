@@ -46,16 +46,13 @@ class HybridSupervisoryControllerBase(ControllerBase):
         controls_dict = {}
         if self._has_wind_controller:
             measurements_dict["wind_farm"]["power_reference"] = wind_reference
-            wind_controls_dict = self.wind_controller.compute_controls(measurements_dict)
-            controls_dict["wind_farm"] = {"power_setpoints": wind_controls_dict["power_setpoints"]}
+            controls_dict.update(self.wind_controller.compute_controls(measurements_dict))
         if self._has_solar_controller:
             measurements_dict["solar_farm"]["power_reference"] = solar_reference
-            solar_controls_dict = self.solar_controller.compute_controls(measurements_dict)
-            controls_dict["solar_farm"] = {"power_setpoint": solar_controls_dict["power_setpoint"]}
+            controls_dict.update(self.solar_controller.compute_controls(measurements_dict))
         if self._has_battery_controller:
             measurements_dict["battery"]["power_reference"] = battery_reference
-            battery_controls_dict = self.battery_controller.compute_controls(measurements_dict)
-            controls_dict["battery"] = {"power_setpoint": battery_controls_dict["power_setpoint"]}
+            controls_dict.update(self.battery_controller.compute_controls(measurements_dict))
 
         return controls_dict
 
@@ -473,8 +470,7 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
             measurements_dict[cc.cname]["power_limit_upper"] = power_reference_component
             measurements_dict[cc.cname]["power_reference"] = power_reference_component
 
-            component_controls_dict = cc.compute_controls(measurements_dict)
-            controls_dict[cc.cname] = component_controls_dict
+            controls_dict.update(cc.compute_controls(measurements_dict))
 
             power_export_total += measurements_dict[cc.cname]["power"]
 

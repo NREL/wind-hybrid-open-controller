@@ -116,7 +116,7 @@ class BatteryController(ControllerBase):
         # Update controller internal state
         self.x = self.a * self.x + self.b * e
 
-        controls_dict = {"power_setpoint": current_power + u}
+        controls_dict = {self.cname: {"power_setpoint": current_power + u}}
 
         return controls_dict
 
@@ -136,7 +136,7 @@ class BatteryPassthroughController(ControllerBase):
         """
         Main compute_controls method for BatteryPassthroughController.
         """
-        return {"power_setpoint": measurements_dict[self.cname]["power_reference"]}
+        return {self.cname: {"power_setpoint": measurements_dict[self.cname]["power_reference"]}}
 
 
 class BatteryPriceSOCController(ControllerBase):
@@ -263,4 +263,4 @@ class BatteryPriceSOCController(ControllerBase):
         else:
             power_setpoint = 0.0
 
-        return {"power_setpoint": power_setpoint}
+        return {self.cname: {"power_setpoint": power_setpoint}}

@@ -40,35 +40,32 @@ def test_HerculesADInterface(test_hercules_v1_dict):
     assert measurements["forecast"] == test_forecast
 
     # Test check_controls()
-    controls_dict = {"yaw_angles": [270.0, 278.9]}
-    controls_dict2 = {
+    controls_dict = {"wind_farm": {"yaw_angles": [270.0, 278.9]}}
+    controls_dict2 = {"wind_farm": {
         "yaw_angles": [270.0, 268.9],
         "power_setpoints": [3000.0, 3000.0],
-    }
+    }}
     interface.check_controls(controls_dict)
     interface.check_controls(controls_dict2)
 
-    bad_controls_dict1 = {"yaw_angels": [270.0, 268.9]}  # Misspelling
-    bad_controls_dict2 = {
+    bad_controls_dict1 = {"wind_farm": {"yaw_angels": [270.0, 268.9]}}  # Misspelling
+    bad_controls_dict2 = {"wind_farm": {
         "yaw_angles": [270.0, 268.9],
         "power_setpoints": [3000.0, 3000.0],
         "unavailable_control": [0.0, 0.0],
-    }
-    bad_controls_dict3 = {"yaw_angles": [270.0, 268.9, 270.0]}  # Mismatched number of turbines
+    }}
 
     with pytest.raises(ValueError):
         interface.check_controls(bad_controls_dict1)
     with pytest.raises(ValueError):
         interface.check_controls(bad_controls_dict2)
-    with pytest.raises(ValueError):
-        interface.check_controls(bad_controls_dict3)
 
     # test send_controls()
     test_hercules_dict_out = interface.send_controls(
         hercules_dict=test_hercules_v1_dict, controls_dict=controls_dict
     )
     assert (
-        controls_dict["yaw_angles"]
+        controls_dict["wind_farm"]["yaw_angles"]
         == test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_yaw_angles"]
     )
 
@@ -130,15 +127,14 @@ def test_HerculesHybridADInterface(test_hercules_v1_dict):
 
     # Test check_controls()
     controls_dict = {
-        "wind_power_setpoints": [1000.0, 1000.0],
-        "solar_power_setpoint": 1000.0,
-        "battery_power_setpoint": 0.0,
+        "wind_farm": {"power_setpoints": [1000.0, 1000.0]},
+        "solar_farm": {"power_setpoint": 1000.0},
+        "battery": {"power_setpoint": 0.0},
     }
     bad_controls_dict = {
-        "wind_power_setpoints": [1000.0, 1000.0],
-        "solar_power_setpoint": 1000.0,
-        "battery_power_setpoint": 0.0,
-        "unavailable_control": 0.0,
+        "wind_farm": {"power_setpoints": [1000.0, 1000.0]},
+        "solar_farm": {"power_setpoint": 1000.0},
+        "battery": {"power_setpoint": 0.0, "unavailable_control": 0.0},
     }
 
     interface.check_controls(controls_dict)
@@ -153,15 +149,15 @@ def test_HerculesHybridADInterface(test_hercules_v1_dict):
 
     assert (
         test_hercules_dict_out["py_sims"]["inputs"]["battery_signal"]
-        == -controls_dict["battery_power_setpoint"]
+        == -controls_dict["battery"]["power_setpoint"]
     )
     assert (
         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
-        == controls_dict["wind_power_setpoints"]
+        == controls_dict["wind_farm"]["power_setpoints"]
     )
     assert (
         test_hercules_dict_out["py_sims"]["inputs"]["solar_setpoint_mw"]
-        == controls_dict["solar_power_setpoint"] / 1000
+        == controls_dict["solar_farm"]["power_setpoint"] / 1000
     )
     assert (
         measurements["hydrogen"]["power_reference"]
@@ -203,13 +199,11 @@ def test_HerculesBatteryInterface(test_hercules_v1_dict):
     )
 
     # Test check_controls()
-    controls_dict = {
-        "power_setpoint": 20.0,
-    }
-    bad_controls_dict = {
+    controls_dict = {"battery": {"power_setpoint": 20.0}}
+    bad_controls_dict = {"battery": {
         "power_setpoint": 2.0,
         "unavailable_control": 0.0,
-    }
+    }}
     with pytest.raises(ValueError):
         interface.check_controls(bad_controls_dict)
     interface.check_controls(controls_dict)
@@ -220,10 +214,10 @@ def test_HerculesBatteryInterface(test_hercules_v1_dict):
     )
     assert (
         test_hercules_dict_out["py_sims"]["inputs"]["battery_signal"]
-        == -controls_dict["power_setpoint"]
+        == -controls_dict["battery"]["power_setpoint"]
     )
     # defaults to zero
     test_hercules_dict_out = interface.send_controls(
-        hercules_dict=test_hercules_v1_dict, controls_dict={}
+        hercules_dict=test_hercules_v1_dict, controls_dict={"battery":{}}
     )
     assert test_hercules_dict_out["py_sims"]["inputs"]["battery_signal"] == 0

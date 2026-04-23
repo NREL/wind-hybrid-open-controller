@@ -113,4 +113,4 @@ class LookupBasedWakeSteeringController(ControllerBase):
 
         self.controls_dict = {"yaw_angles": yaw_setpoint}
 
-        return {"yaw_angles": yaw_setpoint}
+        return {self.cname: {"yaw_angles": yaw_setpoint}}

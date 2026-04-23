@@ -12,7 +12,7 @@ def plot_outputs():
 
     n_turbines = 2
     pow_cols = ["wind_farm.turbine_powers.{0:03d}".format(t) for t in range(n_turbines)]
-    ref_col = "external_signals.wind_power_reference"
+    ref_col = "external_signals.plant_power_reference"
     mod_ref_cols = [
         "wind_farm.turbine_power_setpoints.{0:03d}".format(t) for t in range(n_turbines)
     ]

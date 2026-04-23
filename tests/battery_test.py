@@ -39,12 +39,12 @@ def test_BatteryPriceSOCController_compute_controls(test_hercules_dict):
         "DA_LMP_24hours": DA_LMP_test,
     }
     controls_dict = test_controller.compute_controls(measurement_dict)
-    assert controls_dict["power_setpoint"] == 0.0
+    assert controls_dict["battery"]["power_setpoint"] == 0.0
 
     # Now, change RT_LMP to be below the 1 hour low price
     measurement_dict["RT_LMP"] = -0.5
     controls_dict = test_controller.compute_controls(measurement_dict)
-    assert controls_dict["power_setpoint"] == -test_controller.rated_power_charging
+    assert controls_dict["battery"]["power_setpoint"] == -test_controller.rated_power_charging
 
     # Test the high price / low soc condition
     measurement_dict = {
@@ -53,11 +53,11 @@ def test_BatteryPriceSOCController_compute_controls(test_hercules_dict):
         "DA_LMP_24hours": DA_LMP_test,
     }
     controls_dict = test_controller.compute_controls(measurement_dict)
-    assert controls_dict["power_setpoint"] == 0.0
+    assert controls_dict["battery"]["power_setpoint"] == 0.0
 
     measurement_dict["RT_LMP"] = 25
     controls_dict = test_controller.compute_controls(measurement_dict)
-    assert controls_dict["power_setpoint"] == test_controller.rated_power_discharging
+    assert controls_dict["battery"]["power_setpoint"] == test_controller.rated_power_discharging
 
     # Middle SOC tests
     measurement_dict = {
@@ -66,15 +66,15 @@ def test_BatteryPriceSOCController_compute_controls(test_hercules_dict):
         "DA_LMP_24hours": DA_LMP_test,
     }
     controls_dict = test_controller.compute_controls(measurement_dict)
-    assert controls_dict["power_setpoint"] == -test_controller.rated_power_charging
+    assert controls_dict["battery"]["power_setpoint"] == -test_controller.rated_power_charging
 
     measurement_dict["RT_LMP"] = 22
     controls_dict = test_controller.compute_controls(measurement_dict)
-    assert controls_dict["power_setpoint"] == test_controller.rated_power_discharging
+    assert controls_dict["battery"]["power_setpoint"] == test_controller.rated_power_discharging
 
     measurement_dict["RT_LMP"] = 10
     controls_dict = test_controller.compute_controls(measurement_dict)
-    assert controls_dict["power_setpoint"] == 0.0
+    assert controls_dict["battery"]["power_setpoint"] == 0.0
 
 
 def test_BatteryPriceSOCController_compute_controls_2_hour_duration(test_hercules_dict):
@@ -98,14 +98,14 @@ def test_BatteryPriceSOCController_compute_controls_2_hour_duration(test_hercule
         "DA_LMP_24hours": DA_LMP_test,
     }
     controls_dict = test_controller.compute_controls(measurement_dict)
-    assert controls_dict["power_setpoint"] == -test_controller.rated_power_charging
+    assert controls_dict["battery"]["power_setpoint"] == -test_controller.rated_power_charging
 
     # Now raise the state of charge to 0.85
     measurement_dict["battery"]["state_of_charge"] = 0.85
     controls_dict = test_controller.compute_controls(measurement_dict)
-    assert controls_dict["power_setpoint"] == 0.0
+    assert controls_dict["battery"]["power_setpoint"] == 0.0
 
     # Now drop the RT_LMP to -.5 (Going below bottom 1 price)
     measurement_dict["RT_LMP"] = -0.5
     controls_dict = test_controller.compute_controls(measurement_dict)
-    assert controls_dict["power_setpoint"] == -test_controller.rated_power_charging
+    assert controls_dict["battery"]["power_setpoint"] == -test_controller.rated_power_charging

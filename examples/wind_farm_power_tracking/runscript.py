@@ -3,7 +3,7 @@ from hercules.hercules_model import HerculesModel
 from hercules.utilities import load_hercules_input
 from hercules.utilities_examples import prepare_output_directory
 from hycon.controllers import (
-    HybridSupervisoryControllerMultiRef,
+    HybridSupervisoryControllerGeneric,
     WindFarmPowerDistributingController,
     WindFarmPowerTrackingController,
 )
@@ -24,12 +24,15 @@ hmodel = HerculesModel(h_dict)
 interface = HerculesInterface(hmodel.h_dict)
 
 print("Running open-loop controller...")
-controller = HybridSupervisoryControllerMultiRef(
-    wind_controller=WindFarmPowerDistributingController(
-        interface, hmodel.h_dict, ramp_rate_limit=ramp_rate_limit
-    ),
+controller = HybridSupervisoryControllerGeneric(
     interface=interface,
     input_dict=hmodel.h_dict,
+    component_controllers=[WindFarmPowerDistributingController(
+        interface,
+        hmodel.h_dict,
+        "wind_farm",
+        ramp_rate_limit
+    )],
 )
 hmodel.assign_controller(controller)
 
@@ -45,12 +48,15 @@ hmodel = HerculesModel(h_dict)
 interface = HerculesInterface(hmodel.h_dict)
 
 print("Running closed-loop controller...")
-controller = HybridSupervisoryControllerMultiRef(
-    wind_controller=WindFarmPowerTrackingController(
-        interface, hmodel.h_dict, ramp_rate_limit=ramp_rate_limit
-    ),
+controller = HybridSupervisoryControllerGeneric(
     interface=interface,
     input_dict=hmodel.h_dict,
+    component_controllers=[WindFarmPowerTrackingController(
+        interface,
+        hmodel.h_dict,
+        "wind_farm",
+        controller_parameters={"ramp_rate_limit": ramp_rate_limit}
+    )],
 )
 hmodel.assign_controller(controller)
 
