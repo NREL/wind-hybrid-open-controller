@@ -43,8 +43,8 @@ def test_HerculesInterface_windonly(test_hercules_dict):
     # Test check_controls()
     controls_dict = {"wind_farm": {"power_setpoints": [2000.0, 3000.0]}}
     # Invalid key
-    bad_controls_dict1 = {"wind_farm":
-        {
+    bad_controls_dict1 = {
+        "wind_farm": {
             "wind_power_setpoints": [2000.0, 3000.0],
             "unavailable_control": [0.0, 0.0],
         }
@@ -114,9 +114,9 @@ def test_HerculesInterface_hybrid(test_hercules_dict):
         # "hydrogen_power_setpoint": 0.02,
     }
     bad_controls_dict1 = {
-        "wind_farm":{"power_setpoints": [2000.0, 3000.0]},
-        "solar_farm":{"power_setpoint": 500.0},
-        "battery":{"unavailable_control": [0.0, 0.0]},
+        "wind_farm": {"power_setpoints": [2000.0, 3000.0]},
+        "solar_farm": {"power_setpoint": 500.0},
+        "battery": {"unavailable_control": [0.0, 0.0]},
     }
 
     # Should run through without error

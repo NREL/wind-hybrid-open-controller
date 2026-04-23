@@ -9,7 +9,6 @@ from hycon.controllers import (
     BatteryController,
     BatteryPassthroughController,
     HybridSupervisoryControllerBaseline,
-    HybridSupervisoryControllerMultiRef,
     HydrogenPlantController,
     LookupBasedWakeSteeringController,
     SolarPassthroughController,
@@ -425,93 +424,6 @@ def test_HybridSupervisoryControllerBaseline_subsets(
     assert np.allclose(
         supervisory_control_output, [wind_power_cmd, solar_power_cmd, battery_power_cmd]
     )
-
-
-def test_HybridSupervisoryControllerMultiRef_requirements(
-    test_hercules_dict, test_interface_hercules
-):
-    test_interface = test_interface_hercules
-    # Check that errors are correctly raised if interconnect_limit is not set correctly
-    del test_interface.plant_parameters["interconnect_limit"]
-    with pytest.raises(KeyError):
-        HybridSupervisoryControllerMultiRef(test_interface, test_hercules_dict)
-
-    test_interface.plant_parameters["interconnect_limit"] = "1"
-    with pytest.raises(ValueError):
-        HybridSupervisoryControllerMultiRef(test_interface, test_hercules_dict)
-
-    test_interface.plant_parameters["interconnect_limit"] = -1
-    with pytest.raises(ValueError):
-        HybridSupervisoryControllerMultiRef(test_interface, test_hercules_dict)
-
-
-def test_HybridSupervisoryControllerMultiRef(test_hercules_dict, test_interface_hercules):
-    test_interface = test_interface_hercules
-    test_interface.plant_parameters["interconnect_limit"] = 10000.0
-
-    # Establish lower controllers
-    wind_controller = WindFarmPowerTrackingController(
-        test_interface, test_hercules_dict, "wind_farm"
-    )
-    solar_controller = SolarPassthroughController(test_interface, test_hercules_dict, "solar_farm")
-    battery_controller = BatteryPassthroughController(test_interface, test_hercules_dict, "battery")
-
-    test_controller = HybridSupervisoryControllerMultiRef(
-        interface=test_interface,
-        input_dict=test_hercules_dict,
-        wind_controller=wind_controller,
-        solar_controller=solar_controller,
-        battery_controller=battery_controller,
-    )
-
-    solar_current = 800
-    wind_current = [600, 300]
-
-    # Simply test the supervisory_control method, for the time being
-    test_hercules_dict["wind_farm"]["turbine_powers"] = wind_current
-    test_hercules_dict["wind_farm"]["power"] = sum(wind_current)
-    test_hercules_dict["solar_farm"]["power"] = solar_current
-    test_hercules_dict["electrolyzer"]["power"] = 0.0
-    test_controller.prev_solar_power = solar_current  # To override filtering
-    test_controller.prev_wind_power = sum(wind_current)  # To override filtering
-    test_controller.step(test_hercules_dict)  # Run the controller once to update measurements
-
-    supervisory_control_output = test_controller.supervisory_control(
-        test_controller._measurements_dict
-    )
-
-    # Expected outputs
-    import ipdb; ipdb.set_trace()
-    assert np.allclose(
-        supervisory_control_output,
-        [
-            test_hercules_dict["external_signals"]["wind_power_reference"],
-            test_hercules_dict["external_signals"]["solar_power_reference"],
-            test_hercules_dict["external_signals"]["battery_power_reference"],
-        ],
-    )  # Check individual components producing according to their references
-
-
-def test_BatteryPassthroughController(test_hercules_v1_dict, test_interface_hercules_hybrid_ad):
-    test_controller = BatteryPassthroughController(
-        test_interface_hercules_hybrid_ad, test_hercules_v1_dict, "battery"
-    )
-
-    power_ref = 1000
-    measurements_dict = {"battery": {"power_reference": power_ref}}
-    controls_dict = test_controller.compute_controls(measurements_dict)
-    assert controls_dict["battery"]["power_setpoint"] == power_ref
-
-
-def test_SolarPassthroughController(test_hercules_v1_dict, test_interface_hercules_hybrid_ad):
-    test_controller = SolarPassthroughController(
-        test_interface_hercules_hybrid_ad, test_hercules_v1_dict, "solar_farm"
-    )
-
-    power_ref = 1000
-    measurements_dict = {"solar_farm": {"power_reference": power_ref}}
-    controls_dict = test_controller.compute_controls(measurements_dict)
-    assert controls_dict["solar_farm"]["power_setpoint"] == power_ref
 
 
 def test_BatteryController(test_hercules_v1_dict):

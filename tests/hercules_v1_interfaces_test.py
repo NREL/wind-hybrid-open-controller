@@ -41,19 +41,23 @@ def test_HerculesADInterface(test_hercules_v1_dict):
 
     # Test check_controls()
     controls_dict = {"wind_farm": {"yaw_angles": [270.0, 278.9]}}
-    controls_dict2 = {"wind_farm": {
-        "yaw_angles": [270.0, 268.9],
-        "power_setpoints": [3000.0, 3000.0],
-    }}
+    controls_dict2 = {
+        "wind_farm": {
+            "yaw_angles": [270.0, 268.9],
+            "power_setpoints": [3000.0, 3000.0],
+        }
+    }
     interface.check_controls(controls_dict)
     interface.check_controls(controls_dict2)
 
     bad_controls_dict1 = {"wind_farm": {"yaw_angels": [270.0, 268.9]}}  # Misspelling
-    bad_controls_dict2 = {"wind_farm": {
-        "yaw_angles": [270.0, 268.9],
-        "power_setpoints": [3000.0, 3000.0],
-        "unavailable_control": [0.0, 0.0],
-    }}
+    bad_controls_dict2 = {
+        "wind_farm": {
+            "yaw_angles": [270.0, 268.9],
+            "power_setpoints": [3000.0, 3000.0],
+            "unavailable_control": [0.0, 0.0],
+        }
+    }
 
     with pytest.raises(ValueError):
         interface.check_controls(bad_controls_dict1)
@@ -200,10 +204,12 @@ def test_HerculesBatteryInterface(test_hercules_v1_dict):
 
     # Test check_controls()
     controls_dict = {"battery": {"power_setpoint": 20.0}}
-    bad_controls_dict = {"battery": {
-        "power_setpoint": 2.0,
-        "unavailable_control": 0.0,
-    }}
+    bad_controls_dict = {
+        "battery": {
+            "power_setpoint": 2.0,
+            "unavailable_control": 0.0,
+        }
+    }
     with pytest.raises(ValueError):
         interface.check_controls(bad_controls_dict)
     interface.check_controls(controls_dict)
@@ -218,6 +224,6 @@ def test_HerculesBatteryInterface(test_hercules_v1_dict):
     )
     # defaults to zero
     test_hercules_dict_out = interface.send_controls(
-        hercules_dict=test_hercules_v1_dict, controls_dict={"battery":{}}
+        hercules_dict=test_hercules_v1_dict, controls_dict={"battery": {}}
     )
     assert test_hercules_dict_out["py_sims"]["inputs"]["battery_signal"] == 0

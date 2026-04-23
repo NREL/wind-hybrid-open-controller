@@ -27,12 +27,9 @@ print("Running open-loop controller...")
 controller = HybridSupervisoryControllerGeneric(
     interface=interface,
     input_dict=hmodel.h_dict,
-    component_controllers=[WindFarmPowerDistributingController(
-        interface,
-        hmodel.h_dict,
-        "wind_farm",
-        ramp_rate_limit
-    )],
+    component_controllers=[
+        WindFarmPowerDistributingController(interface, hmodel.h_dict, "wind_farm", ramp_rate_limit)
+    ],
 )
 hmodel.assign_controller(controller)
 
@@ -51,12 +48,14 @@ print("Running closed-loop controller...")
 controller = HybridSupervisoryControllerGeneric(
     interface=interface,
     input_dict=hmodel.h_dict,
-    component_controllers=[WindFarmPowerTrackingController(
-        interface,
-        hmodel.h_dict,
-        "wind_farm",
-        controller_parameters={"ramp_rate_limit": ramp_rate_limit}
-    )],
+    component_controllers=[
+        WindFarmPowerTrackingController(
+            interface,
+            hmodel.h_dict,
+            "wind_farm",
+            controller_parameters={"ramp_rate_limit": ramp_rate_limit},
+        )
+    ],
 )
 hmodel.assign_controller(controller)
 
