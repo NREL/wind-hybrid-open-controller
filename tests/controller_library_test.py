@@ -240,13 +240,11 @@ def test_HybridSupervisoryControllerGeneric_reference_tracking(
 
     assert np.allclose(
         [wind_setpoint_test, solar_setpoint_test, battery_setpoint_test],
-        [wind_setpoint_ref, solar_setpoint_ref, battery_setpoint_ref]
+        [wind_setpoint_ref, solar_setpoint_ref, battery_setpoint_ref],
     )
 
 
-def test_HybridSupervisoryControllerGeneric_subsets(
-    test_hercules_dict, test_interface_hercules
-):
+def test_HybridSupervisoryControllerGeneric_subsets(test_hercules_dict, test_interface_hercules):
     """
     Tests that the HybridSupervisoryControllerGeneric can be run with only
     some of the wind, solar, and battery controllers.
@@ -268,12 +266,8 @@ def test_HybridSupervisoryControllerGeneric_subsets(
     wind_controller = WindFarmPowerTrackingController(
         test_interface, test_hercules_dict, "wind_farm"
     )
-    solar_controller = SolarPassthroughController(
-        test_interface, test_hercules_dict, "solar_farm"
-    )
-    battery_controller = BatteryPassthroughController(
-        test_interface, test_hercules_dict, "battery"
-    )
+    solar_controller = SolarPassthroughController(test_interface, test_hercules_dict, "solar_farm")
+    battery_controller = BatteryPassthroughController(test_interface, test_hercules_dict, "battery")
 
     ## First, try with wind and solar only
     test_interface.component_names = ["wind_farm", "solar_farm"]
@@ -292,8 +286,7 @@ def test_HybridSupervisoryControllerGeneric_subsets(
     solar_setpoint_ref = wind_setpoint_ref - wind_current
 
     assert np.allclose(
-        [wind_setpoint_test, solar_setpoint_test],
-        [wind_setpoint_ref, solar_setpoint_ref]
+        [wind_setpoint_test, solar_setpoint_test], [wind_setpoint_ref, solar_setpoint_ref]
     )
 
     ## Next, wind and battery only
@@ -313,8 +306,7 @@ def test_HybridSupervisoryControllerGeneric_subsets(
     battery_setpoint_ref = power_ref - wind_current
 
     assert np.allclose(
-        [wind_setpoint_test, battery_setpoint_test],
-        [wind_setpoint_ref, battery_setpoint_ref]
+        [wind_setpoint_test, battery_setpoint_test], [wind_setpoint_ref, battery_setpoint_ref]
     )
 
     ## Finally, solar and battery only
@@ -334,8 +326,7 @@ def test_HybridSupervisoryControllerGeneric_subsets(
     battery_setpoint_ref = power_ref - solar_current
 
     assert np.allclose(
-        [solar_setpoint_test, battery_setpoint_test],
-        [solar_setpoint_ref, battery_setpoint_ref]
+        [solar_setpoint_test, battery_setpoint_test], [solar_setpoint_ref, battery_setpoint_ref]
     )
 
     ## Only wind controller
@@ -539,13 +530,9 @@ def test_HydrogenPlantController(test_hercules_dict, test_interface_hercules):
         input_dict=test_hercules_dict,
         component_controllers=[
             wind_controller,
-            SolarPassthroughController(
-                test_interface_hercules, test_hercules_dict, "solar_farm"
-            ),
-            BatteryPassthroughController(
-                test_interface_hercules, test_hercules_dict, "battery"
-            ),
-        ]
+            SolarPassthroughController(test_interface_hercules, test_hercules_dict, "solar_farm"),
+            BatteryPassthroughController(test_interface_hercules, test_hercules_dict, "battery"),
+        ],
     )
 
     test_controller = HydrogenPlantController(

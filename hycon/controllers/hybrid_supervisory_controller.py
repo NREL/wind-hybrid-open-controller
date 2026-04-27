@@ -153,7 +153,7 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
         # Establish dynamic upper limit
 
         # Get overall reference, and remove from measurements_dict to avoid confusion for
-        # component controllers. Component controllers can 
+        # component controllers.
         if "plant_power_reference" in measurements_dict:
             provided_power_reference = measurements_dict.pop("plant_power_reference")
         elif "power_reference" in measurements_dict:
