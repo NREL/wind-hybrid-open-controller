@@ -1,3 +1,4 @@
+import copy
 import inspect
 from abc import ABCMeta, abstractmethod
 
@@ -65,6 +66,18 @@ class ControllerBase(metaclass=ABCMeta):
             raise KeyError("Missing required controller parameters: " + str(missing_required_cps))
 
         return None
+
+    def compute_controls_without_updating_state(self, measurements_dict):
+        """
+        Compute controls without updating internal state. This is used when the control output
+        needs to be queried without actually updating the controller's internal state, such as
+        in the hybrid supervisory controller when querying component controllers for their desired
+        power references without actually updating their states.
+        """
+        self._initial_state = copy.deepcopy(self.__dict__)
+        controls_dict = self.compute_controls(measurements_dict)
+        self.__dict__.update(copy.deepcopy(self._initial_state))
+        return controls_dict
 
     @abstractmethod
     def set_controller_parameters(self, **kwargs):

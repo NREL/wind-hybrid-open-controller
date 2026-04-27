@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 
 from hycon.controllers.controller_base import ControllerBase
@@ -95,10 +97,18 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
                 cc.plant_parameters[cc.cname].get("state_of_charge_max", 1.0),
                 atol=1e-2,  # Within 1% of max SOC, assume storage is fully charged
             ):
-                # TODO: Check if the controller _wants_ to charge
-                total_available_storage_for_charging += cc.plant_parameters[cc.cname]["charge_rate"]
-
-        # Establish dynamic upper limit
+                # Ask to charge at the full charge rate---this will then indicate whether the
+                # storage would like to charge, for more complex battery controllers.
+                standin_measurements_dict = copy.deepcopy(measurements_dict)
+                standin_measurements_dict[cc.cname]["power_reference"] = -cc.plant_parameters[
+                    cc.cname
+                ]["charge_rate"]
+                total_available_storage_for_charging += np.maximum(
+                    0,
+                    -cc.compute_controls_without_updating_state(standin_measurements_dict)[
+                        cc.cname
+                    ]["power_setpoint"],
+                )
 
         # Get overall reference, and remove from measurements_dict to avoid confusion for
         # component controllers.

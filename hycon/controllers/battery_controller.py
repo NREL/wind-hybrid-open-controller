@@ -108,6 +108,9 @@ class BatteryController(ControllerBase):
 
         controls_dict = {self.cname: {"power_setpoint": current_power + u}}
 
+        # if np.isclose(controls_dict[self.cname]["power_setpoint"], 14.45, atol=1e-2):
+        #     import ipdb; ipdb.set_trace()
+
         return controls_dict
 
 
