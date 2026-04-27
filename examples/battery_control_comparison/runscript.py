@@ -38,12 +38,11 @@ def simulate(soc_0, clipping_thresholds, gain):
     interface = HerculesInterface(hmodel.h_dict)
     battery_controller = BatteryController(
         interface=interface,
-        input_dict=hmodel.h_dict,
         cname="battery",
         controller_parameters={"k_batt": gain, "clipping_thresholds": clipping_thresholds},
     )
     controller = HybridSupervisoryControllerGeneric(
-        interface=interface, input_dict=hmodel.h_dict, component_controllers=[battery_controller]
+        interface=interface, controller_parameters={"component_controllers": [battery_controller]}
     )
 
     hmodel.assign_controller(controller)

@@ -62,12 +62,11 @@ h_dict["output_file"] = "outputs/hercules_output_baseline.h5"
 
 hmodel = HerculesModel(h_dict)
 interface = HerculesInterface(hmodel.h_dict)
-wind_controller = WindFarmPowerTrackingController(interface, hmodel.h_dict, "distributed_wind")
+wind_controller = WindFarmPowerTrackingController(interface, "distributed_wind")
 controller = HybridSupervisoryControllerGeneric(
     interface=interface,
-    input_dict=hmodel.h_dict,
     cname="supervisory_controller",
-    component_controllers=[wind_controller],
+    controller_parameters={"component_controllers": [wind_controller]},
 )
 hmodel.assign_controller(controller)
 
@@ -84,9 +83,8 @@ hmodel = HerculesModel(h_dict)
 interface = HerculesInterface(hmodel.h_dict)
 controller = HybridSupervisoryControllerGeneric(
     interface=interface,
-    input_dict=hmodel.h_dict,
     cname="supervisory_controller",
-    component_controllers=[wind_controller],
+    controller_parameters={"component_controllers": [wind_controller]},
 )
 hmodel.assign_controller(controller)
 
@@ -101,9 +99,13 @@ hmodel = HerculesModel(h_dict)
 interface = HerculesInterface(hmodel.h_dict)
 controller = HybridSupervisoryControllerGeneric(
     interface=interface,
-    input_dict=hmodel.h_dict,
     cname="supervisory_controller",
-    component_controllers=[wind_controller, BatteryController(interface, hmodel.h_dict, "battery")],
+    controller_parameters={
+        "component_controllers": [
+            wind_controller,
+            BatteryController(interface, "battery", {"k_batt": 0.1}),
+        ]
+    },
 )
 hmodel.assign_controller(controller)
 

@@ -24,12 +24,12 @@ hmodel = HerculesModel(h_dict)
 interface = HerculesInterface(hmodel.h_dict)
 
 print("Running open-loop controller...")
+wind_controller = WindFarmPowerDistributingController(
+    interface, "wind_farm", controller_parameters={"ramp_rate_limit": ramp_rate_limit}
+)
 controller = HybridSupervisoryControllerGeneric(
     interface=interface,
-    input_dict=hmodel.h_dict,
-    component_controllers=[
-        WindFarmPowerDistributingController(interface, hmodel.h_dict, "wind_farm", ramp_rate_limit)
-    ],
+    controller_parameters={"component_controllers": [wind_controller]},
 )
 hmodel.assign_controller(controller)
 
@@ -45,17 +45,12 @@ hmodel = HerculesModel(h_dict)
 interface = HerculesInterface(hmodel.h_dict)
 
 print("Running closed-loop controller...")
+wind_controller = WindFarmPowerTrackingController(
+    interface, "wind_farm", controller_parameters={"ramp_rate_limit": ramp_rate_limit}
+)
 controller = HybridSupervisoryControllerGeneric(
     interface=interface,
-    input_dict=hmodel.h_dict,
-    component_controllers=[
-        WindFarmPowerTrackingController(
-            interface,
-            hmodel.h_dict,
-            "wind_farm",
-            controller_parameters={"ramp_rate_limit": ramp_rate_limit},
-        )
-    ],
+    controller_parameters={"component_controllers": [wind_controller]},
 )
 hmodel.assign_controller(controller)
 

@@ -14,11 +14,8 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
     def __init__(
         self,
         interface,
-        input_dict,
         cname="supervisor",
         controller_parameters={},
-        component_controllers=[],  # Could be in controller_parameters?
-        curtailment_order=None,  # Could be in controller_parameters?
         verbose=False,
     ):
         """

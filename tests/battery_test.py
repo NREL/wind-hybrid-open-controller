@@ -8,7 +8,7 @@ def test_BatteryPriceSOCController_init(test_hercules_dict):
     test_interface = HerculesInterface(test_hercules_dict)
 
     # Initialize controller
-    test_controller = BatteryPriceSOCController(test_interface, test_hercules_dict, "battery")
+    test_controller = BatteryPriceSOCController(test_interface, "battery")
 
     # Check that the controller is initialized correctly
     assert test_controller.rated_power_charging == test_hercules_dict["battery"]["charge_rate"]
@@ -23,7 +23,7 @@ def test_BatteryPriceSOCController_compute_controls(test_hercules_dict):
     test_interface = HerculesInterface(test_hercules_dict)
 
     # Initialize controller
-    test_controller = BatteryPriceSOCController(test_interface, test_hercules_dict, "battery")
+    test_controller = BatteryPriceSOCController(test_interface, "battery")
 
     # For testing, overwrite the high_soc and low_soc
     test_controller.high_soc = 0.8
@@ -83,7 +83,7 @@ def test_BatteryPriceSOCController_compute_controls_2_hour_duration(test_hercule
     test_interface = HerculesInterface(test_hercules_dict)
 
     # Initialize controller
-    test_controller = BatteryPriceSOCController(test_interface, test_hercules_dict, "battery")
+    test_controller = BatteryPriceSOCController(test_interface, "battery")
 
     # For testing, overwrite the high_soc and low_soc
     test_controller.high_soc = 0.8

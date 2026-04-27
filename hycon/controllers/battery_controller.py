@@ -11,7 +11,7 @@ class BatteryController(ControllerBase):
     changes in power reference, which can lead to degradation.
     """
 
-    def __init__(self, interface, input_dict, cname, controller_parameters={}, verbose=True):
+    def __init__(self, interface, cname, controller_parameters={}, verbose=True):
         """
         Instantiate BatteryController.
 
@@ -116,7 +116,7 @@ class BatteryPassthroughController(ControllerBase):
     Simply passes power reference down to (single) battery.
     """
 
-    def __init__(self, interface, input_dict, cname, controller_parameters={}, verbose=True):
+    def __init__(self, interface, cname, controller_parameters={}, verbose=True):
         """
         Instantiate BatteryPassthroughController."
         """
@@ -169,29 +169,21 @@ class BatteryPriceSOCController(ControllerBase):
         used at the Hercules/hybrid_plant level.
     """
 
-    def __init__(self, interface, input_dict, cname, controller_parameters={}, verbose=True):
+    def __init__(self, interface, cname, controller_parameters={}, verbose=True):
         super().__init__(interface, cname, verbose)
 
-        # Check that parameters are not specified both in input file
-        # and in controller_parameters
-        if "controller" in input_dict:
-            for cp in controller_parameters.keys():
-                if cp in input_dict["controller"]:
-                    raise KeyError(
-                        'Found key "' + cp + '" in both input_dict["controller"] and'
-                        " in controller_parameters."
-                    )
-            controller_parameters = {**controller_parameters, **input_dict["controller"]}
+        self.check_controller_parameters(controller_parameters)
         self.set_controller_parameters(**controller_parameters)
 
-        self.rated_power_charging = input_dict[self.cname]["charge_rate"]
-        self.rated_power_discharging = input_dict[self.cname]["discharge_rate"]
+        # TODO: These should now come from plant_parameters
+        self.rated_power_charging = self.plant_parameters[self.cname]["charge_rate"]
+        self.rated_power_discharging = self.plant_parameters[self.cname]["discharge_rate"]
 
         # Save the duration rounded to nearest hour
         # TODO: WILL NEED TO GET THE NAME!
         self.duration = round(
-            interface.plant_parameters[self.cname]["energy_capacity"]
-            / interface.plant_parameters[self.cname]["power_capacity"]
+            self.plant_parameters[self.cname]["energy_capacity"]
+            / self.plant_parameters[self.cname]["power_capacity"]
         )
 
         # Raise if duration makes this controller implausible

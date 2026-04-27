@@ -7,7 +7,6 @@ class HydrogenPlantController(ControllerBase):
     def __init__(
         self,
         interface,
-        input_dict,
         cname="hydrogen",
         controller_parameters={},
         verbose=False,

@@ -21,35 +21,23 @@ from hycon.interfaces import (
 )
 
 
-def test_controller_instantiation(test_interface_standin, test_hercules_v1_dict):
+def test_controller_instantiation(test_interface_standin):
     """
     Tests whether all controllers can be imported correctly and that they
     each implement the required methods specified by ControllerBase.
     """
-    _ = LookupBasedWakeSteeringController(
-        interface=test_interface_standin, input_dict=test_hercules_v1_dict, cname="wind_farm"
-    )
-    _ = WindFarmPowerDistributingController(
-        interface=test_interface_standin, input_dict=test_hercules_v1_dict, cname="wind_farm"
-    )
-    _ = WindFarmPowerTrackingController(
-        interface=test_interface_standin, input_dict=test_hercules_v1_dict, cname="wind_farm"
-    )
-    _ = SolarPassthroughController(
-        interface=test_interface_standin, input_dict=test_hercules_v1_dict, cname="solar_farm"
-    )
-    _ = BatteryPassthroughController(
-        interface=test_interface_standin, input_dict=test_hercules_v1_dict, cname="battery"
-    )
-    _ = BatteryController(
-        interface=test_interface_standin, input_dict=test_hercules_v1_dict, cname="battery"
-    )
+    _ = LookupBasedWakeSteeringController(interface=test_interface_standin, cname="wind_farm")
+    _ = WindFarmPowerDistributingController(interface=test_interface_standin, cname="wind_farm")
+    _ = WindFarmPowerTrackingController(interface=test_interface_standin, cname="wind_farm")
+    _ = SolarPassthroughController(interface=test_interface_standin, cname="solar_farm")
+    _ = BatteryPassthroughController(interface=test_interface_standin, cname="battery")
+    _ = BatteryController(interface=test_interface_standin, cname="battery")
 
 
 def test_LookupBasedWakeSteeringController(test_hercules_v1_dict, test_interface_hercules_ad):
     # No lookup table passed; simply passes through wind direction to yaw angles
     test_controller = LookupBasedWakeSteeringController(
-        interface=test_interface_hercules_ad, input_dict=test_hercules_v1_dict, cname="wind_farm"
+        interface=test_interface_hercules_ad, cname="wind_farm"
     )
 
     # Check that the controller can be stepped
@@ -76,7 +64,6 @@ def test_LookupBasedWakeSteeringController(test_hercules_v1_dict, test_interface
     )
     test_controller = LookupBasedWakeSteeringController(
         interface=test_interface_hercules_ad,
-        input_dict=test_hercules_v1_dict,
         cname="wind_farm",
         controller_parameters={"df_yaw": df_opt_test},
     )
@@ -94,7 +81,7 @@ def test_LookupBasedWakeSteeringController(test_hercules_v1_dict, test_interface
 
 def test_WindFarmPowerDistributingController(test_hercules_v1_dict, test_interface_hercules_ad):
     test_controller = WindFarmPowerDistributingController(
-        interface=test_interface_hercules_ad, input_dict=test_hercules_v1_dict, cname="wind_farm"
+        interface=test_interface_hercules_ad, cname="wind_farm"
     )
 
     # Default behavior when no power reference is given
@@ -120,7 +107,6 @@ def test_WindFarmPowerDistributingController(test_hercules_v1_dict, test_interfa
     # Test that ramp rate limits are applied
     test_controller = WindFarmPowerDistributingController(
         interface=test_interface_hercules_ad,
-        input_dict=test_hercules_v1_dict,
         cname="wind_farm",
         controller_parameters={"ramp_rate_limit": 200},
     )
@@ -143,7 +129,7 @@ def test_WindFarmPowerDistributingController(test_hercules_v1_dict, test_interfa
 
 def test_WindFarmPowerTrackingController(test_hercules_v1_dict, test_interface_hercules_ad):
     test_controller = WindFarmPowerTrackingController(
-        interface=test_interface_hercules_ad, input_dict=test_hercules_v1_dict, cname="wind_farm"
+        interface=test_interface_hercules_ad, cname="wind_farm"
     )
 
     # Test no change to power setpoints if producing desired power
@@ -180,7 +166,6 @@ def test_WindFarmPowerTrackingController(test_hercules_v1_dict, test_interface_h
     # Test that more aggressive control leads to faster response
     test_controller = WindFarmPowerTrackingController(
         interface=test_interface_hercules_ad,
-        input_dict=test_hercules_v1_dict,
         cname="wind_farm",
         controller_parameters={"proportional_gain": 2},
     )
@@ -199,19 +184,12 @@ def test_HybridSupervisoryControllerGeneric_reference_tracking(
     Tests for the HybridSupervisoryControllerGeneric when following a power reference.
     """
     # Establish lower controllers
-    wind_controller = WindFarmPowerDistributingController(
-        test_interface_hercules, test_hercules_dict, "wind_farm"
-    )
-    solar_controller = SolarPassthroughController(
-        test_interface_hercules, test_hercules_dict, "solar_farm"
-    )
-    battery_controller = BatteryPassthroughController(
-        test_interface_hercules, test_hercules_dict, "battery"
-    )
+    wind_controller = WindFarmPowerDistributingController(test_interface_hercules, "wind_farm")
+    solar_controller = SolarPassthroughController(test_interface_hercules, "solar_farm")
+    battery_controller = BatteryPassthroughController(test_interface_hercules, "battery")
 
     test_controller = HybridSupervisoryControllerGeneric(
         interface=test_interface_hercules,
-        input_dict=test_hercules_dict,
         controller_parameters={
             "component_controllers": [wind_controller, solar_controller, battery_controller],
         },
@@ -265,17 +243,14 @@ def test_HybridSupervisoryControllerGeneric_subsets(test_hercules_dict, test_int
     battery_charge_rate = test_hercules_dict["battery"]["charge_rate"]
 
     # Establish lower controllers
-    wind_controller = WindFarmPowerTrackingController(
-        test_interface, test_hercules_dict, "wind_farm"
-    )
-    solar_controller = SolarPassthroughController(test_interface, test_hercules_dict, "solar_farm")
-    battery_controller = BatteryPassthroughController(test_interface, test_hercules_dict, "battery")
+    wind_controller = WindFarmPowerTrackingController(test_interface, "wind_farm")
+    solar_controller = SolarPassthroughController(test_interface, "solar_farm")
+    battery_controller = BatteryPassthroughController(test_interface, "battery")
 
     ## First, try with wind and solar only
     test_interface.component_names = ["wind_farm", "solar_farm"]
     test_controller = HybridSupervisoryControllerGeneric(
         interface=test_interface,
-        input_dict=test_hercules_dict,
         controller_parameters={"component_controllers": [wind_controller, solar_controller]},
     )
 
@@ -295,7 +270,6 @@ def test_HybridSupervisoryControllerGeneric_subsets(test_hercules_dict, test_int
     test_interface.component_names = ["wind_farm", "battery"]
     test_controller = HybridSupervisoryControllerGeneric(
         interface=test_interface,
-        input_dict=test_hercules_dict,
         controller_parameters={"component_controllers": [wind_controller, battery_controller]},
     )
 
@@ -315,7 +289,6 @@ def test_HybridSupervisoryControllerGeneric_subsets(test_hercules_dict, test_int
     test_interface.component_names = ["solar_farm", "battery"]
     test_controller = HybridSupervisoryControllerGeneric(
         interface=test_interface,
-        input_dict=test_hercules_dict,
         controller_parameters={"component_controllers": [solar_controller, battery_controller]},
     )
 
@@ -335,7 +308,6 @@ def test_HybridSupervisoryControllerGeneric_subsets(test_hercules_dict, test_int
     test_interface.component_names = ["wind_farm"]
     test_controller = HybridSupervisoryControllerGeneric(
         interface=test_interface,
-        input_dict=test_hercules_dict,
         controller_parameters={"component_controllers": [wind_controller]},
     )
 
@@ -347,7 +319,6 @@ def test_HybridSupervisoryControllerGeneric_subsets(test_hercules_dict, test_int
     test_interface.component_names = ["solar_farm"]
     test_controller = HybridSupervisoryControllerGeneric(
         interface=test_interface,
-        input_dict=test_hercules_dict,
         controller_parameters={"component_controllers": [solar_controller]},
     )
     out_dict = test_controller.step(test_hercules_dict)
@@ -357,7 +328,6 @@ def test_HybridSupervisoryControllerGeneric_subsets(test_hercules_dict, test_int
     test_interface.component_names = ["battery"]
     test_controller = HybridSupervisoryControllerGeneric(
         interface=test_interface,
-        input_dict=test_hercules_dict,
         controller_parameters={"component_controllers": [battery_controller]},
     )
     out_dict = test_controller.step(test_hercules_dict)
@@ -366,9 +336,7 @@ def test_HybridSupervisoryControllerGeneric_subsets(test_hercules_dict, test_int
 
 def test_BatteryController(test_hercules_v1_dict):
     test_interface = HerculesBatteryInterface(test_hercules_v1_dict)
-    test_controller = BatteryController(
-        test_interface, test_hercules_v1_dict, "battery", {"k_batt": 0.1}
-    )
+    test_controller = BatteryController(test_interface, "battery", {"k_batt": 0.1})
 
     # Test when starting with 0 power output
     power_ref = 1000
@@ -379,17 +347,13 @@ def test_BatteryController(test_hercules_v1_dict):
     assert 0 < out_0 < power_ref
 
     # Test that increasing the gain increases the control response
-    test_controller = BatteryController(
-        test_interface, test_hercules_v1_dict, "battery", {"k_batt": 0.5}
-    )
+    test_controller = BatteryController(test_interface, "battery", {"k_batt": 0.5})
     test_controller.step(test_hercules_v1_dict)
     out_1 = test_controller._controls_dict["battery"]["power_setpoint"]
     assert out_0 < out_1 < power_ref
 
     # Decreasing the gain slows the response
-    test_controller = BatteryController(
-        test_interface, test_hercules_v1_dict, "battery", {"k_batt": 0.01}
-    )
+    test_controller = BatteryController(test_interface, "battery", {"k_batt": 0.01})
     test_controller.step(test_hercules_v1_dict)
     out_2 = test_controller._controls_dict["battery"]["power_setpoint"]
     assert 0 < out_2 < out_0
@@ -397,9 +361,7 @@ def test_BatteryController(test_hercules_v1_dict):
     # More complex test for smoothing capabilities (mid-low gain)
     power_refs_in = np.tile(np.array([1000.0, -1000.0]), 5)
     power_refs_out = np.zeros_like(power_refs_in)
-    test_controller = BatteryController(
-        test_interface, test_hercules_v1_dict, "battery", {"k_batt": 0.1}
-    )
+    test_controller = BatteryController(test_interface, "battery", {"k_batt": 0.1})
 
     battery_power = 0
     for i, pr_in in enumerate(power_refs_in):
@@ -423,7 +385,6 @@ def test_BatteryController(test_hercules_v1_dict):
     test_hercules_v1_dict["external_signals"]["plant_power_reference"] = power_ref
     test_controller_0 = BatteryController(
         test_interface,
-        test_hercules_v1_dict,
         "battery",
         {"clipping_thresholds": clipping_threshold_0},
     )
@@ -432,7 +393,6 @@ def test_BatteryController(test_hercules_v1_dict):
 
     test_controller_1 = BatteryController(
         test_interface,
-        test_hercules_v1_dict,
         "battery",
         {"clipping_thresholds": clipping_threshold_1},
     )
@@ -441,7 +401,6 @@ def test_BatteryController(test_hercules_v1_dict):
 
     test_controller_2 = BatteryController(
         test_interface,
-        test_hercules_v1_dict,
         "battery",
         {"clipping_thresholds": clipping_threshold_2},
     )
@@ -483,9 +442,7 @@ def test_HydrogenPlantController(test_hercules_dict, test_interface_hercules):
     Tests that the HydrogenPlantController outputs a reasonable signal
     """
     ## Test with only wind providing generation
-    wind_controller = WindFarmPowerTrackingController(
-        test_interface_hercules, test_hercules_dict, "wind_farm"
-    )
+    wind_controller = WindFarmPowerTrackingController(test_interface_hercules, "wind_farm")
 
     # Remove components not used for first test
     test_herc_dict_windonly = copy.deepcopy(test_hercules_dict)
@@ -503,7 +460,6 @@ def test_HydrogenPlantController(test_hercules_dict, test_interface_hercules):
     test_controller_parameters["generator_controller"] = wind_controller
     test_controller = HydrogenPlantController(
         interface=test_interface_hercules,
-        input_dict=test_herc_dict_windonly,
         cname="electrolyzer",
         controller_parameters=test_controller_parameters,
     )
@@ -532,16 +488,11 @@ def test_HydrogenPlantController(test_hercules_dict, test_interface_hercules):
 
     hybrid_controller = HybridSupervisoryControllerGeneric(
         interface=test_interface_hercules,
-        input_dict=test_hercules_dict,
         controller_parameters={
             "component_controllers": [
                 wind_controller,
-                SolarPassthroughController(
-                    test_interface_hercules, test_hercules_dict, "solar_farm"
-                ),
-                BatteryPassthroughController(
-                    test_interface_hercules, test_hercules_dict, "battery"
-                ),
+                SolarPassthroughController(test_interface_hercules, "solar_farm"),
+                BatteryPassthroughController(test_interface_hercules, "battery"),
             ],
         },
     )
@@ -549,7 +500,6 @@ def test_HydrogenPlantController(test_hercules_dict, test_interface_hercules):
     test_controller_parameters["generator_controller"] = hybrid_controller
     test_controller = HydrogenPlantController(
         interface=test_interface_hercules,
-        input_dict=test_hercules_dict,
         cname="electrolyzer",
         controller_parameters=test_controller_parameters,
     )
@@ -583,7 +533,6 @@ def test_HydrogenPlantController(test_hercules_dict, test_interface_hercules):
     with pytest.raises(KeyError):
         HydrogenPlantController(
             interface=test_interface_hercules,
-            input_dict=test_hercules_dict,
             controller_parameters=external_controller_parameters,
         )
 
@@ -592,6 +541,5 @@ def test_HydrogenPlantController(test_hercules_dict, test_interface_hercules):
     with pytest.raises(KeyError):
         HydrogenPlantController(
             interface=test_interface_hercules,
-            input_dict=test_hercules_dict,
             controller_parameters=external_controller_parameters,
         )

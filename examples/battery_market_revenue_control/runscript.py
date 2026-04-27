@@ -28,10 +28,9 @@ hmodel = HerculesModel("hercules_input.yaml")
 interface = HerculesInterface(hmodel.h_dict)
 controller = HybridSupervisoryControllerGeneric(
     interface=HerculesInterface(hmodel.h_dict),
-    input_dict=hmodel.h_dict,
-    component_controllers=[
-        BatteryPriceSOCController(interface=interface, input_dict=hmodel.h_dict, cname="battery")
-    ],
+    controller_parameters={
+        "component_controllers": [BatteryPriceSOCController(interface=interface, cname="battery")]
+    },
 )
 hmodel.assign_controller(controller)
 

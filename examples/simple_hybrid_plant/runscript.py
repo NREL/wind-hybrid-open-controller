@@ -33,14 +33,10 @@ hmodel = HerculesModel(h_dict)
 # Establish controllers based on options
 interface = HerculesInterface(hmodel.h_dict)
 print("Setting up controller.")
-wind_controller = WindFarmPowerTrackingController(interface, hmodel.h_dict, "wind_farm")
-solar_controller = (
-    SolarPassthroughController(interface, hmodel.h_dict, "solar_farm") if include_solar else None
-)
+wind_controller = WindFarmPowerTrackingController(interface, "wind_farm")
+solar_controller = SolarPassthroughController(interface, "solar_farm") if include_solar else None
 battery_controller = (
-    BatteryController(interface, hmodel.h_dict, "battery", {"k_batt": 0.1})
-    if include_battery
-    else None
+    BatteryController(interface, "battery", {"k_batt": 0.1}) if include_battery else None
 )
 component_controllers = [wind_controller]
 if include_solar:
@@ -51,8 +47,7 @@ if include_battery:
 # Set up main supervisory controller
 controller = HybridSupervisoryControllerGeneric(
     interface,
-    hmodel.h_dict,
-    component_controllers=component_controllers,
+    controller_parameters={"component_controllers": component_controllers},
 )
 
 hmodel.assign_controller(controller)

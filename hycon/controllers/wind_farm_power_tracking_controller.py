@@ -12,7 +12,7 @@ class WindFarmPowerDistributingController(ControllerBase):
     feedback on current power generation.
     """
 
-    def __init__(self, interface, input_dict, cname, controller_parameters={}, verbose=False):
+    def __init__(self, interface, cname, controller_parameters={}, verbose=False):
         super().__init__(interface, cname, verbose=verbose)
 
         if self.cname in self.plant_parameters:
@@ -112,7 +112,7 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
     Inherits from WindFarmPowerDistributingController.
     """
 
-    def __init__(self, interface, input_dict, cname, controller_parameters={}, verbose=False):
+    def __init__(self, interface, cname, controller_parameters={}, verbose=False):
         """
         Constructor for WindFarmPowerTrackingController.
 
@@ -123,7 +123,7 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
             ramp_rate_limit: Ramp rate limit for the controller (kW/s). Defaults to None.
             verbose: Boolean flag for verbosity.
         """
-        super().__init__(interface, input_dict, cname, verbose=verbose)
+        super().__init__(interface, cname, verbose=verbose)
 
         # Using bad inheritance here, so will have to recheck ramp rate limit parameters
         self.check_controller_parameters(controller_parameters)

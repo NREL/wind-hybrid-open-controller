@@ -12,7 +12,6 @@ class LookupBasedWakeSteeringController(ControllerBase):
     def __init__(
         self,
         interface: InterfaceBase,
-        input_dict: dict,
         cname: str,
         controller_parameters: dict = {},
         verbose: bool = False,
