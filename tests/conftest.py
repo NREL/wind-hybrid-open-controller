@@ -68,6 +68,8 @@ def test_hercules_dict():
             "discharge_rate": 15e3,
             "component_type": "BatterySimple",
             "component_category": "storage",
+            "max_SOC": 0.95,
+            "min_SOC": 0.05,
         },
         "electrolyzer": {
             "H2_mfr": 0.03,

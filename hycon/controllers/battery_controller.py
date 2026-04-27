@@ -178,12 +178,10 @@ class BatteryPriceSOCController(ControllerBase):
         self.check_controller_parameters(controller_parameters)
         self.set_controller_parameters(**controller_parameters)
 
-        # TODO: These should now come from plant_parameters
         self.rated_power_charging = self.plant_parameters[self.cname]["charge_rate"]
         self.rated_power_discharging = self.plant_parameters[self.cname]["discharge_rate"]
 
         # Save the duration rounded to nearest hour
-        # TODO: WILL NEED TO GET THE NAME!
         self.duration = round(
             self.plant_parameters[self.cname]["energy_capacity"]
             / self.plant_parameters[self.cname]["power_capacity"]
@@ -207,8 +205,7 @@ class BatteryPriceSOCController(ControllerBase):
     def set_controller_parameters(
         self,
         high_soc=1.0,
-        low_soc=0.2,
-        **_,  # <- Allows arbitrary additional parameters to be passed, which are ignored
+        low_soc=0.0,
     ):
         """
         Set parameters for BatteryPriceSOCController.
@@ -257,5 +254,15 @@ class BatteryPriceSOCController(ControllerBase):
             power_setpoint = -self.rated_power_charging
         else:
             power_setpoint = 0.0
+
+        # Limit the power_setpoint by the SOC
+        if power_setpoint > 0:  # Trying to discharge
+            if soc <= self.plant_parameters[self.cname]["state_of_charge_min"]:  # Fully depleted
+                power_setpoint = 0.0
+
+        # Other way
+        if power_setpoint < 0:  # Trying to charge
+            if soc >= self.plant_parameters[self.cname]["state_of_charge_max"]:  # Fully charged
+                power_setpoint = 0.0
 
         return {self.cname: {"power_setpoint": power_setpoint}}
