@@ -8,25 +8,15 @@ class HydrogenPlantController(ControllerBase):
         self,
         interface,
         input_dict,
-        generator_controller=None,
-        electrolyzer_cname="hydrogen",
+        cname="hydrogen",
         controller_parameters={},
         verbose=False,
     ):
-        super().__init__(interface, cname=electrolyzer_cname, verbose=verbose)
-
-        # Assign the individual asset controllers
-        self.generator_controller = generator_controller
+        super().__init__(interface, cname=cname, verbose=verbose)
 
         # Check that parameters are not specified both in input file
         # and in controller_parameters
-        for cp in controller_parameters.keys():
-            if cp in input_dict["controller"]:
-                raise KeyError(
-                    'Found key "' + cp + '" in both input_dict["controller"] and'
-                    " in controller_parameters."
-                )
-        controller_parameters = {**controller_parameters, **input_dict["controller"]}
+        self.check_controller_parameters(controller_parameters)
         self.set_controller_parameters(**controller_parameters)
 
         # Initialize filter
@@ -36,6 +26,7 @@ class HydrogenPlantController(ControllerBase):
         self,
         nominal_plant_power_kW,
         nominal_hydrogen_rate_kgps,
+        generator_controller,
         hydrogen_controller_gain=1.0,
         **_,  # <- Allows arbitrary additional parameters to be passed, which are ignored
     ):
@@ -54,6 +45,9 @@ class HydrogenPlantController(ControllerBase):
             nominal_hydrogen_rate_kgps (float): Nominal hydrogen production rate in kg/s.
             hydrogen_controller_gain (float): Gain for the hydrogen controller. Defaults to 1.0.
         """
+
+        # Assign the power component controller
+        self.generator_controller = generator_controller
 
         # Set K from plant inputs
         self.K = nominal_plant_power_kW / nominal_hydrogen_rate_kgps * hydrogen_controller_gain

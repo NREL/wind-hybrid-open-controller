@@ -12,7 +12,7 @@ class WindFarmPowerDistributingController(ControllerBase):
     feedback on current power generation.
     """
 
-    def __init__(self, interface, input_dict, cname, ramp_rate_limit=None, verbose=False):
+    def __init__(self, interface, input_dict, cname, controller_parameters={}, verbose=False):
         super().__init__(interface, cname, verbose=verbose)
 
         if self.cname in self.plant_parameters:
@@ -22,12 +22,18 @@ class WindFarmPowerDistributingController(ControllerBase):
         self.turbines = range(self.n_turbines)
 
         # Ramp rate limit
-        if ramp_rate_limit is None:
-            ramp_rate_limit = np.inf
-        self.turbine_ramp_rate_limit = ramp_rate_limit / self.n_turbines
+        self.check_controller_parameters(controller_parameters)
+        self.set_controller_parameters(**controller_parameters)
 
         # Used for initialization purposes
         self._first_call = True
+
+    def set_controller_parameters(self, ramp_rate_limit=None):
+        if ramp_rate_limit is None:
+            ramp_rate_limit = np.inf
+        elif ramp_rate_limit < 0:
+            raise ValueError("ramp_rate_limit must be non-negative.")
+        self.turbine_ramp_rate_limit = ramp_rate_limit / self.n_turbines
 
     def compute_controls(self, measurements_dict):
         ref_in_lower_dict = (
@@ -117,16 +123,19 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
             ramp_rate_limit: Ramp rate limit for the controller (kW/s). Defaults to None.
             verbose: Boolean flag for verbosity.
         """
-        # TODO: unpack properly from controller_parameters and input_dict
-        proportional_gain = controller_parameters.get("proportional_gain", 1)
-        ramp_rate_limit = controller_parameters.get("ramp_rate_limit", None)
+        super().__init__(interface, input_dict, cname, verbose=verbose)
 
-        # TODO: convert to controller_parameters setup
-        super().__init__(
-            interface, input_dict, cname, ramp_rate_limit=ramp_rate_limit, verbose=verbose
-        )
+        # Using bad inheritance here, so will have to recheck ramp rate limit parameters
+        self.check_controller_parameters(controller_parameters)
+        self.set_controller_parameters(**controller_parameters)
 
-        # Proportional gain
+    def set_controller_parameters(self, proportional_gain=1.0, ramp_rate_limit=None):
+        if ramp_rate_limit is None:
+            ramp_rate_limit = np.inf
+        elif ramp_rate_limit < 0:
+            raise ValueError("ramp_rate_limit must be non-negative.")
+        self.turbine_ramp_rate_limit = ramp_rate_limit / self.n_turbines
+
         self.K_p = proportional_gain * 1 / self.n_turbines
 
     def turbine_power_references(

@@ -53,4 +53,4 @@ class InterfaceBase(metaclass=ABCMeta):
 
     @controller_parameters.setter
     def controller_parameters(self, value):
-        self._controller_parameters = value
+        raise AttributeError("Shouldn't be called! Deprecated!")

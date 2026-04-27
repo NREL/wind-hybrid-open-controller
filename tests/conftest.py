@@ -8,13 +8,6 @@ def test_hercules_v1_dict():
     return {
         "dt": 1,
         "time": 0,
-        "controller": {
-            "num_turbines": 2,
-            "initial_conditions": {"yaw": [270.0, 270.0]},
-            "nominal_plant_power_kW": 10000,
-            "nominal_hydrogen_rate_kgps": 0.1,
-            "hydrogen_controller_gain": 1.0,
-        },
         "hercules_comms": {
             "amr_wind": {
                 "test_farm": {
@@ -48,12 +41,6 @@ def test_hercules_dict():
         "dt": 1,
         "time": 0,
         "plant": {"interconnect_limit": None},
-        "controller": {
-            "test_controller_parameter": 1.0,
-            "nominal_plant_power_kW": 10000,
-            "nominal_hydrogen_rate_kgps": 0.1,
-            "hydrogen_controller_gain": 1.0,
-        },
         "wind_farm": {
             "n_turbines": 2,
             "capacity": 10000.0,
@@ -112,7 +99,6 @@ class StandinInterface(InterfaceBase):
         self.dt = 1.0
         # Set up stand-in plant parameters and controller parameters
         self.plant_parameters = {"n_turbines": 2}
-        self.controller_parameters = {}
 
     def get_measurements(self):
         pass

@@ -26,16 +26,7 @@ class BatteryController(ControllerBase):
         """
         super().__init__(interface, cname, verbose)
 
-        # Check that parameters are not specified both in input file
-        # and in controller_parameters
-        if "controller" in input_dict:
-            for cp in controller_parameters.keys():
-                if cp in input_dict["controller"]:
-                    raise KeyError(
-                        'Found key "' + cp + '" in both input_dict["controller"] and'
-                        " in controller_parameters."
-                    )
-            controller_parameters = {**controller_parameters, **input_dict["controller"]}
+        self.check_controller_parameters(controller_parameters)
         self.set_controller_parameters(**controller_parameters)
 
         # Initialize controller internal state
@@ -45,7 +36,6 @@ class BatteryController(ControllerBase):
         self,
         k_batt=0.1,
         clipping_thresholds=[0, 0, 1, 1],
-        **_,  # <- Allows arbitrary additional parameters to be passed, which are ignored
     ):
         """
         Set gains and threshold limits for BatteryController.
@@ -126,11 +116,21 @@ class BatteryPassthroughController(ControllerBase):
     Simply passes power reference down to (single) battery.
     """
 
-    def __init__(self, interface, input_dict, cname, verbose=True):
+    def __init__(self, interface, input_dict, cname, controller_parameters={}, verbose=True):
         """
         Instantiate BatteryPassthroughController."
         """
         super().__init__(interface, cname, verbose)
+
+        self.check_controller_parameters(controller_parameters)
+        self.set_controller_parameters(**controller_parameters)
+
+    def set_controller_parameters(self):
+        """
+        No parameters for BatteryPassthroughController, but method is needed to be consistent with
+        ControllerBase.
+        """
+        return None
 
     def compute_controls(self, measurements_dict):
         """

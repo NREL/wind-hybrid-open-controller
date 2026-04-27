@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pandas as pd
 from floris.utilities import wrap_180
 
 from hycon.controllers.controller_base import ControllerBase
@@ -15,8 +14,7 @@ class LookupBasedWakeSteeringController(ControllerBase):
         interface: InterfaceBase,
         input_dict: dict,
         cname: str,
-        df_yaw: pd.DataFrame | None = None,
-        hysteresis_dict: dict | None = None,
+        controller_parameters: dict = {},
         verbose: bool = False,
     ):
         """
@@ -39,6 +37,10 @@ class LookupBasedWakeSteeringController(ControllerBase):
         self.turbines = range(self.n_turbines)
 
         # Handle yaw optimizer object
+        self.check_controller_parameters(controller_parameters)
+        self.set_controller_parameters(**controller_parameters)
+
+    def set_controller_parameters(self, df_yaw=None, hysteresis_dict=None, yaw_IC=270.0):
         if df_yaw is None:
             if hysteresis_dict is not None:
                 raise ValueError(
@@ -62,7 +64,6 @@ class LookupBasedWakeSteeringController(ControllerBase):
         self.hysteresis_dict = hysteresis_dict
 
         # Set initial conditions
-        yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
         if hasattr(yaw_IC, "__len__"):
             if len(yaw_IC) == self.n_turbines:
                 self.controls_dict = {"yaw_angles": yaw_IC}

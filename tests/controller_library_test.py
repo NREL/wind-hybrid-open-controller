@@ -78,7 +78,7 @@ def test_LookupBasedWakeSteeringController(test_hercules_v1_dict, test_interface
         interface=test_interface_hercules_ad,
         input_dict=test_hercules_v1_dict,
         cname="wind_farm",
-        df_yaw=df_opt_test,
+        controller_parameters={"df_yaw": df_opt_test},
     )
 
     test_hercules_v1_dict["time"] = 20
@@ -106,7 +106,7 @@ def test_WindFarmPowerDistributingController(test_hercules_v1_dict, test_interfa
     )
     assert np.allclose(
         test_power_setpoints,
-        POWER_SETPOINT_DEFAULT / test_hercules_v1_dict["controller"]["num_turbines"],
+        POWER_SETPOINT_DEFAULT / 2,
     )
 
     # Test with power reference
@@ -122,7 +122,7 @@ def test_WindFarmPowerDistributingController(test_hercules_v1_dict, test_interfa
         interface=test_interface_hercules_ad,
         input_dict=test_hercules_v1_dict,
         cname="wind_farm",
-        ramp_rate_limit=200,
+        controller_parameters={"ramp_rate_limit": 200},
     )
     test_hercules_v1_dict["external_signals"]["wind_power_reference"] = 1000
     test_controller.step(input_dict=test_hercules_v1_dict)  # To initialize previous power setpoints
@@ -212,7 +212,9 @@ def test_HybridSupervisoryControllerGeneric_reference_tracking(
     test_controller = HybridSupervisoryControllerGeneric(
         interface=test_interface_hercules,
         input_dict=test_hercules_dict,
-        component_controllers=[wind_controller, solar_controller, battery_controller],
+        controller_parameters={
+            "component_controllers": [wind_controller, solar_controller, battery_controller],
+        },
     )
 
     solar_current = 800
@@ -274,7 +276,7 @@ def test_HybridSupervisoryControllerGeneric_subsets(test_hercules_dict, test_int
     test_controller = HybridSupervisoryControllerGeneric(
         interface=test_interface,
         input_dict=test_hercules_dict,
-        component_controllers=[wind_controller, solar_controller],
+        controller_parameters={"component_controllers": [wind_controller, solar_controller]},
     )
 
     # Step controller
@@ -294,7 +296,7 @@ def test_HybridSupervisoryControllerGeneric_subsets(test_hercules_dict, test_int
     test_controller = HybridSupervisoryControllerGeneric(
         interface=test_interface,
         input_dict=test_hercules_dict,
-        component_controllers=[wind_controller, battery_controller],
+        controller_parameters={"component_controllers": [wind_controller, battery_controller]},
     )
 
     # Step controller
@@ -314,7 +316,7 @@ def test_HybridSupervisoryControllerGeneric_subsets(test_hercules_dict, test_int
     test_controller = HybridSupervisoryControllerGeneric(
         interface=test_interface,
         input_dict=test_hercules_dict,
-        component_controllers=[solar_controller, battery_controller],
+        controller_parameters={"component_controllers": [solar_controller, battery_controller]},
     )
 
     # Step controller
@@ -334,7 +336,7 @@ def test_HybridSupervisoryControllerGeneric_subsets(test_hercules_dict, test_int
     test_controller = HybridSupervisoryControllerGeneric(
         interface=test_interface,
         input_dict=test_hercules_dict,
-        component_controllers=[wind_controller],
+        controller_parameters={"component_controllers": [wind_controller]},
     )
 
     out_dict = test_controller.step(test_hercules_dict)
@@ -346,7 +348,7 @@ def test_HybridSupervisoryControllerGeneric_subsets(test_hercules_dict, test_int
     test_controller = HybridSupervisoryControllerGeneric(
         interface=test_interface,
         input_dict=test_hercules_dict,
-        component_controllers=[solar_controller],
+        controller_parameters={"component_controllers": [solar_controller]},
     )
     out_dict = test_controller.step(test_hercules_dict)
     assert np.isclose(out_dict["solar_farm"]["power_setpoint"], power_ref)
@@ -356,7 +358,7 @@ def test_HybridSupervisoryControllerGeneric_subsets(test_hercules_dict, test_int
     test_controller = HybridSupervisoryControllerGeneric(
         interface=test_interface,
         input_dict=test_hercules_dict,
-        component_controllers=[battery_controller],
+        controller_parameters={"component_controllers": [battery_controller]},
     )
     out_dict = test_controller.step(test_hercules_dict)
     assert np.isclose(out_dict["battery"]["power_setpoint"], power_ref)
@@ -492,11 +494,18 @@ def test_HydrogenPlantController(test_hercules_dict, test_interface_hercules):
     test_herc_dict_windonly["component_names"] = ["wind_farm", "electrolyzer"]
     test_interface_hercules.component_names = ["wind_farm", "electrolyzer"]
 
+    test_controller_parameters = {
+        "nominal_plant_power_kW": 10000,
+        "nominal_hydrogen_rate_kgps": 0.1,
+        "hydrogen_controller_gain": 1.0,
+    }
+
+    test_controller_parameters["generator_controller"] = wind_controller
     test_controller = HydrogenPlantController(
         interface=test_interface_hercules,
         input_dict=test_herc_dict_windonly,
-        generator_controller=wind_controller,
-        electrolyzer_cname="electrolyzer",
+        cname="electrolyzer",
+        controller_parameters=test_controller_parameters,
     )
 
     wind_current = [600, 300]
@@ -511,11 +520,7 @@ def test_HydrogenPlantController(test_hercules_dict, test_interface_hercules):
 
     # Without removing wind power reference, wind controller can't reconcile its setpoint
     out_dict = test_controller.step(test_herc_dict_windonly)
-    controller_gain = (
-        test_herc_dict_windonly["controller"]["nominal_plant_power_kW"]
-        / test_herc_dict_windonly["controller"]["nominal_hydrogen_rate_kgps"]
-        * test_herc_dict_windonly["controller"]["hydrogen_controller_gain"]
-    )
+    controller_gain = 10000 / 0.1 * 1.0  # Based on parameters passed to controller
     assert controller_gain == test_controller.K
 
     wind_cmd_ref = sum(wind_current) + controller_gain * hydrogen_error
@@ -528,18 +533,25 @@ def test_HydrogenPlantController(test_hercules_dict, test_interface_hercules):
     hybrid_controller = HybridSupervisoryControllerGeneric(
         interface=test_interface_hercules,
         input_dict=test_hercules_dict,
-        component_controllers=[
-            wind_controller,
-            SolarPassthroughController(test_interface_hercules, test_hercules_dict, "solar_farm"),
-            BatteryPassthroughController(test_interface_hercules, test_hercules_dict, "battery"),
-        ],
+        controller_parameters={
+            "component_controllers": [
+                wind_controller,
+                SolarPassthroughController(
+                    test_interface_hercules, test_hercules_dict, "solar_farm"
+                ),
+                BatteryPassthroughController(
+                    test_interface_hercules, test_hercules_dict, "battery"
+                ),
+            ],
+        },
     )
 
+    test_controller_parameters["generator_controller"] = hybrid_controller
     test_controller = HydrogenPlantController(
         interface=test_interface_hercules,
         input_dict=test_hercules_dict,
-        generator_controller=hybrid_controller,
-        electrolyzer_cname="electrolyzer",
+        cname="electrolyzer",
+        controller_parameters=test_controller_parameters,
     )
 
     # Set up the dictionary
@@ -567,32 +579,19 @@ def test_HydrogenPlantController(test_hercules_dict, test_interface_hercules):
         "hydrogen_controller_gain": 1.0,
     }
 
-    # Test an error is raised if controller_parameters is passed while also specified on input_dict
+    # Test an error is raised if controller_parameters is passed without generator_controller
     with pytest.raises(KeyError):
         HydrogenPlantController(
             interface=test_interface_hercules,
             input_dict=test_hercules_dict,
-            generator_controller=hybrid_controller,
             controller_parameters=external_controller_parameters,
         )
 
-    # Check instantiation fails if a required parameter is missing from both controller_parameters
-    # and input_dict["controller"]
-    del test_hercules_dict["controller"]["nominal_plant_power_kW"]
-    with pytest.raises(TypeError):
+    # Check instantiation fails if bad argument passed on controller_parameters
+    external_controller_parameters["invalid_parameter"] = 123
+    with pytest.raises(KeyError):
         HydrogenPlantController(
             interface=test_interface_hercules,
             input_dict=test_hercules_dict,
-            generator_controller=hybrid_controller,
+            controller_parameters=external_controller_parameters,
         )
-
-    # Check instantiation proceeds correctly if doubly-specified parameters are avoided
-    del test_hercules_dict["controller"]["nominal_hydrogen_rate_kgps"]
-    del test_hercules_dict["controller"]["hydrogen_controller_gain"]
-
-    test_controller = HydrogenPlantController(
-        interface=test_interface_hercules,
-        input_dict=test_hercules_dict,
-        generator_controller=hybrid_controller,
-        controller_parameters=external_controller_parameters,
-    )

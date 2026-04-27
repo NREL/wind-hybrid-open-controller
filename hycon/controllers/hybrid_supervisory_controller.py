@@ -3,60 +3,6 @@ import numpy as np
 from hycon.controllers.controller_base import ControllerBase
 
 
-class HybridSupervisoryControllerBase(ControllerBase):
-    """
-    Base class for hybrid supervisory controllers, implementing shared functionality.
-    """
-
-    def __init__(
-        self,
-        interface,
-        input_dict,
-        wind_controller=None,
-        solar_controller=None,
-        battery_controller=None,
-        verbose=False,
-    ):
-        super().__init__(interface=interface, verbose=verbose)
-
-        # Assign the individual asset controllers
-        self.wind_controller = wind_controller
-        self.solar_controller = solar_controller
-        self.battery_controller = battery_controller
-
-        self._has_solar_controller = solar_controller is not None
-        self._has_wind_controller = wind_controller is not None
-        self._has_battery_controller = battery_controller is not None
-
-        # Initialize power references
-        self.wind_reference = 0
-        self.solar_reference = 0
-        self.battery_reference = 0
-        self.prev_battery_power = 0
-        self.prev_wind_power = 0
-        self.prev_solar_power = 0
-
-    def compute_controls(self, measurements_dict):
-        # Run supervisory control logic
-        wind_reference, solar_reference, battery_reference = self.supervisory_control(
-            measurements_dict
-        )
-
-        # Package the controls for the individual controllers, step, and return
-        controls_dict = {}
-        if self._has_wind_controller:
-            measurements_dict["wind_farm"]["power_reference"] = wind_reference
-            controls_dict.update(self.wind_controller.compute_controls(measurements_dict))
-        if self._has_solar_controller:
-            measurements_dict["solar_farm"]["power_reference"] = solar_reference
-            controls_dict.update(self.solar_controller.compute_controls(measurements_dict))
-        if self._has_battery_controller:
-            measurements_dict["battery"]["power_reference"] = battery_reference
-            controls_dict.update(self.battery_controller.compute_controls(measurements_dict))
-
-        return controls_dict
-
-
 class HybridSupervisoryControllerGeneric(ControllerBase):
     """
     HybridSupervisoryControllerGeneric is a supervisory controller for a hybrid
@@ -70,8 +16,9 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
         interface,
         input_dict,
         cname="supervisor",
-        component_controllers=[],
-        curtailment_order=None,
+        controller_parameters={},
+        component_controllers=[],  # Could be in controller_parameters?
+        curtailment_order=None,  # Could be in controller_parameters?
         verbose=False,
     ):
         """
@@ -89,6 +36,22 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
         """
         super().__init__(interface=interface, cname=cname, verbose=verbose)
 
+        self.check_controller_parameters(controller_parameters)
+        self.set_controller_parameters(**controller_parameters)
+
+        # Extract interconnection limit, if specified
+        self.static_interconnect_limit = self.plant_parameters.get("interconnect_limit", np.inf)
+        if self.static_interconnect_limit == -1 or self.static_interconnect_limit is None:
+            self.static_interconnect_limit = np.inf
+        if (
+            not isinstance(self.static_interconnect_limit, (float, int))
+            or self.static_interconnect_limit < -1
+        ):
+            raise ValueError(
+                "interconnect_limit must be a positive value (or -1, indicating no limit)."
+            )
+
+    def set_controller_parameters(self, component_controllers=[], curtailment_order=None):
         # Check valid component_controllers
         if len(component_controllers) == 0:
             raise ValueError(
@@ -120,18 +83,6 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
             raise ValueError("curtailment_order must not contain duplicate entries.")
         else:
             self.curtailment_order = curtailment_order
-
-        # Extract interconnection limit, if specified
-        self.static_interconnect_limit = self.plant_parameters.get("interconnect_limit", np.inf)
-        if self.static_interconnect_limit == -1 or self.static_interconnect_limit is None:
-            self.static_interconnect_limit = np.inf
-        if (
-            not isinstance(self.static_interconnect_limit, (float, int))
-            or self.static_interconnect_limit < -1
-        ):
-            raise ValueError(
-                "interconnect_limit must be a positive value (or -1, indicating no limit)."
-            )
 
     def compute_controls(self, measurements_dict):
         """

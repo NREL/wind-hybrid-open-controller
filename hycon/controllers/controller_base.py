@@ -1,3 +1,4 @@
+import inspect
 from abc import ABCMeta, abstractmethod
 
 
@@ -34,6 +35,40 @@ class ControllerBase(metaclass=ABCMeta):
         output_dict = self._send_controls(input_dict)
 
         return output_dict
+
+    def check_controller_parameters(self, controller_parameters):
+        # Check valid controller parameters
+        valid_controller_parameters = inspect.getfullargspec(self.set_controller_parameters).args
+        valid_controller_parameters.remove("self")
+        invalid_cps = [
+            cp for cp in controller_parameters.keys() if cp not in valid_controller_parameters
+        ]
+        if len(invalid_cps) > 0:
+            raise KeyError(
+                "Found keys "
+                + str(invalid_cps)
+                + " in controller_parameters, but they are not valid controller parameters for "
+                + self.__class__.__name__
+                + ". Valid controller parameters are: "
+                + str(valid_controller_parameters)
+                + "."
+            )
+
+        # Check that required parameters are specified
+        default_values = inspect.getfullargspec(self.set_controller_parameters).defaults
+        num_defaults = len(default_values) if default_values is not None else 0
+
+        required_args = valid_controller_parameters[:-num_defaults]
+
+        missing_required_cps = set(required_args) - set(controller_parameters.keys())
+        if len(missing_required_cps) > 0:
+            raise KeyError("Missing required controller parameters: " + str(missing_required_cps))
+
+        return None
+
+    @abstractmethod
+    def set_controller_parameters(self, **kwargs):
+        raise NotImplementedError("set_controller_parameters must be implemented in child class.")
 
     @property
     def controller_parameters(self):

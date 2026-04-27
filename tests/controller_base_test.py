@@ -19,6 +19,9 @@ class InheritanceTestClassGood(ControllerBase):
     def __init__(self, interface):
         super().__init__(interface)
 
+    def set_controller_parameters(self):
+        pass
+
     def compute_controls(self):
         pass
 

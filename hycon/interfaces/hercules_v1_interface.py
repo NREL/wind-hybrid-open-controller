@@ -6,12 +6,15 @@ class HerculesV1ADInterface(InterfaceBase):
     def __init__(self, hercules_dict):
         super().__init__()
 
-        self.dt = hercules_dict["dt"]
-        self.n_turbines = hercules_dict["controller"]["num_turbines"]
-        self.turbines = range(self.n_turbines)
-
         # Grab name of wind farm (assumes there is only one!)
         self.wf_name = list(hercules_dict["hercules_comms"]["amr_wind"].keys())[0]
+
+        self.dt = hercules_dict["dt"]
+        # Bit of a hack here, since num_turbines no longer in controller parameters
+        self.n_turbines = len(
+            hercules_dict["hercules_comms"]["amr_wind"][self.wf_name]["turbine_powers"]
+        )
+        self.turbines = range(self.n_turbines)
 
         # Assign plant parameters for controller use
         self.plant_parameters = {"n_turbines": self.n_turbines}
@@ -110,7 +113,9 @@ class HerculesV1HybridADInterface(InterfaceBase):
         for i in hercules_comms:
             if tech_keys[2] in i.split("_"):
                 self.wind_name = list(hercules_dict["hercules_comms"]["amr_wind"].keys())[0]
-                self.n_turbines = hercules_dict["controller"]["num_turbines"]
+                self.n_turbines = len(
+                    hercules_dict["hercules_comms"]["amr_wind"][self.wind_name]["turbine_powers"]
+                )
                 self.turbines = range(self.n_turbines)
                 self._has_wind_component = True
                 self.plant_parameters["wind_farm"] = {"n_turbines": self.n_turbines}

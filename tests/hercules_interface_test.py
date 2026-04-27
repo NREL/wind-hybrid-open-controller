@@ -140,8 +140,7 @@ def test_HerculesInterface_hybrid(test_hercules_dict):
         == test_hercules_dict_out["battery"]["power_setpoint"]
     )
 
-    # Check that controller and plant parameters are set correctly
-    assert interface.controller_parameters == test_hercules_dict["controller"]
+    # Check that plant parameters are set correctly
     assert (
         interface.plant_parameters["interconnect_limit"]
         == test_hercules_dict["plant"]["interconnect_limit"]
