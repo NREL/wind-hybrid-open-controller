@@ -15,4 +15,4 @@ class SolarPassthroughController(ControllerBase):
         pass
 
     def compute_controls(self, measurements_dict):
-        return {self.cname: {"power_setpoint": measurements_dict["solar_farm"]["power_reference"]}}
+        return {self.cname: {"power_setpoint": measurements_dict[self.cname]["power_reference"]}}
