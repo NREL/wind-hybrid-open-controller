@@ -9,12 +9,11 @@ class HydrogenPlantController(ControllerBase):
         interface,
         input_dict,
         generator_controller=None,
+        electrolyzer_cname="hydrogen",
         controller_parameters={},
         verbose=False,
     ):
-        super().__init__(interface, verbose=verbose)
-
-        self.dt = input_dict["dt"]  # Won't be needed here, but generally good to have
+        super().__init__(interface, cname=electrolyzer_cname, verbose=verbose)
 
         # Assign the individual asset controllers
         self.generator_controller = generator_controller
@@ -91,9 +90,9 @@ class HydrogenPlantController(ControllerBase):
 
     def supervisory_control(self, measurements_dict):
         # Extract measurements sent
-        current_power = measurements_dict["total_power"]
-        hydrogen_output = measurements_dict["hydrogen"]["production_rate"]
-        hydrogen_reference = measurements_dict["hydrogen"]["power_reference"]
+        current_power = measurements_dict["local_power"]
+        hydrogen_output = measurements_dict[self.cname]["production_rate"]
+        hydrogen_reference = measurements_dict[self.cname]["hydrogen_production_reference"]
 
         # Input filtering
         a = 0.05

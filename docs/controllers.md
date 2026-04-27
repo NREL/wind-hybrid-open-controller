@@ -51,20 +51,11 @@ simple proportional control appears sufficient currently. However, these may be 
 later date if needed. The `proportional_gain` for the controller may be provided on instantiation,
 and defaults to `proportional_gain = 1`.
 
-(controllers_simplehybrid)=
-### HybridSupervisoryControllerBaseline
+(controllers_generichybrid)=
+### HybridSupervisoryControllerGeneric
 
-Simple closed-loop supervisory controller for a hybrid wind/solar/battery plant.
-Reads in current power production from wind, solar, and battery, as well as a plant power reference. Contains logic to determine technology set points for wind, solar and battery technologies to follow the plant power reference. The control is based on a proportional gain based on the error between the wind and solar production and the plant power reference. The controller increases the power references sent to wind, solar, and battery if the power reference is not met. If there is a power surplus from wind and solar, the controller adjusts the power reference values to charge the battery up to the battery capacity.
-
-The power reference values for wind, solar and battery technologies are then handled by the operational controllers for wind, solar, and battery, which are assigned to the `HybridSupervisoryControllerBaseline` on instantiation to distribute the bulk references to each asset amongst the individual generators. Currently, only wind actually distributes the power.
-Intended as a baseline for comparison to more advanced supervisory controllers.
-
-This controller can also be run for a hybrid plant comprising wind or solar
-and/or a battery. At least one of the wind or solar components must be present,
-with the battery component optional. Upon instantiation, the user may set
-`wind_controller`, `solar_controller`, and/or `battery_controller` to `None` if
-no wind, solar, and/or battery component is available, respectively.
+Closed-loop supervisory controller for a hybrid plants.
+Reads in current power production from various components, as well as a possible plant power reference, and manages individual component controllers. Depending on the mode of operation of component controllers, enables plant-wide power tracking or independent control up to the interconnection limit. When power tracking, simply passes the plant-wide power reference to the component controllers in the reverse curtailment order until the reference is met. Component controllers are specified as a list using the `component_controllers` argument on instantiation, and the `curtailment_order` is a list of integers referencing the `component_controllers` list. If `curtailment_order` is not provided, the default is to curtail components in the reverse order they are provided in the `component_controllers` list (that is, the final component in the list is curtailed first, and the first component in the list is curtailed last).
 
 (controllers_battery)=
 ### BatteryController
@@ -101,7 +92,7 @@ Simple closed-loop controller for an off-grid power generation/hydrogen plant. T
 Reads in current power production from the generator(s), the current hydrogen production rate, and the hydrogen rate reference. Contains logic to set the generator power reference using a proportional gain applied to the error between the current hydrogen production rate and the hydrogen production reference. The proportional gain is scaled by the current power production to handle the difference of several magnitudes between the power and the hydrogen production rate.
 
 The power reference computed is then passed to a secondary power generation plant controller, which is assigned to the `HydrogenPlantController` on instantiation.
-This secondary power generation controller could be {ref}`controllers_wfpowertracking` for a wind-only plant, {ref}`controllers_simplehybrid` for a hybrid generation plant, etc.
+This secondary power generation controller could be {ref}`controllers_wfpowertracking` for a wind-only plant, {ref}`controllers_generichybrid` for a hybrid generation plant, etc.
 
 (controllers_batterymarket)=
 ### BatteryPriceSOCController

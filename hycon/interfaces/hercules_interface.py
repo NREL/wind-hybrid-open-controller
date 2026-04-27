@@ -111,11 +111,15 @@ class HerculesInterface(InterfaceBase):
         }
 
         total_power = 0.0
+        local_power = 0.0
 
         # Loop over components in simulation
         for c in h_dict["component_names"]:
             component_power = h_dict[c]["power"]
             total_power += component_power
+            if self.plant_parameters[c]["component_category"] in ["generator", "storage"]:
+                # TODO: Do we need another that excludes storage?
+                local_power += component_power
             component_measurements = {"power": component_power}
             for k, v in hercules_data_channel_map.items():
                 if k in h_dict[c]:
@@ -126,16 +130,12 @@ class HerculesInterface(InterfaceBase):
 
         # Record total power
         measurements["total_power"] = total_power
+        measurements["local_power"] = local_power
 
         ## Handle external signals (somewhat hardcoded; can add more as needed)
         measurements["plant_power_reference"] = h_dict["external_signals"].get(
             "plant_power_reference", None
         )
-
-        # TODO: how to pass hydrogen reference to the particular component?
-        # measurements["hydrogen"]["power_reference"] = h_dict["external_signals"].get(
-        #     "hydrogen_reference", 0
-        # )
 
         # Special handling for wind directions
         for c in h_dict["component_names"]:
@@ -143,6 +143,14 @@ class HerculesInterface(InterfaceBase):
                 measurements[c]["wind_directions"] = [
                     h_dict[c]["wind_direction_mean"]
                 ] * self.plant_parameters[c]["n_turbines"]
+
+        # Handle a variety of external_signals
+        if "hydrogen_reference" in h_dict["external_signals"]:
+            for c in h_dict["component_names"]:
+                if self.component_types[c] in hercules_hydrogen_types:
+                    measurements[c]["hydrogen_production_reference"] = h_dict["external_signals"][
+                        "hydrogen_reference"
+                    ]
 
         # Grid price information (using pre-computed keys for performance)
         if "lmp_da_00" in h_dict["external_signals"]:

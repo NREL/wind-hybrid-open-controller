@@ -50,6 +50,9 @@ def test_hercules_dict():
         "plant": {"interconnect_limit": None},
         "controller": {
             "test_controller_parameter": 1.0,
+            "nominal_plant_power_kW": 10000,
+            "nominal_hydrogen_rate_kgps": 0.1,
+            "hydrogen_controller_gain": 1.0,
         },
         "wind_farm": {
             "n_turbines": 2,
@@ -86,9 +89,9 @@ def test_hercules_dict():
             "power": 500.0,
         },
         "external_signals": {
-            "wind_power_reference": 1000.0,
-            "solar_power_reference": 800.0,
-            "battery_power_reference": 0.0,
+            # "wind_power_reference": 1000.0,
+            # "solar_power_reference": 800.0,
+            # "battery_power_reference": 0.0,
             "plant_power_reference": 1000.0,
             "forecast_ws_mean_0": 8.0,
             "forecast_ws_mean_1": 8.1,

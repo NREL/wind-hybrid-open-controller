@@ -8,7 +8,7 @@ import pytest
 from hycon.controllers import (
     BatteryController,
     BatteryPassthroughController,
-    HybridSupervisoryControllerBaseline,
+    HybridSupervisoryControllerGeneric,
     HydrogenPlantController,
     LookupBasedWakeSteeringController,
     SolarPassthroughController,
@@ -34,11 +34,6 @@ def test_controller_instantiation(test_interface_standin, test_hercules_v1_dict)
     )
     _ = WindFarmPowerTrackingController(
         interface=test_interface_standin, input_dict=test_hercules_v1_dict, cname="wind_farm"
-    )
-    _ = HybridSupervisoryControllerBaseline(
-        interface=test_interface_standin,
-        input_dict=test_hercules_v1_dict,
-        wind_controller=1,  # Override error raised for empty controllers
     )
     _ = SolarPassthroughController(
         interface=test_interface_standin, input_dict=test_hercules_v1_dict, cname="solar_farm"
@@ -197,233 +192,183 @@ def test_WindFarmPowerTrackingController(test_hercules_v1_dict, test_interface_h
     assert (test_power_setpoints_a < test_power_setpoints).all()
 
 
-def test_HybridSupervisoryControllerBaseline(
-    test_hercules_v1_dict, test_interface_hercules_hybrid_ad
+def test_HybridSupervisoryControllerGeneric_reference_tracking(
+    test_hercules_dict, test_interface_hercules
 ):
+    """
+    Tests for the HybridSupervisoryControllerGeneric when following a power reference.
+    """
     # Establish lower controllers
-    wind_controller = WindFarmPowerTrackingController(
-        test_interface_hercules_hybrid_ad, test_hercules_v1_dict, "wind_farm"
+    wind_controller = WindFarmPowerDistributingController(
+        test_interface_hercules, test_hercules_dict, "wind_farm"
     )
     solar_controller = SolarPassthroughController(
-        test_interface_hercules_hybrid_ad, test_hercules_v1_dict, "solar_farm"
+        test_interface_hercules, test_hercules_dict, "solar_farm"
     )
     battery_controller = BatteryPassthroughController(
-        test_interface_hercules_hybrid_ad, test_hercules_v1_dict, "battery"
+        test_interface_hercules, test_hercules_dict, "battery"
     )
 
-    test_controller = HybridSupervisoryControllerBaseline(
-        interface=test_interface_hercules_hybrid_ad,
-        input_dict=test_hercules_v1_dict,
-        wind_controller=wind_controller,
-        solar_controller=solar_controller,
-        battery_controller=battery_controller,
+    test_controller = HybridSupervisoryControllerGeneric(
+        interface=test_interface_hercules,
+        input_dict=test_hercules_dict,
+        component_controllers=[wind_controller, solar_controller, battery_controller],
     )
 
     solar_current = 800
-    wind_current = [600, 300]
+    wind_current = 900
     power_ref = 1000
 
-    # Simply test the supervisory_control method, for the time being
-    test_hercules_v1_dict["external_signals"]["plant_power_reference"] = power_ref
-    test_hercules_v1_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = (
-        wind_current
-    )
-    test_hercules_v1_dict["py_sims"]["test_solar"]["outputs"]["power_mw"] = solar_current / 1e3
-    test_controller.prev_solar_power = solar_current  # To override filtering
-    test_controller.prev_wind_power = sum(wind_current)  # To override filtering
+    battery_charge_rate = test_hercules_dict["battery"]["charge_rate"]
 
-    test_controller.step(test_hercules_v1_dict)  # Run the controller once to update measurements
-    supervisory_control_output = test_controller.supervisory_control(
-        test_controller._measurements_dict
-    )
+    # Simply test the supervisory_control method, for the time being
+    test_hercules_dict["external_signals"]["plant_power_reference"] = power_ref
+    test_hercules_dict["wind_farm"]["power"] = wind_current
+    test_hercules_dict["solar_farm"]["power"] = solar_current
+
+    # Step controller
+    out_dict = test_controller.step(test_hercules_dict)
+    wind_setpoint_test = sum(out_dict["wind_farm"]["turbine_power_setpoints"])
+    solar_setpoint_test = out_dict["solar_farm"]["power_setpoint"]
+    battery_setpoint_test = out_dict["battery"]["power_setpoint"]
 
     # Expected outputs
-    wind_solar_current = sum(wind_current) + solar_current
-    wind_power_cmd = 20000 / 2 + sum(wind_current) - (wind_solar_current - power_ref) / 2
-    solar_power_cmd = 20000 / 2 + solar_current - (wind_solar_current - power_ref) / 2
-    battery_power_cmd = power_ref - wind_solar_current
+    wind_solar_current = wind_current + solar_current
+    wind_setpoint_ref = battery_charge_rate + power_ref
+    solar_setpoint_ref = wind_setpoint_ref - wind_current
+    battery_setpoint_ref = power_ref - wind_solar_current
 
     assert np.allclose(
-        supervisory_control_output, [wind_power_cmd, solar_power_cmd, battery_power_cmd]
-    )  # To charge battery
+        [wind_setpoint_test, solar_setpoint_test, battery_setpoint_test],
+        [wind_setpoint_ref, solar_setpoint_ref, battery_setpoint_ref]
+    )
 
 
-def test_HybridSupervisoryControllerBaseline_subsets(
-    test_hercules_v1_dict, test_interface_hercules_hybrid_ad
+def test_HybridSupervisoryControllerGeneric_subsets(
+    test_hercules_dict, test_interface_hercules
 ):
     """
-    Tests that the HybridSupervisoryControllerBaseline can be run with only
+    Tests that the HybridSupervisoryControllerGeneric can be run with only
     some of the wind, solar, and battery controllers.
     """
-    test_interface = test_interface_hercules_hybrid_ad
+    test_interface = test_interface_hercules
+
+    # Alter dict for test
+    solar_current = 800
+    wind_current = 900
+    power_ref = 1000
+
+    test_hercules_dict["external_signals"]["plant_power_reference"] = power_ref
+    test_hercules_dict["wind_farm"]["power"] = wind_current
+    test_hercules_dict["solar_farm"]["power"] = solar_current
+
+    battery_charge_rate = test_hercules_dict["battery"]["charge_rate"]
 
     # Establish lower controllers
     wind_controller = WindFarmPowerTrackingController(
-        test_interface, test_hercules_v1_dict, "wind_farm"
+        test_interface, test_hercules_dict, "wind_farm"
     )
     solar_controller = SolarPassthroughController(
-        test_interface, test_hercules_v1_dict, "solar_farm"
+        test_interface, test_hercules_dict, "solar_farm"
     )
     battery_controller = BatteryPassthroughController(
-        test_interface, test_hercules_v1_dict, "battery"
+        test_interface, test_hercules_dict, "battery"
     )
 
     ## First, try with wind and solar only
-    test_interface._has_wind_component = True
-    test_interface._has_solar_component = True
-    test_interface._has_battery_component = False
-    test_controller = HybridSupervisoryControllerBaseline(
+    test_interface.component_names = ["wind_farm", "solar_farm"]
+    test_controller = HybridSupervisoryControllerGeneric(
         interface=test_interface,
-        input_dict=test_hercules_v1_dict,
-        wind_controller=wind_controller,
-        solar_controller=solar_controller,
-        battery_controller=None,
+        input_dict=test_hercules_dict,
+        component_controllers=[wind_controller, solar_controller],
     )
 
-    solar_current = 800
-    wind_current = [600, 300]
-    power_ref = 1000
+    # Step controller
+    out_dict = test_controller.step(test_hercules_dict)
+    wind_setpoint_test = sum(out_dict["wind_farm"]["turbine_power_setpoints"])
+    solar_setpoint_test = out_dict["solar_farm"]["power_setpoint"]
 
-    # Simply test the supervisory_control method, for the time being
-    test_hercules_v1_dict["external_signals"]["plant_power_reference"] = power_ref
-    test_hercules_v1_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = (
-        wind_current
-    )
-    test_hercules_v1_dict["py_sims"]["test_solar"]["outputs"]["power_mw"] = solar_current / 1e3
-    test_controller.prev_solar_power = solar_current  # To override filtering
-    test_controller.prev_wind_power = sum(wind_current)  # To override filtering
-
-    test_controller.step(test_hercules_v1_dict)  # Run the controller once to update measurements
-    supervisory_control_output = test_controller.supervisory_control(
-        test_controller._measurements_dict
-    )
-
-    wind_solar_current = sum(wind_current) + solar_current
-    wind_power_cmd = sum(wind_current) - (wind_solar_current - power_ref) / 2
-    solar_power_cmd = solar_current - (wind_solar_current - power_ref) / 2
-    battery_power_cmd = 0  # No battery controller!
+    wind_setpoint_ref = power_ref
+    solar_setpoint_ref = wind_setpoint_ref - wind_current
 
     assert np.allclose(
-        supervisory_control_output, [wind_power_cmd, solar_power_cmd, battery_power_cmd]
+        [wind_setpoint_test, solar_setpoint_test],
+        [wind_setpoint_ref, solar_setpoint_ref]
     )
 
     ## Next, wind and battery only
-    test_interface._has_wind_component = True
-    test_interface._has_solar_component = False
-    test_interface._has_battery_component = True
-    test_controller = HybridSupervisoryControllerBaseline(
+    test_interface.component_names = ["wind_farm", "battery"]
+    test_controller = HybridSupervisoryControllerGeneric(
         interface=test_interface,
-        input_dict=test_hercules_v1_dict,
-        wind_controller=wind_controller,
-        solar_controller=None,
-        battery_controller=battery_controller,
+        input_dict=test_hercules_dict,
+        component_controllers=[wind_controller, battery_controller],
     )
 
-    test_controller.prev_solar_power = 0
-    test_controller.prev_wind_power = sum(wind_current)  # To override filtering
-    test_controller.step(test_hercules_v1_dict)  # Run the controller once to update measurements
-    supervisory_control_output = test_controller.supervisory_control(
-        test_controller._measurements_dict
-    )
+    # Step controller
+    out_dict = test_controller.step(test_hercules_dict)
+    wind_setpoint_test = sum(out_dict["wind_farm"]["turbine_power_setpoints"])
+    battery_setpoint_test = out_dict["battery"]["power_setpoint"]
 
-    wind_power_cmd = 20000 + power_ref
-    solar_power_cmd = 0  # No solar controller!
-    battery_power_cmd = power_ref - sum(wind_current)
+    wind_setpoint_ref = battery_charge_rate + power_ref
+    battery_setpoint_ref = power_ref - wind_current
 
     assert np.allclose(
-        supervisory_control_output, [wind_power_cmd, solar_power_cmd, battery_power_cmd]
+        [wind_setpoint_test, battery_setpoint_test],
+        [wind_setpoint_ref, battery_setpoint_ref]
     )
 
     ## Finally, solar and battery only
-    test_interface._has_wind_component = False
-    test_interface._has_solar_component = True
-    test_interface._has_battery_component = True
-    test_controller = HybridSupervisoryControllerBaseline(
+    test_interface.component_names = ["solar_farm", "battery"]
+    test_controller = HybridSupervisoryControllerGeneric(
         interface=test_interface,
-        input_dict=test_hercules_v1_dict,
-        wind_controller=None,
-        solar_controller=solar_controller,
-        battery_controller=battery_controller,
+        input_dict=test_hercules_dict,
+        component_controllers=[solar_controller, battery_controller],
     )
 
-    test_controller.prev_solar_power = solar_current  # To override filtering
-    test_controller.prev_wind_power = 0
-    test_controller.step(test_hercules_v1_dict)  # Run the controller once to update measurements
-    supervisory_control_output = test_controller.supervisory_control(
-        test_controller._measurements_dict
-    )
+    # Step controller
+    out_dict = test_controller.step(test_hercules_dict)
+    solar_setpoint_test = out_dict["solar_farm"]["power_setpoint"]
+    battery_setpoint_test = out_dict["battery"]["power_setpoint"]
 
-    wind_power_cmd = 0  # No wind controller!
-    solar_power_cmd = 20000 + power_ref
-    battery_power_cmd = power_ref - solar_current
+    solar_setpoint_ref = power_ref + battery_charge_rate
+    battery_setpoint_ref = power_ref - solar_current
 
     assert np.allclose(
-        supervisory_control_output, [wind_power_cmd, solar_power_cmd, battery_power_cmd]
+        [solar_setpoint_test, battery_setpoint_test],
+        [solar_setpoint_ref, battery_setpoint_ref]
     )
-
-    ## Either wind or solar controller must be defined
-    with pytest.raises(ValueError):
-        _ = HybridSupervisoryControllerBaseline(
-            interface=test_interface,
-            input_dict=test_hercules_v1_dict,
-            wind_controller=None,
-            solar_controller=None,
-            battery_controller=battery_controller,
-        )
 
     ## Only wind controller
-    test_interface._has_wind_component = True
-    test_interface._has_solar_component = False
-    test_interface._has_battery_component = False
-    test_controller = HybridSupervisoryControllerBaseline(
+    test_interface.component_names = ["wind_farm"]
+    test_controller = HybridSupervisoryControllerGeneric(
         interface=test_interface,
-        input_dict=test_hercules_v1_dict,
-        wind_controller=wind_controller,
-        solar_controller=None,
-        battery_controller=None,
+        input_dict=test_hercules_dict,
+        component_controllers=[wind_controller],
     )
 
-    test_controller.prev_solar_power = 0
-    test_controller.prev_wind_power = sum(wind_current)  # To override filtering
-    test_controller.step(test_hercules_v1_dict)  # Run the controller once to update measurements
-    supervisory_control_output = test_controller.supervisory_control(
-        test_controller._measurements_dict
-    )
+    out_dict = test_controller.step(test_hercules_dict)
 
-    wind_power_cmd = power_ref
-    solar_power_cmd = 0  # No solar controller!
-    battery_power_cmd = 0  # No battery controller!
-
-    assert np.allclose(
-        supervisory_control_output, [wind_power_cmd, solar_power_cmd, battery_power_cmd]
-    )
+    assert np.isclose(sum(out_dict["wind_farm"]["turbine_power_setpoints"]), power_ref)
 
     ## Only solar controller
-    test_interface._has_wind_component = False
-    test_interface._has_solar_component = True
-    test_interface._has_battery_component = False
-    test_controller = HybridSupervisoryControllerBaseline(
+    test_interface.component_names = ["solar_farm"]
+    test_controller = HybridSupervisoryControllerGeneric(
         interface=test_interface,
-        input_dict=test_hercules_v1_dict,
-        wind_controller=None,
-        solar_controller=solar_controller,
-        battery_controller=None,
+        input_dict=test_hercules_dict,
+        component_controllers=[solar_controller],
     )
+    out_dict = test_controller.step(test_hercules_dict)
+    assert np.isclose(out_dict["solar_farm"]["power_setpoint"], power_ref)
 
-    test_controller.prev_solar_power = solar_current  # To override filtering
-    test_controller.prev_wind_power = 0
-    test_controller.step(test_hercules_v1_dict)  # Run the controller once to update measurements
-    supervisory_control_output = test_controller.supervisory_control(
-        test_controller._measurements_dict
+    ## Only battery controller
+    test_interface.component_names = ["battery"]
+    test_controller = HybridSupervisoryControllerGeneric(
+        interface=test_interface,
+        input_dict=test_hercules_dict,
+        component_controllers=[battery_controller],
     )
-
-    wind_power_cmd = 0  # No wind controller!
-    solar_power_cmd = power_ref
-    battery_power_cmd = 0  # No battery controller!
-
-    assert np.allclose(
-        supervisory_control_output, [wind_power_cmd, solar_power_cmd, battery_power_cmd]
-    )
+    out_dict = test_controller.step(test_hercules_dict)
+    assert np.isclose(out_dict["battery"]["power_setpoint"], power_ref)
 
 
 def test_BatteryController(test_hercules_v1_dict):
@@ -540,49 +485,41 @@ def test_BatteryController(test_hercules_v1_dict):
     assert out_0 > out_1
 
 
-def test_HydrogenPlantController(test_hercules_v1_dict, test_interface_hercules_hybrid_ad):
+def test_HydrogenPlantController(test_hercules_dict, test_interface_hercules):
     """
     Tests that the HydrogenPlantController outputs a reasonable signal
     """
     ## Test with only wind providing generation
     wind_controller = WindFarmPowerTrackingController(
-        test_interface_hercules_hybrid_ad, test_hercules_v1_dict, "wind_farm"
+        test_interface_hercules, test_hercules_dict, "wind_farm"
     )
 
     # Remove components not used for first test
-    test_herc_dict_windonly = copy.deepcopy(test_hercules_v1_dict)
-    del test_herc_dict_windonly["py_sims"]["test_battery"]
-    del test_herc_dict_windonly["py_sims"]["test_solar"]
-    test_interface_hercules_hybrid_ad._has_battery_component = False
-    test_interface_hercules_hybrid_ad._has_solar_component = False
+    test_herc_dict_windonly = copy.deepcopy(test_hercules_dict)
+    del test_herc_dict_windonly["battery"]
+    del test_herc_dict_windonly["solar_farm"]
+    test_herc_dict_windonly["component_names"] = ["wind_farm", "electrolyzer"]
+    test_interface_hercules.component_names = ["wind_farm", "electrolyzer"]
 
     test_controller = HydrogenPlantController(
-        interface=test_interface_hercules_hybrid_ad,
+        interface=test_interface_hercules,
         input_dict=test_herc_dict_windonly,
         generator_controller=wind_controller,
+        electrolyzer_cname="electrolyzer",
     )
 
     wind_current = [600, 300]
-    hyrogen_ref = 0.03
-    hydrogen_output = test_herc_dict_windonly["py_sims"]["test_hydrogen"]["outputs"]["H2_mfr"]
-    hydrogen_error = hyrogen_ref - hydrogen_output
+    hydrogen_ref = 0.028
+    hydrogen_output = test_herc_dict_windonly["electrolyzer"]["H2_mfr"]
+    hydrogen_error = hydrogen_ref - hydrogen_output
 
     # Simply test the supervisory_control method, for the time being
-    test_herc_dict_windonly["external_signals"]["hydrogen_reference"] = hyrogen_ref
-    test_herc_dict_windonly["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = (
-        wind_current
-    )
+    test_herc_dict_windonly["external_signals"]["hydrogen_reference"] = hydrogen_ref
+    test_herc_dict_windonly["wind_farm"]["power"] = sum(wind_current)
     test_controller.filtered_power_prev = sum(wind_current)  # To override filtering
 
     # Without removing wind power reference, wind controller can't reconcile its setpoint
-    with pytest.raises(KeyError):
-        test_controller.step(test_herc_dict_windonly)
-    # Remove wind power reference to allow wind controller to operate freely
-    del test_herc_dict_windonly["external_signals"]["wind_power_reference"]
-    test_controller.step(test_herc_dict_windonly)  # Run the controller once to update measurements
-    supervisory_control_output = test_controller.supervisory_control(
-        test_controller._measurements_dict
-    )
+    out_dict = test_controller.step(test_herc_dict_windonly)
     controller_gain = (
         test_herc_dict_windonly["controller"]["nominal_plant_power_kW"]
         / test_herc_dict_windonly["controller"]["nominal_hydrogen_rate_kgps"]
@@ -590,55 +527,51 @@ def test_HydrogenPlantController(test_hercules_v1_dict, test_interface_hercules_
     )
     assert controller_gain == test_controller.K
 
-    wind_power_cmd = sum(wind_current) + controller_gain * hydrogen_error
+    wind_cmd_ref = sum(wind_current) + controller_gain * hydrogen_error
 
-    assert supervisory_control_output == wind_power_cmd
+    assert np.isclose(sum(out_dict["wind_farm"]["turbine_power_setpoints"]), wind_cmd_ref)
 
     # Test with a full wind/solar/battery plant
-    test_interface_hercules_hybrid_ad._has_battery_component = True
-    test_interface_hercules_hybrid_ad._has_solar_component = True
+    test_interface_hercules.component_names = ["wind_farm", "solar_farm", "battery"]
 
-    hybrid_controller = HybridSupervisoryControllerBaseline(
-        interface=test_interface_hercules_hybrid_ad,
-        input_dict=test_hercules_v1_dict,
-        wind_controller=wind_controller,
-        solar_controller=SolarPassthroughController(
-            test_interface_hercules_hybrid_ad, test_hercules_v1_dict, "solar_farm"
-        ),
-        battery_controller=BatteryPassthroughController(
-            test_interface_hercules_hybrid_ad, test_hercules_v1_dict, "battery"
-        ),
+    hybrid_controller = HybridSupervisoryControllerGeneric(
+        interface=test_interface_hercules,
+        input_dict=test_hercules_dict,
+        component_controllers=[
+            wind_controller,
+            SolarPassthroughController(
+                test_interface_hercules, test_hercules_dict, "solar_farm"
+            ),
+            BatteryPassthroughController(
+                test_interface_hercules, test_hercules_dict, "battery"
+            ),
+        ]
     )
 
     test_controller = HydrogenPlantController(
-        interface=test_interface_hercules_hybrid_ad,
-        input_dict=test_hercules_v1_dict,
+        interface=test_interface_hercules,
+        input_dict=test_hercules_dict,
         generator_controller=hybrid_controller,
+        electrolyzer_cname="electrolyzer",
     )
 
     # Set up the dictionary
     solar_current = 1000
     battery_current = 500
-    total_current_power = sum(wind_current) + solar_current - battery_current
-    test_hercules_v1_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = (
-        wind_current
-    )
-    test_hercules_v1_dict["py_sims"]["test_battery"]["outputs"]["power"] = battery_current
-    test_hercules_v1_dict["py_sims"]["test_solar"]["outputs"]["power_mw"] = solar_current / 1e3
-    test_hercules_v1_dict["external_signals"]["hydrogen_reference"] = hyrogen_ref
-    test_hercules_v1_dict["hercules_comms"]["amr_wind"]["test_farm"]["turbine_powers"] = (
-        wind_current
-    )
+    total_current_power = sum(wind_current) + solar_current + battery_current
+    test_hercules_dict["wind_farm"]["power"] = sum(wind_current)
+    test_hercules_dict["solar_farm"]["power"] = solar_current
+    test_hercules_dict["battery"]["power"] = battery_current
+    test_hercules_dict["external_signals"]["hydrogen_reference"] = hydrogen_ref
+
     test_controller.filtered_power_prev = total_current_power  # To override filtering
 
-    test_controller.step(test_hercules_v1_dict)  # Run the controller once to update measurements
-    supervisory_control_output = test_controller.supervisory_control(
-        test_controller._measurements_dict
-    )
+    meas = test_controller._s.get_measurements(test_hercules_dict)
+    power_cmd_test = test_controller.supervisory_control(meas)
 
-    power_cmd_base = total_current_power + controller_gain * hydrogen_error
+    power_cmd_ref = total_current_power + controller_gain * hydrogen_error
 
-    assert supervisory_control_output == power_cmd_base
+    assert np.isclose(power_cmd_test, power_cmd_ref)
 
     # Test instantiation using separate controller parameters
     external_controller_parameters = {
@@ -650,29 +583,29 @@ def test_HydrogenPlantController(test_hercules_v1_dict, test_interface_hercules_
     # Test an error is raised if controller_parameters is passed while also specified on input_dict
     with pytest.raises(KeyError):
         HydrogenPlantController(
-            interface=test_interface_hercules_hybrid_ad,
-            input_dict=test_hercules_v1_dict,
+            interface=test_interface_hercules,
+            input_dict=test_hercules_dict,
             generator_controller=hybrid_controller,
             controller_parameters=external_controller_parameters,
         )
 
     # Check instantiation fails if a required parameter is missing from both controller_parameters
     # and input_dict["controller"]
-    del test_hercules_v1_dict["controller"]["nominal_plant_power_kW"]
+    del test_hercules_dict["controller"]["nominal_plant_power_kW"]
     with pytest.raises(TypeError):
         HydrogenPlantController(
-            interface=test_interface_hercules_hybrid_ad,
-            input_dict=test_hercules_v1_dict,
+            interface=test_interface_hercules,
+            input_dict=test_hercules_dict,
             generator_controller=hybrid_controller,
         )
 
     # Check instantiation proceeds correctly if doubly-specified parameters are avoided
-    del test_hercules_v1_dict["controller"]["nominal_hydrogen_rate_kgps"]
-    del test_hercules_v1_dict["controller"]["hydrogen_controller_gain"]
+    del test_hercules_dict["controller"]["nominal_hydrogen_rate_kgps"]
+    del test_hercules_dict["controller"]["hydrogen_controller_gain"]
 
     test_controller = HydrogenPlantController(
-        interface=test_interface_hercules_hybrid_ad,
-        input_dict=test_hercules_v1_dict,
+        interface=test_interface_hercules,
+        input_dict=test_hercules_dict,
         generator_controller=hybrid_controller,
         controller_parameters=external_controller_parameters,
     )

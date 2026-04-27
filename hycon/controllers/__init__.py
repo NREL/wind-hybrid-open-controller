@@ -4,7 +4,6 @@ from hycon.controllers.battery_controller import (
     BatteryPriceSOCController,
 )
 from hycon.controllers.hybrid_supervisory_controller import (
-    HybridSupervisoryControllerBaseline,
     HybridSupervisoryControllerGeneric,
 )
 from hycon.controllers.hydrogen_plant_controller import HydrogenPlantController
