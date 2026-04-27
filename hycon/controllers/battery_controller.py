@@ -17,7 +17,8 @@ class BatteryController(ControllerBase):
 
         Args:
             interface (object): Interface object for communicating with simulator.
-            input_dict (dict): Dictionary of input parameters (e.g. from Hercules).
+            cname (str): Name of controller, which should match the name of the corresponding
+                plant component.
             controller_parameters (dict): Dictionary of controller parameters k_batt and
                 clipping_thresholds. See set_controller_parameters for more details. If
                 controller parameters are provided both in input_dict and controller_parameters,
@@ -121,7 +122,15 @@ class BatteryPassthroughController(ControllerBase):
 
     def __init__(self, interface, cname, controller_parameters={}, verbose=True):
         """
-        Instantiate BatteryPassthroughController."
+        Instantiate BatteryPassthroughController.
+
+        Args:
+            interface (object): Interface object for communicating with simulator.
+            cname (str): Name of controller, which should match the name of the corresponding
+                plant component.
+            controller_parameters (dict): Dictionary of controller parameters. Not used for
+                BatteryPassthroughController, but included for consistency with ControllerBase.
+            verbose (bool): If True, print debug information.
         """
         super().__init__(interface, cname, verbose)
 
@@ -173,6 +182,17 @@ class BatteryPriceSOCController(ControllerBase):
     """
 
     def __init__(self, interface, cname, controller_parameters={}, verbose=True):
+        """
+        Instantiate BatteryPriceSOCController.
+
+        Args:
+            interface (object): Interface object for communicating with simulator.
+            cname (str): Name of controller, which should match the name of the corresponding
+                plant component.
+            controller_parameters (dict): Dictionary of controller parameters high_soc and low_soc.
+                See set_controller_parameters method for more details.
+            verbose (bool): If True, print debug information.
+        """
         super().__init__(interface, cname, verbose)
 
         self.check_controller_parameters(controller_parameters)

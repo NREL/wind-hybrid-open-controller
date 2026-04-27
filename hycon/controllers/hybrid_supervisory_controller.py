@@ -21,16 +21,15 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
         verbose=False,
     ):
         """
+        Instantiate HybridSupervisoryControllerGeneric.
 
         Args:
             interface: The controller's interface to the plant.
-            input_dict: Dictionary containing any additional information needed to initialize the
-                controller.
-            component_controllers: List of controllers for the individual components in the plant.
-                Must be in the same order as the components are listed in the plant parameters.
-            curtailment_order: List of component names corresponding to the order in which
-                components should be curtailed to satisfy interconnection limits. The first element
-                in the list will be curtailed first.
+            cname: The name of the controller, which should correspond to a key in the plant
+                parameters dictionary. Defaults to "supervisor".
+            controller_parameters: Dictionary of controller parameters. Should include keys
+                "component_controllers" and "curtailment_order". See set_controller_parameters for
+                details. Defaults to empty dictionary.
             verbose: Whether to print additional information during controller operation.
         """
         super().__init__(interface=interface, cname=cname, verbose=verbose)
@@ -51,6 +50,17 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
             )
 
     def set_controller_parameters(self, component_controllers=[], curtailment_order=None):
+        """
+        Set controller parameters for HybridSupervisoryControllerGeneric.
+
+        Args:
+            component_controllers: List of component controllers to coordinate. Should be
+                instantiated Hycon-compatible controllers with cnames corresponding to the plant
+                components in the simulation.
+            curtailment_order: List of integers corresponding to the order in which to curtail
+                components when the overall power reference exceeds the interconnection limit.
+        """
+
         # Check valid component_controllers
         if len(component_controllers) == 0:
             raise ValueError(

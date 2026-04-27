@@ -21,12 +21,10 @@ class LookupBasedWakeSteeringController(ControllerBase):
 
         Args:
             interface (InterfaceBase): Interface object for communicating with the plant.
-            input_dict (dict): Dictionary of input parameters.
-            df_yaw (pd.DataFrame): DataFrame of yaw offsets. May be produced using tools in
-                hycon.design_tools.wake_steering_design. Defaults to None.
-            hysteresis_dict (dict): Dictionary of hysteresis zones. May be produced using
-                compute_hysteresis_zones function in hycon.design_tools.wake_steering_design.
-                Defaults to None.
+            cname (str): Name of the controller, used for indexing into measurements and controls
+                dictionaries. Should match the component name in the plant model.
+            controller_parameters (dict): Dictionary of controller parameters. See
+                set_controller_parameters for details on expected controller parameters.
             verbose (bool): Verbosity flag.
         """
         super().__init__(interface, cname, verbose=verbose)
@@ -40,6 +38,19 @@ class LookupBasedWakeSteeringController(ControllerBase):
         self.set_controller_parameters(**controller_parameters)
 
     def set_controller_parameters(self, df_yaw=None, hysteresis_dict=None, yaw_IC=270.0):
+        """
+        Set controller parameters for LookupBasedWakeSteeringController.
+
+        Args:
+            df_yaw (pd.DataFrame): DataFrame of yaw offsets. May be produced using tools in
+                hycon.design_tools.wake_steering_design. Defaults to None.
+            hysteresis_dict (dict): Dictionary of hysteresis zones. May be produced using
+                compute_hysteresis_zones function in hycon.design_tools.wake_steering_design.
+                Defaults to None.
+            yaw_IC (float or list of floats): Initial condition for yaw angles. If a single
+                float is provided, it is applied to all turbines. If a list is provided, it should
+                be of length num_turbines. Defaults to 270.0 (aligned with incoming wind direction).
+        """
         if df_yaw is None:
             if hysteresis_dict is not None:
                 raise ValueError(

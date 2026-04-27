@@ -13,6 +13,18 @@ class WindFarmPowerDistributingController(ControllerBase):
     """
 
     def __init__(self, interface, cname, controller_parameters={}, verbose=False):
+        """
+        Constructor for WindFarmPowerDistributingController.
+
+        Args:
+            interface: Hycon Interface object for communication with the simulation environment.
+            cname: Name of the controller, used for indexing into measurements and controls
+                dictionaries. Should match the component name in the plant model.
+            controller_parameters: Dictionary of controller parameters. See
+                set_controller_parameters for details on expected controller parameters.
+            verbose: Boolean flag for verbosity.
+        """
+
         super().__init__(interface, cname, verbose=verbose)
 
         if self.cname in self.plant_parameters:
@@ -29,6 +41,13 @@ class WindFarmPowerDistributingController(ControllerBase):
         self._first_call = True
 
     def set_controller_parameters(self, ramp_rate_limit=None):
+        """
+        Set controller parameters for WindFarmPowerDistributingController.
+
+        Args:
+            ramp_rate_limit: Ramp rate limit for the controller (kW/s). Defaults to None, which
+                corresponds to no ramp rate limit.
+        """
         if ramp_rate_limit is None:
             ramp_rate_limit = np.inf
         elif ramp_rate_limit < 0:
@@ -118,9 +137,10 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
 
         Args:
             interface: Hycon Interface object for communication with the simulation environment.
-            input_dict: Dictionary containing input parameters for the controller.
-            proportional_gain: Proportional gain for the controller.
-            ramp_rate_limit: Ramp rate limit for the controller (kW/s). Defaults to None.
+            cname: Name of the controller, used for indexing into measurements and controls
+                dictionaries. Should match the component name in the plant model.
+            controller_parameters: Dictionary of controller parameters. See
+                set_controller_parameters for details on expected controller parameters.
             verbose: Boolean flag for verbosity.
         """
         super().__init__(interface, cname, verbose=verbose)
@@ -130,6 +150,14 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
         self.set_controller_parameters(**controller_parameters)
 
     def set_controller_parameters(self, proportional_gain=1.0, ramp_rate_limit=None):
+        """
+        Set controller parameters for WindFarmPowerTrackingController.
+
+        Args:
+            proportional_gain: Proportional gain for the controller. Defaults to 1.0.
+            ramp_rate_limit: Ramp rate limit for the controller (kW/s). Defaults to None, which
+                corresponds to no ramp rate limit.
+        """
         if ramp_rate_limit is None:
             ramp_rate_limit = np.inf
         elif ramp_rate_limit < 0:

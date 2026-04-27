@@ -11,6 +11,16 @@ class HydrogenPlantController(ControllerBase):
         controller_parameters={},
         verbose=False,
     ):
+        """
+        Constructor for HydrogenPlantController.
+
+        Args:
+            interface (InterfaceBase): Interface object for communicating with the plant.
+            cname (str): Name of the controller. Defaults to "hydrogen".
+            controller_parameters (dict): Dictionary of controller parameters. See
+                set_controller_parameters for details.
+            verbose (bool): Verbosity flag. Defaults to False.
+        """
         super().__init__(interface, cname=cname, verbose=verbose)
 
         # Check that parameters are not specified both in input file
@@ -42,6 +52,9 @@ class HydrogenPlantController(ControllerBase):
         Args:
             nominal_plant_power_kW (float): Nominal power of the plant in kW.
             nominal_hydrogen_rate_kgps (float): Nominal hydrogen production rate in kg/s.
+            generator_controller (ControllerBase): Controller for the generator. This controller
+                should accept a power reference as an input and output appropriate generator
+                controls.
             hydrogen_controller_gain (float): Gain for the hydrogen controller. Defaults to 1.0.
         """
 
