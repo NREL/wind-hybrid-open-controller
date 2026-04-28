@@ -182,8 +182,6 @@ class HerculesInterface(InterfaceBase):
                 controls_dict[c]["turbine_power_setpoints"] = controls_dict[c].pop(
                     "power_setpoints"
                 )
-
-        # Overwrite h_dict elements with controls_dict
-        h_dict = h_dict | controls_dict
+            h_dict[c] = h_dict[c] | controls_dict[c]
 
         return h_dict
