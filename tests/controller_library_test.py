@@ -11,6 +11,7 @@ from hycon.controllers import (
     HybridSupervisoryControllerGeneric,
     HydrogenPlantController,
     LookupBasedWakeSteeringController,
+    PriceCurtailingController,
     SolarPassthroughController,
     WindFarmPowerDistributingController,
     WindFarmPowerTrackingController,
@@ -543,3 +544,46 @@ def test_HydrogenPlantController(test_hercules_dict, test_interface_hercules):
             interface=test_interface_hercules,
             controller_parameters=external_controller_parameters,
         )
+
+def test_PriceCurtailingController(test_hercules_dict, test_interface_hercules):
+    """
+    Tests that the PriceCurtailingController outputs a reasonable signal
+    """
+    # Consider a solar farm only
+    test_interface_hercules.component_names = ["solar_farm"]
+    test_controller = PriceCurtailingController(
+        interface=test_interface_hercules,
+        cname="solar_farm",
+        controller_parameters={"curtailment_price": 50}
+    )
+
+    # Test with price above curtailment threshold
+    power_setpoint_ref = 1000
+    test_hercules_dict["external_signals"]["lmp_rt"] = 100
+    test_hercules_dict["solar_farm"]["power_reference"] = power_setpoint_ref
+    out_dict = test_controller.step(test_hercules_dict)
+    power_setpoint_test = np.array(out_dict["solar_farm"]["power_setpoint"])
+    assert np.isclose(power_setpoint_test, power_setpoint_ref)
+
+    # Test with price below curtailment threshold
+    test_hercules_dict["external_signals"]["lmp_rt"] = 25
+    out_dict = test_controller.step(test_hercules_dict)
+    power_setpoint_test = np.array(out_dict["solar_farm"]["power_setpoint"])
+    assert np.isclose(power_setpoint_test, 0)
+
+    # Test again with negative threshold
+    test_controller.set_controller_parameters(curtailment_price=-10)
+    test_hercules_dict["external_signals"]["lmp_rt"] = -5
+    test_hercules_dict["solar_farm"]["power_reference"] = power_setpoint_ref
+    out_dict = test_controller.step(test_hercules_dict)
+    power_setpoint_test = np.array(out_dict["solar_farm"]["power_setpoint"])
+    assert np.isclose(power_setpoint_test, power_setpoint_ref)
+
+    test_hercules_dict["external_signals"]["lmp_rt"] = -15
+    out_dict = test_controller.step(test_hercules_dict)
+    power_setpoint_test = np.array(out_dict["solar_farm"]["power_setpoint"])
+    assert np.isclose(power_setpoint_test, 0)
+
+    # TODO: Add test for case where there is a lower-level reference tracking
+    # controller chained in.
+    

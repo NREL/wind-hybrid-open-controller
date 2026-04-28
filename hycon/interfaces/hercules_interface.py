@@ -6,6 +6,7 @@ from hycon.interfaces.interface_base import InterfaceBase
 # Key: Hercules name. Value: Name to use in controller measurements dictionary
 hercules_data_channel_map = {
     "power": "power",
+    "power_reference": "power_reference",
     "soc": "state_of_charge",
     "turbine_powers": "turbine_powers",
     "turbine_speeds": "turbine_speeds",
@@ -182,6 +183,7 @@ class HerculesInterface(InterfaceBase):
                 controls_dict[c]["turbine_power_setpoints"] = controls_dict[c].pop(
                     "power_setpoints"
                 )
-            h_dict[c] = h_dict[c] | controls_dict[c]
+            if c in controls_dict:
+                h_dict[c] = h_dict[c] | controls_dict[c]
 
         return h_dict
