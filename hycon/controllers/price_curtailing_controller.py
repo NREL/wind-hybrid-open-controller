@@ -22,7 +22,7 @@ class PriceCurtailingController(ControllerBase):
         self.check_controller_parameters(controller_parameters)
         self.set_controller_parameters(**controller_parameters)
 
-    def set_controller_parameters(self, curtailment_price=0.0):
+    def set_controller_parameters(self, curtailment_price=0.0, power_tracking_controller=None):
         """
         Set controller parameters for PriceCurtailingController.
 
@@ -33,7 +33,13 @@ class PriceCurtailingController(ControllerBase):
         """
         if not isinstance(curtailment_price, (int, float)):
             raise ValueError("curtailment_price must be a single numeric value.")
+        if power_tracking_controller is None:
+            raise ValueError("price_curtailing_controller must be provided.")
+        elif not isinstance(power_tracking_controller, ControllerBase):
+            raise ValueError("price_curtailing_controller must be an instance of ControllerBase.")
+
         self.curtailment_price = curtailment_price
+        self.power_tracking_controller = power_tracking_controller
 
     def compute_controls(self, measurements_dict):
         if "RT_LMP" not in measurements_dict:
@@ -53,8 +59,11 @@ class PriceCurtailingController(ControllerBase):
 
         # Threshold based on curtailment price
         if measurements_dict["RT_LMP"] <= self.curtailment_price:
-            power_setpoint = 0.0
+            measurements_dict[self.cname]["power_reference"] = 0.0
         else:
-            power_setpoint = measurements_dict[self.cname]["power_reference"]
+            pass
 
-        return {self.cname: {"power_setpoint": power_setpoint}}
+        # Compute controls using the underlying price_curtailing_controller
+        controls_dict = self.power_tracking_controller.compute_controls(measurements_dict)
+
+        return {self.cname: {"power_setpoint": controls_dict[self.cname]["power_setpoint"]}}

@@ -44,7 +44,7 @@ def test_HerculesADInterface(test_hercules_v1_dict):
     controls_dict2 = {
         "wind_farm": {
             "yaw_angles": [270.0, 268.9],
-            "power_setpoints": [3000.0, 3000.0],
+            "power_setpoint": [3000.0, 3000.0],
         }
     }
     interface.check_controls(controls_dict)
@@ -54,7 +54,7 @@ def test_HerculesADInterface(test_hercules_v1_dict):
     bad_controls_dict2 = {
         "wind_farm": {
             "yaw_angles": [270.0, 268.9],
-            "power_setpoints": [3000.0, 3000.0],
+            "power_setpoint": [3000.0, 3000.0],
             "unavailable_control": [0.0, 0.0],
         }
     }
@@ -131,12 +131,12 @@ def test_HerculesHybridADInterface(test_hercules_v1_dict):
 
     # Test check_controls()
     controls_dict = {
-        "wind_farm": {"power_setpoints": [1000.0, 1000.0]},
+        "wind_farm": {"power_setpoint": [1000.0, 1000.0]},
         "solar_farm": {"power_setpoint": 1000.0},
         "battery": {"power_setpoint": 0.0},
     }
     bad_controls_dict = {
-        "wind_farm": {"power_setpoints": [1000.0, 1000.0]},
+        "wind_farm": {"power_setpoint": [1000.0, 1000.0]},
         "solar_farm": {"power_setpoint": 1000.0},
         "battery": {"power_setpoint": 0.0, "unavailable_control": 0.0},
     }
@@ -157,7 +157,7 @@ def test_HerculesHybridADInterface(test_hercules_v1_dict):
     )
     assert (
         test_hercules_dict_out["hercules_comms"]["amr_wind"]["test_farm"]["turbine_power_setpoints"]
-        == controls_dict["wind_farm"]["power_setpoints"]
+        == controls_dict["wind_farm"]["power_setpoint"]
     )
     assert (
         test_hercules_dict_out["py_sims"]["inputs"]["solar_setpoint_mw"]

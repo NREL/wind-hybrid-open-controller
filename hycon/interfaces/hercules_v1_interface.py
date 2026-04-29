@@ -57,7 +57,7 @@ class HerculesV1ADInterface(InterfaceBase):
         return measurements
 
     def check_controls(self, controls_dict):
-        available_controls = ["yaw_angles", "power_setpoints"]
+        available_controls = ["yaw_angles", "power_setpoint"]
 
         for c in controls_dict.keys():
             for k in controls_dict[c].keys():
@@ -67,7 +67,7 @@ class HerculesV1ADInterface(InterfaceBase):
     def send_controls(self, hercules_dict, controls_dict):
         yaw_angles = controls_dict["wind_farm"].get("yaw_angles", [-1000] * self.n_turbines)
         power_setpoints = controls_dict["wind_farm"].get(
-            "power_setpoints", [POWER_SETPOINT_DEFAULT] * self.n_turbines
+            "power_setpoint", [POWER_SETPOINT_DEFAULT] * self.n_turbines
         )
 
         hercules_dict["hercules_comms"]["amr_wind"][self.wf_name]["turbine_yaw_angles"] = yaw_angles
@@ -204,7 +204,6 @@ class HerculesV1HybridADInterface(InterfaceBase):
     def check_controls(self, controls_dict):
         available_controls = [
             "power_setpoint",
-            "power_setpoints",
             "yaw_angles",
         ]
 
@@ -220,7 +219,7 @@ class HerculesV1HybridADInterface(InterfaceBase):
     ):
         if self._has_wind_component:
             wind_power_setpoints = controls_dict["wind_farm"].get(
-                "power_setpoints", [POWER_SETPOINT_DEFAULT] * self.n_turbines
+                "power_setpoint", [POWER_SETPOINT_DEFAULT] * self.n_turbines
             )
             hercules_dict["hercules_comms"]["amr_wind"][self.wind_name][
                 "turbine_power_setpoints"

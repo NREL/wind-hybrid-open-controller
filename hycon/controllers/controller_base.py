@@ -66,6 +66,8 @@ class ControllerBase(metaclass=ABCMeta):
             raise KeyError("Missing required controller parameters: " + str(missing_required_cps))
 
         return None
+    
+    # TODO: Consider an "update controller parameters" method. Not urgent.
 
     def compute_controls_without_updating_state(self, measurements_dict):
         """

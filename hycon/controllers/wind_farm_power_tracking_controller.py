@@ -76,14 +76,14 @@ class WindFarmPowerDistributingController(ControllerBase):
         else:
             farm_power_reference = POWER_SETPOINT_DEFAULT
 
-        turbine_power_setpoints = self.turbine_power_references(
+        controls_dict = self.turbine_power_references(
             farm_power_reference=farm_power_reference,
             turbine_powers=measurements_dict[self.cname]["turbine_powers"],
         )
 
         self._first_call = False
 
-        return turbine_power_setpoints
+        return controls_dict
 
     def turbine_power_references(
         self, farm_power_reference=POWER_SETPOINT_DEFAULT, turbine_powers=None
@@ -105,7 +105,7 @@ class WindFarmPowerDistributingController(ControllerBase):
         # Apply ramp rate limit
         turbine_power_setpoints = self.apply_ramp_rate_limit(turbine_power_setpoints)
 
-        return {self.cname: {"power_setpoints": turbine_power_setpoints.tolist()}}
+        return {self.cname: {"power_setpoint": turbine_power_setpoints.tolist()}}
 
     def apply_ramp_rate_limit(self, unclipped_setpoints):
         if self._first_call:
@@ -199,4 +199,4 @@ class WindFarmPowerTrackingController(WindFarmPowerDistributingController):
         # Apply ramp rate limit
         turbine_power_setpoints = self.apply_ramp_rate_limit(unclipped_setpoints)
 
-        return {self.cname: {"power_setpoints": list(turbine_power_setpoints)}}
+        return {self.cname: {"power_setpoint": turbine_power_setpoints.tolist()}}

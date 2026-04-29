@@ -93,7 +93,6 @@ class HerculesInterface(InterfaceBase):
     def check_controls(self, controls_dict):
         available_controls = [
             "power_setpoint",
-            "power_setpoints",
         ]
 
         # Check valid control keys _for each component_ on the hybrid plant
@@ -180,9 +179,7 @@ class HerculesInterface(InterfaceBase):
         for c in self.component_names:
             c_type = self.component_types[c]
             if c_type in hercules_wind_types:
-                controls_dict[c]["turbine_power_setpoints"] = controls_dict[c].pop(
-                    "power_setpoints"
-                )
+                controls_dict[c]["turbine_power_setpoints"] = controls_dict[c].pop("power_setpoint")
             if c in controls_dict:
                 h_dict[c] = h_dict[c] | controls_dict[c]
 
