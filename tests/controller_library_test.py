@@ -545,6 +545,7 @@ def test_HydrogenPlantController(test_hercules_dict, test_interface_hercules):
             controller_parameters=external_controller_parameters,
         )
 
+
 def test_PriceCurtailingController(test_hercules_dict, test_interface_hercules):
     """
     Tests that the PriceCurtailingController outputs a reasonable signal
@@ -559,7 +560,7 @@ def test_PriceCurtailingController(test_hercules_dict, test_interface_hercules):
             "power_tracking_controller": SolarPassthroughController(
                 test_interface_hercules, "solar_farm"
             ),
-        }
+        },
     )
 
     # Test with price above curtailment threshold
@@ -602,7 +603,7 @@ def test_PriceCurtailingController(test_hercules_dict, test_interface_hercules):
             "power_tracking_controller": WindFarmPowerDistributingController(
                 test_interface_hercules, "wind_farm"
             ),
-        }
+        },
     )
     test_hercules_dict["external_signals"]["lmp_rt"] = 100
     test_hercules_dict["wind_farm"]["power_reference"] = power_setpoint_ref
