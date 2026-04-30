@@ -57,14 +57,17 @@ class CoalPlantController(ControllerBase):
         self.bid_interpolator = interp1d(prices, powers, kind="quadratic")
 
     def compute_controls(self, measurements_dict):
-        day_ahead_lmps = np.array(measurements_dict["DA_LMP_24hours"])
-        power_bids = self.bid_interpolator(day_ahead_lmps)
-        plant_status = measurements_dict["plant"]["status"]
+        day_ahead_lmp = measurements_dict["DA_lmp"]
+        power_bids = self.bid_interpolator(day_ahead_lmp)
+        plant_status = measurements_dict["coal_plant"]["status_reference"]
 
+        min_power_value = self.plant_parameters["coal_plant"]["min_stable_load"] * \
+            self.plant_parameters["coal_plant"]["capacity"]
 
         if plant_status == 1:  # Plant is on
             # Assuming we're looking at the first hour's price for simplicity
             power_setpoint = power_bids[0]
+            power_setpoint = max(power_setpoint, min_power_value)  # Ensure power setpoint is not below minimum power
         else: # Plant is off, so set power setpoint to 0
             power_setpoint = 0.0
 

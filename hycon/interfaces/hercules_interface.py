@@ -30,6 +30,8 @@ class HerculesInterface(InterfaceBase):
         self._has_solar_component = "solar_farm" in h_dict
         self._has_battery_component = "battery" in h_dict
         self._has_hydrogen_component = "electrolyzer" in h_dict
+        # TODO: is this still true??
+        self._has_coal_component = "coal_plant" in h_dict
 
         # Wind farm parameters
         if self._has_wind_component:
@@ -62,6 +64,13 @@ class HerculesInterface(InterfaceBase):
         if self._has_hydrogen_component:
             self.plant_parameters["hydrogen"] = {}
 
+        # Coal plant parameters
+        if self._has_coal_component:
+            self.plant_parameters["coal_plant"] = {
+                "capacity": h_dict["coal_plant"]["rated_capacity"],
+                "min_stable_load": h_dict["coal_plant"]["min_stable_load_fraction"] * h_dict["coal_plant"]["rated_capacity"]
+                }
+
         # Pre-compute LMP keys to avoid string formatting in get_measurements
         self._lmp_da_keys = tuple(f"lmp_da_{h:02d}" for h in range(24))
 
@@ -70,6 +79,7 @@ class HerculesInterface(InterfaceBase):
             "wind_power_setpoints",
             "solar_power_setpoint",
             "battery_power_setpoint",
+            "coal_power_setpoint",
         ]
 
         for k in controls_dict.keys():
@@ -125,6 +135,14 @@ class HerculesInterface(InterfaceBase):
                 "production_rate": h_dict["electrolyzer"]["H2_mfr"],
             }
 
+        # Basic coal plant quantities
+        if self._has_coal_component:
+            measurements["coal_plant"] = {
+                "power": h_dict["coal_plant"]["power"],
+                "state": h_dict["coal_plant"]["state"],
+            }
+            total_power += measurements["coal_plant"]["power"]
+
         # Handle external signals (parse and pass to individual components)
         if "external_signals" in h_dict:
             if "plant_power_reference" in h_dict["external_signals"]:
@@ -146,6 +164,16 @@ class HerculesInterface(InterfaceBase):
                 if "battery_power_reference" in h_dict["external_signals"]:
                     measurements["battery"]["power_reference"] = h_dict["external_signals"][
                         "battery_power_reference"
+                    ]
+
+            if self._has_coal_component:
+                if "coal_plant_status_reference" in h_dict["external_signals"]:
+                    measurements["coal_plant"]["status_reference"] = h_dict["external_signals"][
+                        "coal_plant_status_reference"
+                    ]
+                if "coal_power_reference" in h_dict["external_signals"]:
+                    measurements["coal_plant"]["power_reference"] = h_dict["external_signals"][
+                        "coal_power_reference"
                     ]
 
             if "hydrogen_reference" in h_dict["external_signals"] and self._has_hydrogen_component:
@@ -178,6 +206,7 @@ class HerculesInterface(InterfaceBase):
         wind_power_setpoints=None,
         solar_power_setpoint=None,
         battery_power_setpoint=None,
+        coal_power_setpoint=None,
     ):
         if wind_power_setpoints is None:
             wind_power_setpoints = [POWER_SETPOINT_DEFAULT] * self._n_turbines
@@ -185,6 +214,8 @@ class HerculesInterface(InterfaceBase):
             solar_power_setpoint = POWER_SETPOINT_DEFAULT
         if battery_power_setpoint is None:
             battery_power_setpoint = 0.0
+        if coal_power_setpoint is None:
+            coal_power_setpoint = 0.0
 
         if self._has_wind_component:
             # Set wind power setpoints
@@ -197,5 +228,9 @@ class HerculesInterface(InterfaceBase):
         if self._has_battery_component:
             # Set battery power setpoint (positive for discharge)
             h_dict["battery"]["power_setpoint"] = battery_power_setpoint
+
+        if self._has_coal_component:
+            # Set coal plant power setpoint
+            h_dict["coal_plant"]["power_setpoint"] = coal_power_setpoint
 
         return h_dict
