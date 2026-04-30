@@ -34,9 +34,9 @@ class PriceCurtailingController(ControllerBase):
         if not isinstance(curtailment_price, (int, float)):
             raise ValueError("curtailment_price must be a single numeric value.")
         if power_tracking_controller is None:
-            raise ValueError("price_curtailing_controller must be provided.")
+            raise ValueError("power_tracking_controller must be provided.")
         elif not isinstance(power_tracking_controller, ControllerBase):
-            raise ValueError("price_curtailing_controller must be an instance of ControllerBase.")
+            raise ValueError("power_tracking_controller must be an instance of ControllerBase.")
 
         self.curtailment_price = curtailment_price
         self.power_tracking_controller = power_tracking_controller
@@ -63,7 +63,7 @@ class PriceCurtailingController(ControllerBase):
         else:
             pass
 
-        # Compute controls using the underlying price_curtailing_controller
+        # Compute controls using the underlying power_tracking_controller
         controls_dict = self.power_tracking_controller.compute_controls(measurements_dict)
 
         return {self.cname: {"power_setpoint": controls_dict[self.cname]["power_setpoint"]}}
