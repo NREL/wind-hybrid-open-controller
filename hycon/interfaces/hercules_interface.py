@@ -167,9 +167,9 @@ class HerculesInterface(InterfaceBase):
                     ]
 
             if self._has_coal_component:
-                if "coal_plant_status_reference" in h_dict["external_signals"]:
+                if "plant_status" in h_dict["external_signals"]:
                     measurements["coal_plant"]["status_reference"] = h_dict["external_signals"][
-                        "coal_plant_status_reference"
+                        "plant_status"
                     ]
                 if "coal_power_reference" in h_dict["external_signals"]:
                     measurements["coal_plant"]["power_reference"] = h_dict["external_signals"][
