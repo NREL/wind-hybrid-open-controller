@@ -138,7 +138,17 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
 
         # Initialize overall quantities
         power_export_total = 0.0
+        locally_generated_power_total = 0.0
         controls_dict = {}
+
+        # Compute total locally generated power from generators
+        locally_generated_power_total = sum(
+            [
+                measurements_dict[cc.cname]["power"]
+                for cc in self.component_controllers
+                if cc.plant_parameters[cc.cname]["component_category"] == "generator"
+            ]
+        )
 
         # Loop over curtailment order in reverse to bring in power for each component until we hit
         # the interconnection limit, then curtail as needed according to the order.
@@ -148,11 +158,19 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
             if cc.plant_parameters[cc.cname]["component_category"] == "generator":
                 power_reference_component = power_reference_with_storage - power_export_total
             elif cc.plant_parameters[cc.cname]["component_category"] == "storage":
-                power_reference_component = power_reference_total - power_export_total
+                if cc.plant_parameters[cc.cname].get("allow_grid_charging", True):
+                    power_reference_component = power_reference_total - power_export_total
+                else:
+                    power_reference_component = max(
+                        power_reference_total - power_export_total,
+                        -locally_generated_power_total,
+                    )
+                    # Reduce or increase the available power to store
+                    locally_generated_power_total += measurements_dict[cc.cname]["power"]
 
             # Assign power_reference_component the upper limit for the component's power output,
             # as well as the power reference. Component controllers can then chose which to use.
-            measurements_dict[cc.cname]["power_limit_upper"] = power_reference_component
+            measurements_dict[cc.cname]["power_limit_upper"] = power_reference_component  # Not used
             measurements_dict[cc.cname]["power_reference"] = power_reference_component
 
             controls_dict.update(cc.compute_controls(measurements_dict))

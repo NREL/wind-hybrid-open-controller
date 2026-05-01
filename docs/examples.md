@@ -82,7 +82,7 @@ Example of a wind + solar + battery hybrid power plant using the
 {ref}`controllers_generichybrid` to
 track a steady power reference. The plant comprises 10 NREL 5MW reference wind turbines
 (50 MW total wind capacity); a 100MW solar PV array; and a 4-hour, 20MW battery (80MWh energy
-storage capacity).
+storage capacity) that can only charge from the local wind and solar generation.
 
 To run this example, navigate to the examples/simple_hybrid_plant folder and execute the python script runscript.py.
 

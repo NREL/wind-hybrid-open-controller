@@ -74,9 +74,7 @@ class HerculesInterface(InterfaceBase):
                     "energy_capacity": h_dict[c]["energy_capacity"],
                     "charge_rate": h_dict[c]["charge_rate"],
                     "discharge_rate": h_dict[c]["discharge_rate"],
-                    "allow_grid_power_consumption": h_dict[c].get(
-                        "allow_grid_power_consumption", False
-                    ),
+                    "allow_grid_charging": h_dict[c].get("allow_grid_power_consumption", True),
                     "state_of_charge_max": h_dict[c].get("max_SOC", 1.0),
                     "state_of_charge_min": h_dict[c].get("min_SOC", 0.0),
                 }
