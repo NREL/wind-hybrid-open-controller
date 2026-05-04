@@ -109,8 +109,8 @@ class BatteryController(ControllerBase):
 
         controls_dict = {self.cname: {"power_setpoint": current_power + u}}
 
-        # if np.isclose(controls_dict[self.cname]["power_setpoint"], 14.45, atol=1e-2):
-        #     import ipdb; ipdb.set_trace()
+        # TODO: Implement upper limit (interconnect limitation) and lower limit
+        # (if no grid charging)
 
         return controls_dict
 
@@ -148,6 +148,8 @@ class BatteryPassthroughController(ControllerBase):
         """
         Main compute_controls method for BatteryPassthroughController.
         """
+        # TODO: Implement upper limit (interconnect limitation) and lower limit
+        # (if no grid charging)
         return {self.cname: {"power_setpoint": measurements_dict[self.cname]["power_reference"]}}
 
 
@@ -284,5 +286,10 @@ class BatteryPriceSOCController(ControllerBase):
         if power_setpoint < 0:  # Trying to charge
             if soc >= self.plant_parameters[self.cname]["state_of_charge_max"]:  # Fully charged
                 power_setpoint = 0.0
+
+        # Apply limitations based on super controller
+        power_limit_lower = measurements_dict[self.cname].get("power_limit_lower", -np.inf)
+        power_limit_upper = measurements_dict[self.cname].get("power_limit_upper", np.inf)
+        power_setpoint = np.clip(power_setpoint, power_limit_lower, power_limit_upper)
 
         return {self.cname: {"power_setpoint": power_setpoint}}

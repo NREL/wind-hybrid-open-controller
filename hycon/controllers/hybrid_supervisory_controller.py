@@ -160,17 +160,21 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
             elif cc.plant_parameters[cc.cname]["component_category"] == "storage":
                 if cc.plant_parameters[cc.cname].get("allow_grid_charging", True):
                     power_reference_component = power_reference_total - power_export_total
+                    measurements_dict[cc.cname]["power_limit_lower"] = -np.inf
+                    measurements_dict[cc.cname]["power_limit_upper"] = power_reference_component
                 else:
                     power_reference_component = max(
                         power_reference_total - power_export_total,
                         -locally_generated_power_total,
                     )
+                    measurements_dict[cc.cname][
+                        "power_limit_lower"
+                    ] = -locally_generated_power_total
+                    measurements_dict[cc.cname]["power_limit_upper"] = power_reference_component
                     # Reduce or increase the available power to store
                     locally_generated_power_total += measurements_dict[cc.cname]["power"]
 
-            # Assign power_reference_component the upper limit for the component's power output,
-            # as well as the power reference. Component controllers can then chose which to use.
-            measurements_dict[cc.cname]["power_limit_upper"] = power_reference_component  # Not used
+            # Assign power_reference_component for use by lower level controller
             measurements_dict[cc.cname]["power_reference"] = power_reference_component
 
             controls_dict.update(cc.compute_controls(measurements_dict))
