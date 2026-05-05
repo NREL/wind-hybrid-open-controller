@@ -37,7 +37,6 @@ class HydrogenPlantController(ControllerBase):
         nominal_hydrogen_rate_kgps,
         generator_controller,
         hydrogen_controller_gain=1.0,
-        **_,  # <- Allows arbitrary additional parameters to be passed, which are ignored
     ):
         """
         Set gains and threshold limits for HydrogenPlantController.

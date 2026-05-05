@@ -1,3 +1,5 @@
+import copy
+
 from hycon.controllers.controller_base import ControllerBase
 
 
@@ -42,9 +44,11 @@ class PriceCurtailingController(ControllerBase):
         self.power_tracking_controller = power_tracking_controller
 
     def compute_controls(self, measurements_dict):
-        if "RT_LMP" not in measurements_dict:
+        if ("RT_LMP" not in measurements_dict
+            or not isinstance(measurements_dict["RT_LMP"], (int, float))
+        ):
             raise KeyError(
-                "measurements_dict must contain key 'RT_LMP' to use "
+                "measurements_dict must contain key scalar 'RT_LMP' to use "
                 + self.__class__.__name__
                 + "."
             )
@@ -58,12 +62,13 @@ class PriceCurtailingController(ControllerBase):
             )
 
         # Threshold based on curtailment price
-        if measurements_dict["RT_LMP"] <= self.curtailment_price:
-            measurements_dict[self.cname]["power_reference"] = 0.0
+        measurements_dict_local = copy.deepcopy(measurements_dict)
+        if measurements_dict_local["RT_LMP"] <= self.curtailment_price:
+            measurements_dict_local[self.cname]["power_reference"] = 0.0
         else:
             pass
 
         # Compute controls using the underlying power_tracking_controller
-        controls_dict = self.power_tracking_controller.compute_controls(measurements_dict)
+        controls_dict = self.power_tracking_controller.compute_controls(measurements_dict_local)
 
         return {self.cname: {"power_setpoint": controls_dict[self.cname]["power_setpoint"]}}

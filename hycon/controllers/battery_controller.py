@@ -95,11 +95,11 @@ class BatteryController(ControllerBase):
         reference_power = measurements_dict[self.cname]["power_reference"]
         current_power = measurements_dict[self.cname]["power"]
         soc = measurements_dict[self.cname]["state_of_charge"]
-        power_lower_limit = measurements_dict[self.cname].get("power_lower_limit", -np.inf)
-        power_upper_limit = measurements_dict[self.cname].get("power_upper_limit", np.inf)
+        power_limit_lower = measurements_dict[self.cname].get("power_limit_lower", -np.inf)
+        power_limit_upper = measurements_dict[self.cname].get("power_limit_upper", np.inf)
 
         # Clip according to upper and lower limits
-        reference_power = np.clip(reference_power, power_lower_limit, power_upper_limit)
+        reference_power = np.clip(reference_power, power_limit_lower, power_limit_upper)
 
         # Apply reference clipping
         reference_power = self.soc_clipping(soc, reference_power)
@@ -152,8 +152,8 @@ class BatteryPassthroughController(ControllerBase):
         """
         power_setpoint = np.clip(
             measurements_dict[self.cname]["power_reference"],
-            measurements_dict[self.cname].get("power_lower_limit", -np.inf),
-            measurements_dict[self.cname].get("power_upper_limit", np.inf),
+            measurements_dict[self.cname].get("power_limit_lower", -np.inf),
+            measurements_dict[self.cname].get("power_limit_upper", np.inf),
         )
         return {self.cname: {"power_setpoint": power_setpoint}}
 
