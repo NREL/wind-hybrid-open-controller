@@ -44,8 +44,8 @@ class PriceCurtailingController(ControllerBase):
         self.power_tracking_controller = power_tracking_controller
 
     def compute_controls(self, measurements_dict):
-        if ("RT_LMP" not in measurements_dict
-            or not isinstance(measurements_dict["RT_LMP"], (int, float))
+        if "RT_LMP" not in measurements_dict or not isinstance(
+            measurements_dict["RT_LMP"], (int, float)
         ):
             raise KeyError(
                 "measurements_dict must contain key scalar 'RT_LMP' to use "
