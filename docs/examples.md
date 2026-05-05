@@ -162,6 +162,6 @@ Running the simulation produces the following plot:
 )
 as well printing
 ```
-Real-time revenue over simulation: $6636.5
+Real-time revenue over simulation: $6775.44
 ```
 to the console.

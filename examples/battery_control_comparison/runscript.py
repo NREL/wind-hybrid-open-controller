@@ -1,3 +1,5 @@
+import argparse
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -10,7 +12,15 @@ from hycon.interfaces import HerculesInterface
 
 prepare_output_directory()
 
-save_figs = False
+parser = argparse.ArgumentParser(description="Plot outputs of battery market example")
+
+parser.add_argument(
+    "--save_plots", type=bool, default=False, help="Whether to save the generated plots"
+)
+
+args = parser.parse_args()
+
+save_figs = args.save_plots
 
 # Generate the reference signal to track. We will simplify things by using an
 # existing input file.
