@@ -83,7 +83,7 @@ class HerculesInterface(InterfaceBase):
             elif c_type in hercules_thermal_types:
                 self.plant_parameters[c] = {"type": "thermal", "component_category": "generator"}
             else:
-                raise ValueError("Component type " + type + " not recognized by Hycon.")
+                raise ValueError(f"Component '{c}' has unrecognized type '{c_type}' for Hycon.")
 
         # Pre-compute LMP keys to avoid string formatting in get_measurements
         self._lmp_da_keys = tuple(f"lmp_da_{h:02d}" for h in range(24))
@@ -175,10 +175,14 @@ class HerculesInterface(InterfaceBase):
         controls_dict = copy.deepcopy(controls_dict)
         # Translate controls_dict as needed
         for c in self.component_names:
-            c_type = self.component_types[c]
-            if c_type in hercules_wind_types:
-                controls_dict[c]["turbine_power_setpoints"] = controls_dict[c].pop("power_setpoint")
             if c in controls_dict:
+                c_type = self.component_types[c]
+                if c_type in hercules_wind_types:
+                    if "power_setpoint" not in controls_dict[c]:
+                        raise ValueError(
+                            "Missing required control 'power_setpoint' for wind component " + c + "."
+                        )
+                    controls_dict[c]["turbine_power_setpoints"] = controls_dict[c].pop("power_setpoint")
                 h_dict[c] = h_dict[c] | controls_dict[c]
 
         return h_dict

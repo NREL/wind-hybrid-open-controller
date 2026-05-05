@@ -111,7 +111,7 @@ class ControllerBase(metaclass=ABCMeta):
             else:
                 return self._cname
         else:
-            return ValueError("cname has not been set for this controller.")
+            raise ValueError("cname has not been set for this controller.")
 
     @cname.setter
     def cname(self, value):
