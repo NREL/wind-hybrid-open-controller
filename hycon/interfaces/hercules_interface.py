@@ -174,9 +174,13 @@ class HerculesInterface(InterfaceBase):
                 if c_type in hercules_wind_types:
                     if "power_setpoint" not in controls_dict[c]:
                         raise ValueError(
-                            "Missing required control 'power_setpoint' for wind component " + c + "."
+                            "Missing required control 'power_setpoint' for wind component "
+                            + c
+                            + "."
                         )
-                    controls_dict[c]["turbine_power_setpoints"] = controls_dict[c].pop("power_setpoint")
+                    controls_dict[c]["turbine_power_setpoints"] = controls_dict[c].pop(
+                        "power_setpoint"
+                    )
                 h_dict[c] = h_dict[c] | controls_dict[c]
 
         return h_dict
