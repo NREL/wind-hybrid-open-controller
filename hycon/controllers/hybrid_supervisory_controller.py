@@ -38,13 +38,10 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
         self.set_controller_parameters(**controller_parameters)
 
         # Extract interconnection limit, if specified
-        self.static_interconnect_limit = self.plant_parameters.get("interconnect_limit", np.inf)
-        if self.static_interconnect_limit == -1 or self.static_interconnect_limit is None:
-            self.static_interconnect_limit = np.inf
-        if (
-            not isinstance(self.static_interconnect_limit, (float, int))
-            or self.static_interconnect_limit < -1
-        ):
+        self._interconnect_limit = self.plant_parameters.get("interconnect_limit", np.inf)
+        if self._interconnect_limit == -1 or self._interconnect_limit is None:
+            self._interconnect_limit = np.inf
+        if not isinstance(self._interconnect_limit, (float, int)) or self._interconnect_limit < -1:
             raise ValueError(
                 "interconnect_limit must be a positive value (or -1, indicating no limit)."
             )
@@ -130,7 +127,7 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
             provided_power_reference = None
 
         power_reference_total = min(
-            self.static_interconnect_limit,
+            self._interconnect_limit,
             measurements_dict.get("dynamic_interconnect_limit", np.inf),
             provided_power_reference if provided_power_reference is not None else np.inf,
         )

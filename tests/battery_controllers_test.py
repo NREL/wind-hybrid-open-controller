@@ -115,6 +115,27 @@ def test_BatteryController(test_hercules_dict):
 
     assert out_0 > out_1
 
+    # Check upper and lower limits work (using the no-clipping controller for clarity)
+    measurements_dict = {
+        "battery": {
+            "state_of_charge": 0.5,
+            "power": 0.0,
+            "power_reference": 100,
+            "power_limit_lower": -50,
+            "power_limit_upper": 50,
+        }
+    }
+    test_setpoint = test_controller_0.compute_controls(measurements_dict)["battery"][
+        "power_setpoint"
+    ]
+    np.isclose(test_setpoint, 50)
+
+    measurements_dict["battery"]["power_reference"] = -100
+    test_setpoint = test_controller_0.compute_controls(measurements_dict)["battery"][
+        "power_setpoint"
+    ]
+    np.isclose(test_setpoint, -50)
+
 
 def test_BatteryPriceSOCController_init(test_hercules_dict):
     test_interface = HerculesInterface(test_hercules_dict)

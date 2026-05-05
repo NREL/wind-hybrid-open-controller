@@ -70,6 +70,7 @@ def test_hercules_dict():
             "component_category": "storage",
             "max_SOC": 0.95,
             "min_SOC": 0.05,
+            "allow_grid_charging": False,
         },
         "electrolyzer": {
             "H2_mfr": 0.03,

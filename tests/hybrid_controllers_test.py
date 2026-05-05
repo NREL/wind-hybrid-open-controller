@@ -185,6 +185,62 @@ def test_HybridSupervisoryControllerGeneric_subsets(test_hercules_dict, test_int
     assert np.isclose(out_dict["battery"]["power_setpoint"], power_ref)
 
 
+def test_HybridSupervisoryControllerGeneric_limits(test_hercules_dict, test_interface_hercules):
+    """
+    Tests that the HybridSupervisoryControllerGeneric respects interconnection limits.
+    """
+    # Set an interconnection limit
+    interconnect_limit = 1500.0
+    test_hercules_dict["plant"]["interconnect_limit"] = interconnect_limit
+    test_interface_hercules.plant_parameters["interconnect_limit"] = interconnect_limit
+    test_hercules_dict["component_names"] = ["solar_farm", "battery"]
+    test_interface_hercules.component_names = ["solar_farm", "battery"]
+    # Establish lower controllers
+    solar_controller = SolarPassthroughController(test_interface_hercules, "solar_farm")
+    battery_controller = BatteryPassthroughController(test_interface_hercules, "battery")
+
+    test_controller = HybridSupervisoryControllerGeneric(
+        interface=test_interface_hercules,
+        controller_parameters={
+            "component_controllers": [solar_controller, battery_controller],
+        },
+    )
+
+    solar_current = 800.0
+    power_ref = 2000.0  # Over interconnection limit
+
+    test_hercules_dict["external_signals"]["plant_power_reference"] = power_ref
+    test_hercules_dict["solar_farm"]["power"] = solar_current
+
+    # Step controller
+    out_dict = test_controller.step(test_hercules_dict)
+    battery_setpoint_test = out_dict["battery"]["power_setpoint"]
+
+    assert np.isclose(battery_setpoint_test, interconnect_limit - solar_current)
+
+    # Now check lower limit for no grid charging case
+    test_controller.component_controllers[1].plant_parameters["battery"]["allow_grid_charging"] = (
+        True
+    )
+    solar_current = 500.0
+    power_ref = -100.0
+    test_hercules_dict["external_signals"]["plant_power_reference"] = power_ref
+    test_hercules_dict["solar_farm"]["power"] = solar_current
+    out_dict = test_controller.step(test_hercules_dict)
+    battery_setpoint_test = out_dict["battery"]["power_setpoint"]
+
+    assert np.isclose(battery_setpoint_test, power_ref - solar_current)
+
+    # Switch to disallowing grid charging
+    test_controller.component_controllers[1].plant_parameters["battery"]["allow_grid_charging"] = (
+        False
+    )
+    out_dict = test_controller.step(test_hercules_dict)
+    battery_setpoint_test = out_dict["battery"]["power_setpoint"]
+
+    assert np.isclose(battery_setpoint_test, -solar_current)
+
+
 def test_HydrogenPlantController(test_hercules_dict, test_interface_hercules):
     """
     Tests that the HydrogenPlantController outputs a reasonable signal
