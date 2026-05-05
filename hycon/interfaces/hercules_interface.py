@@ -33,12 +33,6 @@ class HerculesInterface(InterfaceBase):
         super().__init__()
         self.dt = h_dict["dt"]
 
-        # # Controller parameters
-        # if "controller" in h_dict and h_dict["controller"] is not None:
-        #     self.controller_parameters = copy.deepcopy(h_dict["controller"])
-        # else:
-        #     self.controller_parameters = {}
-
         # Plant parameters
         if "plant" in h_dict and h_dict["plant"] is not None:
             self.plant_parameters = copy.deepcopy(h_dict["plant"])
