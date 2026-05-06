@@ -32,7 +32,7 @@
     <link rel="stylesheet" type="text/css" href="_static/styles/sphinx-book-theme.css?v=eba8b062" />
     <link rel="stylesheet" type="text/css" href="_static/togglebutton.css?v=9c3e77be" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="_static/mystnb.8ecb98da25f57f5357bf6f572d296f466b2cfe2517ffebfabe82451661e28f02.css" />
+    <link rel="stylesheet" type="text/css" href="_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-thebe.css?v=4fa983c6" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
   
@@ -50,7 +50,7 @@
     <script>let toggleHintShow = 'Click to show';</script>
     <script>let toggleHintHide = 'Click to hide';</script>
     <script>let toggleOpenOnPrint = 'true';</script>
-    <script src="_static/togglebutton.js?v=1ae7504c"></script>
+    <script src="_static/togglebutton.js?v=b8b12719"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script src="_static/design-tabs.js?v=f930bc37"></script>
     <script async="async" src="https://www.googletagmanager.com/gtag/js?id=G-BJZY823DHG"></script>
@@ -425,9 +425,16 @@ document.write(`
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#available-interfaces">Available interfaces</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#herculesinterface">HerculesInterface</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#interfaces-in-development">Interfaces in development</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rosco-zmqinterface">ROSCO_ZMQInterface</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#deprecated-interfaces">Deprecated interfaces</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#herculesadinterface">HerculesADInterface</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#herculeshybridadinterface">HerculesHybridADInterface</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rosco-zmqinterface">ROSCO_ZMQInterface</a></li>
 </ul>
 </li>
 </ul>
@@ -464,9 +471,27 @@ with controls as needed.</p></li>
 <p>These methods will all be called in the <code class="docutils literal notranslate"><span class="pre">step()</span></code> method of <code class="docutils literal notranslate"><span class="pre">ControllerBase</span></code>.</p>
 <section id="available-interfaces">
 <h2>Available interfaces<a class="headerlink" href="#available-interfaces" title="Link to this heading">#</a></h2>
+<section id="herculesinterface">
+<h3>HerculesInterface<a class="headerlink" href="#herculesinterface" title="Link to this heading">#</a></h3>
+<p>For direct python communication with the latest version of Hercules. This should be instantiated
+in a runscript that is running Hercules; used to generate a <code class="docutils literal notranslate"><span class="pre">controller</span></code> from the Hycon controllers submodule; and that <code class="docutils literal notranslate"><span class="pre">controller</span></code> should be passed to the
+<code class="docutils literal notranslate"><span class="pre">HerculesModel</span></code> after instantiation via <code class="docutils literal notranslate"><span class="pre">HerculesModel.assign_controller()</span></code>. The main purpose for this interface is for sending power reference signals to various types of hybrid plant components modeled in Hercules (and receiving state measurements from the components as well as external signals like electricity price).</p>
+</section>
+</section>
+<section id="interfaces-in-development">
+<h2>Interfaces in development<a class="headerlink" href="#interfaces-in-development" title="Link to this heading">#</a></h2>
+<section id="rosco-zmqinterface">
+<h3>ROSCO_ZMQInterface<a class="headerlink" href="#rosco-zmqinterface" title="Link to this heading">#</a></h3>
+<p>For sending and receiving communications from one or more ROSCO instances
+(which are likely connected to OpenFAST and FAST.Farm). Uses ZeroMQ to pass
+messages between workers.</p>
+</section>
+</section>
+<section id="deprecated-interfaces">
+<h2>Deprecated interfaces<a class="headerlink" href="#deprecated-interfaces" title="Link to this heading">#</a></h2>
 <section id="herculesadinterface">
 <h3>HerculesADInterface<a class="headerlink" href="#herculesadinterface" title="Link to this heading">#</a></h3>
-<p>For direct python communication with Hercules. This should be instantiated
+<p>For direct python communication with Hercules v1. This should be instantiated
 in a runscript that is running Hercules; used to generate a <code class="docutils literal notranslate"><span class="pre">controller</span></code> from
 the Hycon controllers submodule; and that <code class="docutils literal notranslate"><span class="pre">controller</span></code> should be passed to the
 Hercules <code class="docutils literal notranslate"><span class="pre">Emulator</span></code> upon its instantiation. Support transmitting yaw angles
@@ -474,17 +499,11 @@ and power setpoints to wind turbines.</p>
 </section>
 <section id="herculeshybridadinterface">
 <h3>HerculesHybridADInterface<a class="headerlink" href="#herculeshybridadinterface" title="Link to this heading">#</a></h3>
-<p>For direct python communication with Hercules, when simulating a hybrid
+<p>For direct python communication with Hercules v1, when simulating a hybrid
 wind/solar/battery plant. Also handles Hercules’ hydrogen modules.
 Supports sending power reference signals to each wind turbine in a wind farm,
 as well as a bulk power signal to the solar farm and a bulk power signal to the
 battery.</p>
-</section>
-<section id="rosco-zmqinterface">
-<h3>ROSCO_ZMQInterface<a class="headerlink" href="#rosco-zmqinterface" title="Link to this heading">#</a></h3>
-<p>For sending and receiving communications from one or more ROSCO instances
-(which are likely connected to OpenFAST and FAST.Farm). Uses ZeroMQ to pass
-messages between workers.</p>
 </section>
 </section>
 </section>
@@ -554,9 +573,16 @@ messages between workers.</p>
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#available-interfaces">Available interfaces</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#herculesinterface">HerculesInterface</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#interfaces-in-development">Interfaces in development</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rosco-zmqinterface">ROSCO_ZMQInterface</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#deprecated-interfaces">Deprecated interfaces</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#herculesadinterface">HerculesADInterface</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#herculeshybridadinterface">HerculesHybridADInterface</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rosco-zmqinterface">ROSCO_ZMQInterface</a></li>
 </ul>
 </li>
 </ul>

@@ -32,7 +32,7 @@
     <link rel="stylesheet" type="text/css" href="_static/styles/sphinx-book-theme.css?v=eba8b062" />
     <link rel="stylesheet" type="text/css" href="_static/togglebutton.css?v=9c3e77be" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="_static/mystnb.8ecb98da25f57f5357bf6f572d296f466b2cfe2517ffebfabe82451661e28f02.css" />
+    <link rel="stylesheet" type="text/css" href="_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-thebe.css?v=4fa983c6" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
   
@@ -50,7 +50,7 @@
     <script>let toggleHintShow = 'Click to show';</script>
     <script>let toggleHintHide = 'Click to hide';</script>
     <script>let toggleOpenOnPrint = 'true';</script>
-    <script src="_static/togglebutton.js?v=1ae7504c"></script>
+    <script src="_static/togglebutton.js?v=b8b12719"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script src="_static/design-tabs.js?v=f930bc37"></script>
     <script async="async" src="https://www.googletagmanager.com/gtag/js?id=G-BJZY823DHG"></script>
@@ -424,12 +424,13 @@ document.write(`
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#controller-structure-and-inputs-outputs">Controller structure and inputs/outputs</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#available-controllers">Available controllers</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#lookupbasedwakesteeringcontroller">LookupBasedWakeSteeringController</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#wakesteeringroscostandin">WakeSteeringROSCOStandin</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#windfarmpowerdistributingcontroller">WindFarmPowerDistributingController</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#windfarmpowertrackingcontroller">WindFarmPowerTrackingController</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hybridsupervisorycontrollerbaseline">HybridSupervisoryControllerBaseline</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hybridsupervisorycontrollergeneric">HybridSupervisoryControllerGeneric</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#batterycontroller">BatteryController</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hydrogenplantcontroller">HydrogenPlantController</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#batterypricesoccontroller">BatteryPriceSOCController</a></li>
@@ -458,17 +459,36 @@ signals and return a second dictionary (nominally called <code class="docutils l
 returns the control actions. In the basic set up, <code class="docutils literal notranslate"><span class="pre">measurement_dict</span></code> is
 provided to <code class="docutils literal notranslate"><span class="pre">compute_controls()</span></code> by the <code class="docutils literal notranslate"><span class="pre">step()</span></code> method defined on
 <code class="docutils literal notranslate"><span class="pre">ControllerBase</span></code>, and the returned <code class="docutils literal notranslate"><span class="pre">controls_dict</span></code> is then passed via the
-interface at the conclusion of the <code class="docutils literal notranslate"><span class="pre">step()</span></code> method.</p>
+interface at the conclusion of the <code class="docutils literal notranslate"><span class="pre">step()</span></code> method. In addition, controllers must
+also implement a method <code class="docutils literal notranslate"><span class="pre">set_controller_parameters()</span></code> that accepts a dictionary of controller parameters. If no parameters are needed, this may simple be an empty
+method (but it is still required).</p>
+<section id="controller-structure-and-inputs-outputs">
+<h2>Controller structure and inputs/outputs<a class="headerlink" href="#controller-structure-and-inputs-outputs" title="Link to this heading">#</a></h2>
+<p>Each controller is structured as a class that inherits from <code class="docutils literal notranslate"><span class="pre">ControllerBase</span></code>. The
+constructor for each controller must accept the following arguments:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">interface</span></code>: the interface object that the controller will use to read in measurements and pass out control actions. See <a class="reference internal" href="interfaces.html"><span class="doc std std-doc">Interfaces</span></a> for more details on the interface.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cname</span></code>: the name of the controller, which is used to read in the relevant controller parameters from the plant parameters dictionary as well as access appropriate portions of the <code class="docutils literal notranslate"><span class="pre">measurement_dict</span></code>. This is a string that should match a key in the plant parameters dictionary (often, the name of the Hercules hybrid plant component).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">controller_parameters</span></code>: a dictionary of controller parameters. The keys in this dictionary should match the keys expected by the <code class="docutils literal notranslate"><span class="pre">set_controller_parameters()</span></code> method for the controller. This dictionary is passed to the <code class="docutils literal notranslate"><span class="pre">set_controller_parameters()</span></code> method on instantiation. Details on the expected parameters for each controller are provided in the documentation for each controller below.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">verbose</span></code>: a boolean that sets whether the controller should print out information about its operation. Defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code>. Verbosity is not yet fully built out in Hycon.</p></li>
+</ul>
+</section>
 <section id="available-controllers">
 <h2>Available controllers<a class="headerlink" href="#available-controllers" title="Link to this heading">#</a></h2>
 <section id="lookupbasedwakesteeringcontroller">
 <span id="controllers-luwakesteer"></span><h3>LookupBasedWakeSteeringController<a class="headerlink" href="#lookupbasedwakesteeringcontroller" title="Link to this heading">#</a></h3>
 <p>Yaw controller that implements wake steering based on a lookup table.
-Requires a <code class="docutils literal notranslate"><span class="pre">df_opt</span></code> object produced by a FLORIS yaw optimization routine. See example
-lookup-based_wake_steering_florisstandin for example usage.</p>
+<code class="docutils literal notranslate"><span class="pre">controller_parameters</span></code> may include keys:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">df_yaw</span></code>: dataframe as produced by a FLORIS yaw optimization routine that contains the lookup table for wake steering. The keys of this dictionary are tuples of the form <code class="docutils literal notranslate"><span class="pre">(wind_direction,</span> <span class="pre">wind_speed)</span></code>, and the values are lists of yaw angles for each turbine in the farm. The lookup table is sampled at 10 degree increments of wind direction and 1 m/s increments of wind speed, but this may be updated in the future to allow for more flexible sampling. See example
+lookup-based_wake_steering_florisstandin for example usage.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">hysteresis_dict</span></code>: dictionary of hysteresis zones for wake steering.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">yaw_IC</span></code>: initial yaw angles for the turbines.</p></li>
+</ul>
 <p>Currently, yaw angles are set based purely on the (local turbine) wind direction. The lookup table
 is sampled at a hardcoded wind speed of 8 m/s. This will be updated in future when an interface is
-developed for a simulator that provides wind turbine wind speeds also.</p>
+developed for a simulator that provides wind turbine wind speeds also.
+See <a class="reference internal" href="wake_steering_design.html"><span class="doc std std-doc">Wake Steering Design</span></a> for more details on how to produce the lookup table and hysteresis zones.</p>
 </section>
 <section id="wakesteeringroscostandin">
 <h3>WakeSteeringROSCOStandin<a class="headerlink" href="#wakesteeringroscostandin" title="Link to this heading">#</a></h3>
@@ -481,7 +501,11 @@ reference between wind turbines evenly, without checking whether turbines are
 able to produce power at the requested level. Not expected to perform well when
 wind turbines are waked or cannot produce the desired power for other reasons.
 However, is a useful comparison case for the WindFarmPowerTrackingController
-(described below).</p>
+(described below).
+<code class="docutils literal notranslate"><span class="pre">controller_parameters</span></code> may include keys:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ramp_rate_limit</span></code>: a limit on the ramp rate for the entire plant, in units of kW/s.</p></li>
+</ul>
 </section>
 <section id="windfarmpowertrackingcontroller">
 <span id="controllers-wfpowertracking"></span><h3>WindFarmPowerTrackingController<a class="headerlink" href="#windfarmpowertrackingcontroller" title="Link to this heading">#</a></h3>
@@ -492,20 +516,22 @@ Further details provided in
 <a class="reference external" href="https://pubs.aip.org/aip/jrse/article/15/5/053304/2913100">Sinner et al.</a>.</p>
 <p>Integral action, as well as gain scheduling based on turbine saturation, has been disabled as
 simple proportional control appears sufficient currently. However, these may be enabled at a
-later date if needed. The <code class="docutils literal notranslate"><span class="pre">proportional_gain</span></code> for the controller may be provided on instantiation,
-and defaults to <code class="docutils literal notranslate"><span class="pre">proportional_gain</span> <span class="pre">=</span> <span class="pre">1</span></code>.</p>
+later date if needed.</p>
+<p><code class="docutils literal notranslate"><span class="pre">controller_parameters</span></code> may include keys:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">proportional_gain</span></code>: the proportional gain for the controller.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ramp_rate_limit</span></code>: a limit on the ramp rate for the entire plant, in units of kW/s.</p></li>
+</ul>
 </section>
-<section id="hybridsupervisorycontrollerbaseline">
-<span id="controllers-simplehybrid"></span><h3>HybridSupervisoryControllerBaseline<a class="headerlink" href="#hybridsupervisorycontrollerbaseline" title="Link to this heading">#</a></h3>
-<p>Simple closed-loop supervisory controller for a hybrid wind/solar/battery plant.
-Reads in current power production from wind, solar, and battery, as well as a plant power reference. Contains logic to determine technology set points for wind, solar and battery technologies to follow the plant power reference. The control is based on a proportional gain based on the error between the wind and solar production and the plant power reference. The controller increases the power references sent to wind, solar, and battery if the power reference is not met. If there is a power surplus from wind and solar, the controller adjusts the power reference values to charge the battery up to the battery capacity.</p>
-<p>The power reference values for wind, solar and battery technologies are then handled by the operational controllers for wind, solar, and battery, which are assigned to the <code class="docutils literal notranslate"><span class="pre">HybridSupervisoryControllerBaseline</span></code> on instantiation to distribute the bulk references to each asset amongst the individual generators. Currently, only wind actually distributes the power.
-Intended as a baseline for comparison to more advanced supervisory controllers.</p>
-<p>This controller can also be run for a hybrid plant comprising wind or solar
-and/or a battery. At least one of the wind or solar components must be present,
-with the battery component optional. Upon instantiation, the user may set
-<code class="docutils literal notranslate"><span class="pre">wind_controller</span></code>, <code class="docutils literal notranslate"><span class="pre">solar_controller</span></code>, and/or <code class="docutils literal notranslate"><span class="pre">battery_controller</span></code> to <code class="docutils literal notranslate"><span class="pre">None</span></code> if
-no wind, solar, and/or battery component is available, respectively.</p>
+<section id="hybridsupervisorycontrollergeneric">
+<span id="controllers-generichybrid"></span><h3>HybridSupervisoryControllerGeneric<a class="headerlink" href="#hybridsupervisorycontrollergeneric" title="Link to this heading">#</a></h3>
+<p>Closed-loop supervisory controller for a hybrid plants.
+Reads in current power production from various components, as well as a possible plant power reference, and manages individual component controllers. Depending on the mode of operation of component controllers, enables plant-wide power tracking or independent control up to the interconnection limit. When power tracking, simply passes the plant-wide power reference to the component controllers in the reverse curtailment order until the reference is met.</p>
+<p><code class="docutils literal notranslate"><span class="pre">controller_parameters</span></code> may include keys:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">component_controllers</span></code>: list of (Hycon) controllers for the various components in the hybrid plant.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">curtailment_order</span></code>: list of integers referencing the <code class="docutils literal notranslate"><span class="pre">component_controllers</span></code> list. If <code class="docutils literal notranslate"><span class="pre">curtailment_order</span></code> is not provided, the default is to curtail components in the reverse order they are provided in the <code class="docutils literal notranslate"><span class="pre">component_controllers</span></code> list (that is, the final component in the list is curtailed first, and the first component in the list is curtailed last).</p></li>
+</ul>
 </section>
 <section id="batterycontroller">
 <span id="controllers-battery"></span><h3>BatteryController<a class="headerlink" href="#batterycontroller" title="Link to this heading">#</a></h3>
@@ -529,13 +555,25 @@ SOCs to
 The default is to apply the full reference across the full range of SOCs, i.e.
 <code class="docutils literal notranslate"><span class="pre">clipping_thresholds=[0,</span> <span class="pre">0,</span> <span class="pre">1,</span> <span class="pre">1]</span></code>.</p>
 <p><img alt="soc clipping" src="_images/clipping-schedules.png" /></p>
+<p><code class="docutils literal notranslate"><span class="pre">controller_parameters</span></code> may include keys:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">k_batt</span></code>: the controller gain for the battery controller.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">clipping_thresholds</span></code>: a list of four fractional SOC thresholds for clipping the battery reference as described above.</p></li>
+</ul>
 </section>
 <section id="hydrogenplantcontroller">
 <span id="controllers-hydrogen"></span><h3>HydrogenPlantController<a class="headerlink" href="#hydrogenplantcontroller" title="Link to this heading">#</a></h3>
 <p>Simple closed-loop controller for an off-grid power generation/hydrogen plant. The controller uses an external hydrogen reference signal to control the hydrogen production of the plant through setting the power reference signal.</p>
 <p>Reads in current power production from the generator(s), the current hydrogen production rate, and the hydrogen rate reference. Contains logic to set the generator power reference using a proportional gain applied to the error between the current hydrogen production rate and the hydrogen production reference. The proportional gain is scaled by the current power production to handle the difference of several magnitudes between the power and the hydrogen production rate.</p>
 <p>The power reference computed is then passed to a secondary power generation plant controller, which is assigned to the <code class="docutils literal notranslate"><span class="pre">HydrogenPlantController</span></code> on instantiation.
-This secondary power generation controller could be <a class="reference internal" href="#controllers-wfpowertracking"><span class="std std-ref">WindFarmPowerTrackingController</span></a> for a wind-only plant, <a class="reference internal" href="#controllers-simplehybrid"><span class="std std-ref">HybridSupervisoryControllerBaseline</span></a> for a hybrid generation plant, etc.</p>
+This secondary power generation controller could be <a class="reference internal" href="#controllers-wfpowertracking"><span class="std std-ref">WindFarmPowerTrackingController</span></a> for a wind-only plant, <a class="reference internal" href="#controllers-generichybrid"><span class="std std-ref">HybridSupervisoryControllerGeneric</span></a> for a hybrid generation plant, etc.</p>
+<p><code class="docutils literal notranslate"><span class="pre">controller_parameters</span></code> may include keys:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">nominal_plant_power_kW</span></code>: the nominal power of the electrolysis plant, used to scale the proportional gain for computing the power reference.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">nominal_hydrogen_rate_kgps</span></code>: the nominal hydrogen production rate of the plant, used to scale the proportional gain for computing the power reference (units kg/s).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">generator_controller</span></code>: a Hycon controller for the power generation component(s) of the plant, which is assigned to the <code class="docutils literal notranslate"><span class="pre">HydrogenPlantController</span></code> on instantiation and to which the computed power reference is passed.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">hydrogen_controller_gain</span></code>: the proportional gain for computing the power reference from the hydrogen production error.</p></li>
+</ul>
 </section>
 <section id="batterypricesoccontroller">
 <span id="controllers-batterymarket"></span><h3>BatteryPriceSOCController<a class="headerlink" href="#batterypricesoccontroller" title="Link to this heading">#</a></h3>
@@ -547,6 +585,11 @@ discharge (if possible). When the real-time price is below the 4th-lowest hourly
 prices from the day-ahead market, the battery is instructed to charge (if
 possible). Otherwise, the battery remains idle.</p>
 <p>When the battery is close to fully depleted or fully charge, the threshold for charging/discharging changes to the lowest and highest day-ahead price, respectively.</p>
+<p><code class="docutils literal notranslate"><span class="pre">controller_parameters</span></code> may include keys:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">high_soc</span></code>: the SOC above which the battery will only charge if the real-time price is above the 1 highest day-ahead price.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">low_soc</span></code>: the SOC below which the battery will only discharge if the real-time price is below the 1 lowest day-ahead price.</p></li>
+</ul>
 </section>
 </section>
 </section>
@@ -615,12 +658,13 @@ possible). Otherwise, the battery remains idle.</p>
   </div>
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#controller-structure-and-inputs-outputs">Controller structure and inputs/outputs</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#available-controllers">Available controllers</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#lookupbasedwakesteeringcontroller">LookupBasedWakeSteeringController</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#wakesteeringroscostandin">WakeSteeringROSCOStandin</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#windfarmpowerdistributingcontroller">WindFarmPowerDistributingController</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#windfarmpowertrackingcontroller">WindFarmPowerTrackingController</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hybridsupervisorycontrollerbaseline">HybridSupervisoryControllerBaseline</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hybridsupervisorycontrollergeneric">HybridSupervisoryControllerGeneric</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#batterycontroller">BatteryController</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hydrogenplantcontroller">HydrogenPlantController</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#batterypricesoccontroller">BatteryPriceSOCController</a></li>

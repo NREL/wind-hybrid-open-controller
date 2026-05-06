@@ -32,7 +32,7 @@
     <link rel="stylesheet" type="text/css" href="_static/styles/sphinx-book-theme.css?v=eba8b062" />
     <link rel="stylesheet" type="text/css" href="_static/togglebutton.css?v=9c3e77be" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="_static/mystnb.8ecb98da25f57f5357bf6f572d296f466b2cfe2517ffebfabe82451661e28f02.css" />
+    <link rel="stylesheet" type="text/css" href="_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-thebe.css?v=4fa983c6" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
   
@@ -50,7 +50,7 @@
     <script>let toggleHintShow = 'Click to show';</script>
     <script>let toggleHintHide = 'Click to hide';</script>
     <script>let toggleOpenOnPrint = 'true';</script>
-    <script src="_static/togglebutton.js?v=1ae7504c"></script>
+    <script src="_static/togglebutton.js?v=b8b12719"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script src="_static/design-tabs.js?v=f930bc37"></script>
     <script async="async" src="https://www.googletagmanager.com/gtag/js?id=G-BJZY823DHG"></script>
@@ -506,10 +506,10 @@ producing:
 <section id="simple-hybrid-plant">
 <span id="examples-simplehybrid"></span><h2>simple_hybrid_plant<a class="headerlink" href="#simple-hybrid-plant" title="Link to this heading">#</a></h2>
 <p>Example of a wind + solar + battery hybrid power plant using the
-<a class="reference internal" href="controllers.html#controllers-simplehybrid"><span class="std std-ref">HybridSupervisoryControllerBaseline</span></a> to
+<a class="reference internal" href="controllers.html#controllers-generichybrid"><span class="std std-ref">HybridSupervisoryControllerGeneric</span></a> to
 track a steady power reference. The plant comprises 10 NREL 5MW reference wind turbines
 (50 MW total wind capacity); a 100MW solar PV array; and a 4-hour, 20MW battery (80MWh energy
-storage capacity).</p>
+storage capacity) that can only charge from the local wind and solar generation.</p>
 <p>To run this example, navigate to the examples/simple_hybrid_plant folder and execute the python script <a class="reference external" href="http://runscript.py">runscript.py</a>.</p>
 <p>This will run a 2-hour simulation of the plant and controller tracking a steady power
 reference. The resulting trajectories are plotted, producing:
@@ -568,7 +568,7 @@ day-ahead market to set threshold prices for charging and discharging in the rea
 <p>Running the simulation produces the following plot:
 <img alt="Results of battery_market_revenue_control example" src="_images/battery-market.png" />
 as well printing</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Real-time revenue over simulation: $6636.5
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Real-time revenue over simulation: $6775.44
 </pre></div>
 </div>
 <p>to the console.</p>
