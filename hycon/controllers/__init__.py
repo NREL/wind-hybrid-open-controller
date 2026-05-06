@@ -17,3 +17,4 @@ from hycon.controllers.wind_farm_power_tracking_controller import (
     WindFarmPowerDistributingController,
     WindFarmPowerTrackingController,
 )
+from hycon.controllers.thermal_plant_controller import ThermalPlantController

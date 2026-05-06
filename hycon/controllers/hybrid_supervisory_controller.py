@@ -46,7 +46,8 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
                 "interconnect_limit must be a positive value (or -1, indicating no limit)."
             )
 
-    def set_controller_parameters(self, component_controllers=[], curtailment_order=None):
+    def set_controller_parameters(self, component_controllers=[], curtailment_order=None, 
+                                  minimum_power=None):
         """
         Set controller parameters for HybridSupervisoryControllerGeneric.
 
@@ -56,6 +57,10 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
                 components in the simulation.
             curtailment_order: List of integers corresponding to the order in which to curtail
                 components when the overall power reference exceeds the interconnection limit.
+            minimum_power: List of floats corresponding to the minimum power that each component   
+                should be allowed to produce, even when curtailing to meet the interconnection 
+                limit. Should be the same length as component_controllers, and ordered 
+                correspondingly.
         """
 
         # Check valid component_controllers
