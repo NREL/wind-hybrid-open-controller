@@ -6,12 +6,15 @@ class HerculesV1ADInterface(InterfaceBase):
     def __init__(self, hercules_dict):
         super().__init__()
 
-        self.dt = hercules_dict["dt"]
-        self.n_turbines = hercules_dict["controller"]["num_turbines"]
-        self.turbines = range(self.n_turbines)
-
         # Grab name of wind farm (assumes there is only one!)
         self.wf_name = list(hercules_dict["hercules_comms"]["amr_wind"].keys())[0]
+
+        self.dt = hercules_dict["dt"]
+        # Bit of a hack here, since num_turbines no longer in controller parameters
+        self.n_turbines = len(
+            hercules_dict["hercules_comms"]["amr_wind"][self.wf_name]["turbine_powers"]
+        )
+        self.turbines = range(self.n_turbines)
 
         # Assign plant parameters for controller use
         self.plant_parameters = {"n_turbines": self.n_turbines}
@@ -54,21 +57,18 @@ class HerculesV1ADInterface(InterfaceBase):
         return measurements
 
     def check_controls(self, controls_dict):
-        available_controls = ["yaw_angles", "power_setpoints"]
+        available_controls = ["yaw_angles", "power_setpoint"]
 
-        for k in controls_dict.keys():
-            if k not in available_controls:
-                raise ValueError("Setpoint " + k + " is not available in this configuration.")
-            if len(controls_dict[k]) != self.n_turbines:
-                raise ValueError(
-                    "Length of setpoint " + k + " does not match the number of turbines."
-                )
+        for c in controls_dict.keys():
+            for k in controls_dict[c].keys():
+                if k not in available_controls:
+                    raise ValueError("Setpoint " + k + " is not available in this configuration.")
 
-    def send_controls(self, hercules_dict, yaw_angles=None, power_setpoints=None):
-        if yaw_angles is None:
-            yaw_angles = [-1000] * self.n_turbines
-        if power_setpoints is None:
-            power_setpoints = [POWER_SETPOINT_DEFAULT] * self.n_turbines
+    def send_controls(self, hercules_dict, controls_dict):
+        yaw_angles = controls_dict["wind_farm"].get("yaw_angles", [-1000] * self.n_turbines)
+        power_setpoints = controls_dict["wind_farm"].get(
+            "power_setpoint", [POWER_SETPOINT_DEFAULT] * self.n_turbines
+        )
 
         hercules_dict["hercules_comms"]["amr_wind"][self.wf_name]["turbine_yaw_angles"] = yaw_angles
         hercules_dict["hercules_comms"]["amr_wind"][self.wf_name]["turbine_power_setpoints"] = (
@@ -113,7 +113,9 @@ class HerculesV1HybridADInterface(InterfaceBase):
         for i in hercules_comms:
             if tech_keys[2] in i.split("_"):
                 self.wind_name = list(hercules_dict["hercules_comms"]["amr_wind"].keys())[0]
-                self.n_turbines = hercules_dict["controller"]["num_turbines"]
+                self.n_turbines = len(
+                    hercules_dict["hercules_comms"]["amr_wind"][self.wind_name]["turbine_powers"]
+                )
                 self.turbines = range(self.n_turbines)
                 self._has_wind_component = True
                 self.plant_parameters["wind_farm"] = {"n_turbines": self.n_turbines}
@@ -201,43 +203,41 @@ class HerculesV1HybridADInterface(InterfaceBase):
 
     def check_controls(self, controls_dict):
         available_controls = [
-            "wind_power_setpoints",
-            "solar_power_setpoint",
-            "battery_power_setpoint",
+            "power_setpoint",
+            "yaw_angles",
         ]
 
-        for k in controls_dict.keys():
-            if k not in available_controls:
-                raise ValueError("Setpoint " + k + " is not available in this configuration.")
-            if k == "wind_power_setpoints":
-                if len(controls_dict[k]) != self.n_turbines:
-                    raise ValueError(
-                        "Number of wind power setpoints must match number of turbines."
-                    )
+        for c in controls_dict.keys():
+            for k in controls_dict[c].keys():
+                if k not in available_controls:
+                    raise ValueError("Setpoint " + k + " is not available in this configuration.")
 
     def send_controls(
         self,
         hercules_dict,
-        wind_power_setpoints=None,
-        solar_power_setpoint=None,
-        battery_power_setpoint=None,
+        controls_dict,
     ):
-        if wind_power_setpoints is None:
-            wind_power_setpoints = [POWER_SETPOINT_DEFAULT] * self.n_turbines
-        if solar_power_setpoint is None:
-            solar_power_setpoint = POWER_SETPOINT_DEFAULT
-        if battery_power_setpoint is None:
-            battery_power_setpoint = 0.0
+        if self._has_wind_component:
+            wind_power_setpoints = controls_dict["wind_farm"].get(
+                "power_setpoint", [POWER_SETPOINT_DEFAULT] * self.n_turbines
+            )
+            hercules_dict["hercules_comms"]["amr_wind"][self.wind_name][
+                "turbine_power_setpoints"
+            ] = wind_power_setpoints
 
-        hercules_dict["hercules_comms"]["amr_wind"][self.wind_name]["turbine_power_setpoints"] = (
-            wind_power_setpoints
-        )
-        hercules_dict["py_sims"]["inputs"].update(
-            {
-                "battery_signal": -battery_power_setpoint,
-                "solar_setpoint_mw": solar_power_setpoint / 1000,
-            }  # Convert to MW
-        )
+        if self._has_solar_component:
+            solar_power_setpoint = controls_dict["solar_farm"].get(
+                "power_setpoint", POWER_SETPOINT_DEFAULT
+            )
+            hercules_dict["py_sims"]["inputs"].update(
+                {"solar_setpoint_mw": solar_power_setpoint / 1000}
+            )  # Convert to MW
+
+        if self._has_battery_component:
+            battery_power_setpoint = controls_dict["battery"].get("battery_power_setpoint", 0.0)
+            hercules_dict["py_sims"]["inputs"].update(
+                {"battery_signal": -battery_power_setpoint}
+            )  # Negative because of convention in battery sim
 
         return hercules_dict
 
@@ -289,12 +289,15 @@ class HerculesV1BatteryInterface(InterfaceBase):
     def check_controls(self, controls_dict):
         available_controls = ["power_setpoint"]
 
-        for k in controls_dict.keys():
-            if k not in available_controls:
-                raise ValueError("Setpoint " + k + " is not available in this configuration.")
+        for c in controls_dict.keys():
+            for k in controls_dict[c].keys():
+                if k not in available_controls:
+                    raise ValueError("Setpoint " + k + " is not available in this configuration.")
 
-    def send_controls(self, hercules_dict, power_setpoint=0):
-        hercules_dict["py_sims"]["inputs"].update({"battery_signal": -power_setpoint})
+    def send_controls(self, hercules_dict, controls_dict):
+        hercules_dict["py_sims"]["inputs"].update(
+            {"battery_signal": -controls_dict["battery"].get("power_setpoint", 0.0)}
+        )
 
         return hercules_dict
 

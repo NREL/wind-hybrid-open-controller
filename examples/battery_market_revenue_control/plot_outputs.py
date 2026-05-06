@@ -1,4 +1,5 @@
 # Plot the outputs of the simulation for the wind and storage example
+import argparse
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -138,12 +139,23 @@ def plot_outputs():
 
     # Compute total revenue on real-time market
     df["revenue_rt"] = df["battery.power"] / 1e3 * df["external_signals.lmp_rt"] / 3600
-    print("Real-time revenue over simulation: ${:.1f}".format(df["revenue_rt"].sum()))
+    print("Real-time revenue over simulation: ${:.2f}".format(df["revenue_rt"].sum()))
 
     return fig
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Plot outputs of battery market example")
+
+    parser.add_argument(
+        "--save_plots", type=bool, default=False, help="Whether to save the generated plots"
+    )
+
+    args = parser.parse_args()
+
     fig = plot_outputs()
-    # fig.savefig("../../docs/graphics/battery-market.png", dpi=300, format="png")
+
+    if args.save_plots:
+        fig.savefig("../../docs/graphics/battery-market.png", dpi=300, format="png")
+
     plt.show()

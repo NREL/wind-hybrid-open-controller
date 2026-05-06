@@ -53,7 +53,7 @@ battery:
   discharge_rate: 20000 # discharge rate of the battery in kW
   max_SOC: 0.9 # upper boundary on battery SOC
   min_SOC: 0.1 # lower boundary on battery SOC
-  allow_grid_power_consumption: True
+  allow_grid_power_consumption: False
   initial_conditions:
     SOC: 0.88   # initial state of charge of the battery in percentage of total size
   log_channels:

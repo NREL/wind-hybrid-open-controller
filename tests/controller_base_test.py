@@ -1,4 +1,5 @@
 import pytest
+from hycon.controllers import WindFarmPowerTrackingController
 from hycon.controllers.controller_base import ControllerBase
 
 
@@ -18,6 +19,9 @@ class InheritanceTestClassGood(ControllerBase):
 
     def __init__(self, interface):
         super().__init__(interface)
+
+    def set_controller_parameters(self):
+        pass
 
     def compute_controls(self):
         pass
@@ -42,3 +46,10 @@ def test_inherited_methods(test_interface_standin):
         _ = InheritanceTestClassBad(test_interface_standin)
 
     _ = InheritanceTestClassGood(test_interface_standin)
+
+
+def test_inherited_instantiation(test_interface_standin):
+    """
+    Check that a subclass of InterfaceBase can be instantiated.
+    """
+    _ = WindFarmPowerTrackingController(interface=test_interface_standin, cname="test_cname")

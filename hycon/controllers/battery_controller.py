@@ -11,34 +11,23 @@ class BatteryController(ControllerBase):
     changes in power reference, which can lead to degradation.
     """
 
-    def __init__(self, interface, input_dict, controller_parameters={}, verbose=True):
+    def __init__(self, interface, cname, controller_parameters={}, verbose=True):
         """
         Instantiate BatteryController.
 
         Args:
             interface (object): Interface object for communicating with simulator.
-            input_dict (dict): Dictionary of input parameters (e.g. from Hercules).
+            cname (str): Name of controller, which should match the name of the corresponding
+                plant component.
             controller_parameters (dict): Dictionary of controller parameters k_batt and
                 clipping_thresholds. See set_controller_parameters for more details. If
                 controller parameters are provided both in input_dict and controller_parameters,
                 the latter will take precedence.
             verbose (bool): If True, print debug information.
         """
-        super().__init__(interface, verbose)
+        super().__init__(interface, cname, verbose)
 
-        # Extract global parameters
-        self.dt = input_dict["dt"]
-
-        # Check that parameters are not specified both in input file
-        # and in controller_parameters
-        if "controller" in input_dict:
-            for cp in controller_parameters.keys():
-                if cp in input_dict["controller"]:
-                    raise KeyError(
-                        'Found key "' + cp + '" in both input_dict["controller"] and'
-                        " in controller_parameters."
-                    )
-            controller_parameters = {**controller_parameters, **input_dict["controller"]}
+        self.check_controller_parameters(controller_parameters)
         self.set_controller_parameters(**controller_parameters)
 
         # Initialize controller internal state
@@ -48,7 +37,6 @@ class BatteryController(ControllerBase):
         self,
         k_batt=0.1,
         clipping_thresholds=[0, 0, 1, 1],
-        **_,  # <- Allows arbitrary additional parameters to be passed, which are ignored
     ):
         """
         Set gains and threshold limits for BatteryController.
@@ -95,8 +83,8 @@ class BatteryController(ControllerBase):
         """
         clip_fraction = np.interp(soc, self.clipping_thresholds, [0, 1, 1, 0], left=0, right=0)
 
-        r_charge = clip_fraction * self.plant_parameters["battery"]["charge_rate"]
-        r_discharge = clip_fraction * self.plant_parameters["battery"]["discharge_rate"]
+        r_charge = clip_fraction * self.plant_parameters[self.cname]["charge_rate"]
+        r_discharge = clip_fraction * self.plant_parameters[self.cname]["discharge_rate"]
 
         return np.clip(reference_power, -r_discharge, r_charge)
 
@@ -104,9 +92,14 @@ class BatteryController(ControllerBase):
         """
         Main compute_controls method for BatteryController.
         """
-        reference_power = measurements_dict["battery"]["power_reference"]
-        current_power = measurements_dict["battery"]["power"]
-        soc = measurements_dict["battery"]["state_of_charge"]
+        reference_power = measurements_dict[self.cname]["power_reference"]
+        current_power = measurements_dict[self.cname]["power"]
+        soc = measurements_dict[self.cname]["state_of_charge"]
+        power_limit_lower = measurements_dict[self.cname].get("power_limit_lower", -np.inf)
+        power_limit_upper = measurements_dict[self.cname].get("power_limit_upper", np.inf)
+
+        # Clip according to upper and lower limits
+        reference_power = np.clip(reference_power, power_limit_lower, power_limit_upper)
 
         # Apply reference clipping
         reference_power = self.soc_clipping(soc, reference_power)
@@ -119,7 +112,7 @@ class BatteryController(ControllerBase):
         # Update controller internal state
         self.x = self.a * self.x + self.b * e
 
-        controls_dict = {"power_setpoint": current_power + u}
+        controls_dict = {self.cname: {"power_setpoint": current_power + u}}
 
         return controls_dict
 
@@ -129,17 +122,40 @@ class BatteryPassthroughController(ControllerBase):
     Simply passes power reference down to (single) battery.
     """
 
-    def __init__(self, interface, input_dict, verbose=True):
+    def __init__(self, interface, cname, controller_parameters={}, verbose=True):
         """
-        Instantiate BatteryPassthroughController."
+        Instantiate BatteryPassthroughController.
+
+        Args:
+            interface (object): Interface object for communicating with simulator.
+            cname (str): Name of controller, which should match the name of the corresponding
+                plant component.
+            controller_parameters (dict): Dictionary of controller parameters. Not used for
+                BatteryPassthroughController, but included for consistency with ControllerBase.
+            verbose (bool): If True, print debug information.
         """
-        super().__init__(interface, verbose)
+        super().__init__(interface, cname, verbose)
+
+        self.check_controller_parameters(controller_parameters)
+        self.set_controller_parameters(**controller_parameters)
+
+    def set_controller_parameters(self):
+        """
+        No parameters for BatteryPassthroughController, but method is needed to be consistent with
+        ControllerBase.
+        """
+        return None
 
     def compute_controls(self, measurements_dict):
         """
         Main compute_controls method for BatteryPassthroughController.
         """
-        return {"power_setpoint": measurements_dict["battery"]["power_reference"]}
+        power_setpoint = np.clip(
+            measurements_dict[self.cname]["power_reference"],
+            measurements_dict[self.cname].get("power_limit_lower", -np.inf),
+            measurements_dict[self.cname].get("power_limit_upper", np.inf),
+        )
+        return {self.cname: {"power_setpoint": power_setpoint}}
 
 
 class BatteryPriceSOCController(ControllerBase):
@@ -172,28 +188,30 @@ class BatteryPriceSOCController(ControllerBase):
         used at the Hercules/hybrid_plant level.
     """
 
-    def __init__(self, interface, input_dict, controller_parameters={}, verbose=True):
-        super().__init__(interface, verbose)
+    def __init__(self, interface, cname, controller_parameters={}, verbose=True):
+        """
+        Instantiate BatteryPriceSOCController.
 
-        # Check that parameters are not specified both in input file
-        # and in controller_parameters
-        if "controller" in input_dict:
-            for cp in controller_parameters.keys():
-                if cp in input_dict["controller"]:
-                    raise KeyError(
-                        'Found key "' + cp + '" in both input_dict["controller"] and'
-                        " in controller_parameters."
-                    )
-            controller_parameters = {**controller_parameters, **input_dict["controller"]}
+        Args:
+            interface (object): Interface object for communicating with simulator.
+            cname (str): Name of controller, which should match the name of the corresponding
+                plant component.
+            controller_parameters (dict): Dictionary of controller parameters high_soc and low_soc.
+                See set_controller_parameters method for more details.
+            verbose (bool): If True, print debug information.
+        """
+        super().__init__(interface, cname, verbose)
+
+        self.check_controller_parameters(controller_parameters)
         self.set_controller_parameters(**controller_parameters)
 
-        self.rated_power_charging = input_dict["battery"]["charge_rate"]
-        self.rated_power_discharging = input_dict["battery"]["discharge_rate"]
+        self.rated_power_charging = self.plant_parameters[self.cname]["charge_rate"]
+        self.rated_power_discharging = self.plant_parameters[self.cname]["discharge_rate"]
 
         # Save the duration rounded to nearest hour
         self.duration = round(
-            interface.plant_parameters["battery"]["energy_capacity"]
-            / interface.plant_parameters["battery"]["power_capacity"]
+            self.plant_parameters[self.cname]["energy_capacity"]
+            / self.plant_parameters[self.cname]["power_capacity"]
         )
 
         # Raise if duration makes this controller implausible
@@ -214,8 +232,7 @@ class BatteryPriceSOCController(ControllerBase):
     def set_controller_parameters(
         self,
         high_soc=1.0,
-        low_soc=0.2,
-        **_,  # <- Allows arbitrary additional parameters to be passed, which are ignored
+        low_soc=0.0,
     ):
         """
         Set parameters for BatteryPriceSOCController.
@@ -249,7 +266,7 @@ class BatteryPriceSOCController(ControllerBase):
         top_1 = sorted_day_ahead_lmps[-1]
 
         # Access the state of charge and LMP in real-time
-        soc = measurements_dict["battery"]["state_of_charge"]
+        soc = measurements_dict[self.cname]["state_of_charge"]
 
         # Note that the convention is followed where charging is negative power
         # This matches what is in place in the hercules/hybrid_plant level and
@@ -265,4 +282,19 @@ class BatteryPriceSOCController(ControllerBase):
         else:
             power_setpoint = 0.0
 
-        return {"power_setpoint": power_setpoint}
+        # Limit the power_setpoint by the SOC
+        if power_setpoint > 0:  # Trying to discharge
+            if soc <= self.plant_parameters[self.cname]["state_of_charge_min"]:  # Fully depleted
+                power_setpoint = 0.0
+
+        # Other way
+        if power_setpoint < 0:  # Trying to charge
+            if soc >= self.plant_parameters[self.cname]["state_of_charge_max"]:  # Fully charged
+                power_setpoint = 0.0
+
+        # Apply limitations based on super controller
+        power_limit_lower = measurements_dict[self.cname].get("power_limit_lower", -np.inf)
+        power_limit_upper = measurements_dict[self.cname].get("power_limit_upper", np.inf)
+        power_setpoint = np.clip(power_setpoint, power_limit_lower, power_limit_upper)
+
+        return {self.cname: {"power_setpoint": power_setpoint}}

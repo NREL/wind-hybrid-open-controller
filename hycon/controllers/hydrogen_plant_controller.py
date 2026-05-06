@@ -7,27 +7,25 @@ class HydrogenPlantController(ControllerBase):
     def __init__(
         self,
         interface,
-        input_dict,
-        generator_controller=None,
+        cname="hydrogen",
         controller_parameters={},
         verbose=False,
     ):
-        super().__init__(interface, verbose=verbose)
+        """
+        Constructor for HydrogenPlantController.
 
-        self.dt = input_dict["dt"]  # Won't be needed here, but generally good to have
-
-        # Assign the individual asset controllers
-        self.generator_controller = generator_controller
+        Args:
+            interface (InterfaceBase): Interface object for communicating with the plant.
+            cname (str): Name of the controller. Defaults to "hydrogen".
+            controller_parameters (dict): Dictionary of controller parameters. See
+                set_controller_parameters for details.
+            verbose (bool): Verbosity flag. Defaults to False.
+        """
+        super().__init__(interface, cname=cname, verbose=verbose)
 
         # Check that parameters are not specified both in input file
         # and in controller_parameters
-        for cp in controller_parameters.keys():
-            if cp in input_dict["controller"]:
-                raise KeyError(
-                    'Found key "' + cp + '" in both input_dict["controller"] and'
-                    " in controller_parameters."
-                )
-        controller_parameters = {**controller_parameters, **input_dict["controller"]}
+        self.check_controller_parameters(controller_parameters)
         self.set_controller_parameters(**controller_parameters)
 
         # Initialize filter
@@ -37,8 +35,8 @@ class HydrogenPlantController(ControllerBase):
         self,
         nominal_plant_power_kW,
         nominal_hydrogen_rate_kgps,
+        generator_controller,
         hydrogen_controller_gain=1.0,
-        **_,  # <- Allows arbitrary additional parameters to be passed, which are ignored
     ):
         """
         Set gains and threshold limits for HydrogenPlantController.
@@ -53,8 +51,14 @@ class HydrogenPlantController(ControllerBase):
         Args:
             nominal_plant_power_kW (float): Nominal power of the plant in kW.
             nominal_hydrogen_rate_kgps (float): Nominal hydrogen production rate in kg/s.
+            generator_controller (ControllerBase): Controller for the generator. This controller
+                should accept a power reference as an input and output appropriate generator
+                controls.
             hydrogen_controller_gain (float): Gain for the hydrogen controller. Defaults to 1.0.
         """
+
+        # Assign the power component controller
+        self.generator_controller = generator_controller
 
         # Set K from plant inputs
         self.K = nominal_plant_power_kW / nominal_hydrogen_rate_kgps * hydrogen_controller_gain
@@ -91,9 +95,9 @@ class HydrogenPlantController(ControllerBase):
 
     def supervisory_control(self, measurements_dict):
         # Extract measurements sent
-        current_power = measurements_dict["total_power"]
-        hydrogen_output = measurements_dict["hydrogen"]["production_rate"]
-        hydrogen_reference = measurements_dict["hydrogen"]["power_reference"]
+        current_power = measurements_dict["local_power"]
+        hydrogen_output = measurements_dict[self.cname]["production_rate"]
+        hydrogen_reference = measurements_dict[self.cname]["hydrogen_production_reference"]
 
         # Input filtering
         a = 0.05

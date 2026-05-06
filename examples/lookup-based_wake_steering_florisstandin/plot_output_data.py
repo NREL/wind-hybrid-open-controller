@@ -61,6 +61,6 @@ ax[1].legend(loc="lower left")
 # wind direction propagates instantaneously into the power signal (as steady-state FLORIS is used
 # in place of the dynamic AMR-wind simulation.
 
-# Note that in the upper plot, T000 dir., T001 dir., and T001 yaw are identical througout.
+# Note that in the upper plot, T000 dir., T001 dir., and T001 yaw are identical throughout.
 
 plt.show()
