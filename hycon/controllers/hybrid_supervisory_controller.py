@@ -47,7 +47,7 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
             )
 
     def set_controller_parameters(self, component_controllers=[], curtailment_order=None, 
-                                  minimum_power=None):
+                                  minimum_power=None, maximum_power=None, forced_state=None):
         """
         Set controller parameters for HybridSupervisoryControllerGeneric.
 
@@ -136,6 +136,9 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
                         cc.cname
                     ]["power_setpoint"],
                 )
+                cc.plant_parameters[cc.cname][
+                    "available_storage_for_charging"
+                    ] = total_available_storage_for_charging
 
         # Get overall reference, and remove from measurements_dict to avoid confusion for
         # component controllers.
@@ -193,6 +196,9 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
                     )
                     # Reduce or increase the available power to store
                     locally_generated_power_total += measurements_dict[cc.cname]["power"]
+
+                power_reference_with_storage -= cc.plant_parameters[cc.cname].get(
+                    "available_storage_for_charging", 0)
 
             # Assign power_reference_component for use by lower level controller
             measurements_dict[cc.cname]["power_reference"] = power_reference_component

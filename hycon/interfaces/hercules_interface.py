@@ -21,7 +21,7 @@ hercules_wind_types = ["WindFarm"]
 hercules_solar_types = ["SolarPySAMPVWatts"]
 hercules_battery_types = ["BatteryLithiumIon", "BatterySimple"]
 hercules_hydrogen_types = ["ElectrolyzerPlant"]
-hercules_thermal_types = ["HardCoalSteamTurbine", "OpenCycleGasTurbine"]
+hercules_thermal_types = ["HardCoalSteamTurbine", "OpenCycleGasTurbine", "ThermalPlant"]
 
 
 class HerculesInterface(InterfaceBase):
@@ -75,7 +75,13 @@ class HerculesInterface(InterfaceBase):
             elif c_type in hercules_hydrogen_types:
                 self.plant_parameters[c] = {"type": "hydrogen", "component_category": "load"}
             elif c_type in hercules_thermal_types:
-                self.plant_parameters[c] = {"type": "thermal", "component_category": "generator"}
+                self.plant_parameters[c] = {
+                    "type": "thermal", 
+                    "component_category": "generator",
+                    "P_min": h_dict[c]["min_stable_load_fraction"] * h_dict[c]["rated_capacity"],
+                    "P_max": h_dict[c]["rated_capacity"],
+                    "ramp_rate": h_dict[c]["ramp_rate_fraction"]*h_dict[c]["rated_capacity"]/60.0,
+                }
             else:
                 raise ValueError(f"Component '{c}' has unrecognized type '{c_type}' for Hycon.")
 
