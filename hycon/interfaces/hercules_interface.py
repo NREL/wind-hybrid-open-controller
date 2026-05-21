@@ -78,7 +78,8 @@ class HerculesInterface(InterfaceBase):
                 self.plant_parameters[c] = {"type": "thermal",
                                             "component_category": "generator",
                                             "capacity": h_dict[c]["rated_capacity"],
-                                            "min_stable_load": h_dict[c].get("min_stable_load_fraction", 0.0) * h_dict[c]["rated_capacity"],
+                                            "min_stable_load": h_dict[c].get("min_stable_load_fraction", 0.0)\
+                                                * h_dict[c]["rated_capacity"],
                                             }
             else:
                 raise ValueError(f"Component '{c}' has unrecognized type '{c_type}' for Hycon.")

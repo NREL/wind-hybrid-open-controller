@@ -66,7 +66,8 @@ class CoalPlantController(ControllerBase):
 
         # Bid curve is in MW, so convert min stable load to MW from kW for comparison
         min_power_value = self.plant_parameters[self.cname]["min_stable_load"] / 1e3
-        max_power_value = min(self.plant_parameters[self.cname]["capacity"], getattr(self, "max_control_output", float("inf")))/ 1e3
+        max_power_value = min(self.plant_parameters[self.cname]["capacity"], \
+                              getattr(self, "max_control_output", float("inf")))/ 1e3
 
         # # print("Capacity:", self.plant_parameters[self.cname]["capacity"])
         # print("Min stable load:", self.plant_parameters[self.cname]["min_stable_load"])
