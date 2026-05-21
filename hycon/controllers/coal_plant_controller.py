@@ -41,6 +41,7 @@ class CoalPlantController(ControllerBase):
     def set_controller_parameters(
         self,
         bid_curve,
+        max_control_output=None,
         **_,  # <- Allows arbitrary additional parameters to be passed, which are ignored
     ):
         """
@@ -55,6 +56,8 @@ class CoalPlantController(ControllerBase):
         self.bid_curve = bid_curve
         prices, powers = zip(*bid_curve)
         self.bid_interpolator = interp1d(prices, powers, kind="quadratic", fill_value="extrapolate")
+        if max_control_output is not None:
+            self.max_control_output = max_control_output
 
     def compute_controls(self, measurements_dict):
         day_ahead_lmp = measurements_dict["DA_LMP"]
@@ -63,11 +66,10 @@ class CoalPlantController(ControllerBase):
 
         # Bid curve is in MW, so convert min stable load to MW from kW for comparison
         min_power_value = self.plant_parameters["coal_plant"]["min_stable_load"] / 1e3
-        max_power_value = self.plant_parameters["coal_plant"]["capacity"] / 1e3
-        
-        # print("Capacity:", self.plant_parameters["coal_plant"]["capacity"])
+        max_power_value = min(self.plant_parameters["coal_plant"]["capacity"], getattr(self, "max_control_output", float("inf")))/ 1e3
+
+        # # print("Capacity:", self.plant_parameters["coal_plant"]["capacity"])
         # print("Min stable load:", self.plant_parameters["coal_plant"]["min_stable_load"])
-        
         # print(f"Day-ahead LMP: {day_ahead_lmp}, Power bid from curve: {power_bids}, Plant status: {plant_status}")
         # print(f"Minimum power value based on min stable load: {min_power_value}")
 
