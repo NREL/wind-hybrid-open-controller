@@ -1,7 +1,7 @@
 import numpy as np
-from hycon.controllers.controller_base import ControllerBase
 from scipy.interpolate import interp1d
 
+from hycon.controllers.controller_base import ControllerBase
 
 # coal controller notes:
 # Takes in bid curve, day ahead prices, on or off status
@@ -71,14 +71,17 @@ class CoalPlantController(ControllerBase):
 
         # # print("Capacity:", self.plant_parameters[self.cname]["capacity"])
         # print("Min stable load:", self.plant_parameters[self.cname]["min_stable_load"])
-        # print(f"Day-ahead LMP: {day_ahead_lmp}, Power bid from curve: {power_bids}, Plant status: {plant_status}")
+        # print(f"Day-ahead LMP: {day_ahead_lmp}, Power bid from curve: {power_bids},
+        # Plant status: {plant_status}")
         # print(f"Minimum power value based on min stable load: {min_power_value}")
 
         if plant_status == 1:  # Plant is on
             # Assuming we're looking at the first hour's price for simplicity
             power_setpoint = power_bids
-            power_setpoint = np.clip(power_setpoint, min_power_value, max_power_value)  # Ensure power setpoint is within bounds
+            # Ensure power setpoint is within bounds
+            power_setpoint = np.clip(power_setpoint, min_power_value, max_power_value)
         else: # Plant is off, so set power setpoint to 0
             power_setpoint = 0.0
 
-        return {self.cname: {"power_setpoint": float(power_setpoint*1e3)}}  # Convert back to kW for control output
+        # Convert back to kW for control output
+        return {self.cname: {"power_setpoint": float(power_setpoint*1e3)}}

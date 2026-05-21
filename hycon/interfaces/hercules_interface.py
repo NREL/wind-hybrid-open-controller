@@ -78,7 +78,8 @@ class HerculesInterface(InterfaceBase):
                 self.plant_parameters[c] = {"type": "thermal",
                                             "component_category": "generator",
                                             "capacity": h_dict[c]["rated_capacity"],
-                                            "min_stable_load": h_dict[c].get("min_stable_load_fraction", 0.0)\
+                                            "min_stable_load":
+                                            h_dict[c].get("min_stable_load_fraction", 0.0)\
                                                 * h_dict[c]["rated_capacity"],
                                             }
             else:
@@ -88,7 +89,8 @@ class HerculesInterface(InterfaceBase):
         # if self._has_coal_component:
         #     self.plant_parameters["coal_plant"] = {
         #         "capacity": h_dict["coal_plant"]["rated_capacity"],
-        #         "min_stable_load": h_dict["coal_plant"]["min_stable_load_fraction"] * h_dict["coal_plant"]["rated_capacity"]
+        #         "min_stable_load": h_dict["coal_plant"]["min_stable_load_fraction"] *
+        #                           h_dict["coal_plant"]["rated_capacity"]
         #         }
 
         # Pre-compute LMP keys to avoid string formatting in get_measurements
