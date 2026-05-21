@@ -1,3 +1,5 @@
+import argparse
+
 import matplotlib.pyplot as plt
 import numpy as np
 from hercules import HerculesOutput
@@ -20,10 +22,10 @@ def plot_outputs():
 
     print(df_batt["battery.power"].head())
 
-    pow_col = "wind_farm.turbine_powers.000"
+    pow_col = "distributed_wind.turbine_powers.000"
     ref_col = "external_signals.plant_power_reference"
     batt_col = "battery.power"
-    ws_col = "wind_farm.wind_speeds_withwakes.000"
+    ws_col = "distributed_wind.wind_speeds_withwakes.000"
 
     # Create plots
     fig, ax = plt.subplots(3, 1, sharex=True)
@@ -139,6 +141,17 @@ def plot_outputs():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Plot outputs of battery market example")
+
+    parser.add_argument(
+        "--save_plots", type=bool, default=False, help="Whether to save the generated plots"
+    )
+
+    args = parser.parse_args()
+
     fig = plot_outputs()
-    # fig.savefig("../../docs/graphics/flexible-interconnect.png", dpi=300, format="png")
+
+    if args.save_plots:
+        fig.savefig("../../docs/graphics/flexible-interconnect.png", dpi=300, format="png")
+
     plt.show()

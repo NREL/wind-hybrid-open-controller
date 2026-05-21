@@ -1,4 +1,4 @@
-time_utc,wind_power_reference
+time_utc,plant_power_reference
 2018-05-10T12:31:00.00Z,4000.0
 2018-05-10T12:31:10.00Z,4000.0
 2018-05-10T12:31:20.00Z,3000.0

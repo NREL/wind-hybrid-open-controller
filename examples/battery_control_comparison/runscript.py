@@ -1,3 +1,5 @@
+import argparse
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -5,12 +7,20 @@ from hercules import HerculesOutput
 from hercules.hercules_model import HerculesModel
 from hercules.utilities import load_hercules_input
 from hercules.utilities_examples import prepare_output_directory
-from hycon.controllers import BatteryController, HybridSupervisoryControllerMultiRef
+from hycon.controllers import BatteryController, HybridSupervisoryControllerGeneric
 from hycon.interfaces import HerculesInterface
 
 prepare_output_directory()
 
-save_figs = False
+parser = argparse.ArgumentParser(description="Plot outputs of battery market example")
+
+parser.add_argument(
+    "--save_plots", type=bool, default=False, help="Whether to save the generated plots"
+)
+
+args = parser.parse_args()
+
+save_figs = args.save_plots
 
 # Generate the reference signal to track. We will simplify things by using an
 # existing input file.
@@ -18,7 +28,7 @@ df = pd.read_csv("../example_inputs/lmp_rt.csv")
 df = df.rename(columns={"interval_start_utc": "time_utc"}).drop(columns=["market", "lmp"])
 # Create reference that steps up and down each five minutes
 reference_input_sequence = np.tile(np.array([20000, 0]), int(len(df) / 2))
-df["battery_power_reference"] = reference_input_sequence
+df["plant_power_reference"] = reference_input_sequence
 # Add end of step info
 df["time_utc"] = pd.to_datetime(df["time_utc"])
 df_2 = df.copy(deep=True)
@@ -38,11 +48,11 @@ def simulate(soc_0, clipping_thresholds, gain):
     interface = HerculesInterface(hmodel.h_dict)
     battery_controller = BatteryController(
         interface=interface,
-        input_dict=hmodel.h_dict,
+        cname="battery",
         controller_parameters={"k_batt": gain, "clipping_thresholds": clipping_thresholds},
     )
-    controller = HybridSupervisoryControllerMultiRef(
-        battery_controller=battery_controller, interface=interface, input_dict=hmodel.h_dict
+    controller = HybridSupervisoryControllerGeneric(
+        interface=interface, controller_parameters={"component_controllers": [battery_controller]}
     )
 
     hmodel.assign_controller(controller)
@@ -55,7 +65,7 @@ def simulate(soc_0, clipping_thresholds, gain):
     power_sequence = df_out["battery.power"].to_numpy()
     soc_sequence = df_out["battery.soc"].to_numpy()
     time = df_out["time"].to_numpy()
-    reference_sequence = df_out["external_signals.battery_power_reference"].to_numpy()
+    reference_sequence = df_out["external_signals.plant_power_reference"].to_numpy()
 
     return time, power_sequence, soc_sequence, reference_sequence
 

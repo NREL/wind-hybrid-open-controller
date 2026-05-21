@@ -23,8 +23,8 @@ class CoalPlantController(ControllerBase):
 
     """
 
-    def __init__(self, interface, input_dict, controller_parameters={}, verbose=True):
-        super().__init__(interface, verbose)
+    def __init__(self, interface, cname, input_dict, controller_parameters={}, verbose=True):
+        super().__init__(interface, cname, verbose)
 
         # # Check that parameters are not specified both in input file
         # # and in controller_parameters
@@ -62,14 +62,14 @@ class CoalPlantController(ControllerBase):
     def compute_controls(self, measurements_dict):
         day_ahead_lmp = measurements_dict["DA_LMP"]
         power_bids = self.bid_interpolator(day_ahead_lmp)
-        plant_status = measurements_dict["coal_plant"]["status_reference"]
+        plant_status = measurements_dict[self.cname]["status_reference"]
 
         # Bid curve is in MW, so convert min stable load to MW from kW for comparison
-        min_power_value = self.plant_parameters["coal_plant"]["min_stable_load"] / 1e3
-        max_power_value = min(self.plant_parameters["coal_plant"]["capacity"], getattr(self, "max_control_output", float("inf")))/ 1e3
+        min_power_value = self.plant_parameters[self.cname]["min_stable_load"] / 1e3
+        max_power_value = min(self.plant_parameters[self.cname]["capacity"], getattr(self, "max_control_output", float("inf")))/ 1e3
 
-        # # print("Capacity:", self.plant_parameters["coal_plant"]["capacity"])
-        # print("Min stable load:", self.plant_parameters["coal_plant"]["min_stable_load"])
+        # # print("Capacity:", self.plant_parameters[self.cname]["capacity"])
+        # print("Min stable load:", self.plant_parameters[self.cname]["min_stable_load"])
         # print(f"Day-ahead LMP: {day_ahead_lmp}, Power bid from curve: {power_bids}, Plant status: {plant_status}")
         # print(f"Minimum power value based on min stable load: {min_power_value}")
 
@@ -80,4 +80,4 @@ class CoalPlantController(ControllerBase):
         else: # Plant is off, so set power setpoint to 0
             power_setpoint = 0.0
 
-        return {"coal_power_setpoint": float(power_setpoint*1e3)}  # Convert back to kW for control output
+        return {self.cname: {"power_setpoint": float(power_setpoint*1e3)}}  # Convert back to kW for control output

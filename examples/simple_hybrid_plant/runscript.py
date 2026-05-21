@@ -3,8 +3,8 @@ from hercules.hercules_model import HerculesModel
 from hercules.utilities import load_hercules_input
 from hercules.utilities_examples import prepare_output_directory
 from hycon.controllers import (
-    BatteryPassthroughController,
-    HybridSupervisoryControllerBaseline,
+    BatteryController,
+    HybridSupervisoryControllerGeneric,
     SolarPassthroughController,
     WindFarmPowerTrackingController,
 )
@@ -33,17 +33,21 @@ hmodel = HerculesModel(h_dict)
 # Establish controllers based on options
 interface = HerculesInterface(hmodel.h_dict)
 print("Setting up controller.")
-wind_controller = WindFarmPowerTrackingController(interface, hmodel.h_dict)
-solar_controller = SolarPassthroughController(interface, hmodel.h_dict) if include_solar else None
+wind_controller = WindFarmPowerTrackingController(interface, "wind_farm")
+solar_controller = SolarPassthroughController(interface, "solar_farm") if include_solar else None
 battery_controller = (
-    BatteryPassthroughController(interface, hmodel.h_dict) if include_battery else None
+    BatteryController(interface, "battery", {"k_batt": 0.1}) if include_battery else None
 )
-controller = HybridSupervisoryControllerBaseline(
+component_controllers = [wind_controller]
+if include_solar:
+    component_controllers.append(solar_controller)
+if include_battery:
+    component_controllers.append(battery_controller)
+
+# Set up main supervisory controller
+controller = HybridSupervisoryControllerGeneric(
     interface,
-    hmodel.h_dict,
-    wind_controller=wind_controller,
-    solar_controller=solar_controller,
-    battery_controller=battery_controller,
+    controller_parameters={"component_controllers": component_controllers},
 )
 
 hmodel.assign_controller(controller)

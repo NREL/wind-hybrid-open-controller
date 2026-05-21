@@ -8,13 +8,6 @@ def test_hercules_v1_dict():
     return {
         "dt": 1,
         "time": 0,
-        "controller": {
-            "num_turbines": 2,
-            "initial_conditions": {"yaw": [270.0, 270.0]},
-            "nominal_plant_power_kW": 10000,
-            "nominal_hydrogen_rate_kgps": 0.1,
-            "hydrogen_controller_gain": 1.0,
-        },
         "hercules_comms": {
             "amr_wind": {
                 "test_farm": {
@@ -48,21 +41,23 @@ def test_hercules_dict():
         "dt": 1,
         "time": 0,
         "plant": {"interconnect_limit": None},
-        "controller": {
-            "test_controller_parameter": 1.0,
-        },
         "wind_farm": {
             "n_turbines": 2,
             "capacity": 10000.0,
             "wind_direction_mean": 271.0,
             "turbine_powers": [4000.0, 4001.0],
+            "power": 8001.0,
             "wind_speed": 10.0,
+            "component_type": "WindFarm",
+            "component_category": "generator",
         },
         "solar_farm": {
             "capacity": 1000.0,
             "power": 1000.0,  # kW
             "dni": 1000.0,
             "aoi": 30.0,
+            "component_type": "SolarPySAMPVWatts",
+            "component_category": "generator",
         },
         "battery": {
             "size": 10.0e3,
@@ -71,20 +66,29 @@ def test_hercules_dict():
             "soc": 0.3,
             "charge_rate": 20e3,
             "discharge_rate": 15e3,
+            "component_type": "BatterySimple",
+            "component_category": "storage",
+            "max_SOC": 0.95,
+            "min_SOC": 0.05,
+            "allow_grid_charging": False,
         },
         "electrolyzer": {
             "H2_mfr": 0.03,
+            "component_type": "ElectrolyzerPlant",
+            "component_category": "load",
+            "power": 500.0,
         },
         "external_signals": {
-            "wind_power_reference": 1000.0,
-            "solar_power_reference": 800.0,
-            "battery_power_reference": 0.0,
+            # "wind_power_reference": 1000.0,
+            # "solar_power_reference": 800.0,
+            # "battery_power_reference": 0.0,
             "plant_power_reference": 1000.0,
             "forecast_ws_mean_0": 8.0,
             "forecast_ws_mean_1": 8.1,
             "ws_median_0": 8.1,
             "hydrogen_reference": 0.02,
         },
+        "component_names": ["wind_farm", "solar_farm", "battery", "electrolyzer"],
     }
 
 
@@ -98,7 +102,6 @@ class StandinInterface(InterfaceBase):
         self.dt = 1.0
         # Set up stand-in plant parameters and controller parameters
         self.plant_parameters = {"n_turbines": 2}
-        self.controller_parameters = {}
 
     def get_measurements(self):
         pass

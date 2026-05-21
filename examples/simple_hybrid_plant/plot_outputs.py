@@ -1,3 +1,5 @@
+import argparse
+
 import matplotlib.pyplot as plt
 import numpy as np
 from hercules import HerculesOutput
@@ -7,13 +9,10 @@ def plot_outputs():
     # Read the Hercules output file using HerculesOutput
     ho = HerculesOutput("outputs/hercules_output.h5")
 
-    # Print metadata information
-    print("Simulation Metadata:")
-    ho.print_metadata()
-    print()
-
     df = ho.df
-    print(df.columns)
+    print("Available columns in the output DataFrame:")
+    for c in df.columns.tolist():
+        print(c)
 
     # Get high-level signals
     power_output = df["plant.power"]
@@ -106,6 +105,17 @@ def plot_outputs():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Plot outputs of battery market example")
+
+    parser.add_argument(
+        "--save_plots", type=bool, default=False, help="Whether to save the generated plots"
+    )
+
+    args = parser.parse_args()
+
     fig = plot_outputs()
-    # fig.savefig("../../docs/graphics/simple-hybrid-example-plot.png", dpi=300, format="png")
+
+    if args.save_plots:
+        fig.savefig("../../docs/graphics/simple-hybrid-example-plot.png", dpi=300, format="png")
+
     plt.show()
