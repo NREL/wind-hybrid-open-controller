@@ -60,9 +60,12 @@ class CoalPlantController(ControllerBase):
             self.max_control_output = max_control_output
 
     def compute_controls(self, measurements_dict):
+        # NOTE: Current power calculation is in MW!!
         day_ahead_lmp = measurements_dict["DA_LMP"]
         power_bids = self.bid_interpolator(day_ahead_lmp)
         plant_status = measurements_dict[self.cname]["status_reference"]
+
+        external_power_reference = measurements_dict[self.cname]["power_reference"] / 1e3
 
         # Bid curve is in MW, so convert min stable load to MW from kW for comparison
         min_power_value = self.plant_parameters[self.cname]["min_stable_load"] / 1e3
@@ -78,6 +81,7 @@ class CoalPlantController(ControllerBase):
         if plant_status == 1:  # Plant is on
             # Assuming we're looking at the first hour's price for simplicity
             power_setpoint = power_bids
+            power_setpoint = min(power_setpoint, external_power_reference)
             # Ensure power setpoint is within bounds
             power_setpoint = np.clip(power_setpoint, min_power_value, max_power_value)
         else: # Plant is off, so set power setpoint to 0

@@ -147,10 +147,19 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
             ]
         )
 
+        if measurements_dict["DA_LMP"] > 38:
+            print_all = True
+        else:
+            print_all = False
+        if print_all:
+            print("LMP values: ", measurements_dict["DA_LMP"], measurements_dict["RT_LMP"])
+
         # Loop over curtailment order in reverse to bring in power for each component until we hit
         # the interconnection limit, then curtail as needed according to the order.
         for cidx in self.curtailment_order[::-1]:
             cc = self.component_controllers[cidx]
+            if print_all:
+                print("Component: ", cc.cname)
 
             if cc.plant_parameters[cc.cname]["component_category"] == "generator":
                 power_reference_component = power_reference_with_storage - power_export_total
@@ -171,11 +180,18 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
                     # Reduce or increase the available power to store
                     locally_generated_power_total += measurements_dict[cc.cname]["power"]
 
+            if print_all:
+                print("power reference:", power_reference_component)
             # Assign power_reference_component for use by lower level controller
             measurements_dict[cc.cname]["power_reference"] = power_reference_component
 
             controls_dict.update(cc.compute_controls(measurements_dict))
 
+            if print_all:
+                print("Power for component ", cc.cname, measurements_dict[cc.cname]["power"])
+
             power_export_total += measurements_dict[cc.cname]["power"]
+        if print_all:
+            print("Power export total: ", power_export_total)
 
         return controls_dict
