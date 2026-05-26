@@ -189,5 +189,8 @@ class HerculesInterface(InterfaceBase):
                         "power_setpoint"
                     )
                 h_dict[c] = h_dict[c] | controls_dict[c]
+            else:
+                # Set a safe default power_setpoint for components without controllers
+                h_dict[c].setdefault("power_setpoint", 0.0)
 
         return h_dict
