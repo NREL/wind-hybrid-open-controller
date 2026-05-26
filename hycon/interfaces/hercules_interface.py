@@ -71,6 +71,7 @@ class HerculesInterface(InterfaceBase):
                     "allow_grid_charging": h_dict[c].get("allow_grid_power_consumption", True),
                     "state_of_charge_max": h_dict[c].get("max_SOC", 1.0),
                     "state_of_charge_min": h_dict[c].get("min_SOC", 0.0),
+                    "roundtrip_efficiency": h_dict[c].get("roundtrip_efficiency", 1.0),
                 }
             elif c_type in hercules_hydrogen_types:
                 self.plant_parameters[c] = {"type": "hydrogen", "component_category": "load"}
