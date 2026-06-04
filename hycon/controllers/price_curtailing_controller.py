@@ -1,5 +1,7 @@
 import copy
 
+import numpy as np
+
 from hycon.controllers.controller_base import ControllerBase
 
 
@@ -33,7 +35,7 @@ class PriceCurtailingController(ControllerBase):
                 drops below this threshold, the controller will curtail the component (i.e., set
                 power reference to 0). Defaults to 0.0.
         """
-        if not isinstance(curtailment_price, (int, float)):
+        if not isinstance(curtailment_price, (int, float, np.integer, np.floating)):
             raise ValueError("`curtailment_price` must be a single numeric value.")
         if power_tracking_controller is None:
             raise ValueError("`power_tracking_controller` must be provided.")
@@ -45,7 +47,7 @@ class PriceCurtailingController(ControllerBase):
 
     def compute_controls(self, measurements_dict):
         if "RT_LMP" not in measurements_dict or not isinstance(
-            measurements_dict["RT_LMP"], (int, float)
+            measurements_dict["RT_LMP"], (int, float, np.integer, np.floating)
         ):
             raise KeyError(
                 "measurements_dict must contain key scalar 'RT_LMP' to use "
