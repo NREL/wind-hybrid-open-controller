@@ -22,6 +22,7 @@ hercules_solar_types = ["SolarPySAMPVWatts"]
 hercules_battery_types = ["BatteryLithiumIon", "BatterySimple"]
 hercules_hydrogen_types = ["ElectrolyzerPlant"]
 hercules_thermal_types = ["HardCoalSteamTurbine", "OpenCycleGasTurbine"]
+hercules_playback_types = ["PowerPlayback"]
 
 
 class HerculesInterface(InterfaceBase):
@@ -76,6 +77,8 @@ class HerculesInterface(InterfaceBase):
                 self.plant_parameters[c] = {"type": "hydrogen", "component_category": "load"}
             elif c_type in hercules_thermal_types:
                 self.plant_parameters[c] = {"type": "thermal", "component_category": "generator"}
+            elif c_type in hercules_playback_types:
+                self.plant_parameters[c] = {"type": "playback", "component_category": "generator"}
             else:
                 raise ValueError(f"Component '{c}' has unrecognized type '{c_type}' for Hycon.")
 
