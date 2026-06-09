@@ -3,6 +3,7 @@ from hycon.controllers.battery_controller import (
     BatteryPassthroughController,
     BatteryPriceSOCController,
 )
+from hycon.controllers.filter import LowPassFilter
 from hycon.controllers.hybrid_supervisory_controller import (
     HybridSupervisoryControllerGeneric,
 )
