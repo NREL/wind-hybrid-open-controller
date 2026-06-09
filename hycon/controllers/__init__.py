@@ -12,9 +12,9 @@ from hycon.controllers.lookup_based_wake_steering_controller import (
 )
 from hycon.controllers.price_curtailing_controller import PriceCurtailingController
 from hycon.controllers.solar_passthrough_controller import SolarPassthroughController
+from hycon.controllers.thermal_plant_controller import ThermalPlantController
 from hycon.controllers.wake_steering_rosco_standin import WakeSteeringROSCOStandin
 from hycon.controllers.wind_farm_power_tracking_controller import (
     WindFarmPowerDistributingController,
     WindFarmPowerTrackingController,
 )
-from hycon.controllers.thermal_plant_controller import ThermalPlantController
