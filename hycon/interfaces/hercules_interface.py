@@ -6,6 +6,7 @@ from hycon.interfaces.interface_base import InterfaceBase
 # Key: Hercules name. Value: Name to use in controller measurements dictionary
 hercules_data_channel_map = {
     "power": "power",
+    "state": "state",
     "power_reference": "power_reference",
     "soc": "state_of_charge",
     "turbine_powers": "turbine_powers",
@@ -81,6 +82,7 @@ class HerculesInterface(InterfaceBase):
                     "P_min": h_dict[c]["min_stable_load_fraction"] * h_dict[c]["rated_capacity"],
                     "P_max": h_dict[c]["rated_capacity"],
                     "ramp_rate": h_dict[c]["ramp_rate_fraction"]*h_dict[c]["rated_capacity"]/60.0,
+                    "run_up_rate": h_dict[c]["run_up_rate_fraction"]*h_dict[c]["rated_capacity"]/60,
                 }
             else:
                 raise ValueError(f"Component '{c}' has unrecognized type '{c_type}' for Hycon.")
@@ -119,6 +121,8 @@ class HerculesInterface(InterfaceBase):
                 # TODO: Do we need another that excludes storage?
                 local_power += component_power
             component_measurements = {"power": component_power}
+            if self.plant_parameters[c]["type"] == "thermal":
+                component_measurements["state"] = h_dict[c]["state"]
             for k, v in hercules_data_channel_map.items():
                 if k in h_dict[c]:
                     component_measurements[v] = h_dict[c][k]
