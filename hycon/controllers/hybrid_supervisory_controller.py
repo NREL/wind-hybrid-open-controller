@@ -81,23 +81,26 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
         # Check valid curtailment_order
         if curtailment_order is None:
             # Default is reverse order of component_controllers
-            self.curtailment_order = list(range(len(component_controllers) - 1, -1, -1))
-        elif len(curtailment_order) != len(component_controllers):
-            raise ValueError("curtailment_order must be the same length as component_controllers.")
+            self.curtailment_order = list(range(0, len(component_controllers) - 1, -1, -1))
+        elif len(curtailment_order) != len(component_controllers) and not any(
+            isinstance(co, (list, tuple, np.ndarray)) for co in curtailment_order
+        ):
+            raise ValueError(
+                "curtailment_order must be the same length as component_controllers."
+            )
         elif not all([type(c) is int and c >= 0 for c in curtailment_order]):
             raise ValueError(
                 "All entries in curtailment_order must be non-negative integers corresponding to "
                 "indices of component_controllers."
             )
         elif (
-            max(curtailment_order) != len(component_controllers) - 1 or min(curtailment_order) != 0
+            max(curtailment_order) != len(set(curtailment_order)) - 1
+            or min(curtailment_order) != 0
         ):
             raise ValueError(
-                "curtailment_order must contain integers corresponding to indices of "
-                "component_controllers."
+                "curtailment_order must contain integers corresponding to the curtailment order of "
+                "component_controllers, starting at 0 and without skipping an integer."
             )
-        elif len(curtailment_order) != len(set(curtailment_order)):
-            raise ValueError("curtailment_order must not contain duplicate entries.")
         else:
             self.curtailment_order = curtailment_order
 
@@ -107,13 +110,16 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
             self.minimum_power = np.zeros_like(component_controllers)
         elif len(minimum_power) != len(component_controllers):
             raise ValueError("minimum_power must be the same length as component_controllers.")
-        elif not all([isinstance(c, (float, int)) and c >= 0 for c in minimum_power]):
+        elif not all([isinstance(c, (float, int)) for c in minimum_power]):
             raise ValueError(
-                "All entries in minimum_power must be non-negative floats or integers corresponding"
+                "All entries in minimum_power must be floats or integers corresponding"
                 " to indices of component_controllers."
             )
         else:
             self.minimum_power = minimum_power
+
+        #TODO: add soc_setpoint here
+            
 
     def compute_controls(self, measurements_dict):
         """
