@@ -53,6 +53,7 @@ def test_LowPassFilter():
         y = lpf(power_setpoint_ref)
     assert np.isclose(y, power_setpoint_ref, atol=1e-2)
 
+
 def test_RateLimiter():
     """
     Tests that the RateLimiter outputs a reasonable signal
@@ -65,15 +66,16 @@ def test_RateLimiter():
     # Test with input
     rate_limiter._x = 500
     out = rate_limiter(1000)
-    assert out == 500 + 2*100
+    assert out == 500 + 2 * 100
     out = rate_limiter(-1000)
-    assert out == 500 + 2*100 - 2*50
+    assert out == 500 + 2 * 100 - 2 * 50
 
     # Test not specifying max_rate_down (uses max_rate_up for both)
     rate_limiter = RateLimiter(max_rate_up=max_rate_up, dt=dt_test)
     rate_limiter._x = 500
     out = rate_limiter(-1000)
-    assert out == 500 - 2*100
+    assert out == 500 - 2 * 100
+
 
 def test_Saturator():
     """

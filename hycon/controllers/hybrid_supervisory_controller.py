@@ -85,17 +85,14 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
         elif len(curtailment_order) != len(component_controllers) and not any(
             isinstance(co, (list, tuple, np.ndarray)) for co in curtailment_order
         ):
-            raise ValueError(
-                "curtailment_order must be the same length as component_controllers."
-            )
+            raise ValueError("curtailment_order must be the same length as component_controllers.")
         elif not all([type(c) is int and c >= 0 for c in curtailment_order]):
             raise ValueError(
                 "All entries in curtailment_order must be non-negative integers corresponding to "
                 "indices of component_controllers."
             )
         elif (
-            max(curtailment_order) != len(set(curtailment_order)) - 1
-            or min(curtailment_order) != 0
+            max(curtailment_order) != len(set(curtailment_order)) - 1 or min(curtailment_order) != 0
         ):
             raise ValueError(
                 "curtailment_order must contain integers corresponding to the curtailment order of "
@@ -118,8 +115,7 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
         else:
             self.minimum_power = minimum_power
 
-        #TODO: add soc_setpoint here
-            
+        # TODO: add soc_setpoint here
 
     def compute_controls(self, measurements_dict):
         """

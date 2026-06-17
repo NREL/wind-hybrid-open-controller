@@ -82,8 +82,12 @@ class HerculesInterface(InterfaceBase):
                     "component_category": "generator",
                     "P_min": h_dict[c]["min_stable_load_fraction"] * h_dict[c]["rated_capacity"],
                     "P_max": h_dict[c]["rated_capacity"],
-                    "ramp_rate": h_dict[c]["ramp_rate_fraction"]*h_dict[c]["rated_capacity"]/60.0,
-                    "run_up_rate": h_dict[c]["run_up_rate_fraction"]*h_dict[c]["rated_capacity"]/60,
+                    "ramp_rate": h_dict[c]["ramp_rate_fraction"]
+                    * h_dict[c]["rated_capacity"]
+                    / 60.0,
+                    "run_up_rate": h_dict[c]["run_up_rate_fraction"]
+                    * h_dict[c]["rated_capacity"]
+                    / 60,
                 }
             else:
                 raise ValueError(f"Component '{c}' has unrecognized type '{c_type}' for Hycon.")
