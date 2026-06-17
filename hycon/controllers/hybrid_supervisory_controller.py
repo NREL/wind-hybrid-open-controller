@@ -50,9 +50,6 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
         self,
         component_controllers=[],
         curtailment_order=None,
-        minimum_power=None,
-        maximum_power=None,
-        forced_state=None,
     ):
         """
         Set controller parameters for HybridSupervisoryControllerGeneric.
@@ -100,22 +97,6 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
             )
         else:
             self.curtailment_order = curtailment_order
-
-        # Check valid minimum_power
-        if minimum_power is None:
-            # Default is reverse order of component_controllers
-            self.minimum_power = np.zeros_like(component_controllers)
-        elif len(minimum_power) != len(component_controllers):
-            raise ValueError("minimum_power must be the same length as component_controllers.")
-        elif not all([isinstance(c, (float, int)) for c in minimum_power]):
-            raise ValueError(
-                "All entries in minimum_power must be floats or integers corresponding"
-                " to indices of component_controllers."
-            )
-        else:
-            self.minimum_power = minimum_power
-
-        # TODO: add soc_setpoint here
 
     def compute_controls(self, measurements_dict):
         """
