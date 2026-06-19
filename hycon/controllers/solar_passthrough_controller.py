@@ -24,7 +24,9 @@ class SolarPassthroughController(ControllerBase):
         self.set_controller_parameters(**controller_parameters)
 
     def set_controller_parameters(self, solar_plant_capacity=None, **_):
-        self.max_control_output = solar_plant_capacity if solar_plant_capacity is not None else float("inf")
+        self.max_control_output = solar_plant_capacity if solar_plant_capacity is not None \
+                                                            else float("inf")
 
     def compute_controls(self, measurements_dict):
-        return {self.cname: {"power_setpoint": min(measurements_dict[self.cname]["power_reference"], self.max_control_output)}}
+        return {self.cname: {"power_setpoint": min(measurements_dict[self.cname]["power_reference"],
+                                                   self.max_control_output)}}

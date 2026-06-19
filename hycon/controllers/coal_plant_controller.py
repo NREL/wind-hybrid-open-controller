@@ -11,23 +11,30 @@ from hycon.controllers.controller_base import ControllerBase
 
 class CoalPlantController(ControllerBase):
     """
-    Controller considers price, plant status, and external power reference commands to determine power setpoint.
+    Controller considers price, plant status, and external power reference
+    commands to determine power setpoint.
 
-    This controller implements a price-arbitrage strategy that uses day-ahead (DA)
-    locational marginal prices (LMPs) to decide when to dispatch the coal plant.
+    This controller implements a price-arbitrage strategy that uses day-ahead
+    (DA) locational marginal prices (LMPs) to decide when to dispatch the
+    coal plant.
 
-    The controller compares the DA LMP against the plant's bid curve to determine
-    the appropriate power output. The coal plant will generate power if the plant is on
-    and the DA price is higher than the price of coal (bid according to input bid curve).
+    The controller compares the DA LMP against the plant's bid curve to
+    determine the appropriate power output. The coal plant will generate power
+    if the plant is on and the DA price is higher than the price of coal
+    (bid according to input bid curve).
 
-    Additionally, the controller enforces ramping constraints and respects an external power reference command,
-    which could be used for grid services or other system-level objectives.
-    The controller also ensures that the power setpoint respects the plant's minimum stable load and maximum capacity.
+    Additionally, the controller enforces ramping constraints and respects an
+    external power reference command, which could be used for grid services or
+    other system-level objectives. The controller also ensures that the power
+    setpoint respects the plant's minimum stable load and maximum capacity.
 
     Controller parameters:
-        bid_curve (list): List of tuples (price, power) representing the coal plant's bid curve.
-        ramp_rate (float): Maximum change in power output per time step (in MW/min).
-        max_control_output (float): Maximum power output for the coal plant (in kW).
+        bid_curve (list): List of tuples (price, power) representing the
+                          coal plant's bid curve.
+        ramp_rate (float): Maximum change in power output per time step
+                           (in MW/min).
+        max_control_output (float): Maximum power output for the coal plant
+                                    (in kW).
 
     """
 
@@ -49,7 +56,8 @@ class CoalPlantController(ControllerBase):
         Args:
             bid_curve (list): List of tuples (price, power) representing the coal plant's bid curve.
             ramp_rate (float): Maximum change in power output per time step (in MW/min).
-            max_control_output (float): Maximum power output for the coal plant (in kW). Defaults to None.
+            max_control_output (float): Maximum power output for the coal plant (in kW).
+                                        Defaults to None.
         """
 
         self.bid_curve = bid_curve
@@ -57,7 +65,9 @@ class CoalPlantController(ControllerBase):
         self.bid_interpolator = interp1d(prices, powers, kind="quadratic", fill_value="extrapolate")
         if max_control_output is not None:
             self.max_control_output = max_control_output
-        self.ramp_rate_MW_per_dt = ramp_rate * (1 / (60 / self.dt)) # convert ramp rate to MW per time step, assuming dt is in seconds
+        # convert ramp rate to MW per time step, assuming dt is in seconds and
+        #   ramp_rate is in MW per minute
+        self.ramp_rate_MW_per_dt = ramp_rate * (1 / (60 / self.dt)) 
 
     def compute_controls(self, measurements_dict):
         # NOTE: Current power calculation is in MW!!
@@ -86,9 +96,12 @@ class CoalPlantController(ControllerBase):
                 max_power_change = self.ramp_rate_MW_per_dt  # Already in MW
 
                 if abs(power_change) > max_power_change:
-                    power_setpoint = previous_power_setpoint + np.sign(power_change) * max_power_change
+                    power_setpoint = previous_power_setpoint + \
+                        np.sign(power_change) * max_power_change
         else: # Plant is off, so set power setpoint to 0
             power_setpoint = 0.0
 
         # Convert back to kW for control output
-        return {self.cname: {"power_setpoint": float(power_setpoint*1e3), "uncurtailable": True, "ramp_rate": self.ramp_rate_MW_per_dt*1e3}}
+        return {self.cname: {"power_setpoint": float(power_setpoint*1e3),
+                             "uncurtailable": True,
+                             "ramp_rate": self.ramp_rate_MW_per_dt*1e3}}

@@ -138,8 +138,9 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
         locally_generated_power_total = 0.0
         controls_dict = {}
         curtailment_status = {}
-        # Remove keys that are not part of the control output that are returned by thermal plant controllers
-        #   (or technologies with similar constraints, e.g. ramp rates or minimum stable loads)
+        # Remove keys that are not part of the control output that are returned by thermal
+        #   plant controllers (or technologies with similar constraints, e.g. ramp rates or
+        #   minimum stable loads)
         keys_to_remove = ["uncurtailable", "ramp_rate"]
 
 
@@ -179,7 +180,8 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
             # Assign power_reference_component for use by lower level controller
             measurements_dict[cc.cname]["power_reference"] = power_reference_component
 
-            # Two step process to remove uncurtailable and ramp_rate variables from compute controls output
+            # Two step process to remove uncurtailable and ramp_rate variables from
+            #   compute controls output
             computed_controls = cc.compute_controls(measurements_dict)
             for key in keys_to_remove:
                 if key in computed_controls[cc.cname]:
@@ -191,35 +193,41 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
             controls_dict.update(computed_controls)
 
 
-            # If component is a flexible generator, base on current power output rather than power setpoint
-            # Need this so that other technologies can fill in for the flexible generator if it is not producing at full capacity
-            if cc.plant_parameters[cc.cname]["component_category"] == "generator" and cc.cname not in curtailment_status.keys():
+            # If component is a flexible generator, base on current power output rather
+            #   than power setpoint
+            # Need this so that other technologies can fill in for the flexible generator
+            #   if it is not producing at full capacity
+            if cc.plant_parameters[cc.cname]["component_category"] == "generator" and \
+                cc.cname not in curtailment_status.keys():
                 power_export_total += measurements_dict[cc.cname]["power"]
             else:
                 power_export_total += controls_dict[cc.cname]["power_setpoint"]
 
-            # power_export_total += controls_dict[cc.cname]["power_setpoint"]
-
         # Check if we are at risk of exceeding interconnection limit
-        # This includes checking if we would exceed the interconnection limit with the current controls,
-        #   as well as checking if we are close to the interconnection limit and have ramping limited assets
-        #   that could cause us to exceed the interconnection limit in the next time step.
-        if [cc for cc in self.component_controllers if cc.plant_parameters[cc.cname]["component_category"] == "generator" and 
+        # This includes checking if we would exceed the interconnection limit with the current
+        #   controls, as well as checking if we are close to the interconnection limit and have
+        #   ramping limited assets that could cause us to exceed the interconnection limit in
+        #   the next time step.
+        if [cc for cc in self.component_controllers if \
+            cc.plant_parameters[cc.cname]["component_category"] == "generator" and \
             cc.cname in curtailment_status.keys()]:
             ramp_limited_asset_power = sum(
                 [
                     measurements_dict[cc.cname]["power"] for cc in self.component_controllers
-                    if cc.plant_parameters[cc.cname]["component_category"] == "generator" and cc.cname in curtailment_status.keys()
+                    if cc.plant_parameters[cc.cname]["component_category"] == "generator" \
+                        and cc.cname in curtailment_status.keys()
                 ]            )
             max_ramp_rate_change = sum(
                 [
                     curtailment_status[cc.cname]["ramp_rate"] for cc in self.component_controllers
-                    if cc.plant_parameters[cc.cname]["component_category"] == "generator" and cc.cname in curtailment_status.keys()
+                    if cc.plant_parameters[cc.cname]["component_category"] == "generator" \
+                        and cc.cname in curtailment_status.keys()
                 ]
             )
             if ramp_limited_asset_power + sum(
                 [controls_dict[cc.cname]["power_setpoint"] for cc in self.component_controllers
-                if cc.plant_parameters[cc.cname]["component_category"] == "generator" and cc.cname not in curtailment_status.keys()
+                if cc.plant_parameters[cc.cname]["component_category"] == "generator" \
+                    and cc.cname not in curtailment_status.keys()
                 ]
             ) > self._interconnect_limit:
                 run_interconnect_curtailment = True
@@ -228,18 +236,22 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
         else:
             run_interconnect_curtailment = False
 
-        # Run if interconnect curtailment is needed, and if so, curtail according to curtailment order
+        # Run if interconnect curtailment is needed, and if so, curtail according
+        #   to curtailment order
         if run_interconnect_curtailment or power_export_total > self._interconnect_limit:
             for cidx in self.curtailment_order:
                 cc = self.component_controllers[cidx]
-                # Check if component is further curtailable---if so, apply curtailment and update controls_dict,
-                # then check if we're below the interconnection limit. If not curtailable, (like for a thermal unit
-                # with ramping constraints or a minimum stable load), move on to the next component in the curtailment order.
+                # Check if component is further curtailable---if so, apply curtailment and
+                #   update controls_dict, then check if we're below the interconnection limit.
+                # If not curtailable, (like for a thermal unit with ramping constraints or a
+                #   minimum stable load), move on to the next component in the curtailment order.
                 uncurtailable = curtailment_status.get(cc.cname, False)
                 if not uncurtailable:
                     excess_power = power_export_total - self._interconnect_limit
-                    # If component is a flexible generator, base on current power output rather than power setpoint
-                    if cc.plant_parameters[cc.cname]["component_category"] == "generator" and cc.cname not in curtailment_status.keys():
+                    # If component is a flexible generator, base on current power 
+                    #   output rather than power setpoint
+                    if cc.plant_parameters[cc.cname]["component_category"] == "generator" \
+                                and cc.cname not in curtailment_status.keys():
                         current_power = measurements_dict[cc.cname]["power"]
                     else:
                         current_power = controls_dict[cc.cname]["power_setpoint"]
@@ -257,11 +269,13 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
                     computed_controls = cc.compute_controls(measurements_dict)
                     for key in keys_to_remove:
                         if key in computed_controls[cc.cname]:
-                            curtailment_status[cc.cname] = computed_controls[cc.cname].pop(key, None)
+                            curtailment_status[cc.cname] = \
+                            computed_controls[cc.cname].pop(key, None)
 
                     controls_dict.update(computed_controls)
 
-                    power_export_total -= (current_power - controls_dict[cc.cname]["power_setpoint"])
+                    power_export_total -= (current_power -
+                                           controls_dict[cc.cname]["power_setpoint"])
 
                     if power_export_total <= self._interconnect_limit:
                         break

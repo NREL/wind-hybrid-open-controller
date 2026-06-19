@@ -3,6 +3,7 @@ from hycon.controllers.battery_controller import (
     BatteryPassthroughController,
     BatteryPriceSOCController,
 )
+from hycon.controllers.coal_plant_controller import CoalPlantController
 from hycon.controllers.hybrid_supervisory_controller import (
     HybridSupervisoryControllerGeneric,
 )
@@ -17,4 +18,3 @@ from hycon.controllers.wind_farm_power_tracking_controller import (
     WindFarmPowerDistributingController,
     WindFarmPowerTrackingController,
 )
-from hycon.controllers.coal_plant_controller import CoalPlantController
