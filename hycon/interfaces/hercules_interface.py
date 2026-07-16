@@ -75,9 +75,23 @@ class HerculesInterface(InterfaceBase):
             elif c_type in hercules_hydrogen_types:
                 self.plant_parameters[c] = {"type": "hydrogen", "component_category": "load"}
             elif c_type in hercules_thermal_types:
-                self.plant_parameters[c] = {"type": "thermal", "component_category": "generator"}
+                self.plant_parameters[c] = {"type": "thermal",
+                                            "component_category": "generator",
+                                            "capacity": h_dict[c]["rated_capacity"],
+                                            "min_stable_load":
+                                            h_dict[c].get("min_stable_load_fraction", 0.0)\
+                                                * h_dict[c]["rated_capacity"],
+                                            }
             else:
                 raise ValueError(f"Component '{c}' has unrecognized type '{c_type}' for Hycon.")
+
+        # # Coal plant parameters
+        # if self._has_coal_component:
+        #     self.plant_parameters["coal_plant"] = {
+        #         "capacity": h_dict["coal_plant"]["rated_capacity"],
+        #         "min_stable_load": h_dict["coal_plant"]["min_stable_load_fraction"] *
+        #                           h_dict["coal_plant"]["rated_capacity"]
+        #         }
 
         # Pre-compute LMP keys to avoid string formatting in get_measurements
         self._lmp_da_keys = tuple(f"lmp_da_{h:02d}" for h in range(24))
@@ -129,12 +143,14 @@ class HerculesInterface(InterfaceBase):
             "plant_power_reference", None
         )
 
-        # Special handling for wind directions
+        # Special handling for wind directions and thermal plant state
         for c in h_dict["component_names"]:
             if self.component_types[c] in hercules_wind_types:
                 measurements[c]["wind_directions"] = [
                     h_dict[c]["wind_direction_mean"]
                 ] * self.plant_parameters[c]["n_turbines"]
+            elif self.component_types[c] in hercules_thermal_types:
+                measurements[c]["state"] = h_dict[c]["state"]
 
         # Handle a variety of external_signals
         if "hydrogen_reference" in h_dict["external_signals"]:
@@ -143,6 +159,21 @@ class HerculesInterface(InterfaceBase):
                     measurements[c]["hydrogen_production_reference"] = h_dict["external_signals"][
                         "hydrogen_reference"
                     ]
+
+        # Handle coal plant specific external signals
+        if "plant_status" in h_dict["external_signals"]:
+            for c in h_dict["component_names"]:
+                if self.component_types[c] in hercules_thermal_types:
+                    measurements[c]["status_reference"] = h_dict["external_signals"][
+                            "plant_status"
+                        ]
+        # TODO: @Misha, is there a better way to do this with the new interface?
+        if "coal_power_reference" in h_dict["external_signals"]:
+            for c in h_dict["component_names"]:
+                if self.component_types[c] in hercules_thermal_types:
+                    measurements[c]["power_reference"] = h_dict["external_signals"][
+                            "coal_power_reference"
+                        ]
 
         # Grid price information (using pre-computed keys for performance)
         if "lmp_da_00" in h_dict["external_signals"]:
