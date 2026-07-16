@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hycon"
-version = "0.7.1"
+version = "0.8"
 description = "Hybrid power plant controller."
 readme = "README.md"
 requires-python = ">=3.10"
