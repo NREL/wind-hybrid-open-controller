@@ -1,3 +1,5 @@
+import argparse
+
 import matplotlib.pyplot as plt
 from hercules import HerculesOutput
 
@@ -12,7 +14,7 @@ def plot_outputs():
 
     n_turbines = 2
     pow_cols = ["wind_farm.turbine_powers.{0:03d}".format(t) for t in range(n_turbines)]
-    ref_col = "external_signals.wind_power_reference"
+    ref_col = "external_signals.plant_power_reference"
     mod_ref_cols = [
         "wind_farm.turbine_power_setpoints.{0:03d}".format(t) for t in range(n_turbines)
     ]
@@ -66,6 +68,17 @@ def plot_outputs():
 # both controllers meet the setpoint.
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Plot outputs of battery market example")
+
+    parser.add_argument(
+        "--save_plots", type=bool, default=False, help="Whether to save the generated plots"
+    )
+
+    args = parser.parse_args()
+
     fig = plot_outputs()
-    # fig.savefig("../../docs/graphics/wf-power-tracking-plot.png", dpi=300, format="png")
+
+    if args.save_plots:
+        fig.savefig("../../docs/graphics/wf-power-tracking-plot.png", dpi=300, format="png")
+
     plt.show()

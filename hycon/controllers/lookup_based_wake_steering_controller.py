@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pandas as pd
 from floris.utilities import wrap_180
 
 from hycon.controllers.controller_base import ControllerBase
@@ -13,9 +12,8 @@ class LookupBasedWakeSteeringController(ControllerBase):
     def __init__(
         self,
         interface: InterfaceBase,
-        input_dict: dict,
-        df_yaw: pd.DataFrame | None = None,
-        hysteresis_dict: dict | None = None,
+        cname: str,
+        controller_parameters: dict = {},
         verbose: bool = False,
     ):
         """
@@ -23,21 +21,36 @@ class LookupBasedWakeSteeringController(ControllerBase):
 
         Args:
             interface (InterfaceBase): Interface object for communicating with the plant.
-            input_dict (dict): Dictionary of input parameters.
-            df_yaw (pd.DataFrame): DataFrame of yaw offsets. May be produced using tools in
-                hycon.design_tools.wake_steering_design. Defaults to None.
-            hysteresis_dict (dict): Dictionary of hysteresis zones. May be produced using
-                compute_hysteresis_zones function in hycon.design_tools.wake_steering_design.
-                Defaults to None.
+            cname (str): Name of the controller, used for indexing into measurements and controls
+                dictionaries. Should match the component name in the plant model.
+            controller_parameters (dict): Dictionary of controller parameters. See
+                set_controller_parameters for details on expected controller parameters.
             verbose (bool): Verbosity flag.
         """
-        super().__init__(interface, verbose=verbose)
+        super().__init__(interface, cname, verbose=verbose)
 
         # Pull plant parameters for ease of use
         self.n_turbines = self.plant_parameters["n_turbines"]
         self.turbines = range(self.n_turbines)
 
         # Handle yaw optimizer object
+        self.check_controller_parameters(controller_parameters)
+        self.set_controller_parameters(**controller_parameters)
+
+    def set_controller_parameters(self, df_yaw=None, hysteresis_dict=None, yaw_IC=270.0):
+        """
+        Set controller parameters for LookupBasedWakeSteeringController.
+
+        Args:
+            df_yaw (pd.DataFrame): DataFrame of yaw offsets. May be produced using tools in
+                hycon.design_tools.wake_steering_design. Defaults to None.
+            hysteresis_dict (dict): Dictionary of hysteresis zones. May be produced using
+                compute_hysteresis_zones function in hycon.design_tools.wake_steering_design.
+                Defaults to None.
+            yaw_IC (float or list of floats): Initial condition for yaw angles. If a single
+                float is provided, it is applied to all turbines. If a list is provided, it should
+                be of length num_turbines. Defaults to 270.0 (aligned with incoming wind direction).
+        """
         if df_yaw is None:
             if hysteresis_dict is not None:
                 raise ValueError(
@@ -61,7 +74,6 @@ class LookupBasedWakeSteeringController(ControllerBase):
         self.hysteresis_dict = hysteresis_dict
 
         # Set initial conditions
-        yaw_IC = input_dict["controller"]["initial_conditions"]["yaw"]
         if hasattr(yaw_IC, "__len__"):
             if len(yaw_IC) == self.n_turbines:
                 self.controls_dict = {"yaw_angles": yaw_IC}
@@ -112,4 +124,4 @@ class LookupBasedWakeSteeringController(ControllerBase):
 
         self.controls_dict = {"yaw_angles": yaw_setpoint}
 
-        return {"yaw_angles": yaw_setpoint}
+        return {self.cname: {"yaw_angles": yaw_setpoint}}
