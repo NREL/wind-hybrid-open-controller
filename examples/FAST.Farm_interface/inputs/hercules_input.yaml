@@ -1,0 +1,25 @@
+# Name
+name: lookup-based_wake_steering_FAST.Farm
+
+###
+# Describe this emulator setup
+description: FAST.Farm simulation with wake steering controller
+
+dt: 0.5
+
+controller:
+  num_turbines: 2
+  initial_conditions:
+      yaw: 270. # degrees (same for all turbines) (will this work?)
+
+plant:
+  n_turbines: 3
+
+emulator:
+  port : 5556
+  timeout: 120.0
+  verbose: true
+  logfile: log.txt
+  simtype: FAST.Farm # FAST.Farm or amr-wind
+  siminput: inputs/FFFiles/FFarm_mod.fstf
+  simexe: /home/abhineet/MySoftware/MicroMamba/envs/MySci/bin/FAST.Farm
