@@ -46,7 +46,11 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
                 "interconnect_limit must be a positive value (or -1, indicating no limit)."
             )
 
-    def set_controller_parameters(self, component_controllers=[], curtailment_order=None):
+    def set_controller_parameters(
+        self,
+        component_controllers=[],
+        curtailment_order=None,
+    ):
         """
         Set controller parameters for HybridSupervisoryControllerGeneric.
 
@@ -56,6 +60,10 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
                 components in the simulation.
             curtailment_order: List of integers corresponding to the order in which to curtail
                 components when the overall power reference exceeds the interconnection limit.
+            minimum_power: List of floats corresponding to the minimum power that each component
+                should be allowed to produce, even when curtailing to meet the interconnection
+                limit. Should be the same length as component_controllers, and ordered
+                correspondingly.
         """
 
         # Check valid component_controllers
@@ -70,8 +78,10 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
         # Check valid curtailment_order
         if curtailment_order is None:
             # Default is reverse order of component_controllers
-            self.curtailment_order = list(range(len(component_controllers) - 1, -1, -1))
-        elif len(curtailment_order) != len(component_controllers):
+            self.curtailment_order = list(range(0, len(component_controllers) - 1, -1, -1))
+        elif len(curtailment_order) != len(component_controllers) and not any(
+            isinstance(co, (list, tuple, np.ndarray)) for co in curtailment_order
+        ):
             raise ValueError("curtailment_order must be the same length as component_controllers.")
         elif not all([type(c) is int and c >= 0 for c in curtailment_order]):
             raise ValueError(
@@ -79,14 +89,12 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
                 "indices of component_controllers."
             )
         elif (
-            max(curtailment_order) != len(component_controllers) - 1 or min(curtailment_order) != 0
+            max(curtailment_order) != len(set(curtailment_order)) - 1 or min(curtailment_order) != 0
         ):
             raise ValueError(
-                "curtailment_order must contain integers corresponding to indices of "
-                "component_controllers."
+                "curtailment_order must contain integers corresponding to the curtailment order of "
+                "component_controllers, starting at 0 and without skipping an integer."
             )
-        elif len(curtailment_order) != len(set(curtailment_order)):
-            raise ValueError("curtailment_order must not contain duplicate entries.")
         else:
             self.curtailment_order = curtailment_order
 
@@ -115,6 +123,9 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
                     -cc.compute_controls_without_updating_state(standin_measurements_dict)[
                         cc.cname
                     ]["power_setpoint"],
+                )
+                cc.plant_parameters[cc.cname]["available_storage_for_charging"] = (
+                    total_available_storage_for_charging
                 )
 
         # Get overall reference, and remove from measurements_dict to avoid confusion for
@@ -149,27 +160,38 @@ class HybridSupervisoryControllerGeneric(ControllerBase):
 
         # Loop over curtailment order in reverse to bring in power for each component until we hit
         # the interconnection limit, then curtail as needed according to the order.
+        # Take into account the minimum_power for each component, which indicates the minimum power
+        # that component should be allowed to produce.
         for cidx in self.curtailment_order[::-1]:
             cc = self.component_controllers[cidx]
 
             if cc.plant_parameters[cc.cname]["component_category"] == "generator":
-                power_reference_component = power_reference_with_storage - power_export_total
+                power_reference_component = max(
+                    power_reference_with_storage
+                    - power_export_total
+                    - (sum(self.minimum_power[i] for i in self.curtailment_order if i < cidx)),
+                    self.minimum_power[cidx],
+                )
             elif cc.plant_parameters[cc.cname]["component_category"] == "storage":
                 if cc.plant_parameters[cc.cname].get("allow_grid_charging", True):
-                    power_reference_component = power_reference_total - power_export_total
-                    measurements_dict[cc.cname]["power_limit_lower"] = -np.inf
-                    measurements_dict[cc.cname]["power_limit_upper"] = power_reference_component
+                    power_reference_component = (
+                        power_reference_total
+                        - power_export_total
+                        - (sum(self.minimum_power[i] for i in self.curtailment_order if i < cidx))
+                    )
                 else:
                     power_reference_component = max(
-                        power_reference_total - power_export_total,
+                        power_reference_total
+                        - power_export_total
+                        - sum(self.minimum_power[i] for i in self.curtailment_order if i < cidx),
                         -locally_generated_power_total,
                     )
-                    measurements_dict[cc.cname][
-                        "power_limit_lower"
-                    ] = -locally_generated_power_total
-                    measurements_dict[cc.cname]["power_limit_upper"] = power_reference_component
                     # Reduce or increase the available power to store
                     locally_generated_power_total += measurements_dict[cc.cname]["power"]
+
+                power_reference_with_storage -= cc.plant_parameters[cc.cname].get(
+                    "available_storage_for_charging", 0
+                )
 
             # Assign power_reference_component for use by lower level controller
             measurements_dict[cc.cname]["power_reference"] = power_reference_component

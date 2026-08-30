@@ -6,6 +6,7 @@ from hycon.interfaces.interface_base import InterfaceBase
 # Key: Hercules name. Value: Name to use in controller measurements dictionary
 hercules_data_channel_map = {
     "power": "power",
+    "state": "state",
     "power_reference": "power_reference",
     "soc": "state_of_charge",
     "turbine_powers": "turbine_powers",
@@ -21,7 +22,7 @@ hercules_wind_types = ["WindFarm"]
 hercules_solar_types = ["SolarPySAMPVWatts"]
 hercules_battery_types = ["BatteryLithiumIon", "BatterySimple"]
 hercules_hydrogen_types = ["ElectrolyzerPlant"]
-hercules_thermal_types = ["HardCoalSteamTurbine", "OpenCycleGasTurbine"]
+hercules_thermal_types = ["HardCoalSteamTurbine", "OpenCycleGasTurbine", "ThermalPlant"]
 
 
 class HerculesInterface(InterfaceBase):
@@ -71,11 +72,23 @@ class HerculesInterface(InterfaceBase):
                     "allow_grid_charging": h_dict[c].get("allow_grid_power_consumption", True),
                     "state_of_charge_max": h_dict[c].get("max_SOC", 1.0),
                     "state_of_charge_min": h_dict[c].get("min_SOC", 0.0),
+                    "roundtrip_efficiency": h_dict[c].get("roundtrip_efficiency", 1.0),
                 }
             elif c_type in hercules_hydrogen_types:
                 self.plant_parameters[c] = {"type": "hydrogen", "component_category": "load"}
             elif c_type in hercules_thermal_types:
-                self.plant_parameters[c] = {"type": "thermal", "component_category": "generator"}
+                self.plant_parameters[c] = {
+                    "type": "thermal",
+                    "component_category": "generator",
+                    "P_min": h_dict[c]["min_stable_load_fraction"] * h_dict[c]["rated_capacity"],
+                    "P_max": h_dict[c]["rated_capacity"],
+                    "ramp_rate": h_dict[c]["ramp_rate_fraction"]
+                    * h_dict[c]["rated_capacity"]
+                    / 60.0,
+                    "run_up_rate": h_dict[c]["run_up_rate_fraction"]
+                    * h_dict[c]["rated_capacity"]
+                    / 60,
+                }
             else:
                 raise ValueError(f"Component '{c}' has unrecognized type '{c_type}' for Hycon.")
 
@@ -113,6 +126,8 @@ class HerculesInterface(InterfaceBase):
                 # TODO: Do we need another that excludes storage?
                 local_power += component_power
             component_measurements = {"power": component_power}
+            if self.plant_parameters[c]["type"] == "thermal":
+                component_measurements["state"] = h_dict[c]["state"]
             for k, v in hercules_data_channel_map.items():
                 if k in h_dict[c]:
                     component_measurements[v] = h_dict[c][k]
@@ -157,6 +172,13 @@ class HerculesInterface(InterfaceBase):
             if "forecast" in k:
                 measurements["forecast"][k] = h_dict["external_signals"][k]
 
+        # Get lower-level controller minimum and maximum power setpoints, if available
+        for c in h_dict["component_names"]:
+            if "power_min_next" in h_dict[c]:
+                measurements[c]["power_minimum"] = h_dict[c]["power_min_next"]
+            if "power_max_next" in h_dict[c]:
+                measurements[c]["power_maximum"] = h_dict[c]["power_max_next"]
+
         # TODO: How to prescribe an override signal for one or more components?
 
         return measurements
@@ -182,5 +204,8 @@ class HerculesInterface(InterfaceBase):
                         "power_setpoint"
                     )
                 h_dict[c] = h_dict[c] | controls_dict[c]
+            else:
+                # Set a safe default power_setpoint for components without controllers
+                h_dict[c].setdefault("power_setpoint", 0.0)
 
         return h_dict

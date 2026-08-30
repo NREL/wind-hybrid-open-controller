@@ -27,6 +27,7 @@ dependencies = [
     "pandas~=2.0",
     "matplotlib~=3.0",
     "floris~=4.3",
+    "scipy~=1.0",
     "zmq",
 ]
 

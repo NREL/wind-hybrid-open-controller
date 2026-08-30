@@ -91,18 +91,47 @@ class BatteryController(ControllerBase):
     def compute_controls(self, measurements_dict):
         """
         Main compute_controls method for BatteryController.
+        Note that `soc_setpoint` can overwrite `power_reference`.
+        Users are advised to set one or the other, not both.
         """
         reference_power = measurements_dict[self.cname]["power_reference"]
         current_power = measurements_dict[self.cname]["power"]
         soc = measurements_dict[self.cname]["state_of_charge"]
+        soc_setpoint = measurements_dict[self.cname].get("soc_setpoint", None)
         power_limit_lower = measurements_dict[self.cname].get("power_limit_lower", -np.inf)
         power_limit_upper = measurements_dict[self.cname].get("power_limit_upper", np.inf)
 
-        # Clip according to upper and lower limits
-        reference_power = np.clip(reference_power, power_limit_lower, power_limit_upper)
+        # If no soc_setpoint is defined, use provided reference_power
+        if soc_setpoint is None:
+            # Clip according to upper and lower limits
+            reference_power = np.clip(reference_power, power_limit_lower, power_limit_upper)
 
-        # Apply reference clipping
-        reference_power = self.soc_clipping(soc, reference_power)
+            # Apply reference clipping
+            reference_power = self.soc_clipping(soc, reference_power)
+
+        # Else, use the soc_setpoint
+        elif np.isclose(soc, soc_setpoint, atol=1e-2):
+            reference_power = min(
+                max(
+                    power_limit_lower,
+                    0.0,
+                ),
+                power_limit_upper,
+            )
+            reference_power = np.clip(
+                reference_power,
+                -self.plant_parameters[self.cname]["discharge_rate"],
+                self.plant_parameters[self.cname]["charge_rate"],
+            )
+        elif soc < soc_setpoint:
+            reference_power = max(
+                power_limit_lower, -self.plant_parameters[self.cname]["charge_rate"]
+            )
+        elif soc > soc_setpoint:
+            reference_power = min(
+                power_limit_upper, self.plant_parameters[self.cname]["discharge_rate"]
+            )
+            # TODO: test to verify this is doing what we want!
 
         e = reference_power - current_power
 

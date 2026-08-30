@@ -38,6 +38,7 @@ class ControllerBase(metaclass=ABCMeta):
         return output_dict
 
     def check_controller_parameters(self, controller_parameters):
+        controller_parameters = controller_parameters or {}
         # Check valid controller parameters
         valid_controller_parameters = inspect.getfullargspec(self.set_controller_parameters).args
         valid_controller_parameters.remove("self")
