@@ -172,6 +172,13 @@ class HerculesInterface(InterfaceBase):
             if "forecast" in k:
                 measurements["forecast"][k] = h_dict["external_signals"][k]
 
+        # Get lower-level controller minimum and maximum power setpoints, if available
+        for c in h_dict["component_names"]:
+            if "power_min_next" in h_dict[c]:
+                measurements[c]["power_minimum"] = h_dict[c]["power_min_next"]
+            if "power_max_next" in h_dict[c]:
+                measurements[c]["power_maximum"] = h_dict[c]["power_max_next"]
+
         # TODO: How to prescribe an override signal for one or more components?
 
         return measurements
