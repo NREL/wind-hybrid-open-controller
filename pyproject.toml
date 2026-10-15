@@ -28,6 +28,7 @@ dependencies = [
     "matplotlib~=3.0",
     "floris~=4.3",
     "zmq",
+    "rosco~=2.10",
 ]
 
 [project.optional-dependencies]

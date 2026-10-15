@@ -1,161 +1,108 @@
-import zmq
+import multiprocessing as mp
+import subprocess
+
+from rosco.toolbox.control_interface import wfc_zmq_server
 
 from hycon.interfaces.interface_base import InterfaceBase
 
-# Code copied from ROSCO; consider just importing and using that code
-# directly??
-
 
 class ROSCO_ZMQInterface(InterfaceBase):
-    def __init__(
-        self, network_address="tcp://*:5555", identifier="0", timeout=600.0, verbose=False
-    ):
-        """Python implementation of the ZeroMQ server side for the ROSCO
-        ZeroMQ wind farm control interface. This class makes it easy for
-        users to receive measurements from ROSCO and then send back control
-        setpoints (generator torque, nacelle heading and/or blade pitch
-        angles).
-        Args:
-            network_address (str, optional): The network address to
-                communicate over with the desired instance of ROSCO. Note that,
-                if running a wind farm simulation in SOWFA or FAST.Farm, there
-                are multiple instances of ROSCO and each of these instances
-                needs to communicate over a unique port. Also, for each of those
-                instances, you will need an instance of zmq_server. Defaults to
-                "tcp://*:5555".
-            identifier (str, optional): Turbine identifier. Defaults to "0".
-            timeout (float, optional): Seconds to wait for a message from
-                the ZeroMQ server before timing out. Defaults to 600.0.
-            verbose (bool, optional): Print to console. Defaults to False.
-        """
+    def __init__(self, h_dict):
         super().__init__()
 
-        self.network_address = network_address
-        self.identifier = identifier
-        self.timeout = timeout
-        self.verbose = verbose
-        self._connect()
-
-    def _connect(self):
-        """
-        Connect to zmq server
-        """
-        address = self.network_address
-
-        # Connect socket
-        context = zmq.Context()
-        self.socket = context.socket(zmq.REP)
-        self.socket.setsockopt(zmq.LINGER, 0)
-        self.socket.bind(address)
-
-        if self.verbose:
-            print("[%s] Successfully established connection with %s" % (self.identifier, address))
-
-    def _disconnect(self):
-        """
-        Disconnect from zmq server
-        """
-        self.socket.close()
-        context = zmq.Context()
-        context.term()
-
-    def get_measurements(self, _):
-        """
-        Receive measurements from ROSCO .dll
-        """
-        if self.verbose:
-            print("[%s] Waiting to receive measurements from ROSCO..." % (self.identifier))
-
-        # Initialize a poller for timeouts
-        poller = zmq.Poller()
-        poller.register(self.socket, zmq.POLLIN)
-        timeout_ms = int(self.timeout * 1000)
-        if poller.poll(timeout_ms):
-            # Receive measurements over network protocol
-            message_in = self.socket.recv_string()
+        # Controller parameters
+        if "controller" in h_dict and h_dict["controller"] is not None:
+            self.controller_parameters = h_dict["controller"]
         else:
-            raise IOError(
-                "[%s] Connection to '%s' timed out." % (self.identifier, self.network_address)
-            )
+            self.controller_parameters = {}
 
-        # Convert to individual strings and then to floats
-        measurements = message_in
-        measurements = measurements.replace("\x00", "").split(",")
-        measurements = [float(m) for m in measurements]
+        # Plant parameters
+        if "plant" in h_dict and h_dict["plant"] is not None:
+            self.plant_parameters = h_dict["plant"]
+        else:
+            self.plant_parameters = {}
 
-        # Convert to a measurement dict
-        measurements = dict(
-            {
-                "Turbine_ID": measurements[0],
-                "iStatus": measurements[1],
-                "Time": measurements[2],
-                "VS_MechGenPwr": measurements[3],
-                "VS_GenPwr": measurements[4],
-                "GenSpeed": measurements[5],
-                "RotSpeed": measurements[6],
-                "GenTqMeas": measurements[7],
-                "NacelleHeading": measurements[8],
-                "NacelleVane": measurements[9],
-                "HorWindV": measurements[10],
-                "rootMOOP1": measurements[11],
-                "rootMOOP2": measurements[12],
-                "rootMOOP3": measurements[13],
-                "FA_Acc": measurements[14],
-                "NacIMU_FA_Acc": measurements[15],
-                "Azimuth": measurements[16],
-            }
-        )
+        # Emulator parameters
+        if "emulator" in h_dict and h_dict["emulator"] is not None:
+            self.emulator_parameters = h_dict["emulator"]
+        else:
+            self.emulator_parameters = {}
 
-        if self.verbose:
-            print("[%s] Measurements received:" % self.identifier, measurements)
+    def get_measurements(self):
+        pass
 
-        return measurements
+    def check_controls(self):
+        pass
 
-    def check_controls(self, controls_dict):
-        available_controls = [
-            "turbine_ID",
-            "genTorque",
-            "nacelleHeading",
-            "bladePitch",
-        ]
-
-        for k in controls_dict.keys():
-            if k not in available_controls:
-                raise ValueError("Setpoint " + k + " is not available in this configuration")
+    # def addcontroller(self, controller):
+    #     self.controller = controller
 
     def send_controls(
         self, turbine_ID=0, genTorque=0.0, nacelleHeading=0.0, bladePitch=[0.0, 0.0, 0.0]
     ):
-        """
-        Send controls to ROSCO .dll ffor individual turbine control
+        pass
 
-        Parameters:
-        -----------
-        genTorques: float
-            Generator torque setpoint
-        nacelleHeadings: float
-            Nacelle heading setpoint
-        bladePitchAngles: List (len=3)
-            Blade pitch angle setpoint
-        """
-        # Create a message with controls to send to ROSCO
-        message_out = b"%016.5f, %016.5f, %016.5f, %016.5f, %016.5f, %016.5f" % (
-            turbine_ID,
-            genTorque,
-            nacelleHeading,
-            bladePitch[0],
-            bladePitch[1],
-            bladePitch[2],
-        )
 
-        #  Send reply back to client
-        if self.verbose:
-            print("[%s] Sending setpoint string to ROSCO: %s." % (self.identifier, message_out))
+class ROSCO_Emulator:
+    def __init__(self, interface, controller):
+        self.interface = interface
+        self.controller = controller
 
-        # Send control controls over network protocol
-        self.socket.send(message_out)
+    def startserverandsim(self):
+        pserver = mp.Process(target=self.run_zmq, args=())
+        psim = mp.Process(target=self.rumfarmsim, args=())
 
-        if self.verbose:
-            print("[%s] Setpoints sent successfully." % self.identifier)
+        pserver.start()
+        psim.start()
 
-        return None
+        psim.join()
+        pserver.join()
+
+    def run_zmq(self):
+        """Start the ZeroMQ server for wind farm control"""
+        # Start the server at the following address
+
+        network_address = f"tcp://*:{self.interface.emulator_parameters['port']}"
+        server = wfc_zmq_server(network_address, timeout=60.0, verbose=False, logfile="log.txt")
+
+        # Provide the wind farm control algorithm as the wfc_controller method of the server
+        i_wfc_cont = intermediate_wfc_controller(self.interface, self.controller)
+        server.wfc_controller = i_wfc_cont
+
+        # Run the server to receive measurements and send setpoints
+        server.runserver()
+
+    def rumfarmsim(self):
+        simexe = self.interface.emulator_parameters["simexe"]
+        siminput = self.interface.emulator_parameters["siminput"]
+        simcmd = f"{simexe} {siminput}"
+        print(f"Running simulation with command '{simcmd}'")
+        subprocess.run(simcmd, shell=True, check=True)
+
+
+class intermediate_wfc_controller:
+    def __init__(self, interface, controller):
+        self.interface = interface
+        self.controller = controller
+        self.n_turbines = self.interface.plant_parameters["n_turbines"]
+        self.measurements_to_hycon_controller = {k: 0 for k in range(self.n_turbines)}
+        self.controls_from_hycon_controller = {}
+
+    def update_setpoints(self, id, current_time, measurements):
+        if len(self.measurements_to_hycon_controller) == self.n_turbines:
+            self.controls_from_hycon_controller = self.getcontrolsfromhycon()
+            self.measurements_to_hycon_controller = {}
+
+        self.measurements_to_hycon_controller[id] = measurements["NacVane"]
+
+        setpoints = {}
+        setpoints["ZMQ_YawOffset"] = self.controls_from_hycon_controller[id]
+        return setpoints
+
+    def getcontrolsfromhycon(self):
+        measurements_dict = {}
+        measurements_dict["wind_farm"] = {}
+        measurements_dict["wind_farm"]["wind_directions"] = [
+            self.measurements_to_hycon_controller[i] for i in range(self.n_turbines)
+        ]
+        self.controller.compute_controls(measurements_dict)
