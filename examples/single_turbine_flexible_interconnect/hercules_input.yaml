@@ -3,7 +3,7 @@ name: single_turbine_flexible_interconnect
 
 ###
 # Describe this emulator setup
-description: Floris, Solar PV and Battery Plant Example
+description: Distributed wind plus battery example
 
 dt: 0.5
 starttime_utc: "2018-05-10T00:00:00.00Z"

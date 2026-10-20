@@ -16,9 +16,9 @@ def plot_outputs():
     fi_ls = "dotted"  # linestyle
     av_alpha = 1  # opacity
 
-    df_wind = HerculesOutput("outputs/hercules_output_wind_only.h5").df
-    df_batt = HerculesOutput("outputs/hercules_output_with_battery.h5").df
-    df_base = HerculesOutput("outputs/hercules_output_baseline.h5").df
+    df_wind = HerculesOutput("outputs_wind_only/hercules_output.h5").df
+    df_batt = HerculesOutput("outputs_with_battery/hercules_output.h5").df
+    df_base = HerculesOutput("outputs_baseline/hercules_output.h5").df
 
     print(df_batt["battery.power"].head())
 
