@@ -6,8 +6,8 @@ from hercules import HerculesOutput
 
 def plot_outputs():
     dfs = [
-        HerculesOutput("outputs/hercules_output_ol.h5").df,
-        HerculesOutput("outputs/hercules_output_cl.h5").df,
+        HerculesOutput("outputs_ol/hercules_output.h5").df,
+        HerculesOutput("outputs_cl/hercules_output.h5").df,
     ]
 
     labels = ["Open-loop control", "Closed-loop control"]

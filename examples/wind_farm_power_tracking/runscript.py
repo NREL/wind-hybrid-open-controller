@@ -17,7 +17,7 @@ prepare_output_directory()
 
 ### Open loop controller run
 h_dict = load_hercules_input("hercules_input.yaml")
-h_dict["output_file"] = "outputs/hercules_output_ol.h5"
+h_dict["output_dir"] = "outputs_ol"
 
 hmodel = HerculesModel(h_dict)
 
@@ -38,7 +38,7 @@ print("Finished running open-loop controller.")
 
 ### Closed loop controller run
 h_dict = load_hercules_input("hercules_input.yaml")
-h_dict["output_file"] = "outputs/hercules_output_cl.h5"
+h_dict["output_dir"] = "outputs_cl"
 
 hmodel = HerculesModel(h_dict)
 

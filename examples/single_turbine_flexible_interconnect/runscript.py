@@ -58,7 +58,7 @@ df.to_csv("flexible_interconnect_limit.csv", index=False)
 h_dict = load_hercules_input("hercules_input.yaml")
 del h_dict["battery"]
 del h_dict["external_data"]  # Remove wind reference
-h_dict["output_file"] = "outputs/hercules_output_baseline.h5"
+h_dict["output_dir"] = "outputs_baseline"
 
 hmodel = HerculesModel(h_dict)
 interface = HerculesInterface(hmodel.h_dict)
@@ -77,7 +77,7 @@ print("Finished running baseline case.")
 ### Run case with wind only reference tracking
 h_dict = load_hercules_input("hercules_input.yaml")
 del h_dict["battery"]
-h_dict["output_file"] = "outputs/hercules_output_wind_only.h5"
+h_dict["output_dir"] = "outputs_wind_only"
 
 hmodel = HerculesModel(h_dict)
 interface = HerculesInterface(hmodel.h_dict)
@@ -94,7 +94,7 @@ print("Finished running wind-only reference tracking case.")
 
 ### Run case with battery included
 h_dict = load_hercules_input("hercules_input.yaml")
-h_dict["output_file"] = "outputs/hercules_output_with_battery.h5"
+h_dict["output_dir"] = "outputs_with_battery"
 hmodel = HerculesModel(h_dict)
 interface = HerculesInterface(hmodel.h_dict)
 controller = HybridSupervisoryControllerGeneric(

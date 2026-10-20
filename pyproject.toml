@@ -41,6 +41,9 @@ develop = [
     "ruff",
     "isort"
 ]
+examples = [
+    "nlr-hercules~=2.2"
+]
 
 [tool.setuptools.packages.find]
 include = ["hycon*"]
