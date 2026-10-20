@@ -1,0 +1,78 @@
+name: Check Examples APIs
+
+on: [push, pull_request]
+
+jobs:
+
+  examples-check:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        python-version: ["3.14"]
+        os: [ubuntu-latest]
+      fail-fast: False
+
+    steps:
+    - uses: actions/checkout@v6
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install project
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+        pip install hercules # Simulator needed for several examples
+    - name: Run examples
+      # Run all examples and test that they finish successfully. Do not evaluate the results.
+      # Copy the examples to a new directory outside of the repo to ensure that there is no
+      # reliance on the repo directory structure.
+      run: |
+
+        mkdir -p temp1/temp2/temp3
+        cp -r examples/ temp1/temp2/temp3/.
+        cd temp1/temp2/temp3/examples/
+
+        error_found=0  # 0 is false
+        error_results="Error in example:"
+
+        # Now run the examples
+        echo "Running examples"
+
+        # Specific directories to ignore
+        ignore_dirs=("lookup-based_wake_steering_florisstandin" "example_inputs")
+        error_found=0
+        error_results="Errors in examples:"
+
+        for dir in */; do
+          [[ -d "$dir" ]] || continue
+          dir="${dir%/}"
+
+          for ignored in "${ignore_dirs[@]}"; do
+            if [[ "$dir" == "$ignored" ]]; then
+              printf 'Ignoring directory: %s\n' "$dir"
+              continue 2
+            fi
+          done
+
+          printf '\n========================= Example directory: %s\n' "$dir"
+
+          # A subshell keeps the parent working directory unchanged.
+          if (
+            cd -- "$dir" || exit 1
+            python runscript.py
+          ); then
+            printf 'SUCCESS: %s\n' "$dir"
+          else
+            status=$?
+            printf 'ERROR: %s (exit code %s)\n' "$dir" "$status" >&2
+            error_results+=$'\n'" - ${dir}/runscript.py (exit code ${status})"
+            error_found=1
+          fi
+        done
+
+        if (( error_found != 0 )); then
+          printf '\n%s\n' "$error_results" >&2
+        fi
+
+        exit "$error_found"
