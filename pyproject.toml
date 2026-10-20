@@ -42,7 +42,7 @@ develop = [
     "isort"
 ]
 examples = [
-    "nlr-hercules"
+    "nlr-hercules~=2.2"
 ]
 
 [tool.setuptools.packages.find]
