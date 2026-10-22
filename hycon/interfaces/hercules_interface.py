@@ -1,4 +1,5 @@
 import copy
+import pandas as pd
 
 from hycon.interfaces.interface_base import InterfaceBase
 
@@ -69,6 +70,7 @@ class HerculesInterface(InterfaceBase):
                     "energy_capacity": h_dict[c]["energy_capacity"],
                     "charge_rate": h_dict[c]["charge_rate"],
                     "discharge_rate": h_dict[c]["discharge_rate"],
+                    "roundtrip_efficiency": h_dict[c]["roundtrip_efficiency"],
                     "allow_grid_charging": h_dict[c].get("allow_grid_power_consumption", True),
                     "state_of_charge_max": h_dict[c].get("max_SOC", 1.0),
                     "state_of_charge_min": h_dict[c].get("min_SOC", 0.0),
@@ -88,6 +90,11 @@ class HerculesInterface(InterfaceBase):
     def check_controls(self, controls_dict):
         available_controls = [
             "power_setpoint",
+            "charge_price",
+            "rt_offer_price",
+            "da_offer_price",
+            "rt_available",
+            "in_peak",
         ]
 
         # Check valid control keys _for each component_ on the hybrid plant
@@ -98,11 +105,13 @@ class HerculesInterface(InterfaceBase):
 
     def get_measurements(self, h_dict):
         time = h_dict["time"]
+        time_utc = h_dict["starttime_utc"] + pd.Timedelta(seconds=time)
 
         # Set up placeholder dictionary
         measurements = {
             "time": time,
-            "forecast": {},
+            "time_utc": time_utc,
+            "forecast": {}
         }
 
         total_power = 0.0
